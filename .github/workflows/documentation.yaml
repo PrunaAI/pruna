@@ -2,7 +2,8 @@ name: Algorithm Docs Generation
 
 on:
   pull_request:
-    branches: [ main, development ]
+    branches:
+      - main
 
 jobs:
   generate-docs:

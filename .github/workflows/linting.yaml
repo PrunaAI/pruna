@@ -2,7 +2,8 @@ name: Code Quality Checks
 
 on:
   pull_request:
-    branches: [ main, development ]
+    branches:
+      - main
 
 jobs:
   linting:
