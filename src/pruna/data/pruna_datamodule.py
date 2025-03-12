@@ -64,7 +64,7 @@ class PrunaDataModule(LightningDataModule):
 
     @classmethod
     def from_datasets(  # type: ignore[override]
-        self,
+        cls,
         datasets: (
             Tuple[Union[IterableDataset, Dataset, TorchDataset], ...]
             | List[Union[IterableDataset, Dataset, TorchDataset]]
@@ -123,11 +123,11 @@ class PrunaDataModule(LightningDataModule):
         except Exception as e:
             raise ValueError(f"Compatibility test failed with error: {e}")
 
-        return self(train_ds, val_ds, test_ds, collate_func, dataloader_args)
+        return cls(train_ds, val_ds, test_ds, collate_func, dataloader_args)
 
     @classmethod
     def from_string(
-        self,
+        cls,
         dataset_name: str,
         tokenizer: AutoTokenizer | None = None,
         collate_fn_args: dict = dict(),
@@ -165,7 +165,7 @@ class PrunaDataModule(LightningDataModule):
             setup_fn = partial(setup_fn, seed=seed)
         train_ds, val_ds, test_ds = setup_fn()
 
-        return self.from_datasets(
+        return cls.from_datasets(
             (train_ds, val_ds, test_ds), collate_fn_name, tokenizer, collate_fn_args, dataloader_args
         )
 
