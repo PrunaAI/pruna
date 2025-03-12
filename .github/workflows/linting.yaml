@@ -40,10 +40,10 @@ jobs:
         run: flake8
 
       - name: Run Black on Pruna code
-        run: black --check *.py
+        run: black --check .
 
       - name: Run isort on Pruna code
-        run: isort --check *.py
+        run: isort --check .
 
       - name: Run mypy on Pruna code
         run: mypy --show-traceback src/pruna
