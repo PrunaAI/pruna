@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 from argparse import Namespace
 from typing import Any, Dict, List
 
@@ -212,6 +213,57 @@ class CTranslateCompiler(PrunaCompiler):
         Dict[str, Any]
             The algorithm packages.
         """
+        cudnn_path = os.path.join(
+            os.path.dirname(sys.executable),
+            f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib",
+        )
+        ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
+
+        # Update LD_LIBRARY_PATH for the current process
+        os.environ["LD_LIBRARY_PATH"] = f"{cudnn_path}:{ld_library_path}"
+
+        if not os.path.exists(cudnn_path):
+            # Try to find cudnn in alternative locations
+            possible_paths = [
+                "/usr/local/cuda/lib64",
+                "/usr/lib/x86_64-linux-gnu",
+                "/usr/lib/cuda/lib64",
+                os.path.join(os.path.dirname(sys.executable), "lib"),
+            ]
+
+            for path in possible_paths:
+                if os.path.exists(path):
+                    if any(f.startswith("libcudnn") for f in os.listdir(path)):
+                        os.environ["LD_LIBRARY_PATH"] = f"{path}:{os.environ['LD_LIBRARY_PATH']}"
+                        break
+
+        # Ensure the library path is actually used by updating the dynamic loader
+        try:
+            import ctypes
+
+            # Try to load the specific cuDNN library file
+            cudnn_libs = [
+                "libcudnn_ops.so.9.1.0",
+                "libcudnn_ops.so.9.1",
+                "libcudnn_ops.so.9",
+                "libcudnn_ops.so",
+                "libcudnn.so",
+            ]
+            loaded = False
+
+            for lib in cudnn_libs:
+                try:
+                    ctypes.CDLL(lib)
+                    loaded = True
+                    break
+                except Exception:
+                    continue
+
+            if not loaded:
+                pruna_logger.warning("Could not load cuDNN library. CTranslate2 may not work correctly with CUDA.")
+        except Exception as e:
+            pruna_logger.warning(f"Error loading cuDNN: {e}")
+
         from ctranslate2 import Generator, Translator
         from ctranslate2.converters.transformers import (
             _MODEL_LOADERS,

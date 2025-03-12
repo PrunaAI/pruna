@@ -38,11 +38,7 @@ include = ["**/*.so"]
 # **Exclude specific files or directories from the built distributions**
 exclude = [
     "tests*",
-    "scripts*",
-    "pruna_internal.huggingface_integration*",
-    "pruna_internal.utils*",
-    "pruna_internal.run_*",
-    "pruna_internal.evaluations*",
+    "docs*",
 ]
 
 [tool.poetry.dependencies]
@@ -89,7 +85,7 @@ timm = "*"
 bitsandbytes = "*"
 optimum-quanto = "==0.2.4"
 optimum = "*"
-ctranslate2 = "==4.4.0"
+ctranslate2 = "==4.5.0"
 whisper-s2t = "==1.3.0"
 hqq = "*"
 auto-gptq = "*"
