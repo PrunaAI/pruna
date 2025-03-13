@@ -67,7 +67,7 @@ class TransformerHandler(InferenceHandler):
         Any
             The processed output.
         """
-        return output.logits
+        return output.logits.float()
 
     def log_model_info(self) -> None:
         """Log information about the inference handler."""
