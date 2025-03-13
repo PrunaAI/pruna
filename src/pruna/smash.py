@@ -17,8 +17,7 @@ from typing import Any
 from pruna import PrunaModel, SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.config.smash_space import ALGORITHM_GROUPS
-from pruna.logging.filter import apply_warning_filter
-from pruna.logging.logger import pruna_logger
+from pruna.logging.logger import PrunaLoggerContext, pruna_logger
 from pruna.telemetry import track_usage
 
 
@@ -49,29 +48,26 @@ def smash(
     PrunaModel
         Smashed model wrapped in a `PrunaModel` object.
     """
-    # disable warnings if not running in verbose mode
-    if not verbose:
-        apply_warning_filter()
+    with PrunaLoggerContext(verbose=verbose):
+        # check if the model type is compatible with the given configuration
+        if not experimental:
+            check_model_compatibility(model, smash_config)
 
-    # check if the model type is compatible with the given configuration
-    if not experimental:
-        check_model_compatibility(model, smash_config)
+        # iterate through all algorithms groups in a predefined order
+        for algorithm_group in ALGORITHM_GROUPS:
+            current_algorithm = smash_config[algorithm_group]
 
-    # iterate through all algorithms groups in a predefined order
-    for algorithm_group in ALGORITHM_GROUPS:
-        current_algorithm = smash_config[algorithm_group]
+            if current_algorithm is not None:
+                check_algorithm_availability(current_algorithm, algorithm_group, PRUNA_ALGORITHMS)
 
-        if current_algorithm is not None:
-            check_algorithm_availability(current_algorithm, algorithm_group, PRUNA_ALGORITHMS)
+                # apply the active algorithm to the model
+                pruna_logger.info(f"Starting {algorithm_group} {current_algorithm}...")
+                algorithm_instance = PRUNA_ALGORITHMS[algorithm_group][current_algorithm]
+                model = algorithm_instance.apply(model, smash_config=smash_config)
+                pruna_logger.info(f"{algorithm_group} {current_algorithm} was applied successfully.")
 
-            # apply the active algorithm to the model
-            pruna_logger.info(f"Starting {algorithm_group} {current_algorithm}...")
-            algorithm_instance = PRUNA_ALGORITHMS[algorithm_group][current_algorithm]
-            model = algorithm_instance.apply(model, smash_config=smash_config)
-            pruna_logger.info(f"{algorithm_group} {current_algorithm} was applied successfully.")
-
-    # wrap the model in a PrunaModel object before returning
-    smashed_model = PrunaModel(model, smash_config=smash_config)
+        # wrap the model in a PrunaModel object before returning
+        smashed_model = PrunaModel(model, smash_config=smash_config)
 
     return smashed_model
 

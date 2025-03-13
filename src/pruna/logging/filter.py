@@ -23,6 +23,11 @@ def apply_warning_filter() -> None:
     warnings.filterwarnings("ignore")
 
 
+def remove_warning_filter() -> None:
+    """Remove the warning filter globally."""
+    warnings.filterwarnings("default")
+
+
 def is_notebook() -> bool:
     """
     Check if the code is running in a Jupyter notebook.
