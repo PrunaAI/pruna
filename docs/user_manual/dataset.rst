@@ -103,3 +103,4 @@ Accessing the PrunaDataModule directly
 You can also create and access the PrunaDataModule directly and use it in your workflow, e.g., if you want to pass it to the :doc:`evaluation agent <evaluation_agent>`.
 
 .. autoclass:: pruna.data.pruna_datamodule.PrunaDataModule
+    :members: from_string, from_datasets
