@@ -88,6 +88,10 @@ class EvaluationAgent:
                 )
         else:
             self.subsequent_model_results = results
+
+        for key, value in results.items():
+            if isinstance(value, torch.Tensor):
+                results[key] = value.item()
         return results
 
     def prepare_model(self, model: Any) -> PrunaModel:
