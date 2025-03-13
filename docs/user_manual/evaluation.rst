@@ -76,6 +76,7 @@ Currently, ``Task`` supports the following plain textrequests:
 .. code-block:: python
 
   from pruna.evaluation.task import Task
+  from pruna.data.pruna_datamodule import PrunaDataModule
 
   task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string('LAION256')) 
 
