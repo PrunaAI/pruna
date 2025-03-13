@@ -41,7 +41,7 @@
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Introduction
 
-Pruna is a model optimization toolkit built for developers, enabling you to deliver faster, more efficient models with minimal overhead. It provides a comprehensive suite of compression algorithms including [caching](https://docs.pruna.ai/en/latest/compression.html#cachers), [quantization](https://docs.pruna.ai/en/latest/compression.html#quantizers), [pruning](https://docs.pruna.ai/en/latest/compression.html#pruners), [distillation](https://docs.pruna.ai/en/latest/compression.html#distillers) and [compilation](https://docs.pruna.ai/en/latest/compression.html#compilers) techniques to make your models:
+Pruna is a model optimization framework built for developers, enabling you to deliver faster, more efficient models with minimal overhead. It provides a comprehensive suite of compression algorithms including [caching](https://docs.pruna.ai/en/latest/compression.html#cachers), [quantization](https://docs.pruna.ai/en/latest/compression.html#quantizers), [pruning](https://docs.pruna.ai/en/latest/compression.html#pruners), [distillation](https://docs.pruna.ai/en/latest/compression.html#distillers) and [compilation](https://docs.pruna.ai/en/latest/compression.html#compilers) techniques to make your models:
 
 - **Faster**: Accelerate inference times through advanced optimization techniques
 - **Smaller**: Reduce model size while maintaining quality
@@ -53,13 +53,13 @@ The toolkit is designed with simplicity in mind - requiring just a few lines of 
 
 <img align="left" width="40" src="docs/assets/images/highlight.png" alt="Pruna Pro"/>
 
-**To move at top speed**, we offer [Pruna Pro](https://docs.pruna.ai/en/latest/docs_pruna_pro/user_manual/pruna_pro.html), our enterprise solution that unlocks advanced optimization features, our `SmashAgent`, priority support, and much more.
+**To move at top speed**, we offer [Pruna Pro](https://docs.pruna.ai/en/latest/docs_pruna_pro/user_manual/pruna_pro.html), our enterprise solution that unlocks advanced optimization features, our `OptimizationAgent`, priority support, and much more.
 <br clear="left"/>
 
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Installation
 
-Pruna is currently available for installation on on Linux, MacOS and Windows. However, some algorithms impose restrictions on the operating system and might not be available on all platforms.
+Pruna is currently available for installation on Linux, MacOS and Windows. However, some algorithms impose restrictions on the operating system and might not be available on all platforms.
 
 Before installing, ensure you have:
 - Python 3.9 or higher
@@ -85,7 +85,7 @@ pip install -e .
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Quick Start
 
-Pruna collects [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/latest/user_manual/telemetry.html)—primarily to track which algorithms are most popular—to help us understand usage patterns and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you’d prefer not to share this, you can always disable telemetry with:
+Before we start: Pruna allows to collect [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/latest/user_manual/telemetry.html) to help us identify popular algorithms and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you'd prefer not to share this, you can always disable telemetry with:
 
 ```python
 from pruna.telemetry import set_telemetry_metrics
