@@ -178,6 +178,25 @@ class SmashConfig:
         if self._data is not None:
             pruna_logger.info("Data detected in smash config, this will be detached and not reloaded...")
 
+    def load_dict(self, config_dict: dict) -> None:
+        """
+        Load a dictionary of hyperparameters into the SmashConfig.
+
+        Parameters
+        ----------
+        config_dict : dict
+            The dictionary to load into the SmashConfig.
+        """
+        # first load the algorithm settings
+        # otherwise fine-grained hyperparameters will not be active yet and we can not set them
+        # lambda returns False for keys in ALGORITHM_GROUPS (and False sorts before True)
+        for k, v in sorted(config_dict.items(), key=lambda item: item[0] not in ALGORITHM_GROUPS):
+            self[k] = v
+
+    def flush_configuration(self) -> None:
+        """Remove all algorithm hyperparameters from the SmashConfig."""
+        self._configuration = SMASH_SPACE.get_default_configuration()
+
     def train_dataloader(self, **kwargs) -> torch.utils.data.DataLoader | None:
         """
         Getter for the train DataLoader instance.
