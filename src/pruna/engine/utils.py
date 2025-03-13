@@ -78,7 +78,7 @@ def get_nn_modules(model: Any) -> dict[str | None, torch.nn.Module]:
         }
 
 
-def move_to_device(model: Any, device: str | torch.device) -> None:
+def move_to_device(model: Any, device: str | torch.device, raise_error: bool = False) -> None:
     """
     Move the model to a specific device.
 
@@ -88,16 +88,24 @@ def move_to_device(model: Any, device: str | torch.device) -> None:
         The model to move.
     device : str
         The device to move the model to.
+    raise_error : bool
+        Whether to raise an error when the device movement fails.
     """
     if hasattr(model, "to"):
         try:
             model.to(device)
         except ValueError as e:
-            pruna_logger.warning(f"Could not move model to device: {str(e)}")
+            if raise_error:
+                raise ValueError(f"Could not move model to device: {str(e)}")
+            else:
+                pruna_logger.warning(f"Could not move model to device: {str(e)}")
     elif hasattr(model, "task") and getattr(model, "task") == "automatic-speech-recognition":
         model.model.to(device)
     else:
-        pruna_logger.warning("Model does not support device movement.")
+        if raise_error:
+            raise ValueError("Model does not support device movement.")
+        else:
+            pruna_logger.warning("Model does not support device movement.")
 
 
 def set_to_eval(model: Any) -> None:
