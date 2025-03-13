@@ -31,7 +31,7 @@ The rest of this guide provides more detailed explanations of each component and
   smash_config = SmashConfig()
   smash_config['cacher'] = 'deepcache'
 
-  # Load the base model and wrap it in a PrunaModel
+  # Load the base model
   model_path = "CompVis/stable-diffusion-v1-4"
   pipe = StableDiffusionPipeline.from_pretrained(model_path)
 
@@ -46,10 +46,20 @@ The rest of this guide provides more detailed explanations of each component and
 
   # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
   first_results = eval_agent.evaluate(pipe) 
+  print(first_results)
 
   # Evaluate smashed model
   smashed_results = eval_agent.evaluate(smashed_pipe)
-  
+  print(smashed_results)
+
+
+.. code-block:: python
+
+  # Base model result output
+  {'clip_score_y_x': 28.0828}
+
+  # Smashed model result output
+  {'clip_score_y_x': 28.4500, 'psnr_pairwise_y_gt': 18.7465}
 
 Evaluation Framework
 --------------------
@@ -61,10 +71,10 @@ Task
 Processes user requests and converts them into a set of metrics. The ``Task`` accepts metrics in three ways:
 
 - As a plain text request from predefined options (e.g., ``image_generation_quality``)
-- As a list of metric names (e.g., [``clip_score``, ``psnr``])  (see :ref:`Available Metrics <metrics>` below)
+- As a list of metric names (e.g., [``"clip_score"``, ``"psnr"``])  (see :ref:`Available Metrics <metrics>` below)
 - As a list of metric instances
 
-In addition to metrics, ``Task`` requires a |pruna| datamodule to perform the evaluation.
+In addition to metrics, ``Task`` requires a :ref:`PrunaDataModule <prunadatamodule>` to perform the evaluation.
 
 .. autoclass:: pruna.evaluation.task.Task
 
@@ -128,7 +138,7 @@ When using the ``EvaluationAgent``, all metrics are executed automatically as pa
 Metrics can operate in both single-model and pairwise modes:
 
 - In single-model mode, each evaluation produces independent scores for the model being evaluated.
-- In pairwise mode, metrics compare a subsequent model against the first model evaluated by the agent. The first model's outputs are cached and used as a reference point for all following evaluations. The pairwise comparison produces a single score that quantifies the relationship (e.g., similarity or difference) between the two models.
+- In pairwise mode, metrics compare a subsequent model against the first model evaluated by the agent. Usually, this is used to compare the base model (first model) with its smashed version (subsequent model). The first model's outputs are cached and used as a reference point for all following evaluations. The pairwise comparison produces a single score that quantifies the relationship (e.g., similarity or difference) between the two models.
 
 Our metrics fall into two implementation categories that work differently under the hood:
 

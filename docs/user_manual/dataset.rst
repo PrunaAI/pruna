@@ -92,3 +92,14 @@ Your dataset will have to adhere to the formats expected by the ``collate_fn`` a
 .. autofunction:: pruna.data.collate.image_classification_collate
 .. autofunction:: pruna.data.collate.audio_collate
 .. autofunction:: pruna.data.collate.question_answering_collate
+
+
+
+.. _prunadatamodule:
+
+Accessing the PrunaDataModule directly
+-------------------------------------
+
+You can also create and access the PrunaDataModule directly and use it in your workflow, e.g., if you want to pass it to the :doc:`evaluation agent <evaluation_agent>`.
+
+.. autoclass:: pruna.data.pruna_datamodule.PrunaDataModule
