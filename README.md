@@ -130,7 +130,6 @@ from pruna import smash, SmashConfig
 
 # Create and smash your model
 smash_config = SmashConfig()
-smash_config.add_data('LAION256')
 smash_config["cacher"] = "deepcache"
 smash_config["compiler"] = "stable_fast"
 smashed_model = smash(model=base_model, smash_config=smash_config)
@@ -141,8 +140,9 @@ You can then use our evaluation interface to measure the performance of your mod
 ```python
 from pruna.evaluation.task import Task
 from pruna.evaluation.evaluation_agent import EvaluationAgent
+from pruna.data.pruna_datamodule import PrunaDataModule
 
-task = Task("image_generation_quality", dataloader=smash_config.test_dataloader()) 
+task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string("LAION256")) 
 eval_agent = EvaluationAgent(task) 
 eval_agent.evaluate(smashed_model)
 ```

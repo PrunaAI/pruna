@@ -30,8 +30,6 @@ The rest of this guide provides more detailed explanations of each component and
   # Load data and set up smash config
   smash_config = SmashConfig()
   smash_config['cacher'] = 'deepcache'
-  data_module = PrunaDataModule.from_string('LAION256')
-  test_dataloader = data_module.test_dataloader()
 
   # Load the base model and wrap it in a PrunaModel
   model_path = "CompVis/stable-diffusion-v1-4"
@@ -43,7 +41,7 @@ The rest of this guide provides more detailed explanations of each component and
 
   # Define the task and the evaluation agent
   metrics = ['clip_score', 'psnr']
-  task = Task(metrics, dataloader=test_dataloader) 
+  task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256')) 
   eval_agent = EvaluationAgent(task)
 
   # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
@@ -66,7 +64,7 @@ Processes user requests and converts them into a set of metrics. The ``Task`` ac
 - As a list of metric names (e.g., [``clip_score``, ``psnr``])  (see :ref:`Available Metrics <metrics>` below)
 - As a list of metric instances
 
-In addition to metrics, ``Task`` requires a dataloader to perform the evaluation.
+In addition to metrics, ``Task`` requires a |pruna| datamodule to perform the evaluation.
 
 .. autoclass:: pruna.evaluation.task.Task
 
@@ -74,22 +72,12 @@ Currently, ``Task`` supports the following plain textrequests:
 
 - ``image_generation_quality``: Creates metrics for evaluating image generation models (``clip_score``, ``pairwise_clip_score``, ``psnr``)
 
-.. container:: hidden_code
-
-  .. code-block:: python
-
-    from pruna.data.pruna_datamodule import PrunaDataModule
-
-    data_module = PrunaDataModule.from_string('LAION256')
-    data_module.limit_datasets(10)
-    test_dataloader = data_module.test_dataloader()
-
 
 .. code-block:: python
 
   from pruna.evaluation.task import Task
 
-  task = Task("image_generation_quality", dataloader=test_dataloader) 
+  task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string('LAION256')) 
 
 EvaluationAgent
 ^^^^^^^^^^^^^^^
@@ -115,9 +103,8 @@ The main entry point for evaluating models. The ``EvaluationAgent``:
 
       data_module = PrunaDataModule.from_string('LAION256')
       data_module.limit_datasets(10)
-      test_dataloader = data_module.test_dataloader()
 
-      task = Task("image_generation_quality", dataloader=test_dataloader) 
+      task = Task("image_generation_quality", datamodule=data_module) 
 
 .. code-block:: python
   

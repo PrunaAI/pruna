@@ -15,8 +15,8 @@
 from typing import Any, List, cast
 
 import torch
-from torch.utils.data import DataLoader
 
+from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -33,19 +33,20 @@ class Task:
 
     Parameters
     ----------
-    request : str | List[str]
+    request : str | List[str | BaseMetric]
         The user request.
-    dataloader : DataLoader | None
+    datamodule : PrunaDataModule
         The dataloader to use for the evaluation.
     device : str | torch.device
         The device to use for the evaluation.
     """
 
     def __init__(
-        self, request: str | List[str | BaseMetric], dataloader: DataLoader, device: str | torch.device = "cuda"
+        self, request: str | List[str | BaseMetric], datamodule: PrunaDataModule, device: str | torch.device = "cuda"
     ) -> None:
         self.metrics = get_metrics(request)
-        self.dataloader = dataloader
+        self.datamodule = datamodule
+        self.dataloader = datamodule.test_dataloader()
         self.device = device
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
