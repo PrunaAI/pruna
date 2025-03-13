@@ -1,7 +1,7 @@
 smash
 =========================
 
-The ``smash`` function is the main function in |pruna| for optimizing and running models. In the following sections we will show you how to use it.
+The ``smash`` function is the main function in |pruna| for optimizing models. In the following sections we will show you how to use it.
 
 Calling the ``smash`` Function
 ---------------------------------------------
