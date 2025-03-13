@@ -98,7 +98,7 @@ class GPUMemoryMetric(BaseMetric):
         List of GPU indices to monitor. If None, all GPUs are assumed.
     """
 
-    def __init__(self, mode: str, gpu_indices: Optional[List[int]] = None) -> None:
+    def __init__(self, mode: str = "disk", gpu_indices: Optional[List[int]] = None) -> None:
         """
         Initialize the GPUMemoryMetric.
 
