@@ -71,7 +71,6 @@ Every stateful metric must implement the following methods:
     - Example states: totals, counts, running sums
 
 3. ``update(self, inputs, ground_truths, predictions)``: Process each batch
-    - ``EvaluationAgent`` requires these three parameters: ``inputs``, ``ground_truth``, and ``predictions``. 
     - Called automatically by the evaluation pipeline
     - Update your state variables based on the current batch. Your implementation can use any combination of these parameters as needed for its specific calculations.
     - No return value needed
@@ -173,7 +172,7 @@ Once you've implemented your metric, everyone can use it in Pruna's evaluation p
         model = StableDiffusionPipeline.from_pretrained(model_path)
 
 .. code-block:: python
-    :emphasize-lines: 2, 7
+    :emphasize-lines: 2, 6
 
     from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
     from pruna.evaluation.metrics.your_metric_file import YourNewMetric

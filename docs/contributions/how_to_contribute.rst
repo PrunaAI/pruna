@@ -43,7 +43,7 @@ We're sure it will be perfect from the start, but still 🚨 no working on the m
 2. Installation
 ^^^^^^^^^^^^^^^^^^^^^^
 
-You can not set up a virual environment of your choise and install the dependencies by running the following command:
+You can now set up a virtual environment of your choice and install the dependencies by running the following command:
 
 .. code-block:: bash
 

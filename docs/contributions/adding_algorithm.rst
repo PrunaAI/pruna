@@ -25,7 +25,8 @@ First, navigate to ``pruna/algorithms/compilation/`` and create ``superfast.py``
 2. Defining Compiler Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Define the new compiler by inheriting from ``PrunaCompiler`` and define key attributes for the compiler:
+Define the new compiler by inheriting from ``PrunaCompiler`` and define key attributes for the compiler.
+These attributes are used to provide information about the algorithm to the user, other functions in the package and even the documentation.
 
 .. code-block:: python
     :class: noextract
@@ -68,6 +69,7 @@ Defining Hyperparameters
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 Define hyperparameters using `ConfigSpace <https://automl.github.io/ConfigSpace/latest/reference/hyperparameters/>`_, allowing users to configure the backend and mode.
+Everything that configures the algorithm or specifies the algorithm's behavior should be a hyperparameter.
 
 .. code-block:: python
     :class: noextract
@@ -195,7 +197,7 @@ Saving e.g. a compiled or quantized model can be tricky and requires careful con
        A["Is the original saving function retained?"] -->|Yes| B["save_fn = None"]
        A -->|No| C["Is the algorithm fast to apply, i.e. takes no more than 5 to 10 seconds?"]
 
-       C -->|Yes| F["Will changes to the model be permanent or discarded by the original saving function?"]
+       C -->|Yes| F["Will changes to the model be permanent (i.e. not discarded by the original saving function)?"]
        C -->|No| G["Is the saving logic complex and/or difficult to maintain?"]
 
        F -->|Yes| J["save_fn = SAVE_FUNCTIONS.save_before_apply"]
