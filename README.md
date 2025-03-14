@@ -176,12 +176,13 @@ For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
 
-Since Pruna offers a broad range of compression algorithms, the following table provides an overview of all methods available in Pruna <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height=16> and those exclusive to Pruna Pro <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height=16>. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/latest/).
+Since Pruna offers a broad range of compression algorithms, the following table provides an overview of all methods available in Pruna and those exclusive to Pruna Pro. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/latest/).
 
 <table>
   <thead>
     <tr align="center">
       <th rowspan="2">Algorithm</th>
+      <th rowspan="2"><div align="center">Pruna Pro</div></th>
       <th rowspan="2">Type</th>
       <th colspan="2" align="center"><div align="center">Hardware</div></th>
       <th colspan="4" align="center"><div align="center">Model Format</div></th>
@@ -198,7 +199,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
   <tbody>
     <!-- Quantizer group -->
     <tr>
-      <td><strong>AWQ</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>AWQ</strong></td>
+      <td></td>
       <td>quantizer</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -208,7 +210,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>GPTQ</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>GPTQ</strong></td>
+      <td></td>
       <td>quantizer</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -218,7 +221,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>HQQ</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>HQQ</strong></td>
+      <td></td>
       <td>quantizer</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -228,7 +232,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>Int8</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>Int8</strong></td>
+      <td></td>
       <td>quantizer</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -238,7 +243,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>QUANTO</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>QUANTO</strong></td>
+      <td></td>
       <td>quantizer</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -248,7 +254,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>Torch Dynamic</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>Torch Dynamic</strong></td>
+      <td></td>
       <td>quantizer</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -258,7 +265,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>HIGGS</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>HIGGS</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>quantizer</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -268,7 +276,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>torchao</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>torchao</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>quantizer</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -278,7 +287,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>PERP</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>PERP</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>recoverer</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -288,7 +298,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>c_translate</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>c_translate</strong></td>
+      <td></td>
       <td>compiler</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -298,7 +309,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>IPEX</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>IPEX</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>compiler</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
@@ -308,7 +320,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>OneDiff <sup><a href="#footnote1" id="ref1">1</a></sup></strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>OneDiff <sup><a href="#footnote1" id="ref1">1</a></sup></strong></td>
+      <td></td>
       <td>compiler</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -318,7 +331,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>Stable Fast</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>Stable Fast</strong></td>
+      <td></td>
       <td>compiler</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -328,7 +342,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>torch.compile</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>torch.compile</strong></td>
+      <td></td>
       <td>compiler</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -338,7 +353,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>x-fast</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>x-fast</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>compiler</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -348,7 +364,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>DeepCache<sup><a href="#footnote2" id="ref2">2</a></sup></strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>DeepCache<sup><a href="#footnote2" id="ref2">2</a></sup></strong></td>
+      <td></td>
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -358,7 +375,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>Adaptive Caching</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>Adaptive Caching</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -368,7 +386,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>Auto Caching</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>Auto Caching</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -378,7 +397,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>FLUX Caching<sup><a href="#footnote3" id="ref3">3</a></sup></strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>FLUX Caching<sup><a href="#footnote3" id="ref3">3</a></sup></strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -388,8 +408,10 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>Periodic Caching</strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>Periodic Caching</strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>cacher</td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
@@ -398,17 +420,20 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>HYPER<sup><a href="#footnote4" id="ref4">4</a></sup></strong> <img src="./docs/assets/images/pruna_pro.png" alt="Pruna Pro" height="16"></td>
+      <td><strong>HYPER<sup><a href="#footnote4" id="ref4">4</a></sup></strong></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>distiller</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
+      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
       <td></td>
     </tr>
     <tr>
-      <td><strong>Structured Pruning</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>Structured Pruning</strong></td>
+      <td></td>
       <td>pruner</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -418,7 +443,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>Unstructured Pruning</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>Unstructured Pruning</strong></td>
+      <td></td>
       <td>pruner</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -428,7 +454,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>ifw</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>ifw</strong></td>
+      <td></td>
       <td>batcher</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -438,7 +465,8 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>ws2t</strong> <img src="./docs/assets/images/pruna_os.png" alt="Pruna OS" height="16"></td>
+      <td><strong>ws2t</strong></td>
+      <td></td>
       <td>batcher</td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
