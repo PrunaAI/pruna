@@ -28,9 +28,7 @@ class CombinationsTester(AlgorithmTesterBase):
     def prepare_smash_config(self, smash_config: SmashConfig, device: str) -> None:
         """Prepare the smash config for the test."""
         smash_config["device"] = device
-
-        for key, value in self.config_dict.items():
-            smash_config[key] = value
+        smash_config.load_dict(self.config_dict)
 
 
 @pytest.mark.cuda
