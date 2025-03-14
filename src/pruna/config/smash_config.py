@@ -186,16 +186,50 @@ class SmashConfig:
         ----------
         config_dict : dict
             The dictionary to load into the SmashConfig.
+
+        Examples
+        --------
+        >>> config = SmashConfig()
+        >>> config.load_dict({'cacher': 'deepcache', 'deepcache_interval': 4})
+        >>> config
+        SmashConfig(
+         'cacher': 'deepcache',
+         'deepcache_interval': 4,
+        )
         """
+        # since this function is only used for loading algorithm settings, we will ignore additional arguments
+        filtered_config_dict = {k: v for k, v in config_dict.items() if k not in ADDITIONAL_ARGS}
+        discarded_args = [k for k in config_dict.keys() if k in ADDITIONAL_ARGS]
+        if discarded_args:
+            pruna_logger.info(f"Discarded arguments: {discarded_args}")
+
         # first load the algorithm settings
         # otherwise fine-grained hyperparameters will not be active yet and we can not set them
         # lambda returns False for keys in ALGORITHM_GROUPS (and False sorts before True)
-        for k, v in sorted(config_dict.items(), key=lambda item: item[0] not in ALGORITHM_GROUPS):
+        for k, v in sorted(filtered_config_dict.items(), key=lambda item: item[0] not in ALGORITHM_GROUPS):
             self[k] = v
 
     def flush_configuration(self) -> None:
-        """Remove all algorithm hyperparameters from the SmashConfig."""
+        """
+        Remove all algorithm hyperparameters from the SmashConfig.
+
+        Examples
+        --------
+        >>> config = SmashConfig()
+        >>> config['cacher'] = 'deepcache'
+        >>> config.flush_configuration()
+        >>> config
+        SmashConfig()
+        """
         self._configuration = SMASH_SPACE.get_default_configuration()
+
+        # flush also saving / load functionality associated with a specific configuration
+        self.save_fns = []
+        self.load_fn = None
+        self.reapply_after_load = {algorithm: None for algorithm in ALGORITHM_GROUPS}
+
+        # reset potentiallypreviously used cache directory
+        self.reset_cache_dir()
 
     def train_dataloader(self, **kwargs) -> torch.utils.data.DataLoader | None:
         """
