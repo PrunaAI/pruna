@@ -64,4 +64,4 @@ If you try to activate a algorithm that requires a dataset, tokenizer or process
 ---------------------------------------------
 
 .. autoclass:: pruna.config.smash_config.SmashConfig
-   :members: add_data, add_tokenizer, add_processor, save_to_json, load_from_json
+   :members: add_data, add_tokenizer, add_processor, save_to_json, load_from_json, flush_configuration, load_dict
