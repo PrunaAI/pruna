@@ -13,7 +13,7 @@ Understanding Pruna's Metric System
 |pruna| has two main types of metrics that live under ``pruna/evaluation/metrics``:
 
 1. **Base Metrics** - Inherit from ``BaseMetric`` and compute values directly without maintaining state. These metrics usually require isolated inference computation. Examples: ``GPUMemoryMetric``, ``ElapsedTimeMetric``. 
-2. **Stateful Metrics** - Inherit from ``StatefulMetric`` and maintain internal state across multiple computations. State here refers to the information that is accumulated across multiiple batches. Examples: all metrics under ``TorchMetricWrapper`` like ``Accuracy``, ``CLIPScore``. 
+2. **Stateful Metrics** - Inherit from ``StatefulMetric`` and maintain internal state across multiple computations. State here refers to the information that is accumulated across multiple batches. Examples: all metrics under ``TorchMetricWrapper`` like ``Accuracy``, ``CLIPScore``. 
 
 When adding a new metric to |pruna|, you should place your implementation in ``pruna/evaluation/metrics`` directory to ensure it's properly integrated with the rest of the system. Use snake_case for the file name (e.g., ``your_new_metric.py``).
 
@@ -132,6 +132,30 @@ When to Use Each Type
 
 By using stateful metrics whenever possible, |pruna| can efficiently evaluate multiple metrics with just a single inference pass. 
 
+Registering Your Metric
+-----------------------
+
+After implementing your metric, you need to register it with Pruna's ``MetricRegistry`` system. 
+
+The simplest way to do this is with the ``@MetricRegistry.register`` decorator:
+
+.. code-block:: python
+
+    from pruna.evaluation.metrics.registry import MetricRegistry
+    from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+
+    @MetricRegistry.register("your_new_metric_name")
+    class YourNewMetric(StatefulMetric):
+        def __init__(self, param1='default1', param2='default2'): # Don't forget to add default values for your parameters!
+            super().__init__()
+            self.param1 = param1
+            self.param2 = param2
+            self.metric_name = "your_metric_name"
+            
+Thanks to this registry system, everyone using |pruna| can now refer to your metric by name without having to create instances directly!
+
+One important thing: the registration happens when your module is imported. To ensure your metric is always available, we suggest importing it in ``pruna/evaluation/metrics/__init__.py`` file.
+
 Steps to Add a New Metric
 -------------------------
 
@@ -141,11 +165,13 @@ Steps to Add a New Metric
 
 3. **Implement your metric class**: Inherit from the appropriate class and implement the required methods.
 
-4. **Add tests**: Create tests in ``pruna/tests/evaluation`` for your metric to ensure it works correctly.
+4.  **Register your metric**: Use the ``MetricRegistry.register`` decorator to make your metric available throughout the system.
 
-5. **Update documentation**: Add documentation for your new metric in the user manual ``docs/user_manual/evaluation.rst``, including examples of how to use it.
+5. **Add tests**: Create tests in ``pruna/tests/evaluation`` for your metric to ensure it works correctly.
 
-6. **Submit a pull request**: Follow the standard contribution process to submit your new metric for review.
+6. **Update documentation**: Add documentation for your new metric in the user manual ``docs/user_manual/evaluation.rst``, including examples of how to use it.
+
+7. **Submit a pull request**: Follow the standard contribution process to submit your new metric for review.
 
 By following these steps, you'll help expand Pruna's capabilities and contribute to the project's success.
 
@@ -178,8 +204,8 @@ Once you've implemented your metric, everyone can use it in Pruna's evaluation p
     from pruna.evaluation.metrics.your_metric_file import YourNewMetric
 
     metrics = [
-        TorchMetricWrapper('clip_score'),
-        YourNewMetric(param1='custom_value') 
+        'clip_score',
+        'your_new_metric_name' 
     ]
 
     data_module = PrunaDataModule.from_string('LAION256')

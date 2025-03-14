@@ -58,7 +58,7 @@ Similarly, we can add a processor to the ``SmashConfig`` if required, like for e
     smash_config.add_processor("openai/whisper-large-v3")
     smash_config['compiler'] = 'c_whisper'
 
-If you try to activate a algorithm that requires a dataset, tokenizer or processor and haven't added them to the ``SmashConfig``, you will recieve an error. Make sure to add them before activating the algorithm! If you want to know which algorithms require a dataset, tokenizer or processor, you can look at :doc:`the compression algorithm overview </compression>`.
+If you try to activate a algorithm that requires a dataset, tokenizer or processor and haven't added them to the ``SmashConfig``, you will receive an error. Make sure to add them before activating the algorithm! If you want to know which algorithms require a dataset, tokenizer or processor, you can look at :doc:`the compression algorithm overview </compression>`.
 
 ``SmashConfig`` Documentation
 ---------------------------------------------

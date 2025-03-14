@@ -214,7 +214,7 @@ If it is quick (e.g., a caching helper), we can reapply it after loading.
 The key distinction is whether the modifications persist when saving. For instance, “step caching cacher” attaches a helper that is discarded by ``diffusers`` upon saving, so the model can be saved and reloaded normally before reapplying the function. 
 In contrast, compilation is irreversible—once compiled, a model cannot be saved in its compiled form, so we must save it beforehand and reapply compilation after loading.
 
-If neither approach works, we must introduce a new saving function or use ``SAVE_FUNCTIONS.pickled``. We implement a new saving function following the existing saving-function pattern as well as introducting a matching loading function. 
+If neither approach works, we must introduce a new saving function or use ``SAVE_FUNCTIONS.pickled``. We implement a new saving function following the existing saving-function pattern as well as introducing a matching loading function. 
 Otherwise, we can resort to saving the model in pickled format, but be aware that pickled models pose security risks and are generally not trusted by the community.
 
 
@@ -266,7 +266,7 @@ This Tester class specifies various aspects of the testing procedure:
 - ``algorithm_class``: The algorithm class to test.
 
 
-This Tester class also includes a ``post_smash_hook`` method that can be used to perform additional checks on the model after it has been smashed, e.g. to verify that the compiler has been applied correctly. We encourage you to specify these checks whereever possible.
+This Tester class also includes a ``post_smash_hook`` method that can be used to perform additional checks on the model after it has been smashed, e.g. to verify that the compiler has been applied correctly. We encourage you to specify these checks wherever possible.
 This Tester class automatically parametrizes an integration test at ``tests/algorithms/test_algorithms.py`` that covers smashing as well as saving and loading the model.
 Additionally, a test is created to check that ``model_check_fn`` rejects a non-compatible model.
 Before opening a PR, make sure to run the test suite locally to ensure the algorithm is working as expected.

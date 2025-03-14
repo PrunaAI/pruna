@@ -62,7 +62,7 @@ You can then also install the pre-commit hooks with
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You are now ready to work on your contribution. Check out a branch on your forked repository and start coding!
-When commiting your changes, we recommend to follow the `Conventional Commit Guidelines <https://www.conventionalcommits.org/en/v1.0.0/>`_. 
+When committing your changes, we recommend to follow the `Conventional Commit Guidelines <https://www.conventionalcommits.org/en/v1.0.0/>`_. 
 
 .. code-block:: bash
 
@@ -98,7 +98,7 @@ If you want to run only the tests with a specific marker, e.g. fast CPU tests, y
 
 Once you have made your changes and tested them, you can create a Pull Request. 
 We will then review your Pull Request and get back to you as soon as possible.
-If there are any questions along the way, please do not hesistate to reach out on `Discord <https://discord.gg/Tun8YgzxZ9>`_. 
+If there are any questions along the way, please do not hesitate to reach out on `Discord <https://discord.gg/Tun8YgzxZ9>`_. 
 
 
 
