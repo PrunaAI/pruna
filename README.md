@@ -160,17 +160,17 @@ Pruna has everything you need to get started on optimizing your own models. To p
 
 For [Stable Diffusion XL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0), we compare Auto Caching with [DeepCache](https://github.com/horseee/DeepCache) (available with Pruna). We combine these caching algorithms with torch.compile to get an additional **9%** reduction in inference latency, and we use [HQQ](https://github.com/mobiusml/hqq) 8-bit quantization to reduce the size of the model from **8.8GB** to **6.7GB**.
 
-<img src="./docs/assets/plots/benchmark_sdxl.svg" alt="SDXL Benchmark" style="max-width: 100%; height: auto;" />
+<img src="./docs/assets/plots/benchmark_sdxl.svg" alt="SDXL Benchmark"/>
 
 ### FLUX [dev]
 For [FLUX [dev]](https://huggingface.co/black-forest-labs/FLUX.1-dev), we compare Auto Caching with the popular [TeaCache](https://github.com/ali-vilab/TeaCache) algorithm. In this case, we used [Stable Fast](https://github.com/chengzeyi/stable-fast) to reduce the latency of Auto Caching by additional **13%**, and [HQQ](https://github.com/mobiusml/hqq) with 8-bit reduced the size of FLUX from **33GB** to **23GB**.
 
-<img src="./docs/assets/plots/benchmark_flux.svg" alt="FLUX [dev] Benchmark" style="max-width: 100%; height: auto;" />
+<img src="./docs/assets/plots/benchmark_flux.svg" alt="FLUX [dev] Benchmark"/>
 
 ### HunyuanVideo
 For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto Caching with [TeaCache](https://github.com/ali-vilab/TeaCache). Applying [HQQ](https://github.com/mobiusml/hqq) 8-bit quantization to the model reduced the size from **41GB** to **29GB**.
 
-<img src="./docs/assets/plots/benchmark_hunyuan.svg" alt="HunyuanVideo Benchmark" style="max-width: 100%; height: auto;" />
+<img src="./docs/assets/plots/benchmark_hunyuan.svg" alt="HunyuanVideo Benchmark"/>
 
 
 
