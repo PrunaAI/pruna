@@ -498,80 +498,11 @@ If you can not find an answer to your question or problem in our [documentation]
 
 The Pruna package was made with 💜 by the Pruna AI team. [Contribute to the repository][docs-contributing] to become part of the Pruna family!
 
-<table border="0" cellspacing="0" cellpadding="0">
-  <tr>
-    <td align="center">
-    <a href="https://github.com/johnrachwan123">
-        <img src="./docs/assets/images/pruners/John.png" width="100px;" alt="John Rachwan"/>
-        <br /><sub><b>John Rachwan</b></sub>
-    </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/johannaSommer">
-        <img src="./docs/assets/images/pruners/Johanna.png" width="100px;" alt="Johanna Sommer"/>
-        <br /><sub><b>Johanna Sommer</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/sharpenb">
-        <img src="./docs/assets/images/pruners/Bertrand.png" width="100px;" alt="Bertrand Charpentier"/>
-        <br /><sub><b>Bertrand Charpentier</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/gsprochette">
-        <img src="./docs/assets/images/pruners/Gaspar.png" width="100px;" alt="Gaspar Rochette"/>
-        <br /><sub><b>Gaspar Rochette</b></sub>
-      </a>
-    </td>
-    </tr>
-    <tr>
-    <td align="center">
-      <a href="https://github.com/llcnt">
-        <img src="./docs/assets/images/pruners/Louis.png" width="100px;" alt="Louis Leconte"/>
-        <br /><sub><b>Louis Leconte</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/begumcig">
-        <img src="./docs/assets/images/pruners/Begum.png" width="100px;" alt="Begum Cig"/>
-        <br /><sub><b>Begüm Çığ</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/SaboniAmine">
-        <img src="./docs/assets/images/pruners/Amine.png" width="100px;" alt="Amine Saboni"/>
-        <br /><sub><b>Amine Saboni</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/gtregoat">
-        <img src="./docs/assets/images/pruners/Gabriel.png" width="100px;" alt="Gabriel Tregoat"/>
-        <br /><sub><b>Gabriel Tregoat</b></sub>
-      </a>
-    </td>
-    </tr>
-    <tr>
-    <td align="center">
-      <a href="https://github.com/nifleisch">
-        <img src="./docs/assets/images/pruners/Nils.png" width="100px;" alt="Nils Fleischmann"/>
-        <br /><sub><b>Nils Fleischmann</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/agNikitaras">
-          <img src="./docs/assets/images/pruners/Angelos.png" width="100px;" alt="Agi Nikitaras"/>
-        <br /><sub><b>Angelos Nikitaras</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/guennemann">
-        <img src="./docs/assets/images/pruners/Stephan.png" width="100px;" alt="Stephan Günnemann"/>
-        <br /><sub><b>Stephan Günnemann</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
+<a href="https://github.com/PrunaAI/pruna/graphs/contributors">
+  <img src="https://pruna-github-repository.s3.eu-central-1.amazonaws.com/contributors.png" width="500" />
+</a>
+
+Contributors are displayed in a random order to avoid any perceived ranking.
 
 ## <img src="./docs/assets/images/pruna_emotional.png" alt="Pruna Emotional" width=20></img> Citation
 
