@@ -27,7 +27,7 @@ exclude = '''
 
 [tool.poetry]
 name = "pruna"
-version = "0.2.0"
+version = "0.2.0.post1"
 description = "Smash your AI models"
 authors = ["Pruna AI <hello@pruna.ai>"]
 license = "All Rights Reserved"
@@ -88,7 +88,7 @@ optimum = "*"
 ctranslate2 = "==4.5.0"
 whisper-s2t = "==1.3.0"
 hqq = "*"
-auto-gptq = "*"
+auto-gptq = { version = "*", markers = "sys_platform == 'linux'" }
 torchao = "*"
 
 # Added Optional Dependencies from Extras
