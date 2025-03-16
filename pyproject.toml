@@ -111,8 +111,8 @@ pytest = { version = "7.4.4", optional = true }
 docutils = { version = "*", optional = true }
 xformers = { version = "==0.0.29.post1", optional = true }
 stable-fast-pruna = [
-    { version = "1.0.6", optional = true, markers = "extra == 'stable-fast'"},
-    { version = "1.0.6+torch251cu118", optional = true, markers = "extra == 'stable-fast-cu11'"}
+    { version = "1.0.6", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"},
+    { version = "1.0.6+torch251cu118", optional = true, markers = "extra == 'stable-fast-cu11'"},
 ]
 isort = { version = "*", optional = true }
 numpydoc-validation = { version = "*", optional = true }
