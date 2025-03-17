@@ -41,7 +41,7 @@
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Introduction
 
-Pruna is a model optimization framework built for developers, enabling you to deliver faster, more efficient models with minimal overhead. It provides a comprehensive suite of compression algorithms including [caching](https://docs.pruna.ai/en/latest/compression.html#cachers), [quantization](https://docs.pruna.ai/en/latest/compression.html#quantizers), [pruning](https://docs.pruna.ai/en/latest/compression.html#pruners), [distillation](https://docs.pruna.ai/en/latest/compression.html#distillers) and [compilation](https://docs.pruna.ai/en/latest/compression.html#compilers) techniques to make your models:
+Pruna is a model optimization framework built for developers, enabling you to deliver faster, more efficient models with minimal overhead. It provides a comprehensive suite of compression algorithms including [caching](https://docs.pruna.ai/en/stable/compression.html#cachers), [quantization](https://docs.pruna.ai/en/stable/compression.html#quantizers), [pruning](https://docs.pruna.ai/en/stable/compression.html#pruners), [distillation](https://docs.pruna.ai/en/stable/compression.html#distillers) and [compilation](https://docs.pruna.ai/en/stable/compression.html#compilers) techniques to make your models:
 
 - **Faster**: Accelerate inference times through advanced optimization techniques
 - **Smaller**: Reduce model size while maintaining quality
@@ -53,7 +53,7 @@ The toolkit is designed with simplicity in mind - requiring just a few lines of 
 
 <img align="left" width="40" src="docs/assets/images/highlight.png" alt="Pruna Pro"/>
 
-**To move at top speed**, we offer [Pruna Pro](https://docs.pruna.ai/en/latest/docs_pruna_pro/user_manual/pruna_pro.html), our enterprise solution that unlocks advanced optimization features, our `OptimizationAgent`, priority support, and much more.
+**To move at top speed**, we offer [Pruna Pro](https://docs.pruna.ai/en/stable/docs_pruna_pro/user_manual/pruna_pro.html), our enterprise solution that unlocks advanced optimization features, our `OptimizationAgent`, priority support, and much more.
 <br clear="left"/>
 
 
@@ -67,7 +67,7 @@ Before installing, ensure you have:
 
 #### Option 1: Install Pruna using pip
 
-Pruna is available on PyPI, so you can [install it using pip](https://docs.pruna.ai/en/latest/setup/pip.html):
+Pruna is available on PyPI, so you can [install it using pip](https://docs.pruna.ai/en/stable/setup/pip.html):
 
 ```bash
 pip install pruna
@@ -85,7 +85,7 @@ pip install -e .
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Quick Start
 
-Before we start: Pruna allows to collect [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/latest/user_manual/telemetry.html) to help us identify popular algorithms and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you'd prefer not to share this, you can always disable telemetry with:
+Before we start: Pruna allows to collect [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/stable/user_manual/telemetry.html) to help us identify popular algorithms and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you'd prefer not to share this, you can always disable telemetry with:
 
 ```python
 from pruna.telemetry import set_telemetry_metrics
@@ -176,7 +176,7 @@ For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
 
-Since Pruna offers a broad range of compression algorithms, the following table provides an overview of all methods available in Pruna and those exclusive to Pruna Pro. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/latest/).
+Since Pruna offers a broad range of compression algorithms, the following table provides an overview of all methods available in Pruna and those exclusive to Pruna Pro. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/stable/).
 
 <table>
   <thead>
@@ -529,8 +529,8 @@ If you use Pruna in your research, feel free to cite the project! 💜
 [website]: https://pruna.ai
 [huggingface]: https://huggingface.co/PrunaAI
 [replicate]: https://replicate.com/prunaai
-[documentation]: https://docs.pruna.ai/en/latest
-[docs-algorithms]: https://docs.pruna.ai/en/latest/user_manual/compression.html
-[docs-faq]: https://docs.pruna.ai/en/latest/resources/faq.html
-[docs-office-hours]: https://docs.pruna.ai/en/latest/resources/office_hours.html
-[docs-contributing]: https://docs.pruna.ai/en/latest/contributions/how_to_contribute.html
+[documentation]: https://docs.pruna.ai/en/stable
+[docs-algorithms]: https://docs.pruna.ai/en/stable/user_manual/compression.html
+[docs-faq]: https://docs.pruna.ai/en/stable/resources/faq.html
+[docs-office-hours]: https://docs.pruna.ai/en/stable/resources/office_hours.html
+[docs-contributing]: https://docs.pruna.ai/en/stable/contributions/how_to_contribute.html
