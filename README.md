@@ -14,8 +14,8 @@
 <br>
 
 ![GitHub License](https://img.shields.io/github/license/prunaai/pruna?style=flat-square)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/package_build?style=flat-square)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/test?label=cpu_tests&style=flat-square)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/package_build.yaml?style=flat-square)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/internal_contributions_tests.yaml?label=tests&style=flat-square)
 ![GitHub Release](https://img.shields.io/github/v/release/prunaai/pruna?style=flat-square)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/PrunaAI/pruna?style=flat-square)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pruna?style=flat-square)
