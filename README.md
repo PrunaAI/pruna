@@ -85,7 +85,7 @@ pip install -e .
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Quick Start
 
-Before we start: Pruna allows to collect [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/stable/user_manual/telemetry.html) to help us identify popular algorithms and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you'd prefer not to share this, you can always disable telemetry with:
+Before we start: Pruna allows to collect [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/stable/docs_pruna/user_manual/telemetry.html) to help us identify popular algorithms and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you'd prefer not to share this, you can always disable telemetry with:
 
 ```python
 from pruna.telemetry import set_telemetry_metrics
@@ -530,7 +530,7 @@ If you use Pruna in your research, feel free to cite the project! 💜
 [huggingface]: https://huggingface.co/PrunaAI
 [replicate]: https://replicate.com/prunaai
 [documentation]: https://docs.pruna.ai/en/stable
-[docs-algorithms]: https://docs.pruna.ai/en/stable/user_manual/compression.html
+[docs-algorithms]: https://docs.pruna.ai/en/stable/compression.html
 [docs-faq]: https://docs.pruna.ai/en/stable/resources/faq.html
 [docs-office-hours]: https://docs.pruna.ai/en/stable/resources/office_hours.html
-[docs-contributing]: https://docs.pruna.ai/en/stable/contributions/how_to_contribute.html
+[docs-contributing]: https://docs.pruna.ai/en/stable/docs_pruna/contributions/how_to_contribute.html
