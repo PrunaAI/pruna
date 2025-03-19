@@ -59,7 +59,6 @@ def smash(
 
             if current_algorithm is not None:
                 check_algorithm_availability(current_algorithm, algorithm_group, PRUNA_ALGORITHMS)
-
                 # apply the active algorithm to the model
                 pruna_logger.info(f"Starting {algorithm_group} {current_algorithm}...")
                 algorithm_instance = PRUNA_ALGORITHMS[algorithm_group][current_algorithm]

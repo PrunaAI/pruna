@@ -45,7 +45,7 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict(cacher=["deepcache"])
+    compatible_algorithms = dict(cacher=["deepcache"], compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -156,12 +156,10 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         )
 
         # Prepare the model for fast inference
-        try:
-            if smash_config["weight_bits"] == 4:
-                imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
-        except Exception as e:
-            pruna_logger.error(f"Error: {e}")
-            pass
+        if smash_config["weight_bits"] == 4:
+            imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
+        else:
+            imported_modules["prepare_for_inference"](working_model)
 
         if hasattr(model, "transformer"):
             model.transformer = working_model
