@@ -38,6 +38,8 @@ class CombinationsTester(AlgorithmTesterBase):
         ("stable_diffusion_v1_4", dict(cacher="deepcache", compiler="stable_fast"), False),
         ("mobilenet_v2", dict(pruner="torch_unstructured", quantizer="half"), True),
         ("whisper_tiny", dict(batcher="whisper_s2t", compiler="c_whisper"), False),
+        ("stable_diffusion_v1_4", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False),
+        ("sana", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False),
     ],
     indirect=["model_fixture"],
 )

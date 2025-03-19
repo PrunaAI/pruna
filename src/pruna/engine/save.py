@@ -49,7 +49,6 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     """
     if not os.path.exists(model_path):
         os.makedirs(model_path)
-
     # in the case of no specialized save functions, we use the model's original save function
     if len(smash_config.save_fns) == 0:
         pruna_logger.debug("Using model's original save function...")
@@ -73,7 +72,6 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
         pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
         save_fn = SAVE_FUNCTIONS.pickled
         smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
-
     # execute selected save function
     save_fn(model, model_path, smash_config)
 
@@ -229,13 +227,17 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
     hf_quantizer = HQQDiffusersQuantizer()
     AutoHQQHFDiffusersModel = construct_base_class(hf_quantizer.import_algorithm_packages())
     if hasattr(model, "transformer"):
-        AutoHQQHFDiffusersModel.save_quantized(model.transformer, model_path + "/transformer_quantized")
-        del model.transformer
+        AutoHQQHFDiffusersModel.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
+        transformer_backup = model.transformer
+        model.transformer = None
         model.save_pretrained(model_path)
+        model.transformer = transformer_backup
     elif hasattr(model, "unet"):
-        AutoHQQHFDiffusersModel.save_quantized(model.unet, model_path + "/unet_quantized")
-        del model.unet
+        AutoHQQHFDiffusersModel.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
+        unet_backup = model.unet
+        model.unet = None
         model.save_pretrained(model_path)
+        model.unet = unet_backup
     else:
         AutoHQQHFDiffusersModel.save_quantized(model, model_path)
     smash_config.load_fn = LOAD_FUNCTIONS.hqq_diffusers.name

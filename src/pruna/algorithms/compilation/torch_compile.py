@@ -41,7 +41,7 @@ class TorchCompileCompiler(PrunaCompiler):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(
-        quantizer=["half"],
+        quantizer=["half", "hqq_diffusers"],
         cacher=["deepcache"],
     )
 
@@ -115,9 +115,11 @@ class TorchCompileCompiler(PrunaCompiler):
             The compiled model.
         """
         cacher_type = smash_config["cacher"]
+        diffusers_type = smash_config["quantizer"]
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
-
+        elif diffusers_type in compilation_map:
+            return compilation_map[diffusers_type](model, smash_config)
         # If the model does not have a helper, we compile the model itself
         return compile_callable(model, smash_config)
 
@@ -209,6 +211,35 @@ def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     return model
 
 
+def hqq_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+    """
+    Apply compilation logic for HQQ models.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    smash_config : SmashConfigPrefixWrapper
+        Configuration settings for compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    if hasattr(model, "transformer"):
+        model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
+    elif hasattr(model, "unet"):
+        if isinstance(model.unet, tuple):
+            model.unet[1].forward = compile_callable(model.unet[1].forward, smash_config)
+        else:
+            model.unet.forward = compile_callable(model.unet.forward, smash_config)
+    else:
+        model.forward = compile_callable(model.forward, smash_config)
+    return model
+
+
 compilation_map = {
     "deepcache": deepcache_logic,
+    "hqq_diffusers": hqq_logic,
 }
