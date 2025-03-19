@@ -14,6 +14,7 @@
 
 from typing import Any, Dict, Type
 
+import torch
 from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
@@ -156,7 +157,7 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         )
 
         # Prepare the model for fast inference
-        if smash_config["weight_bits"] == 4:
+        if smash_config["weight_bits"] == 4 and next(iter(working_model.parameters())).dtype == torch.bfloat16:
             imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
         else:
             imported_modules["prepare_for_inference"](working_model)
