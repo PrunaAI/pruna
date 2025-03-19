@@ -20,6 +20,10 @@ from ConfigSpace import CategoricalHyperparameter
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
+from pruna.engine.model_checks import (
+    get_diffusers_transformer_models,
+    get_diffusers_unet_models,
+)
 from pruna.logging.logger import pruna_logger
 
 # This allows for torch compile to use more cache memory to compile the model
@@ -114,13 +118,17 @@ class TorchCompileCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
+        import pdb; pdb.set_trace()
+
         cacher_type = smash_config["cacher"]
-        diffusers_type = smash_config["quantizer"]
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
-        elif diffusers_type in compilation_map:
-            return compilation_map[diffusers_type](model, smash_config)
-        # If the model does not have a helper, we compile the model itself
+        
+        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(get_diffusers_transformer_models())):
+            return unet_transformer_pipeline_logic(model, smash_config)
+
+        if hasattr(model, "unet") and isinstance(model.unet, tuple(get_diffusers_unet_models())):
+            return unet_transformer_pipeline_logic(model, smash_config)
         return compile_callable(model, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -211,7 +219,7 @@ def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     return model
 
 
-def hqq_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     """
     Apply compilation logic for HQQ models.
 
@@ -231,8 +239,6 @@ def hqq_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
     elif hasattr(model, "unet"):
         if isinstance(model.unet, tuple):
-            model.unet[1].forward = compile_callable(model.unet[1].forward, smash_config)
-        else:
             model.unet.forward = compile_callable(model.unet.forward, smash_config)
     else:
         model.forward = compile_callable(model.forward, smash_config)
@@ -241,5 +247,4 @@ def hqq_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
 
 compilation_map = {
     "deepcache": deepcache_logic,
-    "hqq_diffusers": hqq_logic,
 }

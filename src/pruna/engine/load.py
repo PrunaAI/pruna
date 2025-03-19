@@ -286,12 +286,11 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     AutoHQQHFDiffusersModel = construct_base_class(hf_quantizer.import_algorithm_packages())
 
     if os.path.exists(os.path.join(path, "backbone_quantized")):
-        loaded_backbone = AutoHQQHFDiffusersModel.from_quantized(os.path.join(path, "backbone_quantized"))
+        loaded_backbone = AutoHQQHFDiffusersModel.from_quantized(os.path.join(path, "backbone_quantized"), **kwargs)
         model_index = load_json_config(path, "model_index.json")
         cls = getattr(diffusers, model_index["_class_name"])
         if "transformer" in model_index:
-            model = cls.from_pretrained(path, transformer=None, **kwargs)
-            model.transformer = loaded_backbone
+            model = cls.from_pretrained(path, transformer=loaded_backbone, **kwargs)
         elif "unet" in model_index:
             model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
             for layer in model.unet.up_blocks:
