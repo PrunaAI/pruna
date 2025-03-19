@@ -236,8 +236,7 @@ def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixW
     if hasattr(model, "transformer"):
         model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
     elif hasattr(model, "unet"):
-        if isinstance(model.unet, tuple):
-            model.unet.forward = compile_callable(model.unet.forward, smash_config)
+        model.unet.forward = compile_callable(model.unet.forward, smash_config)
     else:
         model.forward = compile_callable(model.forward, smash_config)
     return model
