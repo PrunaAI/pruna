@@ -285,30 +285,20 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     hf_quantizer = HQQDiffusersQuantizer()
     AutoHQQHFDiffusersModel = construct_base_class(hf_quantizer.import_algorithm_packages())
 
-    # if it is a diffusers model, it saves the model_index.json file
-    if not os.path.exists(os.path.join(path, "model_index.json")):
-        model = AutoHQQHFDiffusersModel.from_quantized(
-            path, **filter_load_kwargs(AutoHQQHFDiffusersModel.from_quantized, kwargs)
-        )
-    else:
+    if os.path.exists(os.path.join(path, "backbone_quantized")):
+        loaded_backbone = AutoHQQHFDiffusersModel.from_quantized(os.path.join(path, "backbone_quantized"))
         model_index = load_json_config(path, "model_index.json")
-
         cls = getattr(diffusers, model_index["_class_name"])
-        if os.path.exists(os.path.join(path, "backbone_quantized")):
-            loaded_backbone = AutoHQQHFDiffusersModel.from_quantized(os.path.join(path, "backbone_quantized"))
-        else:
-            loaded_backbone = None
-        if loaded_backbone is not None:
-            if "transformer" in model_index:
-                model = cls.from_pretrained(path, transformer=None, **kwargs)
-                model.transformer = loaded_backbone
-            elif "unet" in model_index:
-                model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
-                for layer in model.unet.up_blocks:
-                    if layer.upsamplers is not None:
-                        layer.upsamplers[0].name = "conv"
-        else:
-            model = AutoHQQHFDiffusersModel.from_quantized(path)
+        if "transformer" in model_index:
+            model = cls.from_pretrained(path, transformer=None, **kwargs)
+            model.transformer = loaded_backbone
+        elif "unet" in model_index:
+            model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
+            for layer in model.unet.up_blocks:
+                if layer.upsamplers is not None:
+                    layer.upsamplers[0].name = "conv"
+    else:
+        model = AutoHQQHFDiffusersModel.from_quantized(path)
     return model
 
 
