@@ -118,12 +118,10 @@ class TorchCompileCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
-        import pdb; pdb.set_trace()
-
         cacher_type = smash_config["cacher"]
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
-        
+
         if hasattr(model, "transformer") and isinstance(model.transformer, tuple(get_diffusers_transformer_models())):
             return unet_transformer_pipeline_logic(model, smash_config)
 
