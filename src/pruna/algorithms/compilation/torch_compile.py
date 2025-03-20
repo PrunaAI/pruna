@@ -20,6 +20,10 @@ from ConfigSpace import CategoricalHyperparameter
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
+from pruna.engine.model_checks import (
+    get_diffusers_transformer_models,
+    get_diffusers_unet_models,
+)
 from pruna.logging.logger import pruna_logger
 
 # This allows for torch compile to use more cache memory to compile the model
@@ -41,7 +45,7 @@ class TorchCompileCompiler(PrunaCompiler):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(
-        quantizer=["half"],
+        quantizer=["half", "hqq_diffusers"],
         cacher=["deepcache"],
     )
 
@@ -118,7 +122,11 @@ class TorchCompileCompiler(PrunaCompiler):
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
 
-        # If the model does not have a helper, we compile the model itself
+        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(get_diffusers_transformer_models())):
+            return unet_transformer_pipeline_logic(model, smash_config)
+
+        if hasattr(model, "unet") and isinstance(model.unet, tuple(get_diffusers_unet_models())):
+            return unet_transformer_pipeline_logic(model, smash_config)
         return compile_callable(model, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -206,6 +214,31 @@ def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
             model.deepcache_unet_helper.function_dict[function_name] = compile_callable(function, smash_config)
     model.text_encoder = compile_callable(model.text_encoder, smash_config)
     model.vae = compile_callable(model.vae, smash_config)
+    return model
+
+
+def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+    """
+    Apply compilation logic for HQQ models.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    smash_config : SmashConfigPrefixWrapper
+        Configuration settings for compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    if hasattr(model, "transformer"):
+        model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
+    elif hasattr(model, "unet"):
+        model.unet.forward = compile_callable(model.unet.forward, smash_config)
+    else:
+        model.forward = compile_callable(model.forward, smash_config)
     return model
 
 
