@@ -413,7 +413,6 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
@@ -423,7 +422,6 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td><strong>HYPER<sup><a href="#footnote4" id="ref4">4</a></sup></strong></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>distiller</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
