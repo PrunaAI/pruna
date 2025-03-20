@@ -24,6 +24,7 @@ from typing import Any, Callable
 import diffusers
 import torch
 import transformers
+from huggingface_hub import snapshot_download
 from transformers import pipeline
 
 from pruna import SmashConfig
@@ -68,13 +69,27 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
             if "device_map" not in kwargs and "device" not in kwargs:
                 model.to(smash_config.device)
     except Exception:
-        pruna_logger.error(f"Error casting model to device: {smash_config.device}. Skipping device casting.")
+        pruna_logger.error(
+            f"Error casting model to device: {smash_config.device}. Skipping device casting."
+        )
 
     # check if there are any algorithms to reapply
-    if any([algorithm is not None for algorithm in smash_config.reapply_after_load.values()]):
+    if any(
+        [
+            algorithm is not None
+            for algorithm in smash_config.reapply_after_load.values()
+        ]
+    ):
         model = resmash_fn(model, smash_config)
 
     return model, smash_config
+
+
+def load_pruna_model_from_hub(
+    repo_id: str, token: str | None = None
+) -> tuple[Any, SmashConfig]:
+    path = snapshot_download(repo_id=repo_id, repo_type="model", token=token)
+    return load_pruna_model(model_path=path)
 
 
 def resmash(model: Any, smash_config: SmashConfig) -> Any:
@@ -178,7 +193,9 @@ def load_pickled(path: str, **kwargs) -> Any:
     Any
         The loaded pickled model.
     """
-    return torch.load(os.path.join(path, PICKLED_FILE_NAME), **filter_load_kwargs(torch.load, kwargs))
+    return torch.load(
+        os.path.join(path, PICKLED_FILE_NAME), **filter_load_kwargs(torch.load, kwargs)
+    )
 
 
 def load_hqq(model_path: str, **kwargs) -> Any:
@@ -213,7 +230,9 @@ def load_hqq(model_path: str, **kwargs) -> Any:
         )
     except Exception as e:  # Default to generic HQQ pipeline if it fails
         pruna_logger.error(f"Error loading model using HQQ: {e}")
-        model = AutoHQQHFModel.from_quantized(model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs))
+        model = AutoHQQHFModel.from_quantized(
+            model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs)
+        )
 
     return model
 
@@ -283,7 +302,9 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     )
 
     hf_quantizer = HQQDiffusersQuantizer()
-    AutoHQQHFDiffusersModel = construct_base_class(hf_quantizer.import_algorithm_packages())
+    AutoHQQHFDiffusersModel = construct_base_class(
+        hf_quantizer.import_algorithm_packages()
+    )
 
     # if it is a diffusers model, it saves the model_index.json file
     if not os.path.exists(os.path.join(path, "model_index.json")):
@@ -296,7 +317,9 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
         cls = getattr(diffusers, model_index["_class_name"])
         # we need to load the original model pipeline, and
         # then replace the unet/transformer with the one from model_path.
-        loaded_transformer = AutoHQQHFDiffusersModel.from_quantized(path + "/transformer_quantized")
+        loaded_transformer = AutoHQQHFDiffusersModel.from_quantized(
+            path + "/transformer_quantized"
+        )
         if "transformer" in model_index:
             # transformers discards kwargs automatically, no need for filtering
             model = cls.from_pretrained(path, transformer=None, **kwargs)
@@ -396,6 +419,8 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
 
     # Log the discarded kwargs
     if invalid_kwargs:
-        pruna_logger.info(f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}")
+        pruna_logger.info(
+            f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}"
+        )
 
     return valid_kwargs
