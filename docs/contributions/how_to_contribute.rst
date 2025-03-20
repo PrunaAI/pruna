@@ -5,7 +5,7 @@ Since you landed on this part of the documentation, we want to first of all say 
 Bug reports are essential to improving |pruna|, and you are actively helping us identify and fix issues more efficiently. 
 We appreciate your effort in making |pruna| better for everyone!
 
-Please make sure to review and adhere to the `Pruna Code of Conduct <https://careers.pruna.ai/posts/code-of-conduct>`_ before contributing to Pruna. 
+Please make sure to review and adhere to the `Pruna Code of Conduct <https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md>`_ before contributing to Pruna. 
 Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms. 
 Contributions that do not adhere to the code of conduct will be ignored.
 
