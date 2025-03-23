@@ -70,7 +70,7 @@ class TorchCompileCompiler(PrunaCompiler):
             Boolean(
                 "fullgraph",
                 default=True,
-                meta=dict(desc="Whether to discover compileable subgraphs or compile the full input graph."),
+                meta=dict(desc="Whether to discover compilable subgraphs or compile the full input graph."),
             ),
             CategoricalHyperparameter(
                 "dynamic",

@@ -189,6 +189,6 @@ def setup_c4_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     """
     train_dataset = load_dataset("allenai/c4", "en", split="train", streaming=True, trust_remote_code=True)
     val_dataset = load_dataset("allenai/c4", "en", split="validation", streaming=True, trust_remote_code=True)
-    pruna_logger.info("Recieved only train and val datasets as iterable datasets, copying validation dataset to test.")
+    pruna_logger.info("Received only train and val datasets as iterable datasets, copying validation dataset to test.")
     test_dataset = copy.deepcopy(val_dataset)
     return train_dataset, val_dataset, test_dataset

@@ -36,7 +36,7 @@ class EnergyMetric(BaseMetric):
     Parameters
     ----------
     n_iterations : int, default=100
-        The number of batches to evaluate the model. Note that the energy consuption and CO2 emissions
+        The number of batches to evaluate the model. Note that the energy consumption and CO2 emissions
         are not averaged and will therefore increase with this argument.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.

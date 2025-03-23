@@ -504,7 +504,7 @@ def update_dimensions_post_pruning(model: nn.Module, pruner: Any, imported_modul
                 m.hidden_size = m.head_dim * m.num_heads
 
             elif isinstance(m, LlamaRotaryEmbedding):
-                # overridde forward function to handle pruned head dimension
+                # override forward function to handle pruned head dimension
                 m.forward = LlamaRotaryEmbeddingForward.__get__(m, LlamaRotaryEmbedding)
     return model
 
