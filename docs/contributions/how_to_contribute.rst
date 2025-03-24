@@ -30,14 +30,27 @@ If you want to contribute to |pruna| with a Pull Request, you can do so by follo
 1. Clone the repository
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check out the repository to your local machine and create a new branch for your contribution. 
-We're sure it will be perfect from the start, but still 🚨 no working on the main branch! 🚨
+First, fork the repository by navigating to the original `pruna repository <https://github.com/PrunaAI/pruna>`_ on GitHub and click the **Fork** button at the top-right.
+This creates a copy of the repository in your own GitHub account.
+Then, clone the forked repository from your account to your local machine and change into its directory:
 
 .. code-block:: bash
 
     git clone https://github.com/your_username/pruna.git
     cd pruna
+
+To keep your fork up to date with the original repository, add the upstream remote:
+
+.. code-block:: bash
+
+    git remote add upstream https://github.com/PrunaAI/pruna.git
+
+Always work on a new branch rather than the main branch. You can create a new branch for your feature or fix:
+
+.. code-block:: bash
+
     git checkout -b feat/new-feature
+
 
 
 2. Installation
