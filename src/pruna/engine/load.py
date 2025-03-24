@@ -19,12 +19,14 @@ import sys
 from copy import deepcopy
 from enum import Enum
 from functools import partial
-from typing import Any, Callable
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 import diffusers
 import torch
 import transformers
-from huggingface_hub import snapshot_download
+from huggingface_hub import constants, snapshot_download
+from tqdm.auto import tqdm as base_tqdm
 from transformers import pipeline
 
 from pruna import SmashConfig
@@ -86,10 +88,104 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
 
 
 def load_pruna_model_from_hub(
-    repo_id: str, token: str | None = None
+    repo_id: str,
+    revision: Optional[str] = None,
+    cache_dir: Union[str, Path, None] = None,
+    local_dir: Union[str, Path, None] = None,
+    library_name: Optional[str] = None,
+    library_version: Optional[str] = None,
+    user_agent: Optional[Union[Dict, str]] = None,
+    proxies: Optional[Dict] = None,
+    etag_timeout: float = constants.DEFAULT_ETAG_TIMEOUT,
+    force_download: bool = False,
+    token: Optional[Union[bool, str]] = None,
+    local_files_only: bool = False,
+    allow_patterns: Optional[Union[List[str], str]] = None,
+    ignore_patterns: Optional[Union[List[str], str]] = None,
+    max_workers: int = 8,
+    tqdm_class: Optional[base_tqdm] = None,
+    headers: Optional[Dict[str, str]] = None,
+    endpoint: Optional[str] = None,
+    # Deprecated args
+    local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
+    resume_download: Optional[bool] = None,
+    **kwargs,
 ) -> tuple[Any, SmashConfig]:
-    path = snapshot_download(repo_id=repo_id, repo_type="model", token=token)
-    return load_pruna_model(model_path=path)
+    """
+    Load a Pruna model from the Hugging Face Hub.
+
+    Parameters
+    ----------
+    repo_id : str
+        The repository ID of the model.
+    revision : str | None, optional
+        The revision of the model.
+    cache_dir : str | Path | None, optional
+        The cache directory.
+    local_dir : str | Path | None, optional
+        The local directory.
+    library_name : str | None, optional
+        The library name.
+    library_version : str | None, optional
+        The library version.
+    user_agent : str | Dict | None, optional
+        The user agent.
+    proxies : Dict | None, optional
+        The proxies.
+    etag_timeout : float, optional
+        The etag timeout.
+    force_download : bool, optional
+        The force download.
+    local_files_only : bool, optional
+        The local files only.
+    allow_patterns : List[str] | str | None, optional
+        The allow patterns.
+    ignore_patterns : List[str] | str | None, optional
+        The ignore patterns.
+    max_workers : int, optional
+        The max workers.
+    tqdm_class : tqdm | None, optional
+        The tqdm class.
+    headers : Dict[str, str] | None, optional
+        The headers.
+    endpoint : str | None, optional
+        The endpoint.
+    local_dir_use_symlinks : bool | Literal["auto"], optional
+        The local dir use symlinks.
+    resume_download : bool | None, optional
+        The resume download.
+    **kwargs : Any
+        Additional keyword arguments to pass to the model loading function of Pruna.
+
+    Returns
+    -------
+    tuple[Any, SmashConfig]
+        The loaded model and its SmashConfig.
+    """
+    path = snapshot_download(
+        repo_id=repo_id,
+        repo_type="model",
+        token=token,
+        revision=revision,
+        cache_dir=cache_dir,
+        local_dir=local_dir,
+        library_name=library_name,
+        library_version=library_version,
+        user_agent=user_agent,
+        proxies=proxies,
+        etag_timeout=etag_timeout,
+        force_download=force_download,
+        local_files_only=local_files_only,
+        allow_patterns=allow_patterns,
+        ignore_patterns=ignore_patterns,
+        max_workers=max_workers,
+        tqdm_class=tqdm_class,
+        headers=headers,
+        endpoint=endpoint,
+        local_dir_use_symlinks=local_dir_use_symlinks,
+        resume_download=resume_download,
+    )
+    return load_pruna_model(model_path=path, **kwargs)
 
 
 def resmash(model: Any, smash_config: SmashConfig) -> Any:
