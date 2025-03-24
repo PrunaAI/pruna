@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from typing import Any, List, Tuple
 
 import torch
 
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
-from pruna.engine.load import load_pruna_model
-from pruna.engine.save import save_pruna_model
+from pruna.engine.load import load_pruna_model, load_pruna_model_from_hub
+from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
 from pruna.engine.utils import get_nn_modules, move_to_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
@@ -69,7 +70,9 @@ class PrunaModel:
             with torch.no_grad():
                 return self.model.__call__(*args, **kwargs)
 
-    def run_inference(self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str) -> Any:
+    def run_inference(
+        self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str
+    ) -> Any:
         """
         Run inference on the model.
 
@@ -146,7 +149,48 @@ class PrunaModel:
             The path to the directory where the model will be saved.
         """
         save_pruna_model(self.model, model_path, self.smash_config)
-        increment_counter("save_pretrained", success=True, smash_config=repr(self.smash_config))
+        increment_counter(
+            "save_pretrained", success=True, smash_config=repr(self.smash_config)
+        )
+
+    def save_to_hub(
+        self,
+        repo_id: str,
+        folder_path: str | Path,
+        *,
+        revision: str | None = None,
+        private: bool = False,
+        allow_patterns: List[str] | str | None = None,
+        ignore_patterns: List[str] | str | None = None,
+        num_workers: int | None = None,
+        print_report: bool = False,
+        print_report_every: int = 0,
+    ) -> None:
+        """Save the model to the specified repository.
+
+        Parameters
+        ----------
+        repo_id : str
+            The repository ID to save the model to.
+        folder_path : str | Path
+            The folder path to save the model to.
+        """
+        save_pruna_model_to_hub(
+            model=self.model,
+            smash_config=self.smash_config,
+            repo_id=repo_id,
+            folder_path=folder_path,
+            revision=revision,
+            private=private,
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
+            num_workers=num_workers,
+            print_report=print_report,
+            print_report_every=print_report_every,
+        )
+        increment_counter(
+            "save_to_hub", success=True, smash_config=repr(self.smash_config)
+        )
 
     @staticmethod
     @track_usage
@@ -178,6 +222,15 @@ class PrunaModel:
         else:
             model.smash_config = smash_config
         return model
+
+    @staticmethod
+    @track_usage
+    def from_hub(repo_id: str, token: str | None = None) -> Any:
+        """
+        Load a `PrunaModel` from the specified repository.
+        """
+        model, smash_config = load_pruna_model_from_hub(repo_id, token)
+        return PrunaModel(model=model, smash_config=smash_config)
 
     def destroy(self) -> None:
         """Destroy model."""
