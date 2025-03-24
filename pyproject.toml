@@ -1,29 +1,34 @@
-[tool.isort]
-profile = "black"
+[tool.ruff]
+exclude = ["test_*.py"]
+line-length = 121
 
-[tool.darglint]
-docstring_style = "numpy"
+[tool.ruff.lint]
+ignore = [
+    "ANN002",
+    "ANN003",
+    "ANN401",
+    "C901",
+    "D100",
+    "D104",
+    "D401",
+    "D406",
+    "C408",
+]
+select = [
+    "A",
+    "C",
+    "D",
+    "E",
+    "F",
+    "W",
+    "I",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.mypy]
 ignore_missing_imports = true
-
-[tool.black]
-# Configuration for Black formatter
-line-length = 121
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
 
 [tool.poetry]
 name = "pruna"
@@ -93,6 +98,7 @@ torchao = "*"
 
 # Added Optional Dependencies from Extras
 nexfort = { version = "0.1.dev275", optional = true }
+ruff = { version = "*", optional = true }
 onediff = { version = "*", optional = true }
 autoawq = { version = "*", optional = true }
 jupyterlab = { version = "*", optional = true }
@@ -101,10 +107,6 @@ pre-commit = { version = "*", optional = true }
 build = { version = "*", optional = true }
 twine = { version = "*", optional = true }
 pyc-wheel = { version = "*", optional = true }
-black = { version = "*", optional = true }
-flake8 = { version = "*", optional = true }
-flake8-docstrings = { version = "*", optional = true }
-flake8-annotations = { version = "*", optional = true }
 pytest-cov = { version = "*", optional = true }
 coverage = { version = "*", optional = true }
 pytest = { version = "7.4.4", optional = true }
@@ -114,7 +116,6 @@ stable-fast-pruna = [
     { version = "1.0.6", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"},
     { version = "1.0.6+torch251cu118", optional = true, markers = "extra == 'stable-fast-cu11'"},
 ]
-isort = { version = "*", optional = true }
 numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 types-PyYAML = { version = "*", optional = true }
@@ -150,11 +151,7 @@ dev = [
     "build",
     "twine",
     "pyc-wheel",
-    "black",
-    "flake8",
-    "flake8-docstrings",
-    "flake8-annotations",
-    "isort",
+    "ruff",
     "numpydoc-validation",
 ]
 tests = [
@@ -163,13 +160,9 @@ tests = [
     "coverage",
     "docutils",
     "jupyterlab",
-    "black",
-    "isort",
-    "flake8",
-    "flake8-docstrings",
-    "flake8-annotations",
     "numpydoc-validation",
     "mypy",
+    "ruff",
     "types-PyYAML",
 ]
 cpu = []

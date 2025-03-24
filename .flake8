@@ -1,6 +1,0 @@
-[flake8]
-ignore = D100,C901,ANN101,D406,ANN002,ANN003,D104,ANN401,D401,ANN102,E203,W503
-max-line-length = 121
-select = A,C,D,E,F,W
-docstring-convention = numpy
-exclude = test_*.py

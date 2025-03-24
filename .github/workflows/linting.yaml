@@ -34,17 +34,8 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[tests]
 
-      - name: Remove .so files
-        run: find . -name "*.so" -delete
-
-      - name: Run Flake8 on Pruna code
-        run: flake8
-
-      - name: Run Black on Pruna code
-        run: black --check .
-
       - name: Run isort on Pruna code
-        run: isort --check .
+        run: ruff check .
 
       - name: Run mypy on Pruna code
         run: mypy --show-traceback src/pruna
