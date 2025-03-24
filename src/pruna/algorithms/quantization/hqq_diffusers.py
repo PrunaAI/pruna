@@ -157,14 +157,23 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         )
 
         # Prepare the model for fast inference based on the backend, we use the conditions from the hqq documentation
-        if (smash_config["backend"] == "torchao_int4" and smash_config["weight_bits"] == 4
-                and next(iter(working_model.parameters())).dtype == torch.bfloat16):
+        if (
+            smash_config["backend"] == "torchao_int4"
+            and smash_config["weight_bits"] == 4
+            and next(iter(working_model.parameters())).dtype == torch.bfloat16
+        ):
             imported_modules["prepare_for_inference"](working_model, backend="torchao_int4")
-        elif (smash_config["backend"] == "gemlite" and smash_config["weight_bits"] in [4, 2, 1]
-                and next(iter(working_model.parameters())).dtype == torch.float16):
+        elif (
+            smash_config["backend"] == "gemlite"
+            and smash_config["weight_bits"] in [4, 2, 1]
+            and next(iter(working_model.parameters())).dtype == torch.float16
+        ):
             imported_modules["prepare_for_inference"](working_model, backend="gemlite")
-        elif (smash_config["backend"] == "bitblas" and smash_config["weight_bits"] in [4, 2]
-                and next(iter(working_model.parameters())).dtype == torch.float16):
+        elif (
+            smash_config["backend"] == "bitblas"
+            and smash_config["weight_bits"] in [4, 2]
+            and next(iter(working_model.parameters())).dtype == torch.float16
+        ):
             imported_modules["prepare_for_inference"](working_model, backend="bitblas")
         else:
             # We default to the torch backend if the input backend is not applicable
