@@ -122,10 +122,10 @@ class TorchCompileCompiler(PrunaCompiler):
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
 
-        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(get_diffusers_transformer_models())):
-            return unet_transformer_pipeline_logic(model, smash_config)
-
-        if hasattr(model, "unet") and isinstance(model.unet, tuple(get_diffusers_unet_models())):
+        if (hasattr(model, "transformer")
+            and isinstance(model.transformer, tuple(get_diffusers_transformer_models()))
+            or (hasattr(model, "unet")
+                and isinstance(model.unet, tuple(get_diffusers_unet_models())))):
             return unet_transformer_pipeline_logic(model, smash_config)
         return compile_callable(model, smash_config)
 
@@ -219,7 +219,7 @@ def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
 
 def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     """
-    Apply compilation logic for HQQ models.
+    Apply compilation logic for unet and transformer based diffusers pipelines.
 
     Parameters
     ----------

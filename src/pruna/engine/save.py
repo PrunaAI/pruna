@@ -227,15 +227,19 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
     hf_quantizer = HQQDiffusersQuantizer()
     AutoHQQHFDiffusersModel = construct_base_class(hf_quantizer.import_algorithm_packages())
     if hasattr(model, "transformer"):
+        # save the backbone
         AutoHQQHFDiffusersModel.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
         transformer_backup = model.transformer
         model.transformer = None
+        # save the rest of the pipeline
         model.save_pretrained(model_path)
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
+        # save the backbone
         AutoHQQHFDiffusersModel.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
         unet_backup = model.unet
         model.unet = None
+        # save the rest of the pipeline
         model.save_pretrained(model_path)
         model.unet = unet_backup
     else:
