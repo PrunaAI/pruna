@@ -100,10 +100,42 @@ def save_pruna_model_to_hub(
     print_report_every: int = 60,
 ) -> None:
     """
-    Save the model to the specified directory.
+    Save the model to the specified directory
+
+    Parameters
+    ----------
+    model : Any
+        The model to save.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    repo_id : str
+        The repository ID.
+    folder_path : str | Path, optional
+        The folder path to save the model to.
+    revision : str | None, optional
+        The revision of the model.
+    private : bool, optional
+        Whether the model is private.
+    allow_patterns : List[str] | str | None, optional
+        The allow patterns.
+    ignore_patterns : List[str] | str | None, optional
+        The ignore patterns.
+    num_workers : int | None, optional
+        The number of workers.
+    print_report : bool, optional
+        Whether to print the report.
+    print_report_every : int, optional
+        The print report every.
+
+    Returns
+    -------
+    None
     """
     with tempfile.TemporaryDirectory(dir=folder_path) as temp_dir:
+        # save the model
         save_pruna_model(model=model, model_path=temp_dir, smash_config=smash_config)
+
+        # create model card
         template_path = Path(__file__).parent / "model_card_template.md"
         template = template_path.read_text()
         model_config = model_config = json.load(open(Path(temp_dir) / "config.json"))
@@ -118,6 +150,8 @@ def save_pruna_model_to_hub(
         )
         with open(Path(temp_dir) / "README.md", "w") as f:
             f.write(content)
+
+        # upload the model to the hub
         upload_large_folder(
             repo_id=repo_id,
             folder_path=temp_dir,
