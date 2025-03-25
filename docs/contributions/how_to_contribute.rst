@@ -14,9 +14,9 @@ There are various ways you can contribute:
 - Have an idea for a new tutorial? Open an issue with a :ref:`feature-request` or chat with us on `Discord <https://discord.gg/Tun8YgzxZ9>`_
 - Found a bug? Open an issue with a :ref:`bug-report`
 - Want a new feature? Open an issue with a :ref:`feature-request`
-- Have a new algorithm to add? Check out the :doc:`adding_algorithm`
-- Have a new metric to add? Check out the :doc:`adding_metric`
-- Have a new dataset to add? Check out the :doc:`adding_dataset`
+- Have a new algorithm to add? Check out: :doc:`adding_algorithm`
+- Have a new metric to add? Check out: :doc:`adding_metric`
+- Have a new dataset to add? Check out: :doc:`adding_dataset`
 
 
 .. _how-to-contribute:
