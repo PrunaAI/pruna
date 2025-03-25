@@ -214,7 +214,7 @@ class CTranslateCompiler(PrunaCompiler):
             The algorithm packages.
         """
         cudnn_path = os.path.join(
-            os.path.dirname(sys.executable),
+            os.path.dirname(sys.executable).strip("bin"),
             f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib",
         )
         ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
