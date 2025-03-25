@@ -10,12 +10,13 @@ Contributions that do not adhere to the code of conduct will be ignored.
 
 There are various ways you can contribute:
 
-- Opening an issue with a :ref:`bug-report`
-- Opening an issue with a :ref:`feature-request`
-- Adding an algorithm to |pruna| :doc:`adding_algorithm`
-- Adding a metric to |pruna| :doc:`adding_metric`
-- Adding a dataset to |pruna| :doc:`adding_dataset`
-
+- Have a question? Discuss with us on `Discord <https://discord.gg/Tun8YgzxZ9>`_ or check out the :doc:`/resources/faq`
+- Have an idea for a new tutorial? Open an issue with a :ref:`feature-request` or chat with us on `Discord <https://discord.gg/Tun8YgzxZ9>`_
+- Found a bug? Open an issue with a :ref:`bug-report`
+- Want a new feature? Open an issue with a :ref:`feature-request`
+- Have a new algorithm to add? Check out the :doc:`adding_algorithm`
+- Have a new metric to add? Check out the :doc:`adding_metric`
+- Have a new dataset to add? Check out the :doc:`adding_dataset`
 
 
 .. _how-to-contribute:
@@ -24,7 +25,7 @@ Setup
 -----
 
 If you want to contribute to |pruna| with a Pull Request, you can do so by following these steps.
-
+If it is your very first time contributing to an open source project, we recommend to start with `this guide <https://opensource.guide/how-to-contribute/>`_ for some generally helpful tips.
 
 1. Clone the repository
 ^^^^^^^^^^^^^^^^^^^^^^^^
