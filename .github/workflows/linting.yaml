@@ -34,7 +34,10 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[tests]
 
-      - name: Run isort on Pruna code
+      - name: Remove .so files
+        run: find . -name "*.so" -delete
+
+      - name: Run ruff on Pruna code
         run: ruff check .
 
       - name: Run mypy on Pruna code

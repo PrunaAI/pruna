@@ -24,9 +24,8 @@ from ConfigSpace import (
 )
 from transformers import ViTForImageClassification as ViT
 from transformers.modeling_outputs import ImageClassifierOutput
-from transformers.models.llama.modeling_llama import LlamaAttention
+from transformers.models.llama.modeling_llama import LlamaAttention, LlamaRotaryEmbedding
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as LLAMA
-from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
 from transformers.models.opt.modeling_opt import OPTAttention
 from transformers.models.opt.modeling_opt import OPTForCausalLM as OPT
 from transformers.models.vit.modeling_vit import ViTSelfAttention

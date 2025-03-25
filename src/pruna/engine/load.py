@@ -71,7 +71,7 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
         pruna_logger.error(f"Error casting model to device: {smash_config.device}. Skipping device casting.")
 
     # check if there are any algorithms to reapply
-    if any([algorithm is not None for algorithm in smash_config.reapply_after_load.values()]):
+    if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
         model = resmash_fn(model, smash_config)
 
     return model, smash_config
@@ -248,7 +248,7 @@ def load_quantized(model_path: str, **kwargs) -> Any:
     )
 
     # fused rotational embeddings introduce complex tensors that can not be saved afterwards
-    if any([param.dtype.is_complex for param in model.parameters()]):
+    if any(param.dtype.is_complex for param in model.parameters()):
         # free memory from previously loaded model
         del model
 

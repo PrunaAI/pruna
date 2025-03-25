@@ -18,9 +18,8 @@ from typing import Callable, List, Tuple, Union
 
 from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torch.utils.data import Dataset as TorchDataset
-from torch.utils.data import Subset
 from transformers import AutoTokenizer
 
 from pruna.data import base_datasets

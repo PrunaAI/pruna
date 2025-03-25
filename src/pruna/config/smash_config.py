@@ -83,7 +83,7 @@ class SmashConfig:
 
         self.save_fns: list[str] = []
         self.load_fn: str | None = None
-        self.reapply_after_load: dict[str, str | None] = {algorithm: None for algorithm in ALGORITHM_GROUPS}
+        self.reapply_after_load: dict[str, str | None] = dict.fromkeys(ALGORITHM_GROUPS)
         self.tokenizer = None
         self.processor = None
         self._data: PrunaDataModule | None = None
@@ -226,7 +226,7 @@ class SmashConfig:
         # flush also saving / load functionality associated with a specific configuration
         self.save_fns = []
         self.load_fn = None
-        self.reapply_after_load = {algorithm: None for algorithm in ALGORITHM_GROUPS}
+        self.reapply_after_load = dict.fromkeys(ALGORITHM_GROUPS)
 
         # reset potentiallypreviously used cache directory
         self.reset_cache_dir()

@@ -234,7 +234,7 @@ class GPUMemoryMetric(BaseMetric):
                 except (IndexError, ValueError):
                     indices.add(0)
 
-        return sorted(list(indices)) if indices else None
+        return sorted(indices) if indices else None
 
     def _check_tensor_locations(self, model: PrunaModel, attr_name: str) -> Optional[List[int]]:
         """
@@ -263,7 +263,7 @@ class GPUMemoryMetric(BaseMetric):
                 for tensor in tensors
                 if isinstance(tensor, torch.Tensor) and tensor.device.type == "cuda"
             }
-            return sorted(list(indices)) if indices else None
+            return sorted(indices) if indices else None
         except Exception:
             return None
 

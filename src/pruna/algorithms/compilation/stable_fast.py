@@ -89,7 +89,7 @@ class StableFastCompiler(PrunaCompiler):
         cacher_type = smash_config["cacher"]
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, imported_modules, config, smash_config)
-        return compile(model, smash_config, imported_modules)
+        return compile_stable_fast(model, smash_config, imported_modules)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
@@ -105,8 +105,8 @@ class StableFastCompiler(PrunaCompiler):
                 CompilationConfig,
                 _build_lazy_trace,
                 _build_ts_compiler,
-                compile,
             )
+            from sfast.compilers.diffusion_pipeline_compiler import compile as compile_stable_fast
             from sfast.cuda.graphs import make_dynamic_graphed_callable
             from sfast.jit.trace_helper import apply_auto_trace_compiler, lazy_trace
         except ImportError:
@@ -115,7 +115,7 @@ class StableFastCompiler(PrunaCompiler):
         return dict(
             CompilationConfig=CompilationConfig,
             _build_lazy_trace=_build_lazy_trace,
-            compile=compile,
+            compile=compile_stable_fast,
             make_dynamic_graphed_callable=make_dynamic_graphed_callable,
             apply_auto_trace_compiler=apply_auto_trace_compiler,
             lazy_trace=lazy_trace,
@@ -163,7 +163,7 @@ def create_config(model: Any, imported_modules: Dict[str, Any]) -> Any:
     return config
 
 
-def compile(model: Any, smash_config: SmashConfigPrefixWrapper, imported_modules: Dict[str, Any]) -> Any:
+def compile_stable_fast(model: Any, smash_config: SmashConfigPrefixWrapper, imported_modules: Dict[str, Any]) -> Any:
     """
     Compile the model with stable_fast.
 
@@ -215,7 +215,7 @@ def deepcache_logic(
     Any
         The compiled model.
     """
-    model = compile(model, smash_config, imported_modules)
+    model = compile_stable_fast(model, smash_config, imported_modules)
     if hasattr(model, "deepcache_unet_helper"):
         model.deepcache_unet_helper.disable()
         model.deepcache_unet_helper.enable()
