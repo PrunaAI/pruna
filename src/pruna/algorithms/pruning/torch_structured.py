@@ -25,9 +25,9 @@ from ConfigSpace import (
 from transformers import ViTForImageClassification as ViT
 from transformers.modeling_outputs import ImageClassifierOutput
 from transformers.models.llama.modeling_llama import LlamaAttention, LlamaRotaryEmbedding
-from transformers.models.llama.modeling_llama import LlamaForCausalLM as LLAMA
+from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
 from transformers.models.opt.modeling_opt import OPTAttention
-from transformers.models.opt.modeling_opt import OPTForCausalLM as OPT
+from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
 from transformers.models.vit.modeling_vit import ViTSelfAttention
 
 from pruna.algorithms.pruning import PrunaPruner
@@ -134,15 +134,13 @@ class TorchStructuredPruner(PrunaPruner):
         if is_causal_lm(model):
             return False
         imported_modules = self.import_algorithm_packages()
-        if isinstance(model, OPT) or isinstance(model, LLAMA) or isinstance(model, ViT):
+        if isinstance(model, (Opt, Llama, ViT)):
             return True
         if isinstance(model, imported_modules["timm"].models.convnext.ConvNeXt):
             return True
         if isinstance(model, imported_modules["torchvision"].models.resnet.ResNet):
             return True
-        if isinstance(model, imported_modules["timm"].models.resnet.ResNet):
-            return True
-        return False
+        return isinstance(model, imported_modules["timm"].models.resnet.ResNet)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -260,10 +258,10 @@ def get_prunable_layers(
         - num_heads (dict): Number of attention heads.
         - ignored_layers (list): Ignored layers during pruning.
     """
-    if isinstance(model, OPT):
+    if isinstance(model, Opt):
         ch_groups, num_heads, ignored_layers = get_opt_params(model, smash_config)
 
-    elif isinstance(model, LLAMA):
+    elif isinstance(model, Llama):
         ch_groups, num_heads, ignored_layers = get_llama_params(model, smash_config)
 
     elif isinstance(model, ViT):
@@ -273,8 +271,8 @@ def get_prunable_layers(
         ignored_layers = [model.stem, model.head]
         ch_groups, num_heads = dict(), dict()
 
-    elif isinstance(model, imported_modules["torchvision"].models.resnet.ResNet) or isinstance(
-        model, imported_modules["timm"].models.resnet.ResNet
+    elif isinstance(
+        model, (imported_modules["torchvision"].models.resnet.ResNet, imported_modules["timm"].models.resnet.ResNet)
     ):
         ignored_layers = [model.conv1, model.bn1, model.fc]
         ch_groups, num_heads = dict(), dict()
@@ -286,12 +284,12 @@ def get_prunable_layers(
 
 def get_opt_params(model: nn.Module, smash_config: SmashConfigPrefixWrapper) -> Tuple[Dict, Dict, List]:
     """
-    Get the optimization parameters for the OPT model.
+    Get the optimization parameters for the Opt model.
 
     Parameters
     ----------
     model : nn.Module
-        The OPT model to extract optimization parameters from.
+        The Opt model to extract optimization parameters from.
     smash_config : SmashConfigPrefixWrapper
         A dictionary containing pruning parameters.
 
@@ -391,7 +389,7 @@ def add_grad_checkpointing(model: nn.Module, pruning_device: torch.device) -> nn
     nn.Module
         The model with gradient checkpointing enabled.
     """
-    is_llm = isinstance(model, OPT) or isinstance(model, LLAMA)
+    is_llm = isinstance(model, (Opt, Llama))
     if is_llm and pruning_device == "cuda":
         model.config.use_cache = False
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
@@ -443,7 +441,7 @@ def compute_loss_and_accumulate_gradients(
         batch_data = batch_data.to(device)
         batch_labels = batch_labels.to(device)
         if is_llm:
-            # Hugginface has integrated loss computation for CasualLMs
+            # Huggingface has integrated loss computation for CasualLMs
             # handles shifting inputs to make labels
             loss = model(batch_data, labels=batch_data).loss
         else:
@@ -485,14 +483,14 @@ def update_dimensions_post_pruning(model: nn.Module, pruner: Any, imported_modul
                 m.attention_head_size = m.query.out_features // m.num_attention_heads
                 m.all_head_size = m.query.out_features
 
-    elif isinstance(model, OPT):
+    elif isinstance(model, Opt):
         for m in model.modules():
             if isinstance(m, OPTAttention):
                 m.num_heads = pruner.num_heads[m.q_proj]
                 m.head_dim = m.q_proj.out_features // m.num_heads
                 m.embed_dim = m.head_dim * m.num_heads
 
-    elif isinstance(model, LLAMA):
+    elif isinstance(model, Llama):
         for n, m in model.named_modules():
             if isinstance(m, LlamaAttention):
                 # override attention parameters to handle pruned model
@@ -504,15 +502,15 @@ def update_dimensions_post_pruning(model: nn.Module, pruner: Any, imported_modul
 
             elif isinstance(m, LlamaRotaryEmbedding):
                 # override forward function to handle pruned head dimension
-                m.forward = LlamaRotaryEmbeddingForward.__get__(m, LlamaRotaryEmbedding)
+                m.forward = llama_rotary_embedding_forward.__get__(m, LlamaRotaryEmbedding)
     return model
 
 
-def LlamaRotaryEmbeddingForward(
+def llama_rotary_embedding_forward(
     self: Any, x: torch.Tensor, seq_len: Optional[int] = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
-    Compute the LlamaRotaryEmbeddingForward.
+    Compute the llama_rotary_embedding_forward.
 
     Parameters
     ----------

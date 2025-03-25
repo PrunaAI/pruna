@@ -76,10 +76,8 @@ class TorchDynamicQuantizer(PrunaQuantizer):
         """
         if isinstance(model, torch.nn.Module):
             return True
-        for _, attribute_value in inspect.getmembers(model):
-            if isinstance(attribute_value, torch.nn.Module):
-                return True
-        return False
+
+        return any(isinstance(attr_value, torch.nn.Module) for _, attr_value in inspect.getmembers(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

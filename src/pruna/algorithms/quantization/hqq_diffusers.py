@@ -97,15 +97,10 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         if isinstance(model, tuple(transformer_and_unet_models)):
             return True
 
-        if hasattr(model, "transformer"):
-            if isinstance(model.transformer, tuple(transformer_and_unet_models)):
-                return True
+        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_and_unet_models)):
+            return True
 
-        if hasattr(model, "unet"):
-            if isinstance(model.unet, tuple(transformer_and_unet_models)):
-                return True
-
-        return False
+        return hasattr(model, "unet") and isinstance(model.unet, tuple(transformer_and_unet_models))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -147,9 +142,9 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
 
         config = imported_modules["HqqConfig"](nbits=smash_config["weight_bits"], group_size=smash_config["group_size"])
 
-        AutoHQQHFDiffusersModel = construct_base_class(imported_modules)
+        auto_hqq_hf_diffusers_model = construct_base_class(imported_modules)
 
-        AutoHQQHFDiffusersModel.quantize_model(
+        auto_hqq_hf_diffusers_model.quantize_model(
             working_model,
             quant_config=config,
             compute_dtype=next(iter(working_model.parameters())).dtype,

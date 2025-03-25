@@ -199,7 +199,7 @@ class SmashConfig:
         """
         # since this function is only used for loading algorithm settings, we will ignore additional arguments
         filtered_config_dict = {k: v for k, v in config_dict.items() if k not in ADDITIONAL_ARGS}
-        discarded_args = [k for k in config_dict.keys() if k in ADDITIONAL_ARGS]
+        discarded_args = [k for k in config_dict if k in ADDITIONAL_ARGS]
         if discarded_args:
             pruna_logger.info(f"Discarded arguments: {discarded_args}")
 
@@ -482,10 +482,7 @@ class SmashConfig:
                 deprecated = True
             # deprecation logic for assignment of algorithms as lists
             if isinstance(value, list):
-                if len(value) == 0:
-                    value = None
-                else:
-                    value = value[0]
+                value = None if len(value) == 0 else value[0]
                 deprecated = True
                 warn("Assigning algorithms as lists is deprecated...", DeprecationWarning, stacklevel=2)
             # deprecating old method names
@@ -528,7 +525,7 @@ class SmashConfig:
                 for prefix in deprecated_prefixes:
                     if s.startswith(prefix):
                         warn(
-                            f"The {prefix} prefix is deprecated. " f"Please use the {s[len(prefix) :]} instead.",
+                            f"The {prefix} prefix is deprecated. Please use the {s[len(prefix) :]} instead.",
                             DeprecationWarning,
                             stacklevel=2,
                         )

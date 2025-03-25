@@ -85,9 +85,7 @@ class QuantoQuantizer(PrunaQuantizer):
             return True
         if hasattr(model, "unet") and isinstance(model.unet, torch.nn.Module):
             return True
-        if hasattr(model, "transformer") and isinstance(model.transformer, torch.nn.Module):
-            return True
-        return False
+        return hasattr(model, "transformer") and isinstance(model.transformer, torch.nn.Module)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

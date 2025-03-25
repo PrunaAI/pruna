@@ -47,16 +47,15 @@ def collect_tester_instances(
     """Collect all model classes from a module and process them with a function."""
     parametrizations = []
     for _, cls in vars(module).items():
-        if inspect.isclass(cls) and module.__name__ in cls.__module__:
-            if "AlgorithmTesterBase" not in cls.__name__:
-                model_parametrizations = getattr(cls, model_attr)
-                markers = getattr(cls, "pytestmark", [])
-                if not isinstance(markers, list):
-                    markers = [markers]
-                for model in model_parametrizations:
-                    parameters = process_fn(cls, model)
-                    idx = f"{cls.__name__}_{model}"
-                    parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
+        if inspect.isclass(cls) and module.__name__ in cls.__module__ and "AlgorithmTesterBase" not in cls.__name__:
+            model_parametrizations = getattr(cls, model_attr)
+            markers = getattr(cls, "pytestmark", [])
+            if not isinstance(markers, list):
+                markers = [markers]
+            for model in model_parametrizations:
+                parameters = process_fn(cls, model)
+                idx = f"{cls.__name__}_{model}"
+                parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
     return parametrizations
 
 

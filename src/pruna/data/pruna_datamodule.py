@@ -94,7 +94,7 @@ class PrunaDataModule(LightningDataModule):
         PrunaDataModule
             The PrunaDataModule.
         """
-        if not len(datasets) == 3:
+        if len(datasets) != 3:
             pruna_logger.error("Datasets must contain exactly 3 elements: train, validation, and test.")
             raise ValueError()
 
@@ -323,11 +323,10 @@ def get_collate_fn(collate_fn_name: str, collate_fn_args: dict) -> Callable:
             # We exclude `data` from this check
             continue
 
-        if param_name == "tokenizer":
-            if "tokenizer" not in collate_fn_args:
-                raise TokenizerMissingError(
-                    "Tokenizer is required but not provided. Please provide a tokenizer with the keyword 'tokenizer'."
-                )
+        if param_name == "tokenizer" and "tokenizer" not in collate_fn_args:
+            raise TokenizerMissingError(
+                "Tokenizer is required but not provided. Please provide a tokenizer with the keyword 'tokenizer'."
+            )
 
         # If the parameter has no default value AND it is not in collate_fn_args
         if (param.default is inspect.Parameter.empty) and (param_name not in collate_fn_args):

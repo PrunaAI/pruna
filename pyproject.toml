@@ -3,26 +3,12 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = [
-    "ANN002",
-    "ANN003",
-    "ANN401",
-    "C901",
-    "D100",
-    "D104",
-    "D401",
-    "D406",
-    "C408",
-]
-select = [
-    "A",
-    "C",
-    "D",
-    "E",
-    "F",
-    "W",
-    "I",
-]
+ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408"]
+select = ["A", "C", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = ["ERA"]  # commented out code is intended for tutorials
+"tests/*" = ["T20"]  # print statements are intended for tests
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

@@ -41,10 +41,8 @@ def is_notebook() -> bool:
         from IPython import get_ipython
 
         shell = get_ipython().__class__.__name__
-        if shell == "ZMQInteractiveShell":
-            return True  # Jupyter notebook or qtconsole
-        else:
-            return False  # Other types (terminal, other)
+        # Jupyter notebook or qtconsole result in True, terminal result in False
+        return shell == "ZMQInteractiveShell"
     except NameError:
         return False  # Probably standard Python interpreter
 

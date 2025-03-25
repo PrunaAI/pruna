@@ -134,7 +134,6 @@ class GPUMemoryMetric(BaseMetric):
         model_cls = model.__class__
         model.save_pretrained(save_path)
 
-        # results.update(stateless_metric.compute(save_path, self.task.dataloader, model.__class__))
         gpu_manager = GPUManager(self.gpu_indices)
         with gpu_manager.manage_resources():
             safe_memory_cleanup()
@@ -158,7 +157,7 @@ class GPUMemoryMetric(BaseMetric):
 
             memory_after_model_run = gpu_manager.get_memory_usage()
             # Tracking possible peak memory spike with torch
-            memory_after_model_run_torch = torch.cuda.max_memory_allocated()  # TODO:test this
+            memory_after_model_run_torch = torch.cuda.max_memory_allocated()
 
             pruna_logger.info(
                 "Calculating memory usage...\n"
@@ -253,11 +252,7 @@ class GPUMemoryMetric(BaseMetric):
             The list of GPU indices the model is using, or None if no GPUs detected.
         """
         try:
-            if attr_name == "state_dict":
-                tensors = model.state_dict().values()
-            else:  # parameters
-                tensors = model.parameters()
-
+            tensors = model.state_dict().values() if attr_name == "state_dict" else model.parameters()
             indices = {
                 tensor.device.index
                 for tensor in tensors

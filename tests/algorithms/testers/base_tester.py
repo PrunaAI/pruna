@@ -67,9 +67,8 @@ class AlgorithmTesterBase:
     def check_loading_dtype(cls, model: Any) -> dict[str, Any]:
         """Check the loading dtype for the model."""
         load_kwargs = {}
-        if isinstance(model, SanaPipeline):
-            if not cls.allow_pickle_files:
-                load_kwargs["torch_dtype"] = torch.float16
+        if isinstance(model, SanaPipeline) and not cls.allow_pickle_files:
+            load_kwargs["torch_dtype"] = torch.float16
         return load_kwargs
 
     @classmethod

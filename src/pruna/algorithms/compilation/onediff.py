@@ -72,11 +72,7 @@ class OneDiffCompiler(PrunaCompiler):
         if isinstance(model, tuple(transformer_models)):
             return True
 
-        for _, attr_value in inspect.getmembers(model):
-            if isinstance(attr_value, tuple(transformer_models)):
-                return True
-
-        return False
+        return any(isinstance(attr_value, tuple(transformer_models)) for _, attr_value in inspect.getmembers(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

@@ -154,8 +154,8 @@ class ModelArchitectureMetric(BaseMetric):
         ordered_args = []
         # Reorder arguments to match the module's forward method signature
         # Example: If forward(self, x, y, z=None) and we have:
-        #   dummy_args = [tensor1, tensor2]
-        #   dummy_kwargs = {'z': tensor3}
+        #   dummy_args = [tensor1, tensor2] # ruff: noqa: ERA001
+        #   dummy_kwargs = {'z': tensor3} # ruff: noqa: ERA001
         # This ensures we return (tensor1, tensor2, tensor3) in the correct order
         # rather than passing z as a keyword argument
         for param in sig.parameters.values():

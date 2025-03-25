@@ -98,9 +98,7 @@ class TorchCompileCompiler(PrunaCompiler):
         bool
             True if the model is a valid model for the algorithm, False otherwise.
         """
-        if not callable(model):
-            return False
-        return True
+        return callable(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

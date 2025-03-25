@@ -210,7 +210,7 @@ def track_usage(name_or_func: Optional[str | Callable] = None) -> Callable:
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            smash_config = kwargs.get("smash_config", None)
+            smash_config = kwargs.get("smash_config")
             smash_config = repr(smash_config) if smash_config is not None else ""
             try:
                 result = func(*args, **kwargs)

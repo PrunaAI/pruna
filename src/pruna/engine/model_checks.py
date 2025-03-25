@@ -199,9 +199,8 @@ def is_unet_pipeline(model: Any) -> bool:
     unet_models = get_diffusers_unet_models()
 
     for _, attr_value in inspect.getmembers(model):
-        if isinstance(attr_value, tuple(unet_models)):
-            if hasattr(model, "unet"):
-                return True
+        if isinstance(attr_value, tuple(unet_models)) and hasattr(model, "unet"):
+            return True
     return False
 
 
@@ -222,9 +221,8 @@ def is_transformer_pipeline(model: Any) -> bool:
     transformer_models = get_diffusers_transformer_models()
 
     for _, attr_value in inspect.getmembers(model):
-        if isinstance(attr_value, tuple(transformer_models)):
-            if hasattr(model, "transformer"):
-                return True
+        if isinstance(attr_value, tuple(transformer_models)) and hasattr(model, "transformer"):
+            return True
     return False
 
 
