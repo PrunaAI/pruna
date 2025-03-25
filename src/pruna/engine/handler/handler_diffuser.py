@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 from typing import Any, Dict, Tuple
 
 import torch
@@ -31,12 +32,15 @@ class DiffuserHandler(InferenceHandler):
 
     Parameters
     ----------
+    call_signature : inspect.Signature
+        The signature of the call to the model.
     model_args : Dict[str, Any]
         The arguments to pass to the model.
     """
 
-    def __init__(self, model_args: Dict[str, Any] = dict()) -> None:
+    def __init__(self, call_signature: inspect.Signature, model_args: Dict[str, Any] = dict()) -> None:
         default_args = {"generator": torch.Generator("cpu").manual_seed(42)}
+        self.call_signature = call_signature
         if model_args:
             default_args.update(model_args)
         self.model_args = default_args
@@ -55,8 +59,11 @@ class DiffuserHandler(InferenceHandler):
         Any
             The prepared inputs.
         """
-        x, _ = batch
-        return x
+        if "prompt" in self.call_signature.parameters.keys():
+            x, _ = batch
+            return x
+        else:  # Unconditional generation models
+            return None
 
     def process_output(self, output: Any) -> torch.Tensor:
         """

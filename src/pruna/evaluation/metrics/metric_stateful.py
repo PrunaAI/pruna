@@ -13,9 +13,13 @@
 # limitations under the License.
 
 from abc import abstractmethod
-from typing import Any, Dict
+from copy import deepcopy
+from typing import Any, Dict, List
+
+from torch import Tensor
 
 from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.logging.logger import pruna_logger
 
 
 class StatefulMetric(BaseMetric):
@@ -34,19 +38,29 @@ class StatefulMetric(BaseMetric):
         self.metric_config: Dict[str, Any] = {}
         self.metric_name: str = ""
         self.call_type: str = ""
+        self._defaults: Dict[str, List | Tensor] = {}
 
-    def add_state(self, *args, **kwargs) -> None:
+    def add_state(self, name: str, default: List | Tensor) -> None:
         """
         Add state variables to the metric.
 
         Parameters
         ----------
-        *args : Any
-            The arguments to pass to the metric.
-        **kwargs : Any
-            The keyword arguments to pass to the metric.
+        name : str
+            The name of the state variable.
+        default : List | Tensor
+            The default value of the state variable.
         """
-        pass
+        if not isinstance(default, (Tensor, List)) or (isinstance(default, List) and default):
+            pruna_logger.error("State variable must be a tensor or any empty list (where you can append tensors)")
+            raise ValueError("State variable must be a tensor or any empty list (where you can append tensors)")
+
+        if isinstance(default, Tensor):
+            default = default.contiguous()
+
+        setattr(self, name, default)
+
+        self._defaults[name] = deepcopy(default)
 
     def forward(self, *args, **kwargs) -> None:
         """
@@ -63,7 +77,12 @@ class StatefulMetric(BaseMetric):
 
     def reset(self) -> None:
         """Reset the metric state."""
-        pass
+        for attr, default in self._defaults.items():
+            current_val = getattr(self, attr)
+            if isinstance(default, Tensor):
+                setattr(self, attr, default.detach().clone().to(current_val.device))
+            else:
+                getattr(self, attr).clear()
 
     @abstractmethod
     def update(self, *args, **kwargs) -> None:
