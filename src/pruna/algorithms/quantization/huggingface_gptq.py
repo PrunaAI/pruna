@@ -44,6 +44,8 @@ class GPTQQuantizer(PrunaQuantizer):
     run_on_cuda = True
     dataset_required = True
     compatible_algorithms = dict()
+    required_install = "``pip install pruna[autogptq]``"
+
 
     def get_hyperparameters(self) -> list:
         """
