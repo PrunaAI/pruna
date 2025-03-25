@@ -59,7 +59,7 @@ class DiffuserHandler(InferenceHandler):
         Any
             The prepared inputs.
         """
-        if "prompt" in self.call_signature.parameters.keys():
+        if "prompt" in self.call_signature.parameters.keys() or "args" in self.call_signature.parameters.keys():
             x, _ = batch
             return x
         else:  # Unconditional generation models
