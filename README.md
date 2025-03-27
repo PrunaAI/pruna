@@ -321,17 +321,6 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>OneDiff <sup><a href="#footnote1" id="ref1">1</a></sup></strong></td>
-      <td></td>
-      <td>compiler</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
       <td><strong>Stable Fast</strong></td>
       <td></td>
       <td>compiler</td>

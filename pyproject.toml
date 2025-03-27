@@ -88,9 +88,7 @@ auto-gptq = { version = "*", markers = "sys_platform == 'linux'" }
 torchao = "*"
 
 # Added Optional Dependencies from Extras
-nexfort = { version = "0.1.dev275", optional = true }
 ruff = { version = "*", optional = true }
-onediff = { version = "*", optional = true }
 autoawq = { version = "*", optional = true }
 jupyterlab = { version = "*", optional = true }
 notebook = { version = "*", optional = true }
@@ -120,10 +118,6 @@ stable-fast-cu11 = [
     "xformers",
     "stable-fast-pruna",
 ]
-onediff = [
-    "onediff",
-    "nexfort",
-]
 autoawq = [
     "autoawq",
 ]
@@ -132,8 +126,6 @@ full = [
     "xformers",
     "stable-fast-pruna",
     "autoawq",
-    "onediff",
-    "nexfort",
 ]
 dev = [
     "jupyterlab",
