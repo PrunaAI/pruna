@@ -57,7 +57,7 @@ class GPTQQuantizer(PrunaQuantizer):
         return [
             OrdinalHyperparameter(
                 "weight_bits",
-                sequence=[2, 3, 4],
+                sequence=[2, 3, 4, 8],
                 default_value=4,
                 meta=dict(desc="Sets the number of bits to use for weight quantization."),
             ),
