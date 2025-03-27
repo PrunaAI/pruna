@@ -1,5 +1,3 @@
-import pytest
-
 from pruna import PrunaModel
 from pruna.algorithms.compilation.c_translate import CGenerateCompiler
 from pruna.algorithms.compilation.stable_fast import StableFastCompiler
