@@ -1,5 +1,6 @@
 import pytest
 
+from pruna.algorithms.quantization.gptq_model import GPTQQuantizer
 from pruna.algorithms.quantization.half import HalfQuantizer
 from pruna.algorithms.quantization.hqq import HQQQuantizer
 from pruna.algorithms.quantization.hqq_diffusers import HQQDiffusersQuantizer
@@ -7,7 +8,6 @@ from pruna.algorithms.quantization.huggingface_awq import AWQQuantizer
 from pruna.algorithms.quantization.huggingface_diffusers_int8 import (
     DiffusersInt8Quantizer,
 )
-from pruna.algorithms.quantization.huggingface_gptq import GPTQQuantizer
 from pruna.algorithms.quantization.huggingface_llm_int8 import LLMInt8Quantizer
 from pruna.algorithms.quantization.quanto import QuantoQuantizer
 from pruna.algorithms.quantization.torch_dynamic import TorchDynamicQuantizer
