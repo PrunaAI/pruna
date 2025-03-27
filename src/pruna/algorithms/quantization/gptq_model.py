@@ -43,7 +43,6 @@ class GPTQQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = True
-    save_fn = SAVE_FUNCTIONS.pickled
     compatible_algorithms = dict()
 
     def get_hyperparameters(self) -> list:
