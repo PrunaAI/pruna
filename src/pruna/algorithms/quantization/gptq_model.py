@@ -16,13 +16,13 @@ import tempfile
 from typing import Any, Dict
 
 from ConfigSpace import OrdinalHyperparameter
-from transformers import AutoModelForCausalLM, GPTQConfig
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.data.utils import recover_text_from_dataloader
 from pruna.engine.model_checks import is_causal_lm
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import safe_memory_cleanup
 
 
@@ -43,6 +43,7 @@ class GPTQQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = True
+    save_fn = SAVE_FUNCTIONS.pickled
     compatible_algorithms = dict()
 
     def get_hyperparameters(self) -> list:
@@ -57,16 +58,26 @@ class GPTQQuantizer(PrunaQuantizer):
         return [
             OrdinalHyperparameter(
                 "weight_bits",
-                sequence=[2, 4, 8],
-                default_value=8,
+                sequence=[2, 3, 4],
+                default_value=4,
                 meta=dict(desc="Sets the number of bits to use for weight quantization."),
             ),
-            Boolean("use_exllama", default=True, meta=dict(desc="Whether to use exllama for quantization.")),
+            Boolean(
+                "use_exllama",
+                default=True,
+                meta=dict(desc="Whether to use exllama for quantization."),
+            ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[64, 128, 256],
                 default_value=128,
                 meta=dict(desc="Group size for quantization."),
+            ),
+            OrdinalHyperparameter(
+                "batch_size",
+                sequence=[1, 2, 4, 8, 16, 32],
+                default_value=1,
+                meta=dict(desc="Batch size for quantization."),
             ),
         ]
 
@@ -102,35 +113,29 @@ class GPTQQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
+        imported_modules = self.import_algorithm_packages()
         with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
             # cast original model to CPU to free memory for smashed model
             if hasattr(model, "to"):
                 model.to("cpu")
                 safe_memory_cleanup()
             model.save_pretrained(temp_dir)
+            smash_config.tokenizer.save_pretrained(temp_dir)
 
             # dataset and tokenizer have been ensured to be set in the config
             val_dl = smash_config.val_dataloader()
             calib_data = recover_text_from_dataloader(val_dl, smash_config.tokenizer)  # type: ignore[arg-type]
-            gptq_config = GPTQConfig(
-                bits=smash_config["weight_bits"],
-                group_size=smash_config["group_size"],
-                dataset=calib_data,
-                tokenizer=smash_config.tokenizer,  # type: ignore[attr-defined]
-                model_seqlen=smash_config.tokenizer.max_len_single_sentence + 1,  # type: ignore
-                use_exllama=smash_config["use_exllama"],
-                exllama_config={"version": 2},
+            gptq_config = imported_modules["QuantizeConfig"](
+                bits=smash_config["weight_bits"], group_size=smash_config["group_size"]
             )
 
-            smashed_model = AutoModelForCausalLM.from_pretrained(
-                temp_dir,
-                quantization_config=gptq_config,
-                trust_remote_code=True,
-                device_map="auto",
-                torch_dtype="auto",
-            )
+            model = imported_modules["GPTQModel"].load(temp_dir, gptq_config)
+            model.quantize(calib_data, batch_size=smash_config["batch_size"])
+            model.save(temp_dir)
+            model = imported_modules["GPTQModel"].load(temp_dir)
+            model.model_local_path = "facebook/opt-125m"
 
-        return smashed_model
+        return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
@@ -141,4 +146,6 @@ class GPTQQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        return dict()
+        from gptqmodel import GPTQModel, QuantizeConfig
+
+        return dict(GPTQModel=GPTQModel, QuantizeConfig=QuantizeConfig)
