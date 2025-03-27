@@ -2,7 +2,6 @@ import pytest
 
 from pruna import PrunaModel
 from pruna.algorithms.compilation.c_translate import CGenerateCompiler
-from pruna.algorithms.compilation.onediff import OneDiffCompiler
 from pruna.algorithms.compilation.stable_fast import StableFastCompiler
 from pruna.algorithms.compilation.torch_compile import TorchCompileCompiler
 
@@ -25,20 +24,6 @@ class TestStableFast(AlgorithmTesterBase):
     reject_models = ["opt_125m"]
     allow_pickle_files = False
     algorithm_class = StableFastCompiler
-
-
-@pytest.mark.skip(reason="This test is not working on current hardware.")
-class TestOneDiff(AlgorithmTesterBase):
-    """Test the onediff algorithm."""
-
-    models = ["stable_diffusion_v1_4"]
-    reject_models = ["stable_diffusion_v1_4"]
-    allow_pickle_files = False
-    algorithm_class = OneDiffCompiler
-
-    def post_smash_hook(self, model: PrunaModel) -> None:
-        """Hook to modify the model after smashing."""
-        assert hasattr(model, "onediff_compiler")
 
 
 class TestCGenerate(AlgorithmTesterBase):
