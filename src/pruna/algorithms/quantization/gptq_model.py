@@ -22,7 +22,6 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.data.utils import recover_text_from_dataloader
 from pruna.engine.model_checks import is_causal_lm
-from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import safe_memory_cleanup
 
 
@@ -44,6 +43,7 @@ class GPTQQuantizer(PrunaQuantizer):
     run_on_cuda = True
     dataset_required = True
     compatible_algorithms = dict()
+    required_install = "``pip install pruna[gptq]``"
 
     def get_hyperparameters(self) -> list:
         """
@@ -132,7 +132,6 @@ class GPTQQuantizer(PrunaQuantizer):
             model.quantize(calib_data, batch_size=smash_config["batch_size"])
             model.save(temp_dir)
             model = imported_modules["GPTQModel"].load(temp_dir)
-            model.model_local_path = "facebook/opt-125m"
 
         return model
 

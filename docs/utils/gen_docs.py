@@ -152,7 +152,11 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
         "``--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/``"
     )
 
-    full_install = base_install if required_install is not None and "pro" not in required_install else pro_install
+    full_install = (
+        base_install
+        if required_install is not None and "pro" not in required_install and "gptq" not in required_install
+        else pro_install
+    )
     if required_install:
         return f"{required_install} or {full_install}"
     else:
