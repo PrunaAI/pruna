@@ -14,6 +14,7 @@
 
 from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
+from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import ElapsedTimeMetric
 from pruna.evaluation.metrics.metric_energy import EnergyMetric
 from pruna.evaluation.metrics.metric_memory import GPUMemoryMetric
@@ -27,4 +28,5 @@ __all__ = [
     "ModelArchitectureMetric",
     "GPUMemoryMetric",
     "EnergyMetric",
+    "CMMD",
 ]

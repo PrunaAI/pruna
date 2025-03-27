@@ -234,6 +234,27 @@ Measures the similarity between images of first and subsequent models using the 
 :Required: Inputs, ground truth and predictions.
 :Parameters: Accepts all parameters from the TorchMetrics CLIPScore implementation.
 
+`cmmd <https://arxiv.org/abs/2401.09603>`_
+""""""""""""""""""""""""""""""""""""""""""""
+
+CMMD measures the distributional discrepancy between two sets of images or text by computing Maximum Mean Discrepancy (MMD) in the CLIP embedding space. It captures both semantic and visual alignment.
+
+Key Benefits:
+
+- **Distribution-Free:** Does not rely on any assumptions about the underlying feature distribution.
+- **Unbiased Estimation:** Provides a statistically unbiased measure of the discrepancy between two image sets.
+- **Sample Efficiency:** Achieves reliable estimates even with smaller image samples, making it suitable for rapid evaluations.
+- **Human-Aligned:** Demonstrates better agreement with human perceptual assessments of image quality compared to FID.
+
+:Evaluation on CPU: Yes.
+:Required: Inputs, ground truth and predictions.
+:Parameters: 
+
+  | ``clip_model_name``: Name of the CLIP model to use (default "openai/clip-vit-large-patch14-336").
+  | ``call_type``: Call type to use for the metric (default "gt_y"). For pairwise evaluation pass "pairwise" or "pairwise_gt_y".    
+  | ``device``: Device to run the metric on (default "cuda").
+
+
 
 `accuracy <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/accuracy.py>`_
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

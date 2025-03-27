@@ -62,53 +62,47 @@ Every stateful metric must implement the following methods:
 1. ``__init__(self, **kwargs)``: Initialize your metric and its parameters
     - Call ``super().__init__()``
     - Set ``self.metric_name``
+    - Set ``self.default_call_type``. We also recommend passing ``call_type`` to the ``__init__`` method to allow for pairwise evaluation.
     - Initialize state variables using ``add_state()``
     - Define any additional parameters
 
-2. ``add_state(self, name, default_value)``: Define persistent state variables
-    - Must be called in ``__init__``
-    - Creates variables that persist and accumulate across batches
-    - Example states: totals, counts, running sums
-
-3. ``update(self, inputs, ground_truths, predictions)``: Process each batch
+2. ``update(self, inputs, ground_truths, predictions)``: Process each batch
     - Called automatically by the evaluation pipeline
     - Update your state variables based on the current batch. Your implementation can use any combination of these parameters as needed for its specific calculations.
     - No return value needed
 
-4. ``compute(self)``: Calculate final metric value
+3. ``compute(self)``: Calculate final metric value
     - Use accumulated state to compute final result
     - Called after all batches are processed
     - Must return the final metric value
 
-5. ``reset(self)``: Reset all state variables
-    - Must reset all states to their initial values
-    - Called automatically between evaluation runs
 
 Here's a complete example showing all required methods:
 
 .. code-block:: python
 
     from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+    from pruna.evaluation.metrics.utils import metric_data_processor
+    import torch
 
     class YourNewStatefulMetric(StatefulMetric):
-        def __init__(self, param1='default1', param2='default2'):
+        def __init__(self, param1='default1', param2='default2', call_type=""):
             super().__init__()
             self.param1 = param1
             self.param2 = param2
             self.metric_name = "your_metric_name"
+            self.default_call_type = "y_gt"
+            self.call_type = call_type if call_type else self.default_call_type
             
             # Initialize state variables
-            self.add_state("total", 0)
-            self.add_state("count", 0)
+            self.add_state("total", torch.zeros(1))
+            self.add_state("count", torch.zeros(1))
         
-        def add_state(self, name, default_value):
-            '''Add a state variable to the metric.'''
-            self.state[name] = default_value
-            
         def update(self, inputs, ground_truths, predictions):
             # Update the state variables based on the current batch
-            # Choose the required combination of inputs, ground_truths and predictions
-            batch_result = some_calculation(predictions, ground_truths)
+            # Pass the inputs, ground_truths and predictions and the call_type to the metric_data_processor to get the data in the correct format
+            metric_data = metric_data_processor(inputs, ground_truths, predictions, self.call_type)
+            batch_result = some_calculation(*metric_data)
             self.total += batch_result
             self.count += 1
             
@@ -118,11 +112,6 @@ Here's a complete example showing all required methods:
                 return 0
             return self.total / self.count
             
-        def reset(self):
-            # Reset state variables to initial values
-            self.total = 0
-            self.count = 0
-
 
 When to Use Each Type
 ~~~~~~~~~~~~~~~~~~~~~

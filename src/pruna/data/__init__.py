@@ -15,7 +15,11 @@
 from typing import Any, Callable, Tuple
 
 from pruna.data.datasets.audio import setup_commonvoice_dataset, setup_podcast_dataset
-from pruna.data.datasets.image import setup_imagenet_dataset, setup_mnist_dataset
+from pruna.data.datasets.image import (
+    setup_cifar10_dataset,
+    setup_imagenet_dataset,
+    setup_mnist_dataset,
+)
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
 from pruna.data.datasets.text_generation import (
     setup_c4_dataset,
@@ -46,4 +50,5 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "C4": (setup_c4_dataset, "text_generation_collate", {}),
     "Polyglot": (setup_polyglot_dataset, "question_answering_collate", {}),
     "OpenImage": (setup_open_image_dataset, "image_generation_collate", {"img_size": 1024}),
+    "CIFAR10": (setup_cifar10_dataset, "image_classification_collate", {"img_size": 32}),
 }

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 from typing import Any
 
 from pruna.engine.handler.handler_diffuser import DiffuserHandler
@@ -45,7 +46,7 @@ def register_inference_handler(model: Any) -> InferenceHandler:
         return handler
 
     if "diffusers" in model.__module__:
-        return DiffuserHandler()
+        return DiffuserHandler(call_signature=inspect.signature(model.__call__))
     elif "transformers" in model.__module__:
         return TransformerHandler()
     else:
