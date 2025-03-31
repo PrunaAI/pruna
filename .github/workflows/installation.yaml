@@ -32,13 +32,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
+      - name: Install Poetry on Windows
+        if: runner.os == 'Windows'
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+          powershell -Command "(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python - --version 1.8.5"
+          echo "$(python -m site --user-base)\Scripts" >> $env:GITHUB_PATH
 
-      - name: Configure Poetry to not create virtual environments
-        run: poetry config virtualenvs.create false
+      - name: Install Poetry on Unix
+        if: runner.os != 'Windows'
+        run: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 -
+          echo "$(python3 -m site --user-base)/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: pip install -e .
