@@ -55,7 +55,7 @@ class CMMD(StatefulMetric):
         *args,
         device: str | torch.device = "cuda",
         clip_model_name: str = "openai/clip-vit-large-patch14-336",
-        call_type: str = "",
+        call_type: str = default_call_type,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -74,7 +74,7 @@ class CMMD(StatefulMetric):
         if call_type == "pairwise":
             self.call_type = "pairwise_" + self.default_call_type
         else:
-            self.call_type = call_type if call_type else self.default_call_type
+            self.call_type = call_type
         self.add_state("ground_truth_embeddings", [])
         self.add_state("output_embeddings", [])
 

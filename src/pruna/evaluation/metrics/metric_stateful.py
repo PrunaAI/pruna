@@ -53,7 +53,7 @@ class StatefulMetric(BaseMetric):
         """
         # The states must be a tensor or a list.
         # If it's a tensor, it should have an initial value. If it's a list, it should be empty.
-        if not isinstance(default, (Tensor, List)) or (isinstance(default, List) and default):
+        if (not isinstance(default, (Tensor, List))) or (isinstance(default, List) and default):
             pruna_logger.error("State variable must be a tensor or any empty list (where you can append tensors)")
             raise ValueError("State variable must be a tensor or any empty list (where you can append tensors)")
 
