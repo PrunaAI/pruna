@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import inspect
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torchvision import transforms
@@ -38,7 +38,7 @@ class DiffuserHandler(InferenceHandler):
         The arguments to pass to the model.
     """
 
-    def __init__(self, call_signature: inspect.Signature, model_args: Dict[str, Any] = dict()) -> None:
+    def __init__(self, call_signature: inspect.Signature, model_args: Optional[Dict[str, Any]] = None) -> None:
         default_args = {"generator": torch.Generator("cpu").manual_seed(42)}
         self.call_signature = call_signature
         if model_args:
@@ -59,7 +59,7 @@ class DiffuserHandler(InferenceHandler):
         Any
             The prepared inputs.
         """
-        if "prompt" in self.call_signature.parameters.keys() or "args" in self.call_signature.parameters.keys():
+        if "prompt" in self.call_signature.parameters or "args" in self.call_signature.parameters:
             x, _ = batch
             return x
         else:  # Unconditional generation models

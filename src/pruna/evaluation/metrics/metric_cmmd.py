@@ -15,11 +15,14 @@
 from typing import Any, List
 
 import torch
+from huggingface_hub import model_info
+from huggingface_hub.utils import EntryNotFoundError
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.logging.logger import pruna_logger
 
 
 @MetricRegistry.register("cmmd")
@@ -53,10 +56,16 @@ class CMMD(StatefulMetric):
         device: str | torch.device = "cuda",
         clip_model_name: str = "openai/clip-vit-large-patch14-336",
         call_type: str = "",
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.device = device
+        try:
+            model_info(clip_model_name)
+        except EntryNotFoundError:
+            pruna_logger.error(f"Model {clip_model_name} does not exist.")
+            raise ValueError(f"Model {clip_model_name} does not exist.")
+
         self.clip_model = CLIPVisionModelWithProjection.from_pretrained(clip_model_name).to(self.device)
         self.clip_processor = CLIPImageProcessor.from_pretrained(clip_model_name)
         self.sigma = 10  # Sigma parameter from the paper
@@ -130,7 +139,8 @@ class CMMD(StatefulMetric):
         """
         Calculate the Maximum Mean Discrepancy between two sets of embeddings.
 
-        Adapted from the JAX implementation in https://github.com/google-research/google-research/blob/583d3178157a3dc1eaec04935387ec797004f09b/cmmd/distance.py # noqa: E501
+        Adapted from the JAX implementation in:
+        https://github.com/google-research/google-research/blob/583d3178157a3dc1eaec04935387ec797004f09b/cmmd/distance.py
 
         Parameters
         ----------

@@ -51,6 +51,8 @@ class StatefulMetric(BaseMetric):
         default : List | Tensor
             The default value of the state variable.
         """
+        # The states must be a tensor or a list.
+        # If it's a tensor, it should have an initial value. If it's a list, it should be empty.
         if not isinstance(default, (Tensor, List)) or (isinstance(default, List) and default):
             pruna_logger.error("State variable must be a tensor or any empty list (where you can append tensors)")
             raise ValueError("State variable must be a tensor or any empty list (where you can append tensors)")
@@ -76,7 +78,13 @@ class StatefulMetric(BaseMetric):
         pass
 
     def reset(self) -> None:
-        """Reset the metric state."""
+        """
+        Reset the metric state.
+
+        This method clears all stored values used in the metric's calculations.
+        For tensor-based states (e.g., running sums, counts), it replaces them with fresh tensors with default values.
+        For list-based states it simply clears the contents in place.
+        """
         for attr, default in self._defaults.items():
             current_val = getattr(self, attr)
             if isinstance(default, Tensor):
