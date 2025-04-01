@@ -6,40 +6,74 @@ After smashing a model using |pruna|, you can save it to disk and load it later 
 Saving and Loading Models
 -------------------------
 
-To save a smashed model, use the ``PrunaModel.save_pretrained()`` method. This method saves all necessary model files and as well as the smash configuration to the specified directory:
+To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaModel.save_to_hub()`` method. This method saves all necessary model files and as well as the smash configuration to the specified directory:
 
-.. code-block:: python
+.. tabs::
 
-    from pruna import smash, SmashConfig
-    from diffusers import StableDiffusionPipeline
-    
-    # prepare the base model
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    .. tab:: Local Saving
 
-    # Create and smash your model
-    smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
-    smash_config["compiler"] = "diffusers2"
-    smashed_model = smash(model=base_model, smash_config=smash_config)
-    
-    # Save the model
-    smashed_model.save_pretrained("saved_model/")
+        .. code-block:: python
+
+            from pruna import smash, SmashConfig
+            from diffusers import StableDiffusionPipeline
+
+            # prepare the base model
+            base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+
+            # Create and smash your model
+            smash_config = SmashConfig()
+            smash_config["cacher"] = "deepcache"
+            smash_config["compiler"] = "diffusers2"
+            smashed_model = smash(model=base_model, smash_config=smash_config)
+
+            # Save the model
+            smashed_model.save_pretrained("saved_model/")
+
+    .. tab:: Hugging Face Hub Saving
+
+        .. code-block:: python
+
+            from pruna import smash, SmashConfig
+            from diffusers import StableDiffusionPipeline
+
+            # prepare the base model
+            base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+
+            # Create and smash your model
+            smash_config = SmashConfig()
+            smash_config["cacher"] = "deepcache"
+            smash_config["compiler"] = "diffusers2"
+            smashed_model = smash(model=base_model, smash_config=smash_config)
+
+            # Save the model
+            smashed_model.save_to_hub("PrunaAI/smashed-stable-diffusion-v1-4")
 
 The save operation will:
 
 1. Save the model weights and architecture, including information on how to load the model later on
 2. Save the ``smash_config`` (including tokenizer and processor if present, data will be detached and not reloaded)
 
-To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained()`` class method:
+To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained()`` or ``PrunaModel.from_hub()`` class method:
 
-.. code-block:: python
+.. tabs::
 
-    from pruna import PrunaModel
-    
-    loaded_model = PrunaModel.from_pretrained("saved_model/")
+    .. tab:: Local Loading
+
+        .. code-block:: python
+
+            from pruna import PrunaModel
+
+            loaded_model = PrunaModel.from_pretrained("saved_model/")
+
+    .. tab:: Hugging Face Hub Loading
+
+        .. code-block:: python
+
+            from pruna import PrunaModel
+
+            loaded_model = PrunaModel.from_hub("PrunaAI/smashed-stable-diffusion-v1-4")
 
 The load operation will:
-
 1. Load the model architecture and weights and cast them to the device specified in the SmashConfig
 2. Restore the smash configuration
 
@@ -66,7 +100,7 @@ you should also load the smashed model as follows:
 
     loaded_model = PrunaModel.from_pretrained("saved_model/", torch_dtype=torch.float16)
 
-Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself). 
+Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
 In that case, we discard and log a warning about unused keyword arguments.
 
 
@@ -81,7 +115,7 @@ Warning Suppression
 Set ``verbose=True`` when loading if you want to see warning messages as well as logs (in particular about reapplication of algorithms) that are by default suppressed:
 
 .. code-block:: python
-    
+
     from pruna import PrunaModel
 
     loaded_model = PrunaModel.from_pretrained("saved_model/", verbose=True)
