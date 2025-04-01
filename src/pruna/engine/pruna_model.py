@@ -167,7 +167,8 @@ class PrunaModel:
         print_report: bool = False,
         print_report_every: int = 0,
     ) -> None:
-        """Save the model to the specified repository.
+        """
+        Save the model to the specified repository.
 
         Parameters
         ----------
