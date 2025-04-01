@@ -71,9 +71,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
 
     # in the case of multiple, specialized save functions, we default to pickled
     else:
-        pruna_logger.debug(
-            f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled"
-        )
+        pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
         save_fn = SAVE_FUNCTIONS.pickled
         smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
     # execute selected save function
@@ -87,7 +85,7 @@ def save_pruna_model_to_hub(
     model: Any,
     smash_config: SmashConfig,
     repo_id: str,
-    folder_path: str | Path = None,
+    folder_path: str | Path | None = None,
     *,
     revision: str | None = None,
     private: bool = False,
@@ -98,7 +96,7 @@ def save_pruna_model_to_hub(
     print_report_every: int = 60,
 ) -> None:
     """
-    Save the model to the specified directory
+    Save the model to the specified directory.
 
     Parameters
     ----------
@@ -108,7 +106,7 @@ def save_pruna_model_to_hub(
         The SmashConfig object containing the save and load functions.
     repo_id : str
         The repository ID.
-    folder_path : str | Path, optional
+    folder_path : str | Path | None, optional
         The folder path to save the model to.
     revision : str | None, optional
         The revision of the model.
@@ -129,27 +127,33 @@ def save_pruna_model_to_hub(
     -------
     None
     """
+    # Create a temporary directory within the specified folder path to store the model files
     with tempfile.TemporaryDirectory(dir=folder_path) as temp_dir:
-        # save the model
+        # Save the model and its configuration to the temporary directory
         save_pruna_model(model=model, model_path=temp_dir, smash_config=smash_config)
 
-        # create model card
+        # Open and load the model configuration and smash configuration data from their respective files
+        model_config_path = Path(temp_dir) / "config.json"
+        smash_config_path = Path(temp_dir) / "smash_config.json"
+        with model_config_path.open() as config_file, smash_config_path.open() as smash_config_file:
+            model_config = json.load(config_file)
+            smash_config_data = json.load(smash_config_file)
+
+        # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "model_card_template.md"
         template = template_path.read_text()
-        model_config = model_config = json.load(open(Path(temp_dir) / "config.json"))
-        smash_config = smash_config = json.load(
-            open(Path(temp_dir) / "smash_config.json")
-        )
         content = template.format(
             repo_id=repo_id,
             model_config=json.dumps(model_config, indent=4),
-            smash_config=json.dumps(smash_config, indent=4),
-            library_name=smash_config["load_fn"],
+            smash_config=json.dumps(smash_config_data, indent=4),
+            library_name=smash_config_data["load_fn"],
         )
-        with open(Path(temp_dir) / "README.md", "w") as f:
-            f.write(content)
 
-        # upload the model to the hub
+        # Define the path for the README file and write the formatted content to it
+        readme_path = Path(temp_dir) / "README.md"
+        readme_path.write_text(content)
+
+        # Upload the contents of the temporary directory to the specified repository on the hub
         upload_large_folder(
             repo_id=repo_id,
             folder_path=temp_dir,
@@ -291,9 +295,7 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     smash_config.load_fn = LOAD_FUNCTIONS.hqq.name
 
 
-def save_model_hqq_diffusers(
-    model: Any, model_path: str, smash_config: SmashConfig
-) -> None:
+def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashConfig) -> None:
     """
     Save the pipeline by saving the quantized model with HQQ, and rest of the pipeline with diffusers.
 
@@ -312,21 +314,21 @@ def save_model_hqq_diffusers(
     )
 
     hf_quantizer = HQQDiffusersQuantizer()
-    AutoHQQHFDiffusersModel = construct_base_class(
-        hf_quantizer.import_algorithm_packages()
-    )
+    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
     if hasattr(model, "transformer"):
-        AutoHQQHFDiffusersModel.save_quantized(
-            model.transformer, model_path + "/transformer_quantized"
-        )
-        del model.transformer
+        # save the backbone
+        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
+        transformer_backup = model.transformer
+        model.transformer = None
+        # save the rest of the pipeline
         model.save_pretrained(model_path)
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
-        AutoHQQHFDiffusersModel.save_quantized(
-            model.unet, model_path + "/unet_quantized"
-        )
-        del model.unet
+        # save the backbone
+        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
+        unet_backup = model.unet
+        model.unet = None
+        # save the rest of the pipeline
         model.save_pretrained(model_path)
         model.unet = unet_backup
     else:
