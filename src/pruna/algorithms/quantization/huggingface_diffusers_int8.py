@@ -46,9 +46,7 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
     dataset_required = False
     run_on_cpu = False
     run_on_cuda = True
-    compatible_algorithms = dict(
-        cacher=["deepcache"],
-    )
+    compatible_algorithms = dict(cacher=["deepcache"], compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
