@@ -19,11 +19,14 @@ import sys
 from copy import deepcopy
 from enum import Enum
 from functools import partial
-from typing import Any, Callable
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 import diffusers
 import torch
 import transformers
+from huggingface_hub import constants, snapshot_download
+from tqdm.auto import tqdm as base_tqdm
 from transformers import pipeline
 
 from pruna import SmashConfig
@@ -67,13 +70,121 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
         if hasattr(model, "to") and "device_map" not in kwargs and "device" not in kwargs:
             model.to(smash_config.device)
     except Exception:
-        pruna_logger.error(f"Error casting model to device: {smash_config.device}. Skipping device casting.")
+        pruna_logger.error(
+            f"Error casting model to device: {smash_config.device}. Skipping device casting."
+        )
 
     # check if there are any algorithms to reapply
-    if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
+    if any(
+        [
+            algorithm is not None
+            for algorithm in smash_config.reapply_after_load.values()
+        ]
+    ):
         model = resmash_fn(model, smash_config)
 
     return model, smash_config
+
+
+def load_pruna_model_from_hub(
+    repo_id: str,
+    revision: Optional[str] = None,
+    cache_dir: Union[str, Path, None] = None,
+    local_dir: Union[str, Path, None] = None,
+    library_name: Optional[str] = None,
+    library_version: Optional[str] = None,
+    user_agent: Optional[Union[Dict, str]] = None,
+    proxies: Optional[Dict] = None,
+    etag_timeout: float = constants.DEFAULT_ETAG_TIMEOUT,
+    force_download: bool = False,
+    token: Optional[Union[bool, str]] = None,
+    local_files_only: bool = False,
+    allow_patterns: Optional[Union[List[str], str]] = None,
+    ignore_patterns: Optional[Union[List[str], str]] = None,
+    max_workers: int = 8,
+    tqdm_class: Optional[base_tqdm] = None,
+    headers: Optional[Dict[str, str]] = None,
+    endpoint: Optional[str] = None,
+    # Deprecated args
+    local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
+    resume_download: Optional[bool] = None,
+    **kwargs,
+) -> tuple[Any, SmashConfig]:
+    """
+    Load a Pruna model from the Hugging Face Hub.
+
+    Parameters
+    ----------
+    repo_id : str
+        The repository ID of the model.
+    revision : str | None, optional
+        The revision of the model.
+    cache_dir : str | Path | None, optional
+        The cache directory.
+    local_dir : str | Path | None, optional
+        The local directory.
+    library_name : str | None, optional
+        The library name.
+    library_version : str | None, optional
+        The library version.
+    user_agent : str | Dict | None, optional
+        The user agent.
+    proxies : Dict | None, optional
+        The proxies.
+    etag_timeout : float, optional
+        The etag timeout.
+    force_download : bool, optional
+        The force download.
+    local_files_only : bool, optional
+        The local files only.
+    allow_patterns : List[str] | str | None, optional
+        The allow patterns.
+    ignore_patterns : List[str] | str | None, optional
+        The ignore patterns.
+    max_workers : int, optional
+        The max workers.
+    tqdm_class : tqdm | None, optional
+        The tqdm class.
+    headers : Dict[str, str] | None, optional
+        The headers.
+    endpoint : str | None, optional
+        The endpoint.
+    local_dir_use_symlinks : bool | Literal["auto"], optional
+        The local dir use symlinks.
+    resume_download : bool | None, optional
+        The resume download.
+    **kwargs : Any
+        Additional keyword arguments to pass to the model loading function of Pruna.
+
+    Returns
+    -------
+    tuple[Any, SmashConfig]
+        The loaded model and its SmashConfig.
+    """
+    path = snapshot_download(
+        repo_id=repo_id,
+        repo_type="model",
+        token=token,
+        revision=revision,
+        cache_dir=cache_dir,
+        local_dir=local_dir,
+        library_name=library_name,
+        library_version=library_version,
+        user_agent=user_agent,
+        proxies=proxies,
+        etag_timeout=etag_timeout,
+        force_download=force_download,
+        local_files_only=local_files_only,
+        allow_patterns=allow_patterns,
+        ignore_patterns=ignore_patterns,
+        max_workers=max_workers,
+        tqdm_class=tqdm_class,
+        headers=headers,
+        endpoint=endpoint,
+        local_dir_use_symlinks=local_dir_use_symlinks,
+        resume_download=resume_download,
+    )
+    return load_pruna_model(model_path=path, **kwargs)
 
 
 def resmash(model: Any, smash_config: SmashConfig) -> Any:
@@ -177,7 +288,9 @@ def load_pickled(path: str, **kwargs) -> Any:
     Any
         The loaded pickled model.
     """
-    return torch.load(os.path.join(path, PICKLED_FILE_NAME), **filter_load_kwargs(torch.load, kwargs))
+    return torch.load(
+        os.path.join(path, PICKLED_FILE_NAME), **filter_load_kwargs(torch.load, kwargs)
+    )
 
 
 def load_hqq(model_path: str, **kwargs) -> Any:
@@ -212,7 +325,9 @@ def load_hqq(model_path: str, **kwargs) -> Any:
         )
     except Exception as e:  # Default to generic HQQ pipeline if it fails
         pruna_logger.error(f"Error loading model using HQQ: {e}")
-        model = AutoHQQHFModel.from_quantized(model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs))
+        model = AutoHQQHFModel.from_quantized(
+            model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs)
+        )
 
     return model
 
@@ -282,19 +397,23 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     )
 
     hf_quantizer = HQQDiffusersQuantizer()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
+    AutoHQQHFDiffusersModel = construct_base_class(
+        hf_quantizer.import_algorithm_packages()
+    )
 
-    # If a pipeline was saved, load the backbone and the rest of the pipeline separately
-    if os.path.exists(os.path.join(path, "backbone_quantized")):
-        # load the backbone
-        loaded_backbone = auto_hqq_hf_diffusers_model.from_quantized(
-            os.path.join(path, "backbone_quantized"),
-            **filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs),
+    # if it is a diffusers model, it saves the model_index.json file
+    if not os.path.exists(os.path.join(path, "model_index.json")):
+        model = AutoHQQHFDiffusersModel.from_quantized(
+            path, **filter_load_kwargs(AutoHQQHFDiffusersModel.from_quantized, kwargs)
         )
         # Get the pipeline class name
         model_index = load_json_config(path, "model_index.json")
         cls = getattr(diffusers, model_index["_class_name"])
-        # If the pipeline has a transformer, load the transformer
+        # we need to load the original model pipeline, and
+        # then replace the unet/transformer with the one from model_path.
+        loaded_transformer = AutoHQQHFDiffusersModel.from_quantized(
+            path + "/transformer_quantized"
+        )
         if "transformer" in model_index:
             model = cls.from_pretrained(path, transformer=loaded_backbone, **kwargs)
         # If the pipeline has a unet, load the unet
@@ -393,6 +512,8 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
 
     # Log the discarded kwargs
     if invalid_kwargs:
-        pruna_logger.info(f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}")
+        pruna_logger.info(
+            f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}"
+        )
 
     return valid_kwargs

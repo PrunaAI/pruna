@@ -11,17 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
 import os
 import shutil
+import tempfile
 from copy import deepcopy
 from enum import Enum
 from functools import partial
-from typing import Any
+from pathlib import Path
+from typing import Any, List
 
 import torch
 import transformers
+from huggingface_hub import upload_large_folder
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME, SmashConfig
 from pruna.engine.load import (
@@ -69,7 +71,9 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
 
     # in the case of multiple, specialized save functions, we default to pickled
     else:
-        pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
+        pruna_logger.debug(
+            f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled"
+        )
         save_fn = SAVE_FUNCTIONS.pickled
         smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
     # execute selected save function
@@ -77,6 +81,87 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
 
     # save smash config (includes tokenizer and processor)
     smash_config.save_to_json(model_path)
+
+
+def save_pruna_model_to_hub(
+    model: Any,
+    smash_config: SmashConfig,
+    repo_id: str,
+    folder_path: str | Path = None,
+    *,
+    revision: str | None = None,
+    private: bool = False,
+    allow_patterns: List[str] | str | None = None,
+    ignore_patterns: List[str] | str | None = None,
+    num_workers: int | None = None,
+    print_report: bool = True,
+    print_report_every: int = 60,
+) -> None:
+    """
+    Save the model to the specified directory
+
+    Parameters
+    ----------
+    model : Any
+        The model to save.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    repo_id : str
+        The repository ID.
+    folder_path : str | Path, optional
+        The folder path to save the model to.
+    revision : str | None, optional
+        The revision of the model.
+    private : bool, optional
+        Whether the model is private.
+    allow_patterns : List[str] | str | None, optional
+        The allow patterns.
+    ignore_patterns : List[str] | str | None, optional
+        The ignore patterns.
+    num_workers : int | None, optional
+        The number of workers.
+    print_report : bool, optional
+        Whether to print the report.
+    print_report_every : int, optional
+        The print report every.
+
+    Returns
+    -------
+    None
+    """
+    with tempfile.TemporaryDirectory(dir=folder_path) as temp_dir:
+        # save the model
+        save_pruna_model(model=model, model_path=temp_dir, smash_config=smash_config)
+
+        # create model card
+        template_path = Path(__file__).parent / "model_card_template.md"
+        template = template_path.read_text()
+        model_config = model_config = json.load(open(Path(temp_dir) / "config.json"))
+        smash_config = smash_config = json.load(
+            open(Path(temp_dir) / "smash_config.json")
+        )
+        content = template.format(
+            repo_id=repo_id,
+            model_config=json.dumps(model_config, indent=4),
+            smash_config=json.dumps(smash_config, indent=4),
+            library_name=smash_config["load_fn"],
+        )
+        with open(Path(temp_dir) / "README.md", "w") as f:
+            f.write(content)
+
+        # upload the model to the hub
+        upload_large_folder(
+            repo_id=repo_id,
+            folder_path=temp_dir,
+            repo_type="model",
+            revision=revision,
+            private=private,
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
+            num_workers=num_workers,
+            print_report=print_report,
+            print_report_every=print_report_every,
+        )
 
 
 def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> None:
@@ -206,7 +291,9 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     smash_config.load_fn = LOAD_FUNCTIONS.hqq.name
 
 
-def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashConfig) -> None:
+def save_model_hqq_diffusers(
+    model: Any, model_path: str, smash_config: SmashConfig
+) -> None:
     """
     Save the pipeline by saving the quantized model with HQQ, and rest of the pipeline with diffusers.
 
@@ -225,21 +312,21 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
     )
 
     hf_quantizer = HQQDiffusersQuantizer()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
+    AutoHQQHFDiffusersModel = construct_base_class(
+        hf_quantizer.import_algorithm_packages()
+    )
     if hasattr(model, "transformer"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
-        transformer_backup = model.transformer
-        model.transformer = None
-        # save the rest of the pipeline
+        AutoHQQHFDiffusersModel.save_quantized(
+            model.transformer, model_path + "/transformer_quantized"
+        )
+        del model.transformer
         model.save_pretrained(model_path)
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
-        unet_backup = model.unet
-        model.unet = None
-        # save the rest of the pipeline
+        AutoHQQHFDiffusersModel.save_quantized(
+            model.unet, model_path + "/unet_quantized"
+        )
+        del model.unet
         model.save_pretrained(model_path)
         model.unet = unet_backup
     else:
