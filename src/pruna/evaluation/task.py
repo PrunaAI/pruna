@@ -18,6 +18,7 @@ import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
@@ -42,7 +43,10 @@ class Task:
     """
 
     def __init__(
-        self, request: str | List[str | BaseMetric], datamodule: PrunaDataModule, device: str | torch.device = "cuda"
+        self,
+        request: str | List[str | BaseMetric],
+        datamodule: PrunaDataModule,
+        device: str | torch.device = "cuda",
     ) -> None:
         self.metrics = get_metrics(request)
         self.datamodule = datamodule
@@ -133,7 +137,7 @@ def get_metrics(request: str | List[str | BaseMetric]) -> List[BaseMetric]:
             return [
                 TorchMetricWrapper("clip_score"),
                 PairwiseClipScore(),
-                TorchMetricWrapper("psnr"),
+                CMMD(),
             ]
         else:
             pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")

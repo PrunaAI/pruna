@@ -4,7 +4,12 @@ from typing import Any, Callable
 
 import pytest
 import torch
-from diffusers import SanaPipeline, StableDiffusion3Pipeline, StableDiffusionPipeline
+from diffusers import (
+    DDIMPipeline,
+    SanaPipeline,
+    StableDiffusion3Pipeline,
+    StableDiffusionPipeline,
+)
 from torchvision.models import get_model as torchvision_get_model
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -133,5 +138,6 @@ MODEL_FACTORY: dict[str, Callable] = {
         variant="fp16",
         torch_dtype=torch.float16,
     ),
+    "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
     "dummy_lambda": dummy_model,
 }

@@ -18,9 +18,8 @@ from typing import Callable, List, Tuple, Union
 
 from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torch.utils.data import Dataset as TorchDataset
-from torch.utils.data import Subset
 from transformers import AutoTokenizer
 
 from pruna.data import base_datasets
@@ -64,7 +63,7 @@ class PrunaDataModule(LightningDataModule):
 
     @classmethod
     def from_datasets(  # type: ignore[override]
-        self,
+        cls,
         datasets: (
             Tuple[Union[IterableDataset, Dataset, TorchDataset], ...]
             | List[Union[IterableDataset, Dataset, TorchDataset]]
@@ -95,7 +94,7 @@ class PrunaDataModule(LightningDataModule):
         PrunaDataModule
             The PrunaDataModule.
         """
-        if not len(datasets) == 3:
+        if len(datasets) != 3:
             pruna_logger.error("Datasets must contain exactly 3 elements: train, validation, and test.")
             raise ValueError()
 
@@ -123,11 +122,11 @@ class PrunaDataModule(LightningDataModule):
         except Exception as e:
             raise ValueError(f"Compatibility test failed with error: {e}")
 
-        return self(train_ds, val_ds, test_ds, collate_func, dataloader_args)
+        return cls(train_ds, val_ds, test_ds, collate_func, dataloader_args)
 
     @classmethod
     def from_string(
-        self,
+        cls,
         dataset_name: str,
         tokenizer: AutoTokenizer | None = None,
         collate_fn_args: dict = dict(),
@@ -165,7 +164,7 @@ class PrunaDataModule(LightningDataModule):
             setup_fn = partial(setup_fn, seed=seed)
         train_ds, val_ds, test_ds = setup_fn()
 
-        return self.from_datasets(
+        return cls.from_datasets(
             (train_ds, val_ds, test_ds), collate_fn_name, tokenizer, collate_fn_args, dataloader_args
         )
 
@@ -324,11 +323,10 @@ def get_collate_fn(collate_fn_name: str, collate_fn_args: dict) -> Callable:
             # We exclude `data` from this check
             continue
 
-        if param_name == "tokenizer":
-            if "tokenizer" not in collate_fn_args:
-                raise TokenizerMissingError(
-                    "Tokenizer is required but not provided. Please provide a tokenizer with the keyword 'tokenizer'."
-                )
+        if param_name == "tokenizer" and "tokenizer" not in collate_fn_args:
+            raise TokenizerMissingError(
+                "Tokenizer is required but not provided. Please provide a tokenizer with the keyword 'tokenizer'."
+            )
 
         # If the parameter has no default value AND it is not in collate_fn_args
         if (param.default is inspect.Parameter.empty) and (param_name not in collate_fn_args):

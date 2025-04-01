@@ -102,7 +102,7 @@ class HalfQuantizer(PrunaQuantizer):
         original_forward = model.forward
 
         def new_forward(*args: Any, **kwargs: Any) -> Any:
-            args = tuple([arg.half() if hasattr(arg, "half") else arg for arg in args])
+            args = tuple(arg.half() if hasattr(arg, "half") else arg for arg in args)
             kwargs = {k: v.half() if hasattr(v, "half") else v for k, v in kwargs.items()}
             return original_forward(*args, **kwargs)
 

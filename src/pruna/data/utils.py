@@ -170,7 +170,7 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
     """
     texts = []
     for i, batch in enumerate(dataloader):
-        if isinstance(batch, list) or isinstance(batch, tuple):
+        if isinstance(batch, (list, tuple)):
             out = tokenizer.batch_decode(torch.cat((batch[0], batch[1]), dim=1))
         elif isinstance(batch, dict):
             out = tokenizer.batch_decode(torch.cat((batch["input"], batch["target"]), dim=1))

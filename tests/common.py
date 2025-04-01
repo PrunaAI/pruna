@@ -47,16 +47,15 @@ def collect_tester_instances(
     """Collect all model classes from a module and process them with a function."""
     parametrizations = []
     for _, cls in vars(module).items():
-        if inspect.isclass(cls) and module.__name__ in cls.__module__:
-            if "AlgorithmTesterBase" not in cls.__name__:
-                model_parametrizations = getattr(cls, model_attr)
-                markers = getattr(cls, "pytestmark", [])
-                if not isinstance(markers, list):
-                    markers = [markers]
-                for model in model_parametrizations:
-                    parameters = process_fn(cls, model)
-                    idx = f"{cls.__name__}_{model}"
-                    parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
+        if inspect.isclass(cls) and module.__name__ in cls.__module__ and "AlgorithmTesterBase" not in cls.__name__:
+            model_parametrizations = getattr(cls, model_attr)
+            markers = getattr(cls, "pytestmark", [])
+            if not isinstance(markers, list):
+                markers = [markers]
+            for model in model_parametrizations:
+                parameters = process_fn(cls, model)
+                idx = f"{cls.__name__}_{model}"
+                parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
     return parametrizations
 
 
@@ -155,7 +154,7 @@ def get_all_imports(package: str) -> set[str]:
 def run_script_successfully(script_file: str) -> None:
     """Run the script and return the result."""
     result = subprocess.run(["python", script_file], capture_output=True, text=True)
-    run_flake8_linting(script_file)
+    run_ruff_linting(script_file)
     os.remove(script_file)
 
     assert result.returncode == 0, f"Notebook failed with error:\n{result.stderr}"
@@ -192,26 +191,23 @@ def convert_notebook_to_script(notebook_file: str, expected_script_file: str) ->
                 file.write(line)
 
 
-def run_flake8_linting(file_path: str) -> None:
-    """Run flake8 on the file."""
+def run_ruff_linting(file_path: str) -> None:
+    """Run ruff on the file."""
     # Error codes to check:
     # F401: Unused imports
     # F841: Unused variables (detected by pyflakes, part of flake8)
     error_codes = ["F401", "F841"]
 
-    # Run flake8 on the file with the --select flag to only check these specific errors
+    # Run ruff on the file with the --select flag to only check these specific errors
     result = subprocess.run(
-        ["flake8", file_path, f'--select={",".join(error_codes)}'],
+        ["ruff", "check", file_path, f"--select={','.join(error_codes)}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
     )
 
-    # Assert that there are no unused imports or variables (stdout should be empty)
-    assert result.stdout == "", f"Found unused imports or variables:\n{result.stdout}"
-
-    # Optionally check that there are no other errors (like flake8 not installed)
-    assert result.stderr == "", f"Flake8 error:\n{result.stderr}"
+    if result.returncode != 0:
+        raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
 
 
 def extract_python_code_blocks(rst_file_path: str, output_dir: str) -> None:

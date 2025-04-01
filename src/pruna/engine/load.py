@@ -67,9 +67,8 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
     model = LOAD_FUNCTIONS[smash_config.load_fn](model_path, **kwargs)
 
     try:
-        if hasattr(model, "to"):
-            if "device_map" not in kwargs and "device" not in kwargs:
-                model.to(smash_config.device)
+        if hasattr(model, "to") and "device_map" not in kwargs and "device" not in kwargs:
+            model.to(smash_config.device)
     except Exception:
         pruna_logger.error(
             f"Error casting model to device: {smash_config.device}. Skipping device casting."
@@ -363,7 +362,7 @@ def load_quantized(model_path: str, **kwargs) -> Any:
     )
 
     # fused rotational embeddings introduce complex tensors that can not be saved afterwards
-    if any([param.dtype.is_complex for param in model.parameters()]):
+    if any(param.dtype.is_complex for param in model.parameters()):
         # free memory from previously loaded model
         del model
 
@@ -407,9 +406,8 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
         model = AutoHQQHFDiffusersModel.from_quantized(
             path, **filter_load_kwargs(AutoHQQHFDiffusersModel.from_quantized, kwargs)
         )
-    else:
+        # Get the pipeline class name
         model_index = load_json_config(path, "model_index.json")
-
         cls = getattr(diffusers, model_index["_class_name"])
         # we need to load the original model pipeline, and
         # then replace the unet/transformer with the one from model_path.
@@ -417,22 +415,21 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
             path + "/transformer_quantized"
         )
         if "transformer" in model_index:
-            # transformers discards kwargs automatically, no need for filtering
-            model = cls.from_pretrained(path, transformer=None, **kwargs)
-            model.transformer = loaded_transformer
+            model = cls.from_pretrained(path, transformer=loaded_backbone, **kwargs)
+        # If the pipeline has a unet, load the unet
         elif "unet" in model_index:
-            # transformers discards kwargs automatically, no need for filtering
-            model = cls.from_pretrained(path, unet=None, **kwargs)
-            model.unet = loaded_transformer
+            model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
+            # If the unet has up_blocks, we need to change the upsampler name to conv
             for layer in model.unet.up_blocks:
                 if layer.upsamplers is not None:
                     layer.upsamplers[0].name = "conv"
-        else:
-            raise ValueError("No transformer or unet found in model_index.json")
+    else:
+        # load the whole model if a pipeline wasn't saved
+        model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
     return model
 
 
-class LOAD_FUNCTIONS(Enum):
+class LOAD_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of load functions for different model types.
 

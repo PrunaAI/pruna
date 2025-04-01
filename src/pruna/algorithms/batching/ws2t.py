@@ -87,9 +87,7 @@ class WS2TBatcher(PrunaBatcher):
             return True
         if isinstance(model, AutomaticSpeechRecognitionPipeline):
             return True
-        if is_speech_seq2seq_model(model):
-            return True
-        return False
+        return bool(is_speech_seq2seq_model(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

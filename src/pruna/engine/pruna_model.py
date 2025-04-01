@@ -90,7 +90,10 @@ class PrunaModel:
         """
         batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
-        outputs = self(prepared_inputs, **self.inference_handler.model_args)
+        if prepared_inputs:
+            outputs = self(prepared_inputs, **self.inference_handler.model_args)
+        else:
+            outputs = self(**self.inference_handler.model_args)
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 

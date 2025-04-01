@@ -19,6 +19,7 @@
 ![GitHub Release](https://img.shields.io/github/v/release/prunaai/pruna?style=flat-square)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/PrunaAI/pruna?style=flat-square)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pruna?style=flat-square)
+![Codacy](https://app.codacy.com/project/badge/Grade/092392ec4be846928a7c5978b6afe060)
 
 [![Website](https://img.shields.io/badge/Pruna.ai-purple?style=flat-square)][website]
 [![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2FPrunaAI)][x]
@@ -413,7 +414,6 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>
@@ -423,7 +423,6 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td><strong>HYPER<sup><a href="#footnote4" id="ref4">4</a></sup></strong></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>distiller</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td></td>

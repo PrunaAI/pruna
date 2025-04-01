@@ -14,6 +14,7 @@
 
 from typing import Any, Dict, Type
 
+import torch
 from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
@@ -45,7 +46,7 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict(cacher=["deepcache"])
+    compatible_algorithms = dict(cacher=["deepcache"], compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -96,15 +97,10 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         if isinstance(model, tuple(transformer_and_unet_models)):
             return True
 
-        if hasattr(model, "transformer"):
-            if isinstance(model.transformer, tuple(transformer_and_unet_models)):
-                return True
+        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_and_unet_models)):
+            return True
 
-        if hasattr(model, "unet"):
-            if isinstance(model.unet, tuple(transformer_and_unet_models)):
-                return True
-
-        return False
+        return hasattr(model, "unet") and isinstance(model.unet, tuple(transformer_and_unet_models))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -146,22 +142,37 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
 
         config = imported_modules["HqqConfig"](nbits=smash_config["weight_bits"], group_size=smash_config["group_size"])
 
-        AutoHQQHFDiffusersModel = construct_base_class(imported_modules)
+        auto_hqq_hf_diffusers_model = construct_base_class(imported_modules)
 
-        AutoHQQHFDiffusersModel.quantize_model(
+        auto_hqq_hf_diffusers_model.quantize_model(
             working_model,
             quant_config=config,
             compute_dtype=next(iter(working_model.parameters())).dtype,
             device=smash_config["device"],
         )
 
-        # Prepare the model for fast inference
-        try:
-            if smash_config["weight_bits"] == 4:
-                imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
-        except Exception as e:
-            pruna_logger.error(f"Error: {e}")
-            pass
+        # Prepare the model for fast inference based on the backend, we use the conditions from the hqq documentation
+        if (
+            smash_config["backend"] == "torchao_int4"
+            and smash_config["weight_bits"] == 4
+            and next(iter(working_model.parameters())).dtype == torch.bfloat16
+        ):
+            imported_modules["prepare_for_inference"](working_model, backend="torchao_int4")
+        elif (
+            smash_config["backend"] == "gemlite"
+            and smash_config["weight_bits"] in [4, 2, 1]
+            and next(iter(working_model.parameters())).dtype == torch.float16
+        ):
+            imported_modules["prepare_for_inference"](working_model, backend="gemlite")
+        elif (
+            smash_config["backend"] == "bitblas"
+            and smash_config["weight_bits"] in [4, 2]
+            and next(iter(working_model.parameters())).dtype == torch.float16
+        ):
+            imported_modules["prepare_for_inference"](working_model, backend="bitblas")
+        else:
+            # We default to the torch backend if the input backend is not applicable
+            imported_modules["prepare_for_inference"](working_model)
 
         if hasattr(model, "transformer"):
             model.transformer = working_model

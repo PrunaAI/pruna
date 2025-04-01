@@ -31,20 +31,14 @@ jobs:
       - name: Configure Poetry to not create virtual environments
         run: poetry config virtualenvs.create false
 
+      - name: Run ruff on Pruna code
+        uses: astral-sh/ruff-action@v3
+
       - name: Install dependencies
         run: pip install -e .[tests]
 
       - name: Remove .so files
         run: find . -name "*.so" -delete
-
-      - name: Run Flake8 on Pruna code
-        run: flake8
-
-      - name: Run Black on Pruna code
-        run: black --check .
-
-      - name: Run isort on Pruna code
-        run: isort --check .
 
       - name: Run mypy on Pruna code
         run: mypy --show-traceback src/pruna

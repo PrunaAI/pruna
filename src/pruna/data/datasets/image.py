@@ -60,3 +60,24 @@ def setup_imagenet_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"], trust_remote_code=True)
     val_ds, test_ds = split_val_into_val_test(val, seed)
     return train_ds, val_ds, test_ds
+
+
+def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the CIFAR-10 dataset.
+
+    License: unspecified
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The CIFAR-10 dataset.
+    """
+    train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"], trust_remote_code=True)
+    train_ds, val_ds = split_train_into_train_val(train_ds, seed)
+    return train_ds, val_ds, test_ds

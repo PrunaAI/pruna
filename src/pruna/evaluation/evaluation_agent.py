@@ -154,7 +154,6 @@ class EvaluationAgent:
 
         model.move_to_device(self.device)
         for batch_idx, batch in enumerate(self.task.dataloader):
-
             processed_outputs = model.run_inference(batch, self.device)
 
             (x, gt) = batch

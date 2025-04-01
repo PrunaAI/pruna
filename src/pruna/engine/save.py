@@ -51,7 +51,6 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     """
     if not os.path.exists(model_path):
         os.makedirs(model_path)
-
     # in the case of no specialized save functions, we use the model's original save function
     if len(smash_config.save_fns) == 0:
         pruna_logger.debug("Using model's original save function...")
@@ -77,7 +76,6 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
         )
         save_fn = SAVE_FUNCTIONS.pickled
         smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
-
     # execute selected save function
     save_fn(model, model_path, smash_config)
 
@@ -323,14 +321,16 @@ def save_model_hqq_diffusers(
         )
         del model.transformer
         model.save_pretrained(model_path)
+        model.transformer = transformer_backup
     elif hasattr(model, "unet"):
         AutoHQQHFDiffusersModel.save_quantized(
             model.unet, model_path + "/unet_quantized"
         )
         del model.unet
         model.save_pretrained(model_path)
+        model.unet = unet_backup
     else:
-        AutoHQQHFDiffusersModel.save_quantized(model, model_path)
+        auto_hqq_hf_diffusers_model.save_quantized(model, model_path)
     smash_config.load_fn = LOAD_FUNCTIONS.hqq_diffusers.name
 
 
@@ -367,7 +367,7 @@ def reapply(model: Any, model_path: str, smash_config: SmashConfig) -> None:
     raise ValueError("Reapply function is not a save function to call directly")
 
 
-class SAVE_FUNCTIONS(Enum):
+class SAVE_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of save functions for different model types.
 

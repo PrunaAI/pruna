@@ -72,11 +72,7 @@ class OneDiffCompiler(PrunaCompiler):
         if isinstance(model, tuple(transformer_models)):
             return True
 
-        for _, attr_value in inspect.getmembers(model):
-            if isinstance(attr_value, tuple(transformer_models)):
-                return True
-
-        return False
+        return any(isinstance(attr_value, tuple(transformer_models)) for _, attr_value in inspect.getmembers(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -120,14 +116,14 @@ class OneDiffCompiler(PrunaCompiler):
             The algorithm packages.
         """
         try:
-            from onediff.infer_compiler import compile
+            from onediff.infer_compiler import compile as compile_onediff
 
             os.environ["NEXFORT_FUSE_TIMESTEP_EMBEDDING"] = "0"
             os.environ["NEXFORT_FX_FORCE_TRITON_SDPA"] = "1"
         except ImportError:
             raise ImportError(f"Onediff is not installed. Please install it using {self.required_install}.")
 
-        return dict(compile=compile)
+        return dict(compile=compile_onediff)
 
 
 class OnediffWrapper:

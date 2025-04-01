@@ -98,15 +98,10 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
         if isinstance(model, tuple(transformer_and_unet_models)):
             return True
 
-        if hasattr(model, "transformer"):
-            if isinstance(model.transformer, tuple(transformer_and_unet_models)):
-                return True
+        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_and_unet_models)):
+            return True
 
-        if hasattr(model, "unet"):
-            if isinstance(model.unet, tuple(transformer_and_unet_models)):
-                return True
-
-        return False
+        return hasattr(model, "unet") and isinstance(model.unet, tuple(transformer_and_unet_models))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

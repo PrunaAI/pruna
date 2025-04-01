@@ -107,7 +107,7 @@ class MetricRegistry:
     @classmethod
     def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric]:
         """
-        Get requestedmetrics from the registry.
+        Get requested metrics from the registry.
 
         Parameters
         ----------

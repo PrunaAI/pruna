@@ -2,21 +2,21 @@ How to Contribute 💜
 ===============================
 
 Since you landed on this part of the documentation, we want to first of all say thank you! 💜 
-Bug reports are essential to improving |pruna|, and you are actively helping us identify and fix issues more efficiently. 
-We appreciate your effort in making |pruna| better for everyone!
+Contributions from the community are essential to improving |pruna|, we appreciate your effort in making the repository better for everyone!
 
-Please make sure to review and adhere to the `Pruna Code of Conduct <https://careers.pruna.ai/posts/code-of-conduct>`_ before contributing to Pruna. 
+Please make sure to review and adhere to the `Pruna Code of Conduct <https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md>`_ before contributing to Pruna. 
 Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms. 
 Contributions that do not adhere to the code of conduct will be ignored.
 
 There are various ways you can contribute:
 
-- Opening an issue with a :ref:`bug-report`
-- Opening an issue with a :ref:`feature-request`
-- Adding an algorithm to |pruna| :doc:`adding_algorithm`
-- Adding a metric to |pruna| :doc:`adding_metric`
-- Adding a dataset to |pruna| :doc:`adding_dataset`
-
+- Have a question? Discuss with us on `Discord <https://discord.gg/Tun8YgzxZ9>`_ or check out the :doc:`/resources/faq`
+- Have an idea for a new tutorial? Open an issue with a :ref:`feature-request` or chat with us on `Discord <https://discord.gg/Tun8YgzxZ9>`_
+- Found a bug? Open an issue with a :ref:`bug-report`
+- Want a new feature? Open an issue with a :ref:`feature-request`
+- Have a new algorithm to add? Check out: :doc:`adding_algorithm`
+- Have a new metric to add? Check out: :doc:`adding_metric`
+- Have a new dataset to add? Check out: :doc:`adding_dataset`
 
 
 .. _how-to-contribute:
@@ -25,19 +25,32 @@ Setup
 -----
 
 If you want to contribute to |pruna| with a Pull Request, you can do so by following these steps.
-
+If it is your very first time contributing to an open source project, we recommend to start with `this guide <https://opensource.guide/how-to-contribute/>`_ for some generally helpful tips.
 
 1. Clone the repository
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check out the repository to your local machine and create a new branch for your contribution. 
-We're sure it will be perfect from the start, but still 🚨 no working on the main branch! 🚨
+First, fork the repository by navigating to the original `pruna repository <https://github.com/PrunaAI/pruna>`_ on GitHub and click the **Fork** button at the top-right.
+This creates a copy of the repository in your own GitHub account.
+Then, clone the forked repository from your account to your local machine and change into its directory:
 
 .. code-block:: bash
 
     git clone https://github.com/your_username/pruna.git
     cd pruna
+
+To keep your fork up to date with the original repository, add the upstream remote:
+
+.. code-block:: bash
+
+    git remote add upstream https://github.com/PrunaAI/pruna.git
+
+Always work on a new branch rather than the main branch. You can create a new branch for your feature or fix:
+
+.. code-block:: bash
+
     git checkout -b feat/new-feature
+
 
 
 2. Installation

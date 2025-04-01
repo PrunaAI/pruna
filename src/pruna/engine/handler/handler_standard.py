@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 
@@ -35,8 +35,8 @@ class StandardHandler(InferenceHandler):
         The arguments to pass to the model.
     """
 
-    def __init__(self, model_args: Dict[str, Any] = dict()) -> None:
-        self.model_args = model_args
+    def __init__(self, model_args: Optional[Dict[str, Any]] = None) -> None:
+        self.model_args = model_args if model_args else {}
 
     def prepare_inputs(self, batch: Tuple[List[str] | torch.Tensor, ...]) -> Any:
         """

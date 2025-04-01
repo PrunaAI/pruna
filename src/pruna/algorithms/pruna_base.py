@@ -122,7 +122,7 @@ class PrunaAlgorithmBase(ABC):
     @property
     @abstractmethod
     def algorithm_group(self) -> str:
-        """Return the config group (i.e. "quantizer", "pruner" or "complier") of the algorithm."""
+        """Return the config group (i.e. "quantizer", "pruner" or "compiler") of the algorithm."""
         pass
 
     @abstractmethod

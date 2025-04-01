@@ -115,14 +115,12 @@ class CTranslateCompiler(PrunaCompiler):
         # check that c_translate2 performs before transformers conversion
         if hasattr(model, "config") and model.config.__class__.__name__ not in imported_modules["_MODEL_LOADERS"]:
             return False
-        if hasattr(model, "config"):
-            if isinstance(model.config, WhisperConfig) and self.algorithm_name == "c_whisper":
-                return True
-            elif is_translation_model(model) and self.algorithm_name == "c_translate":
-                return True
-            elif is_causal_lm(model) and self.algorithm_name == "c_generate":
-                return True
-        return False
+
+        return (
+            (isinstance(model.config, WhisperConfig) and self.algorithm_name == "c_whisper")
+            or (is_translation_model(model) and self.algorithm_name == "c_translate")
+            or (is_causal_lm(model) and self.algorithm_name == "c_generate")
+        )
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -214,7 +212,7 @@ class CTranslateCompiler(PrunaCompiler):
             The algorithm packages.
         """
         cudnn_path = os.path.join(
-            os.path.dirname(sys.executable),
+            os.path.dirname(sys.executable).strip("bin"),
             f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib",
         )
         ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
@@ -232,10 +230,9 @@ class CTranslateCompiler(PrunaCompiler):
             ]
 
             for path in possible_paths:
-                if os.path.exists(path):
-                    if any(f.startswith("libcudnn") for f in os.listdir(path)):
-                        os.environ["LD_LIBRARY_PATH"] = f"{path}:{os.environ['LD_LIBRARY_PATH']}"
-                        break
+                if os.path.exists(path) and any(f.startswith("libcudnn") for f in os.listdir(path)):
+                    os.environ["LD_LIBRARY_PATH"] = f"{path}:{os.environ['LD_LIBRARY_PATH']}"
+                    break
 
         # Ensure the library path is actually used by updating the dynamic loader
         try:
