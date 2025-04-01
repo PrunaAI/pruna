@@ -128,6 +128,8 @@ def load_pruna_model_from_hub(
         The etag timeout.
     force_download : bool, optional
         The force download.
+    token : str | bool | None, optional
+        The Hugging Face token.
     local_files_only : bool, optional
         The local files only.
     allow_patterns : List[str] | str | None, optional

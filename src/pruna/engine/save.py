@@ -122,10 +122,6 @@ def save_pruna_model_to_hub(
         Whether to print the report.
     print_report_every : int, optional
         The print report every.
-
-    Returns
-    -------
-    None
     """
     # Create a temporary directory within the specified folder path to store the model files
     with tempfile.TemporaryDirectory(dir=folder_path) as temp_dir:

@@ -157,8 +157,8 @@ class PrunaModel:
     def save_to_hub(
         self,
         repo_id: str,
-        folder_path: str | Path,
         *,
+        folder_path: str | Path | None = None,
         revision: str | None = None,
         private: bool = False,
         allow_patterns: List[str] | str | None = None,
@@ -173,8 +173,23 @@ class PrunaModel:
         ----------
         repo_id : str
             The repository ID to save the model to.
-        folder_path : str | Path
+        folder_path : str | Path | None
             The folder path to save the model to.
+            If None, the model will be saved to the root of the repository.
+        revision : str | None
+            The revision to save the model to.
+        private : bool
+            Whether to save the model as a private repository.
+        allow_patterns : List[str] | str | None
+            The patterns to allow to save the model.
+        ignore_patterns : List[str] | str | None
+            The patterns to ignore to save the model.
+        num_workers : int | None
+            The number of workers to use to save the model.
+        print_report : bool
+            Whether to print the report of the saved model.
+        print_report_every : int
+            The number of steps to print the report of the saved model.
         """
         save_pruna_model_to_hub(
             model=self.model,
@@ -289,7 +304,6 @@ class PrunaModel:
             The headers to use to load the model.
         endpoint : str | None, optional
             The endpoint to use to load the model.
-        # Deprecated args
         local_dir_use_symlinks : bool | Literal["auto"], optional
             Whether to use symlinks to load the model.
         resume_download : bool | None, optional

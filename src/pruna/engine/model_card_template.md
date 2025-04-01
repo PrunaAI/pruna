@@ -20,20 +20,20 @@ loaded_model = PrunaModel.from_hub("{repo_id}")
 
 After loading the model, you can use the inference methods of the original model.
 
-## Model Configuration
-
-The configuration of the model is stored in the `config.json` file.
-
-```bash
-{model_config}
-```
-
 ## Smash Configuration
 
 The configuration of the model is stored in the `smash_config.json` file.
 
 ```bash
 {smash_config}
+```
+
+## Model Configuration
+
+The configuration of the model is stored in the `config.json` file.
+
+```bash
+{model_config}
 ```
 
 ## 🌍 Join the Pruna AI community!
