@@ -21,7 +21,7 @@ from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
 
 HANDLER_EXCEPTIONS: dict[type[InferenceHandler], list[str]] = {
-    TransformerHandler: ["OptAWQForCausalLM", "AutoHQQHFModel", "TranslatorWrapper", "GeneratorWrapper"],
+    TransformerHandler: ["AWQForCausalLM", "AutoHQQHFModel", "TranslatorWrapper", "GeneratorWrapper", "GPTQ"],
     DiffuserHandler: ["AutoHQQHFDiffusersModel"],
 }
 
@@ -71,6 +71,6 @@ def scan_for_exceptions(model: Any) -> InferenceHandler | None:
     # this avoids directly importing external packages
     for handler, model_classes in HANDLER_EXCEPTIONS.items():
         for model_class in model_classes:
-            if model_class == model.__class__.__name__:
+            if model_class in model.__class__.__name__:
                 return handler()
     return None

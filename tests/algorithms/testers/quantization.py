@@ -1,5 +1,6 @@
 import pytest
 
+from pruna import PrunaModel
 from pruna.algorithms.quantization.gptq_model import GPTQQuantizer
 from pruna.algorithms.quantization.half import HalfQuantizer
 from pruna.algorithms.quantization.hqq import HQQQuantizer
@@ -96,6 +97,10 @@ class TestGPTQ(AlgorithmTesterBase):
     reject_models = ["stable_diffusion_v1_4"]
     allow_pickle_files = False
     algorithm_class = GPTQQuantizer
+
+    def post_smash_hook(self, model: PrunaModel) -> None:
+        """Hook to modify the model after smashing."""
+        assert "GPTQ" in model.model.__class__.__name__
 
 
 @pytest.mark.slow

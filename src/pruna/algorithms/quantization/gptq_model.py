@@ -43,7 +43,10 @@ class GPTQQuantizer(PrunaQuantizer):
     run_on_cuda = True
     dataset_required = True
     compatible_algorithms = dict()
-    required_install = "``pip install pruna[gptq]``"
+    required_install = (
+        "Note: You must first install the base package with ``pip install pruna`` "
+        "before installing the GPTQ extension with ``pip install pruna[gptq]``"
+    )
 
     def get_hyperparameters(self) -> list:
         """
@@ -63,7 +66,7 @@ class GPTQQuantizer(PrunaQuantizer):
             ),
             Boolean(
                 "use_exllama",
-                default=True,
+                default=False,
                 meta=dict(desc="Whether to use exllama for quantization."),
             ),
             OrdinalHyperparameter(
@@ -71,12 +74,6 @@ class GPTQQuantizer(PrunaQuantizer):
                 sequence=[64, 128, 256],
                 default_value=128,
                 meta=dict(desc="Group size for quantization."),
-            ),
-            OrdinalHyperparameter(
-                "batch_size",
-                sequence=[1, 2, 4, 8, 16, 32],
-                default_value=1,
-                meta=dict(desc="Batch size for quantization."),
             ),
         ]
 
@@ -119,6 +116,7 @@ class GPTQQuantizer(PrunaQuantizer):
                 model.to("cpu")
                 safe_memory_cleanup()
             model.save_pretrained(temp_dir)
+            # The tokenizer is saved because it is needed when loading a GPTQModel
             smash_config.tokenizer.save_pretrained(temp_dir)
 
             # dataset and tokenizer have been ensured to be set in the config
@@ -129,7 +127,7 @@ class GPTQQuantizer(PrunaQuantizer):
             )
 
             model = imported_modules["GPTQModel"].load(temp_dir, gptq_config)
-            model.quantize(calib_data, batch_size=smash_config["batch_size"])
+            model.quantize(calib_data, batch_size=smash_config.max_batch_size)
             model.save(temp_dir)
             model = imported_modules["GPTQModel"].load(temp_dir)
 

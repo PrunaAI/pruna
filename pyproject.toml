@@ -117,6 +117,7 @@ stable-fast-cu11 = [
     "xformers",
     "stable-fast-pruna",
 ]
+# Note: You must first install the base package with ``pip install pruna`` before installing the GPTQ extension with ``pip install pruna[gptq]``
 gptq = [
     "gptqmodel",
 ]
