@@ -8,7 +8,7 @@ select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", 
 preview = true  # enable preview features for copyright checking
 
 [tool.ruff.lint.per-file-ignores]
-"*.ipynb" = ["ERA", "CPY"]  # commented out code is intended for tutorials
+"*.ipynb" = ["ERA", "CPY", "T"]  # commented out code is intended for tutorials
 "tests/*" = ["T20", "CPY"]  # print statements are intended for tests
 "docs/*" = ["CPY"]
 
