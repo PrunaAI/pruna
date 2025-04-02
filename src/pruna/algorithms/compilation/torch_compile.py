@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 from typing import Any, Callable, Dict
 
 import torch
-from ConfigSpace import CategoricalHyperparameter
+from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
+from transformers.cache_utils import StaticCache
 
 from pruna.algorithms.compilation import PrunaCompiler
+from pruna.algorithms.compilation.utils import decode_one_token, generate
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
+    is_causal_lm,
 )
 from pruna.logging.logger import pruna_logger
 
@@ -82,6 +86,18 @@ class TorchCompileCompiler(PrunaCompiler):
                 default_value=None,
                 meta=dict(desc="Whether to use dynamic shape tracing or not."),
             ),
+            OrdinalHyperparameter(
+                "batch_size",
+                sequence=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
+                default_value=1,
+                meta=dict(desc="The batch size to use for compilation, for LLMs."),
+            ),
+            OrdinalHyperparameter(
+                "max_kv_cache_size",
+                sequence=[100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
+                default_value=100,
+                meta=dict(desc="The maximum number of new tokens to generate, for LLMs."),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -126,6 +142,9 @@ class TorchCompileCompiler(PrunaCompiler):
             or (hasattr(model, "unet") and isinstance(model.unet, tuple(get_diffusers_unet_models())))
         ):
             return unet_transformer_pipeline_logic(model, smash_config)
+
+        if is_causal_lm(model):
+            return causal_lm_logic(model, smash_config)
         return compile_callable(model, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -238,6 +257,45 @@ def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixW
         model.unet.forward = compile_callable(model.unet.forward, smash_config)
     else:
         model.forward = compile_callable(model.forward, smash_config)
+    return model
+
+
+def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+    """
+    Apply compilation logic for causal language models.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    smash_config : SmashConfigPrefixWrapper
+        Configuration settings for compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        top_k = model.generation_config.top_k if hasattr(model.generation_config, "top_k") else 50
+        temperature = model.generation_config.temperature if hasattr(model.generation_config, "temperature") else 1.0
+    else:
+        pruna_logger.warning("No generation config found, using default values for top_k and temperature.")
+        # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.top_k
+        top_k = 50
+        # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.temperature
+        temperature = 1.0
+    past_kv = StaticCache(
+        model.config,
+        smash_config["batch_size"],
+        smash_config["max_kv_cache_size"],
+        device=smash_config["device"],
+        dtype=model.dtype,
+    )
+    compiled_decoding = compile_callable(decode_one_token, smash_config)
+    model.generate = functools.partial(
+        generate, model=model, compiled_decoding=compiled_decoding, top_k=top_k, temperature=temperature, past_kv=past_kv
+    )
     return model
 
 
