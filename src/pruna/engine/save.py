@@ -136,7 +136,7 @@ def save_pruna_model_to_hub(
             smash_config_data = json.load(smash_config_file)
 
         # Format the content for the README using the template and the loaded configuration data
-        template_path = Path(__file__).parent / "model_card_template.md"
+        template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
         content = template.format(
             repo_id=repo_id,

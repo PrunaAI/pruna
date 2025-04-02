@@ -10,6 +10,7 @@ import os
 
 @pytest.mark.skipif("HF_TOKEN" not in os.environ, reason="HF_TOKEN environment variable is not set, skipping tests.")
 @pytest.mark.slow
+@pytest.mark.cpu
 def test_save_to_hub() -> None:
     """Test PrunaModel.save_to_hub."""
     repo_id = "PrunaAI/opt-125m-smashed"

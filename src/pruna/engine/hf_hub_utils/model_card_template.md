@@ -10,7 +10,13 @@ This model was created using the [pruna](https://github.com/PrunaAI/pruna) libra
 
 ## Usage
 
-You can load this model using the following code:
+First things first, you need to install the pruna library:
+
+```bash
+pip install pruna
+```
+
+You can then load this model using the following code:
 
 ```python
 from pruna import PrunaModel
@@ -22,7 +28,7 @@ After loading the model, you can use the inference methods of the original model
 
 ## Smash Configuration
 
-The configuration of the model is stored in the `smash_config.json` file.
+The compression configuration of the model is stored in the `smash_config.json` file.
 
 ```bash
 {smash_config}
