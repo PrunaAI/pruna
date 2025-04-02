@@ -16,4 +16,4 @@ def test_save_to_hub() -> None:
     save_directory = "saved_model"
 
     model = PrunaModel.from_hub(repo_id)
-    model.save_to_hub(save_directory, )
+    model.save_to_hub(save_directory, private=True)
