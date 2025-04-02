@@ -27,7 +27,7 @@ from pruna.engine.utils import safe_memory_cleanup
 
 class GPTQQuantizer(PrunaQuantizer):
     """
-    Implement GPTQ using huggingface transformers.
+    Implement GPTQ using GPTQModel.
 
     GPTQ is a post-training quantization technique that independently quantizes each row of the weight matrix to
     minimize error. The weights are quantized to int4, stored as int32, and then dequantized on the fly to fp16
@@ -44,7 +44,7 @@ class GPTQQuantizer(PrunaQuantizer):
     dataset_required = True
     compatible_algorithms = dict()
     required_install = (
-        "Note: You must first install the base package with ``pip install pruna`` "
+        "You must first install the base package with ``pip install pruna`` "
         "before installing the GPTQ extension with ``pip install pruna[gptq]``"
     )
 
