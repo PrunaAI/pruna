@@ -169,7 +169,9 @@ class SmashConfig:
             config_dict[name] = getattr(self, name)
 
         # do not save the old cache directory or device
-        config_dict.pop("cache_dir")
+        if "cache_dir" in config_dict:
+            config_dict.pop("cache_dir")
+
         # Save the updated dictionary back to a JSON file
         with open(os.path.join(path, SMASH_CONFIG_FILE_NAME), "w") as f:
             json.dump(config_dict, f, indent=4)
