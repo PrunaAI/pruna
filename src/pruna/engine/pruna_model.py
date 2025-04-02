@@ -158,7 +158,7 @@ class PrunaModel:
         self,
         repo_id: str,
         *,
-        folder_path: str | Path | None = None,
+        model_path: str | Path | None = None,
         revision: str | None = None,
         private: bool = False,
         allow_patterns: List[str] | str | None = None,
@@ -174,9 +174,9 @@ class PrunaModel:
         ----------
         repo_id : str
             The repository ID to save the model to.
-        folder_path : str | Path | None
-            The folder path to save the model to.
-            If None, the model will be saved to the root of the repository.
+        model_path : str | Path | None
+            The path to the directory where the model will be saved.
+            If None, the model will only be saved to the the Hugging Face Hub.
         revision : str | None
             The revision to save the model to.
         private : bool
@@ -196,7 +196,7 @@ class PrunaModel:
             model=self.model,
             smash_config=self.smash_config,
             repo_id=repo_id,
-            folder_path=folder_path,
+            model_path=model_path,
             revision=revision,
             private=private,
             allow_patterns=allow_patterns,
