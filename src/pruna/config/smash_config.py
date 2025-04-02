@@ -170,7 +170,7 @@ class SmashConfig:
 
         # do not save the old cache directory or device
         if "cache_dir" in config_dict:
-            config_dict.pop("cache_dir")
+            del config_dict["cache_dir"]
 
         # Save the updated dictionary back to a JSON file
         with open(os.path.join(path, SMASH_CONFIG_FILE_NAME), "w") as f:
