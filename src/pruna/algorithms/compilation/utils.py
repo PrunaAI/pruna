@@ -100,7 +100,7 @@ def decode_one_token(model, cur_token, past_kv, cache_position, temperature: flo
 
 
 @torch.no_grad()
-def generate(model, input_ids, max_new_tokens, top_k, temperature, past_kv, compiled_decoding):
+def generate(input_ids, max_new_tokens, model, top_k, temperature, past_kv, compiled_decoding):
     """
     Generate a sequence from the model.
 
@@ -121,7 +121,7 @@ def generate(model, input_ids, max_new_tokens, top_k, temperature, past_kv, comp
     cache_position = torch.arange(seq_length, device=model.device)
     generated_ids = torch.zeros(batch_size, seq_length + max_new_tokens, dtype=torch.int, device=0)
     generated_ids[:, cache_position] = input_ids.int()
-    logits = model(**input_ids, past_key_values=past_kv, cache_position=cache_position)[0]
+    logits = model(input_ids, past_key_values=past_kv, cache_position=cache_position)[0]
 
     next_token, _ = sample(logits, temperature=temperature, top_k=top_k)
 
