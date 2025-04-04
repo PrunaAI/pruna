@@ -44,7 +44,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     ----------
     model : Any
         The model to save.
-    model_path : str
+    model_path : str | None
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -85,7 +85,7 @@ def save_pruna_model_to_hub(
     model: Any,
     smash_config: SmashConfig,
     repo_id: str,
-    model_path: str | Path | None = None,
+    model_path: str | None = None,
     *,
     revision: str | None = None,
     private: bool = False,
@@ -106,7 +106,7 @@ def save_pruna_model_to_hub(
         The SmashConfig object containing the save and load functions.
     repo_id : str
         The repository ID.
-    model_path : str | Path | None, optional
+    model_path : str | None, optional
         The path to the directory where the model will be saved.
     revision : str | None, optional
         The revision of the model.
@@ -129,10 +129,11 @@ def save_pruna_model_to_hub(
         model_path = model_path or temp_dir
         # Save the model and its configuration to the temporary directory
         save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
+        model_path_pathlib = Path(model_path)
 
         # Open and load the model configuration and smash configuration data from their respective files
-        model_config_path = Path(model_path) / "config.json"
-        smash_config_path = Path(model_path) / "smash_config.json"
+        model_config_path = model_path_pathlib / "config.json"
+        smash_config_path = model_path_pathlib / "smash_config.json"
         with model_config_path.open() as config_file, smash_config_path.open() as smash_config_file:
             model_config = json.load(config_file)
             smash_config_data = json.load(smash_config_file)
@@ -148,13 +149,13 @@ def save_pruna_model_to_hub(
         )
 
         # Define the path for the README file and write the formatted content to it
-        readme_path = Path(model_path) / "README.md"
+        readme_path = model_path_pathlib / "README.md"
         readme_path.write_text(content)
 
         # Upload the contents of the temporary directory to the specified repository on the hub
         upload_large_folder(
             repo_id=repo_id,
-            folder_path=model_path,
+            folder_path=model_path_pathlib,
             repo_type="model",
             revision=revision,
             private=private,
