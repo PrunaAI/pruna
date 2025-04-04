@@ -373,3 +373,21 @@ def get_diffusers_unet_models() -> list:
     unet_models = dir(diffusers.models.unets)
     unet_models = [getattr(diffusers.models.unets, x) for x in unet_models if "UNet" in x]
     return unet_models
+
+
+def is_opt_model(model: Any) -> bool:
+    """
+    Check if the model is an OPT model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is an OPT model, False otherwise.
+    """
+    opt_mapping = {k: v for k, v in MODEL_FOR_CAUSAL_LM_MAPPING.items() if "opt" in str(k).lower()}
+    return isinstance(model, tuple(opt_mapping.values()))

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 from typing import Any, Callable, Dict
 
 import torch
@@ -20,13 +19,14 @@ from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 from transformers.cache_utils import StaticCache
 
 from pruna.algorithms.compilation import PrunaCompiler
-from pruna.algorithms.compilation.utils import decode_one_token, generate
+from pruna.algorithms.compilation.utils import create_generate_fn, decode_one_token
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
     is_causal_lm,
+    is_opt_model,
 )
 from pruna.logging.logger import pruna_logger
 
@@ -114,7 +114,9 @@ class TorchCompileCompiler(PrunaCompiler):
         bool
             True if the model is a valid model for the algorithm, False otherwise.
         """
-        return callable(model)
+        # opt models have no cache_position, so will raise error like
+        # TypeError: OPTForCausalLM.forward() got an unexpected keyword argument 'cache_position'
+        return callable(model) and not is_opt_model(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -293,9 +295,8 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         dtype=model.dtype,
     )
     compiled_decoding = compile_callable(decode_one_token, smash_config)
-    model.generate = functools.partial(
-        generate, model=model, compiled_decoding=compiled_decoding, top_k=top_k, temperature=temperature, past_kv=past_kv
-    )
+    generate = create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding)
+    model.generate = generate
     return model
 
 
