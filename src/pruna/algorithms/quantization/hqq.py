@@ -43,7 +43,7 @@ class HQQQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict(compiler=["torch_compile"])
+    compatible_algorithms = dict()
 
     def get_hyperparameters(self) -> list:
         """
@@ -120,6 +120,7 @@ class HQQQuantizer(PrunaQuantizer):
                 temp_dir,
                 quantization_config=quant_config_hf,
                 trust_remote_code=True,
+                device=smash_config["device"],
             )
             try:
                 smashed_model = smashed_model.to(smash_config["device"])
@@ -141,7 +142,6 @@ class HQQQuantizer(PrunaQuantizer):
         except Exception as e:
             pruna_logger.error(f"Error: {e}")
             pass
-
         return smashed_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
