@@ -77,7 +77,7 @@ def sample(logits, temperature: float = 1.0, top_k: Optional[int] = None):
 
 
 @torch.no_grad()
-def decode_one_token(model, cur_token, past_kv, cache_position, temperature: float = 1.0, top_k: Optional[int] = None):
+def decode_one_token(model, cur_token, past_kv, cache_position, temperature, top_k):
     """
     Decode one token from the model.
 
@@ -99,15 +99,12 @@ def decode_one_token(model, cur_token, past_kv, cache_position, temperature: flo
     return new_token, logits
 
 
-@torch.no_grad()
-def generate(input_ids, max_new_tokens, model, top_k, temperature, past_kv, compiled_decoding):
+def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
     """
-    Generate a sequence from the model.
+    Create a generate function for the model.
 
     Args:
         model (torch.nn.Module): The model to generate from
-        input_ids (torch.Tensor): The input ids to generate from
-        max_new_tokens (int): The maximum number of new tokens to generate
         top_k (int): The number of top k to use for the softmax
         temperature (float): The temperature to use for the softmax
         past_kv (torch.Tensor): The past key values to generate from
@@ -115,22 +112,40 @@ def generate(input_ids, max_new_tokens, model, top_k, temperature, past_kv, comp
 
     Returns:
     -------
-        torch.Tensor: The generated ids
+        Callable: The generate function
     """
-    batch_size, seq_length = input_ids.shape
-    cache_position = torch.arange(seq_length, device=model.device)
-    generated_ids = torch.zeros(batch_size, seq_length + max_new_tokens, dtype=torch.int, device=0)
-    generated_ids[:, cache_position] = input_ids.int()
-    logits = model(input_ids, past_key_values=past_kv, cache_position=cache_position)[0]
 
-    next_token, _ = sample(logits, temperature=temperature, top_k=top_k)
+    @torch.no_grad()
+    def generate(input_ids, max_new_tokens):
+        """
+        Generate a sequence from the model.
 
-    generated_ids[:, seq_length] = next_token
+        Args:
+            input_ids (torch.Tensor): The input ids to generate from
+            max_new_tokens (int): The maximum number of new tokens to generate
 
-    cache_position = torch.tensor([seq_length + 1], device=model.device)
-    for _ in range(1, max_new_tokens):
-        next_token, logits = compiled_decoding(model, next_token.clone(), past_kv, cache_position, temperature, top_k)
-        generated_ids[:, cache_position] = next_token.int()
-        cache_position += 1
+        Returns:
+        -------
+            torch.Tensor: The generated ids
+        """
+        batch_size, seq_length = input_ids.shape
+        cache_position = torch.arange(seq_length, device=model.device)
+        generated_ids = torch.zeros(batch_size, seq_length + max_new_tokens, dtype=torch.int, device=0)
+        generated_ids[:, cache_position] = input_ids.int()
+        logits = model(input_ids, past_key_values=past_kv, cache_position=cache_position)[0]
 
-    return generated_ids
+        next_token, _ = sample(logits, temperature=temperature, top_k=top_k)
+
+        generated_ids[:, seq_length] = next_token
+
+        cache_position = torch.tensor([seq_length + 1], device=model.device)
+        for _ in range(1, max_new_tokens):
+            next_token, logits = compiled_decoding(
+                model, next_token.clone(), past_kv, cache_position, temperature, top_k
+            )
+            generated_ids[:, cache_position] = next_token.int()
+            cache_position += 1
+
+        return generated_ids
+
+    return generate
