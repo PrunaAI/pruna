@@ -49,7 +49,7 @@ class TorchCompileCompiler(PrunaCompiler):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(
-        quantizer=["half", "hqq_diffusers", "diffusers_int8"],
+        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq"],
         cacher=["deepcache"],
     )
 
