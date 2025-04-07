@@ -42,7 +42,7 @@ class GPTQQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = True
-    compatible_algorithms = dict()
+    compatible_algorithms = dict(compiler=["torch_compile"])
     required_install = (
         "You must first install the base package with ``pip install pruna`` "
         "before installing the GPTQ extension with ``pip install pruna[gptq]``"
