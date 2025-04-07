@@ -41,8 +41,8 @@ class CombinationsTester(AlgorithmTesterBase):
         ("stable_diffusion_v1_4", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False),
         ("sana", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False),
         ("stable_diffusion_v1_4", dict(quantizer="diffusers_int8", compiler="torch_compile", torch_compile_fullgraph=False), False),
-        ("llama_3_8b", dict(quantizer="gptq", compiler="torch_compile"), True),
-        ("llama_3_8b", dict(quantizer="llm_int8", compiler="torch_compile", torch_compile_fullgraph=False), True),
+        ("llama_3_2_1b", dict(quantizer="gptq", compiler="torch_compile"), True),
+        ("llama_3_2_1b", dict(quantizer="llm_int8", compiler="torch_compile", torch_compile_fullgraph=False), True),
     ],
     indirect=["model_fixture"],
 )
