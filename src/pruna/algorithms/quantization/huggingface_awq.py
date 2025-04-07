@@ -116,7 +116,7 @@ class AWQQuantizer(PrunaQuantizer):
                 "version": smash_config["version"],
             }
 
-            # Use "auto" instead of our standard "sequential" here as AWQ requires variable about of memory on GPU:0
+            # Use "auto" instead of our standard "sequential" here as AWQ requires variable amount of memory on GPU:0
             smashed_model = imported_modules["AutoAWQForCausalLM"].from_pretrained(
                 temp_dir, **{"low_cpu_mem_usage": True, "use_cache": False}, device_map="auto"
             )
