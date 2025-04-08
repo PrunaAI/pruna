@@ -128,7 +128,6 @@ full = [
     "autoawq",
     "xformers",
     "stable-fast-pruna",
-    "autoawq",
 ]
 dev = [
     "jupyterlab",
