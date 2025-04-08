@@ -470,6 +470,7 @@ class SmashConfig:
             "recoverers",
             "compilers",
             "batchers",
+            "enhancers",
         ]
         if name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
