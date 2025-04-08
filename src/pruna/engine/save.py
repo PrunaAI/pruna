@@ -11,17 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
 import os
 import shutil
+import tempfile
 from copy import deepcopy
 from enum import Enum
 from functools import partial
-from typing import Any
+from pathlib import Path
+from typing import Any, List
 
 import torch
 import transformers
+from huggingface_hub import upload_large_folder
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME, SmashConfig
 from pruna.engine.load import (
@@ -42,7 +44,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     ----------
     model : Any
         The model to save.
-    model_path : str
+    model_path : str | None
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -77,6 +79,92 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
 
     # save smash config (includes tokenizer and processor)
     smash_config.save_to_json(model_path)
+
+
+def save_pruna_model_to_hub(
+    model: Any,
+    smash_config: SmashConfig,
+    repo_id: str,
+    model_path: str | None = None,
+    *,
+    revision: str | None = None,
+    private: bool = False,
+    allow_patterns: List[str] | str | None = None,
+    ignore_patterns: List[str] | str | None = None,
+    num_workers: int | None = None,
+    print_report: bool = True,
+    print_report_every: int = 60,
+) -> None:
+    """
+    Save the model to the specified directory.
+
+    Parameters
+    ----------
+    model : Any
+        The model to save.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    repo_id : str
+        The repository ID.
+    model_path : str | None, optional
+        The path to the directory where the model will be saved.
+    revision : str | None, optional
+        The revision of the model.
+    private : bool, optional
+        Whether the model is private.
+    allow_patterns : List[str] | str | None, optional
+        The allow patterns.
+    ignore_patterns : List[str] | str | None, optional
+        The ignore patterns.
+    num_workers : int | None, optional
+        The number of workers.
+    print_report : bool, optional
+        Whether to print the report.
+    print_report_every : int, optional
+        The print report every.
+    """
+    # Create a temporary directory within the specified folder path to store the model files
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # If no model_path is provided, use the temporary directory
+        model_path = model_path or temp_dir
+        # Save the model and its configuration to the temporary directory
+        save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
+        model_path_pathlib = Path(model_path)
+
+        # Open and load the model configuration and smash configuration data from their respective files
+        model_config_path = model_path_pathlib / "config.json"
+        smash_config_path = model_path_pathlib / "smash_config.json"
+        with model_config_path.open() as config_file, smash_config_path.open() as smash_config_file:
+            model_config = json.load(config_file)
+            smash_config_data = json.load(smash_config_file)
+
+        # Format the content for the README using the template and the loaded configuration data
+        template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
+        template = template_path.read_text()
+        content = template.format(
+            repo_id=repo_id,
+            model_config=json.dumps(model_config, indent=4),
+            smash_config=json.dumps(smash_config_data, indent=4),
+            library_name=smash_config_data["load_fn"],
+        )
+
+        # Define the path for the README file and write the formatted content to it
+        readme_path = model_path_pathlib / "README.md"
+        readme_path.write_text(content)
+
+        # Upload the contents of the temporary directory to the specified repository on the hub
+        upload_large_folder(
+            repo_id=repo_id,
+            folder_path=model_path_pathlib,
+            repo_type="model",
+            revision=revision,
+            private=private,
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
+            num_workers=num_workers,
+            print_report=print_report,
+            print_report_every=print_report_every,
+        )
 
 
 def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> None:
