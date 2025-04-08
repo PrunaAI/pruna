@@ -120,7 +120,6 @@ class HQQQuantizer(PrunaQuantizer):
                 temp_dir,
                 quantization_config=quant_config_hf,
                 trust_remote_code=True,
-                device=smash_config["device"],
             )
             try:
                 smashed_model = smashed_model.to(smash_config["device"])
