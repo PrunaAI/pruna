@@ -118,31 +118,46 @@ def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
     @torch.no_grad()
     def generate(input_ids, max_new_tokens):
         """
-        Generate a sequence from the model.
+        Generate a sequence from the model using autoregressive generation.
+
+        This function takes an initial sequence of tokens and generates additional tokens
+        one at a time up to max_new_tokens. It uses the model's past key/values cache
+        for efficient generation (as transformers does by default) and applies temperature and top-k sampling.
+        By now, we only support greedy decoding. Other sampling strategies are left for future work.
 
         Args:
-            input_ids (torch.Tensor): The input ids to generate from
-            max_new_tokens (int): The maximum number of new tokens to generate
+            input_ids (torch.Tensor): Initial sequence of token ids to continue from, shape [batch_size, seq_length]
+            max_new_tokens (int): Number of new tokens to generate beyond the input sequence
 
         Returns:
         -------
-            torch.Tensor: The generated ids
+            torch.Tensor: Full sequence of generated tokens including the input sequence,
+                         shape [batch_size, seq_length + max_new_tokens]
         """
+        # Get input dimensions
         batch_size, seq_length = input_ids.shape
+        # Initialize position tracking for the KV cache
         cache_position = torch.arange(seq_length, device=model.device)
+        # Initialize tensor to store full generated sequence
         generated_ids = torch.zeros(batch_size, seq_length + max_new_tokens, dtype=torch.int, device=0)
+        # Copy input sequence into generated sequence
         generated_ids[:, cache_position] = input_ids.int()
+        # Get initial logits from model using input sequence
+        # during this step, the kv cache is updated
         logits = model(input_ids, past_key_values=past_kv, cache_position=cache_position)[0]
-
+        # Sample first new token
         next_token, _ = sample(logits, temperature=temperature, top_k=top_k)
-
+        # Add first generated token to sequence
         generated_ids[:, seq_length] = next_token
-
+        # Update cache position for next token
         cache_position = torch.tensor([seq_length + 1], device=model.device)
+        # Main generation loop
         for _ in range(1, max_new_tokens):
+            # Generate next token using compiled function
             next_token, logits = compiled_decoding(
                 model, next_token.clone(), past_kv, cache_position, temperature, top_k
             )
+            # Add new token to sequence
             generated_ids[:, cache_position] = next_token.int()
             cache_position += 1
 
