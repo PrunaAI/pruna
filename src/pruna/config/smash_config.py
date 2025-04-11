@@ -563,16 +563,23 @@ class SmashConfig:
             name = remove_starting_prefix(name)
             # deprecation logic over
             # start of deprecation logic for batch size as algorithm hyperparameter
-            deprecated_hyperparameters = ["batch_size"]
+            deprecated_hyperparameters = [
+                "whisper_s2t_batch_size",
+                "ifw_batch_size",
+                "higgs_example_batch_size",
+                "diffusers_higgs_example_batch_size",
+            ]
             if name in deprecated_hyperparameters:
                 warn(
-                    f"The {name} hyperparameter is deprecated. Please use smash_config.batch_size instead.",
+                    f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) or "
+                    f"smash_config.batch_size={value} instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
                 self.batch_size = value
             # end of deprecation logic for batch size as algorithm hyperparameter
-            return self._configuration.__setitem__(name, value)
+            else:
+                return self._configuration.__setitem__(name, value)
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
         if attr == "_data":

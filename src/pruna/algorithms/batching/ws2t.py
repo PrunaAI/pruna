@@ -39,6 +39,8 @@ class WS2TBatcher(PrunaBatcher):
     Implement whisper_s2t processing using the whisper_s2t library.
 
     WhisperS2T is an optimized speech-to-text pipeline built for Whisper models.
+    Note: WS2T prepares the model for inference with the batch size specified in the smash config. Make sure to set the
+    batch size to a value that corresponds to your inference requirements.
     """
 
     algorithm_name = "whisper_s2t"
@@ -168,6 +170,7 @@ class WS2TBatcher(PrunaBatcher):
             model.max_speech_len = max_speech_len
         if "max_text_token_len" in locals():
             model.max_text_token_len = max_text_token_len
+        pruna_logger.info(f"Preparing model for inference with batch size {smash_config.batch_size}...")
         return WhisperS2TWrapper(model, smash_config.batch_size)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
