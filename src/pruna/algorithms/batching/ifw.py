@@ -22,6 +22,7 @@ from transformers.utils import is_flash_attn_2_available
 from pruna.algorithms.batching import PrunaBatcher
 from pruna.algorithms.compilation.c_translate import WhisperWrapper
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.logging.logger import pruna_logger
 
 
 class IFWBatcher(PrunaBatcher):
@@ -31,6 +32,8 @@ class IFWBatcher(PrunaBatcher):
     Insanely Fast Whisper is an optimized version of Whisper models that significantly speeds up transcription.
     It achieves lower latency and higher throughput through low-level code optimizations and efficient batching,
     making real-time speech recognition more practical.
+    Note: IFW prepares the model for inference with the batch size specified in the smash config. Make sure to set the
+    batch size to a value that corresponds to your inference requirements.
     """
 
     algorithm_name = "ifw"
@@ -57,12 +60,6 @@ class IFWBatcher(PrunaBatcher):
                 sequence=[16, 32],
                 default_value=16,
                 meta=dict(desc="Sets the number of bits to use for weight quantization."),
-            ),
-            OrdinalHyperparameter(
-                "batch_size",
-                sequence=[1, 2, 4, 8, 16, 32, 64],
-                default_value=16,
-                meta=dict(desc="The batch size to use for inference. Higher is faster but needs more memory."),
             ),
             Constant(name="chunk_length", value=30),
         ]
@@ -116,13 +113,14 @@ class IFWBatcher(PrunaBatcher):
         torch_dtype = torch.float16 if smash_config["weight_bits"] == 16 else torch.float32
 
         # ignore mypy warnings here because we ensure beforehand that processor is not None
+        pruna_logger.info(f"Preparing model for inference with batch size {smash_config.batch_size}")
         pipe = pipeline(
             "automatic-speech-recognition",
             model=model,
             tokenizer=smash_config.processor.tokenizer,  # type: ignore[attr-defined]
             feature_extractor=smash_config.processor.feature_extractor,  # type: ignore[attr-defined]
             chunk_length_s=smash_config["chunk_length"],
-            batch_size=smash_config["batch_size"],
+            batch_size=smash_config.batch_size,
             torch_dtype=torch_dtype,
             model_kwargs=(
                 {"attn_implementation": "flash_attention_2"}

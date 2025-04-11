@@ -127,7 +127,7 @@ class GPTQQuantizer(PrunaQuantizer):
             )
 
             model = imported_modules["GPTQModel"].load(temp_dir, gptq_config)
-            model.quantize(calib_data, batch_size=smash_config.max_batch_size)
+            model.quantize(calib_data, batch_size=smash_config.batch_size)
             model.save(temp_dir)
             model = imported_modules["GPTQModel"].load(temp_dir)
 
