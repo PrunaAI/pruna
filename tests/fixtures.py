@@ -109,7 +109,12 @@ def get_automodel_transformers(model_id: str) -> tuple[Any, SmashConfig]:
 
     if hasattr(smash_config.tokenizer, "pad_token"):
         smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
-        smash_config.add_data("WikiText")
+        dataset = PrunaDataModule.from_string(
+            "WikiText", collate_fn_args=dict(tokenizer=smash_config.tokenizer, max_seq_len=2048)
+        )
+        # avoid too long calibration time, otherwise it kills the cpu
+        dataset.limit_datasets(256)
+        smash_config.add_data(dataset)
 
     return model, smash_config
 
