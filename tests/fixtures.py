@@ -110,16 +110,7 @@ def get_automodel_transformers(model_id: str) -> tuple[Any, SmashConfig]:
     if hasattr(smash_config.tokenizer, "pad_token"):
         smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
         smash_config.add_data("WikiText")
-    else:
-        # quantizers that require calibration will throw an error if the tokenizer does not have a pad token
-        tokenizer_for_calibration = AutoTokenizer.from_pretrained(model_id)
-        tokenizer_for_calibration.add_special_tokens({"pad_token": "[PAD]"})
-        dataset = PrunaDataModule.from_string(
-            "WikiText", collate_fn_args=dict(tokenizer=tokenizer_for_calibration, max_seq_len=2048)
-        )
-        # avoid too long calibration time
-        dataset.limit_datasets(256)
-        smash_config.add_data(dataset)
+
     return model, smash_config
 
 
