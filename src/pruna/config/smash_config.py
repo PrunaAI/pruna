@@ -89,7 +89,7 @@ class SmashConfig:
         self.reapply_after_load: dict[str, str | None] = dict.fromkeys(ALGORITHM_GROUPS)
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
-        self._data: PrunaDataModule | None = None
+        self.data: PrunaDataModule | None = None
 
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
         self._prepare_saving = True
@@ -178,7 +178,7 @@ class SmashConfig:
             self.tokenizer.save_pretrained(os.path.join(path, TOKENIZER_SAVE_PATH))
         if self.processor:
             self.processor.save_pretrained(os.path.join(path, PROCESSOR_SAVE_PATH))
-        if self._data is not None:
+        if self.data is not None:
             pruna_logger.info("Data detected in smash config, this will be detached and not reloaded...")
 
     def load_dict(self, config_dict: dict) -> None:
@@ -314,7 +314,7 @@ class SmashConfig:
     def _(self, dataset_name: str, *args, **kwargs) -> None:
         try:
             kwargs["tokenizer"] = self.tokenizer
-            self._data = PrunaDataModule.from_string(dataset_name, *args, **kwargs)
+            self.data = PrunaDataModule.from_string(dataset_name, *args, **kwargs)
         except TokenizerMissingError:
             raise ValueError(
                 f"Tokenizer is required for {dataset_name} but not provided. "
@@ -325,7 +325,7 @@ class SmashConfig:
     def _(self, datasets: list, collate_fn: str, *args, **kwargs) -> None:
         try:
             kwargs["tokenizer"] = self.tokenizer
-            self._data = PrunaDataModule.from_datasets(datasets, collate_fn, *args, **kwargs)
+            self.data = PrunaDataModule.from_datasets(datasets, collate_fn, *args, **kwargs)
         except TokenizerMissingError:
             raise ValueError(
                 f"Tokenizer is required for {collate_fn} but not provided. "
@@ -336,7 +336,7 @@ class SmashConfig:
     def _(self, datasets: tuple, collate_fn: str, *args, **kwargs) -> None:
         try:
             kwargs["tokenizer"] = self.tokenizer
-            self._data = PrunaDataModule.from_datasets(datasets, collate_fn, *args, **kwargs)
+            self.data = PrunaDataModule.from_datasets(datasets, collate_fn, *args, **kwargs)
         except TokenizerMissingError:
             raise ValueError(
                 f"Tokenizer is required for {collate_fn} but not provided. "
@@ -345,7 +345,7 @@ class SmashConfig:
 
     @add_data.register(PrunaDataModule)
     def _(self, datamodule: PrunaDataModule) -> None:
-        self._data = datamodule
+        self.data = datamodule
 
     def add_tokenizer(self, tokenizer: str | PreTrainedTokenizerBase) -> None:
         """
@@ -393,7 +393,7 @@ class SmashConfig:
             raise ValueError(
                 f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor()."
             )
-        if algorithm_requirements["dataset_required"] and self._data is None:
+        if algorithm_requirements["dataset_required"] and self.data is None:
             raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
 
     def get_tokenizer_name(self) -> str | None:

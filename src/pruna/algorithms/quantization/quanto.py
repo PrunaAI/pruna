@@ -125,7 +125,7 @@ class QuantoQuantizer(PrunaQuantizer):
             raise
 
         if smash_config["calibrate"]:
-            if smash_config.tokenizer is not None and smash_config._data is not None:
+            if smash_config.tokenizer is not None and smash_config.data is not None:
                 try:
                     with imported_modules["Calibration"](streamline=True, debug=False):
                         calibrate(
