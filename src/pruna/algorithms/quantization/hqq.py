@@ -141,7 +141,6 @@ class HQQQuantizer(PrunaQuantizer):
         except Exception as e:
             pruna_logger.error(f"Error: {e}")
             pass
-
         return smashed_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
