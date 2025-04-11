@@ -23,7 +23,8 @@ def multinomial_sample_one_no_sync(probs_sort):
     """
     Does multinomial sampling without a cuda synchronization.
 
-    Args:
+    Parameters:
+    ----------
         probs_sort (torch.Tensor): The probabilities to sample from
 
     Returns:
@@ -38,7 +39,8 @@ def logits_to_probs(logits, temperature: float = 1.0, top_k: Optional[int] = Non
     """
     Convert logits to probabilities.
 
-    Args:
+    Parameters:
+    ----------
         logits (torch.Tensor): The logits to convert
         temperature (float): The temperature to use for the softmax
         top_k (int): The number of top k to use for the softmax
@@ -62,7 +64,8 @@ def sample(logits, temperature: float = 1.0, top_k: Optional[int] = None):
     """
     Sample a token from the logits.
 
-    Args:
+    Parameters:
+    ----------
         logits (torch.Tensor): The logits to sample from
         temperature (float): The temperature to use for the softmax
         top_k (int): The number of top k to use for the softmax
@@ -82,7 +85,8 @@ def decode_one_token(model, cur_token, past_kv, cache_position, temperature, top
     """
     Decode one token from the model.
 
-    Args:
+    Parameters:
+    ----------
         model (torch.nn.Module): The model to decode from
         cur_token (torch.Tensor): The current token to decode from
         past_kv (torch.Tensor): The past key values to decode from
@@ -104,7 +108,8 @@ def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
     """
     Create a generate function for the model.
 
-    Args:
+    Parameters:
+    ----------
         model (torch.nn.Module): The model to generate from
         top_k (int): The number of top k to use for the softmax
         temperature (float): The temperature to use for the softmax
@@ -126,7 +131,8 @@ def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
         for efficient generation (as transformers does by default) and applies temperature and top-k sampling.
         By now, we only support greedy decoding. Other sampling strategies are left for future work.
 
-        Args:
+        Parameters:
+        ----------
             input_ids (torch.Tensor): Initial sequence of token ids to continue from, shape [batch_size, seq_length]
             max_new_tokens (int): Number of new tokens to generate beyond the input sequence
 
