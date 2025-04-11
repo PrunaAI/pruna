@@ -330,6 +330,57 @@ def is_sana_pipeline(model: Any) -> bool:
     return _check_pipeline_type(model, diffusers.pipelines.sana, "Sana")
 
 
+def is_comfy_model(model: Any) -> bool:
+    """
+    Check if the model is a ComfyUI model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a ComfyUI model, False otherwise.
+    """
+    return hasattr(model, "is_comfy") and model.is_comfy
+
+
+def is_diffusers_model(model: Any) -> bool:
+    """
+    Check if the model is a Diffusers pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a Diffusers pipeline, False otherwise.
+    """
+    return is_transformer_pipeline(model) or is_unet_pipeline(model)
+
+
+def is_wan_model(model: Any) -> bool:
+    """
+    Check if the model is a Wan pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a Wan pipeline, False otherwise.
+    """
+    return model.__class__.__name__ == "WanPipeline"
+
+
 def get_helpers(model: Any) -> List[str]:
     """
     Retrieve a list of helper attributes from the model.
