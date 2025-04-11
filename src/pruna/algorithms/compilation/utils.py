@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # This script is inspired from https://github.com/chu-tianxiang/QuIP-for-all
+from __future__ import annotations
 
 from typing import Optional
 
