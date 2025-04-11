@@ -58,12 +58,6 @@ class IFWBatcher(PrunaBatcher):
                 default_value=16,
                 meta=dict(desc="Sets the number of bits to use for weight quantization."),
             ),
-            OrdinalHyperparameter(
-                "batch_size",
-                sequence=[1, 2, 4, 8, 16, 32, 64],
-                default_value=16,
-                meta=dict(desc="The batch size to use for inference. Higher is faster but needs more memory."),
-            ),
             Constant(name="chunk_length", value=30),
         ]
 
@@ -122,7 +116,7 @@ class IFWBatcher(PrunaBatcher):
             tokenizer=smash_config.processor.tokenizer,  # type: ignore[attr-defined]
             feature_extractor=smash_config.processor.feature_extractor,  # type: ignore[attr-defined]
             chunk_length_s=smash_config["chunk_length"],
-            batch_size=smash_config["batch_size"],
+            batch_size=smash_config.batch_size,
             torch_dtype=torch_dtype,
             model_kwargs=(
                 {"attn_implementation": "flash_attention_2"}
