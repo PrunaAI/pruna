@@ -64,7 +64,6 @@ class QuantoQuantizer(PrunaQuantizer):
             Constant("act_bits", value=None),
             Boolean("calibrate", default=True, meta=dict(desc="Whether to calibrate the model.")),
             Constant(name="calibration_samples", value=64),
-            Constant(name="calibration_batch_size", value=16),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -132,7 +131,7 @@ class QuantoQuantizer(PrunaQuantizer):
                             working_model,
                             smash_config.val_dataloader(),
                             smash_config["device"],
-                            batch_size=smash_config["calibration_batch_size"],
+                            batch_size=smash_config.batch_size,
                             samples=smash_config["calibration_samples"],
                         )
                 except Exception as e:
