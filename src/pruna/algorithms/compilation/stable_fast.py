@@ -16,7 +16,7 @@ from typing import Any, Dict
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.model_checks import is_diffusers_pipeline, is_flux_pipeline
+from pruna.engine.model_checks import is_comfy_model, is_diffusers_pipeline, is_flux_pipeline
 from pruna.logging.logger import pruna_logger
 
 
@@ -63,7 +63,7 @@ class StableFastCompiler(PrunaCompiler):
         bool
             True if the model is a valid model for the algorithm, False otherwise.
         """
-        return is_diffusers_pipeline(model, include_video=True) or is_flux_pipeline(model)
+        return is_diffusers_pipeline(model, include_video=True) or is_flux_pipeline(model) or is_comfy_model(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
