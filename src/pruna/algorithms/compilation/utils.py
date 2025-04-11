@@ -21,17 +21,17 @@ import torch
 
 def multinomial_sample_one_no_sync(probs_sort):
     """
-    Does multinomial sampling without a cuda synchronization.
+    Perform multinomial sampling without a cuda synchronization.
 
     Parameters
     ----------
     probs_sort : torch.Tensor
-        The probabilities to sample from
+        The probabilities to sample from.
 
     Returns
     -------
     torch.Tensor
-        The sampled index
+        The sampled index tensor.
     """
     q = torch.empty_like(probs_sort).exponential_(1)
     return torch.argmax(probs_sort / q, dim=-1, keepdim=True).to(dtype=torch.int)
@@ -44,18 +44,18 @@ def logits_to_probs(logits, temperature: float = 1.0, top_k: Optional[int] = Non
     Parameters
     ----------
     logits : torch.Tensor
-        The input logits tensor to convert to probabilities
+        The input logits tensor to convert to probabilities.
     temperature : float, optional
         The temperature parameter for the softmax function. Higher values make the distribution
-        more uniform, lower values make it more peaky. Default is 1.0
+        more uniform, lower values make it more peaky. Default is 1.0.
     top_k : int or None, optional
         If specified, only consider the top k logits, setting the rest to negative infinity.
-        Default is None which considers all logits
+        Default is None which considers all logits.
 
     Returns
     -------
     torch.Tensor
-        A tensor of probabilities obtained by applying temperature scaling and softmax to the logits
+        A tensor of probabilities obtained by applying temperature scaling and softmax to the logits.
     """
     logits = logits / max(temperature, 1e-5)
 
@@ -75,19 +75,19 @@ def sample(logits, temperature: float = 1.0, top_k: Optional[int] = None):
     Parameters
     ----------
     logits : torch.Tensor
-        The logits to sample from
+        The logits to sample from.
     temperature : float, optional
-        The temperature to use for the softmax. Default is 1.0
+        The temperature to use for the softmax. Default is 1.0.
     top_k : int or None, optional
         If specified, only consider the top k logits, setting the rest to negative infinity.
-        Default is None which considers all logits
+        Default is None which considers all logits.
 
     Returns
     -------
     torch.Tensor
-        The sampled index
+        The sampled index.
     torch.Tensor
-        The probabilities
+        The probabilities.
     """
     probs = logits_to_probs(logits[:, -1], temperature, top_k)
     idx_next = multinomial_sample_one_no_sync(probs)
@@ -102,24 +102,24 @@ def decode_one_token(model, cur_token, past_kv, cache_position, temperature, top
     Parameters
     ----------
     model : torch.nn.Module
-        The model to decode from
+        The model to decode from.
     cur_token : torch.Tensor
-        The current token to decode from
+        The current token to decode from.
     past_kv : torch.Tensor
-        The past key values to decode from
+        The past key values to decode from.
     cache_position : torch.Tensor
-        The cache position to decode from
+        The cache position to decode from.
     temperature : float
-        The temperature to use for the softmax
+        The temperature to use for the softmax.
     top_k : int
-        The number of top k to use for the softmax
+        The number of top k to use for the softmax.
 
     Returns
     -------
     torch.Tensor
-        The sampled index
+        The sampled index.
     torch.Tensor
-        The logits
+        The logits.
     """
     logits = model(cur_token, past_key_values=past_kv, cache_position=cache_position)[0]
     new_token = sample(logits, temperature=temperature, top_k=top_k)[0]
@@ -133,20 +133,20 @@ def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
     Parameters
     ----------
     model : torch.nn.Module
-        The model to generate from
+        The model to generate from.
     top_k : int
-        The number of top k to use for the softmax
+        The number of top k to use for the softmax.
     temperature : float
-        The temperature to use for the softmax
+        The temperature to use for the softmax.
     past_kv : torch.Tensor
-        The past key values to generate from
+        The past key values to generate from.
     compiled_decoding : torch.compile
-        The compiled decoding function
+        The compiled decoding function.
 
     Returns
     -------
     Callable
-        The generate function
+        The generate function.
     """
 
     @torch.no_grad()
@@ -162,15 +162,15 @@ def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
         Parameters
         ----------
         input_ids : torch.Tensor
-            Initial sequence of token ids to continue from, shape [batch_size, seq_length]
+            Initial sequence of token ids to continue from, shape [batch_size, seq_length].
         max_new_tokens : int
-            Number of new tokens to generate beyond the input sequence
+            Number of new tokens to generate beyond the input sequence.
 
         Returns
         -------
         torch.Tensor
             Full sequence of generated tokens including the input sequence,
-            shape [batch_size, seq_length + max_new_tokens]
+            shape [batch_size, seq_length + max_new_tokens].
         """
         # Get input dimensions
         batch_size, seq_length = input_ids.shape
