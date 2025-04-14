@@ -202,3 +202,45 @@ def create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding):
         return generated_ids
 
     return generate
+
+
+def create_generate_fn_hqq(gen, tokenizer):
+    """
+    Create a generate function for the model using the HQQ library.
+
+    Parameters
+    ----------
+    gen : HFGenerator
+        The HQQ generator to use for the model.
+    tokenizer : transformers.Tokenizer
+        The tokenizer to use for the model.
+
+    Returns
+    -------
+    Callable
+        The generate function.
+    """
+    def hqq_generate(input_ids, max_new_tokens):
+        """
+        Generate a sequence from the model using the HQQ library.
+
+        Parameters
+        ----------
+        input_ids : torch.Tensor
+            The input ids to generate from.
+        max_new_tokens : int
+            The maximum number of new tokens to generate.
+
+        Returns
+        -------
+        torch.Tensor
+            The generated sequence.
+        """
+        # this is slightly hacky, but we need to decode the input_ids to a string
+        # and set the max_new_tokens before calling the generate function
+        # because the HFGenerator from hqq is set like this.
+        prompt = tokenizer.batch_decode(input_ids)[0]
+        gen.max_new_tokens = max_new_tokens
+        return [gen.generate(prompt, use_chat_template=False)["output_tokens"]]
+
+    return hqq_generate
