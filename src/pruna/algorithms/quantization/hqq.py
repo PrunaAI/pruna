@@ -16,7 +16,8 @@ import shutil
 import tempfile
 from typing import Any, Dict
 
-from ConfigSpace import Constant, OrdinalHyperparameter
+import torch
+from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
 from transformers import AutoModelForCausalLM, HqqConfig
 
 from pruna.algorithms.quantization import PrunaQuantizer
@@ -68,6 +69,12 @@ class HQQQuantizer(PrunaQuantizer):
                 meta=dict(desc="Group size for quantization."),
             ),
             Constant("backend", value="torchao_int4"),
+            CategoricalHyperparameter(
+                "compute_dtype",
+                choices=['torch.bfloat16', 'torch.float16'],
+                default_value='torch.float16',
+                meta=dict(desc="Compute dtype for quantization."),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -110,7 +117,15 @@ class HQQQuantizer(PrunaQuantizer):
         quant_config_hqq = imported_modules["BaseQuantizeConfig"](nbits=weight_quantization_bits, group_size=group_size)
         quant_config_hf = imported_modules["HqqConfig"](nbits=weight_quantization_bits, group_size=group_size)
 
-        try:  # Try to quantize the model using HF specific HQQ quantization which supports specific layers
+        try:  # Try to quantize the model using HQQ
+            smashed_model = imported_modules["AutoHQQHFModel"].quantize_model(
+                model,
+                quant_config=quant_config_hqq,
+                device=smash_config["device"],
+                compute_dtype=torch.float16 if smash_config["compute_dtype"] == 'torch.float16' else torch.bfloat16
+            )
+        except Exception as e:  # Default to generic HF quantization if it fails
+            pruna_logger.error(f"Error: {e}")
             # Create a temporary directory in a specific location
             base_temp_dir = smash_config["cache_dir"]
             temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
@@ -120,19 +135,12 @@ class HQQQuantizer(PrunaQuantizer):
                 temp_dir,
                 quantization_config=quant_config_hf,
                 trust_remote_code=True,
+                device_map='auto',
+                torch_dtype=torch.float16 if smash_config["compute_dtype"] == 'torch.float16' else torch.bfloat16
             )
-            try:
-                smashed_model = smashed_model.to(smash_config["device"])
-            except Exception as e:
-                pruna_logger.error(f"Error casting model to device: {e}")
 
             # Delete the temporary directory and its contents
             shutil.rmtree(temp_dir)
-        except Exception as e:  # Default to generic HQQ quantization if it fails
-            pruna_logger.error(f"Error: {e}")
-            smashed_model = imported_modules["AutoHQQHFModel"].quantize_model(
-                model, quant_config=quant_config_hqq, device=smash_config["device"]
-            )
 
         # Prepare the model for fast inference
         try:
