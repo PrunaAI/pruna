@@ -17,7 +17,6 @@ import json
 import os
 import shutil
 import tempfile
-from copy import deepcopy
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -53,6 +52,11 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     """
     if not os.path.exists(model_path):
         os.makedirs(model_path)
+
+    if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
+        save_torch_artifacts(model, model_path, smash_config)
+        smash_config.save_fns.remove(SAVE_FUNCTIONS.torch_artifacts.name)
+
     # in the case of no specialized save functions, we use the model's original save function
     if len(smash_config.save_fns) == 0:
         pruna_logger.debug("Using model's original save function...")
@@ -68,7 +72,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
         pruna_logger.debug(f"Using new save function {smash_config.save_fns[-1]}...")
         save_fn = SAVE_FUNCTIONS[smash_config.save_fns[-1]]
         pruna_logger.debug(
-            f"Overwriting original load function {smash_config.load_fn} with {smash_config.save_fns[-1]}..."
+            f"Overwriting original load function {smash_config.load_fns} with {smash_config.save_fns[-1]}..."
         )
 
     # in the case of multiple, specialized save functions, we default to pickled
@@ -184,11 +188,11 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
     """
     # catch any huggingface diffuser or transformer model and record which load function to use
     if "diffusers" in model.__module__:
-        smash_config.load_fn = LOAD_FUNCTIONS.diffusers.name
+        smash_config.load_fns.append(LOAD_FUNCTIONS.diffusers.name)
         model.save_pretrained(model_path)
 
     elif "transformers" in model.__module__:
-        smash_config.load_fn = LOAD_FUNCTIONS.transformers.name
+        smash_config.load_fns.append(LOAD_FUNCTIONS.transformers.name)
         model.save_pretrained(model_path)
 
         # if the model is a transformers pipeline, we additionally save the pipeline info
@@ -198,7 +202,7 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
     # otherwise, resort to pickled saving
     else:
         save_pickled(model, model_path, smash_config)
-        smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
+        smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 
 def save_pipeline_info(pipeline_obj: Any, save_directory: str) -> None:
@@ -243,7 +247,8 @@ def save_before_apply(model: Any, model_path: str, smash_config: SmashConfig) ->
     # load json directly from file
     with open(os.path.join(save_dir, SMASH_CONFIG_FILE_NAME), "r") as f:
         old_smash_config = json.load(f)
-    smash_config.load_fn = deepcopy(old_smash_config["load_fn"])
+    smash_config.load_fns.extend(old_smash_config["load_fns"])
+    smash_config.load_fns = list(set(smash_config.load_fns))
     del old_smash_config
 
     # move files in save dir into model path
@@ -269,7 +274,7 @@ def save_pickled(model: Any, model_path: str, smash_config: SmashConfig) -> None
     for helper in smash_helpers:
         getattr(model, helper).disable()
     torch.save(model, os.path.join(model_path, PICKLED_FILE_NAME))
-    smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
+    smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 
 def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> None:
@@ -293,7 +298,7 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     else:
         AutoHQQHFModel.save_quantized(model, model_path)
 
-    smash_config.load_fn = LOAD_FUNCTIONS.hqq.name
+    smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
 
 def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashConfig) -> None:
@@ -334,7 +339,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
         model.unet = unet_backup
     else:
         auto_hqq_hf_diffusers_model.save_quantized(model, model_path)
-    smash_config.load_fn = LOAD_FUNCTIONS.hqq_diffusers.name
+    smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
 def save_quantized(model: Any, model_path: str, smash_config: SmashConfig) -> None:
@@ -351,7 +356,31 @@ def save_quantized(model: Any, model_path: str, smash_config: SmashConfig) -> No
         The SmashConfig object containing the save and load functions.
     """
     model.save_quantized(model_path)
-    smash_config.load_fn = LOAD_FUNCTIONS.awq_quantized.name
+    smash_config.load_fns.append(LOAD_FUNCTIONS.awq_quantized.name)
+
+
+def save_torch_artifacts(model: Any, model_path: str, smash_config: SmashConfig) -> None:
+    """
+    Save the model by saving the torch artifacts.
+
+    Parameters
+    ----------
+    model : Any
+        The model to save.
+    model_path : str
+        The directory to save the model to.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    """
+    artifacts = torch.compiler.save_cache_artifacts()
+
+    assert artifacts is not None
+    artifact_bytes, cache_info = artifacts
+
+    with open(os.path.join(model_path, "artifact_bytes.bin"), "wb") as f:
+        f.write(artifact_bytes)
+
+    smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
 
 
 def reapply(model: Any, model_path: str, smash_config: SmashConfig) -> None:
@@ -405,6 +434,7 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     awq_quantized = partial(save_quantized)
     save_before_apply = partial(save_before_apply)
     reapply = partial(reapply)
+    torch_artifacts = partial(save_torch_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """
