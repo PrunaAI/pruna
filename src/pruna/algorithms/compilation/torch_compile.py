@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, Callable, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter
 
 from pruna.algorithms.compilation import PrunaCompiler
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
 )
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 # This allows for torch compile to use more cache memory to compile the model
@@ -82,6 +84,15 @@ class TorchCompileCompiler(PrunaCompiler):
                 default_value=None,
                 meta=dict(desc="Whether to use dynamic shape tracing or not."),
             ),
+            Boolean(
+                "make_portable",
+                meta=dict(
+                    desc=(
+                        "Whether to make the model compiled model portable or not, "
+                        "and significantly reduce the warmup time of the model on a different machine."
+                    ),
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -99,6 +110,27 @@ class TorchCompileCompiler(PrunaCompiler):
             True if the model is a valid model for the algorithm, False otherwise.
         """
         return callable(model)
+
+    def apply(self, model: Any, smash_config: SmashConfig) -> Any:
+        """
+        Apply the compilation algorithm to the model.
+
+        Parameters
+        ----------
+        model : Any
+            The model to compile.
+        smash_config : SmashConfig
+            The configuration for the compilation.
+        """
+        if smash_config["torch_compile_make_portable"]:
+            os.environ["TORCHINDUCTOR_FX_GRAPH_CACHE"] = "1"
+
+        output = super().apply(model, smash_config)
+
+        # importantly, the torch artifacts saving need to be done *after* the before-compile-save
+        if smash_config["torch_compile_make_portable"]:
+            smash_config.save_fns.append(SAVE_FUNCTIONS.torch_artifacts.name)
+        return output
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
