@@ -43,7 +43,10 @@ class QuantoQuantizer(PrunaQuantizer):
     dataset_required = False
     run_on_cpu = False
     run_on_cuda = True
-    compatible_algorithms = dict()
+    compatible_algorithms = dict(
+        fuser=["qkv_fusing"],
+        cacher=["deepcache"],
+    )
 
     def get_hyperparameters(self) -> list:
         """

@@ -38,8 +38,9 @@ class DeepCacheCacher(PrunaCacher):
     run_on_cpu = True
     run_on_cuda = True
     compatible_algorithms = dict(
+        fuser=["qkv_fusing"],
         compiler=["stable_fast", "torch_compile"],
-        quantizer=["half", "hqq_diffusers", "diffusers_int8"],
+        quantizer=["half", "hqq_diffusers", "diffusers_int8", "quanto"],
     )
 
     def get_hyperparameters(self) -> list:
