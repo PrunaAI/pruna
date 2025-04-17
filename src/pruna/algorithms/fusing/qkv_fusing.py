@@ -22,9 +22,9 @@ from pruna.engine.utils import ModelContext
 
 class QKVFuser(PrunaFuser):
     """
-    Implement QKV fusing for Flux models.
+    Implement QKV fusing for diffusers models.
 
-    QKV fusing fuses the QKV matrices of the Flux model into a single matrix,
+    QKV fusing fuses the QKV matrices of the denoiser model into a single matrix,
     reducing the number of operations. In the attention layer, we can compute the q, k, v signals
     all at once: the matrix multiplication involve a larger matrix but we compute one operation instead of three.
     """
@@ -40,7 +40,11 @@ class QKVFuser(PrunaFuser):
     run_on_cpu = True
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict()
+    compatible_algorithms = dict(
+        quantizer=["diffusers_int8", "hqq_diffusers", "quanto"],
+        cacher=["deepcache"],
+        compiler=["torch_compile"],
+    )
 
     def get_hyperparameters(self) -> list:
         """
@@ -55,7 +59,7 @@ class QKVFuser(PrunaFuser):
 
     def model_check_fn(self, model: Any) -> bool:
         """
-        Check if the model is a Flux model.
+        Check if the model has a fused attention processor.
 
         Parameters
         ----------
@@ -65,13 +69,13 @@ class QKVFuser(PrunaFuser):
         Returns
         -------
         bool
-            True if the model is a Flux model, False otherwise.
+            True if the model has a fused attention processor, False otherwise.
         """
         return has_fused_attention_processor(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Fuse the QKV matrices of the Flux model.
+        Fuse the QKV matrices of the denoiser model.
 
         Parameters
         ----------
