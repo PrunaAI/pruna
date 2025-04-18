@@ -16,11 +16,9 @@ from typing import Any, Callable, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
-from transformers import AutoTokenizer
-from transformers.cache_utils import StaticCache
 
 from pruna.algorithms.compilation import PrunaCompiler
-from pruna.algorithms.compilation.utils import create_generate_fn, create_generate_fn_hqq, decode_one_token
+from pruna.algorithms.compilation.utils import HFGenerator
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
@@ -95,7 +93,7 @@ class TorchCompileCompiler(PrunaCompiler):
             ),
             OrdinalHyperparameter(
                 "max_kv_cache_size",
-                sequence=[100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
+                sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
                 default_value=100,
                 meta=dict(desc="The maximum number of new tokens to generate, for LLMs."),
             ),
@@ -135,7 +133,6 @@ class TorchCompileCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
-        imported_algorithms = self.import_algorithm_packages()
         cacher_type = smash_config["cacher"]
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
@@ -148,7 +145,7 @@ class TorchCompileCompiler(PrunaCompiler):
             return unet_transformer_pipeline_logic(model, smash_config)
 
         if is_causal_lm(model):
-            return causal_lm_logic(model, smash_config, imported_algorithms)
+            return causal_lm_logic(model, smash_config)
         return compile_callable(model, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -160,8 +157,7 @@ class TorchCompileCompiler(PrunaCompiler):
         Dict[str, Any]
             The algorithm packages.
         """
-        from hqq.utils.generation_hf import HFGenerator
-        return dict(HFGenerator=HFGenerator)
+        return dict()
 
 
 def get_model_device(model: Callable[..., Any]) -> torch.device:
@@ -265,7 +261,7 @@ def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixW
     return model
 
 
-def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper, imported_algorithms: Dict[str, Any]) -> Any:
+def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     """
     Apply compilation logic for causal language models.
 
@@ -275,54 +271,36 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper, imported
         The model to compile.
     smash_config : SmashConfigPrefixWrapper
         Configuration settings for compilation.
-    imported_algorithms : Dict[str, Any]
-        The imported algorithms (specific for HQQ).
 
     Returns
     -------
     Any
         The compiled model.
     """
-    if smash_config["quantizer"] == "hqq":
-        if hasattr(smash_config, "tokenizer"):
-            tokenizer = smash_config.tokenizer
-        else:
-            try:
-                tokenizer = AutoTokenizer.from_pretrained(model.config._name_or_path)
-            except Exception:
-                raise Exception(
-                    "Tokenizer not found, please provide a tokenizer with "
-                    "`smash_config.add_tokenizer(model_id)`."
-                )
-        gen = imported_algorithms["HFGenerator"](
-                model,
-                tokenizer,
-                max_new_tokens=smash_config["max_kv_cache_size"],
-                do_sample=True,
-                compile="partial",
-                compile_options={"mode": smash_config["mode"], "fullgraph": smash_config["fullgraph"]},
-            ).enable_cuda_graph()
-        generate = create_generate_fn_hqq(gen, tokenizer)
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        top_k = model.generation_config.top_k if hasattr(model.generation_config, "top_k") else 50
+        temperature = model.generation_config.temperature if hasattr(model.generation_config, "temperature") else 1.0
     else:
-        if hasattr(model, "generation_config") and model.generation_config is not None:
-            top_k = model.generation_config.top_k if hasattr(model.generation_config, "top_k") else 50
-            temperature = model.generation_config.temperature if hasattr(model.generation_config, "temperature") else 1.0
-        else:
-            pruna_logger.warning("No generation config found, using default values for top_k and temperature.")
-            # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.top_k
-            top_k = 50
-            # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.temperature
-            temperature = 1.0
-        past_kv = StaticCache(
-            model.config,
-            smash_config["batch_size"],
-            smash_config["max_kv_cache_size"],
-            device=smash_config["device"],
-            dtype=model.dtype,
+        pruna_logger.warning("No generation config found, using default values for top_k and temperature.")
+        # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.top_k
+        top_k = 50
+        # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.temperature
+        temperature = 1.0
+
+    # We use a generator as in https://github.com/mobiusml/hqq/blob/1f052eb5a0aab0572d380d48b708ae1c74936d23/hqq/utils/generation_hf.py
+    gen = HFGenerator(
+            model,
+            max_kv_cache_size=smash_config["max_kv_cache_size"],
+            temperature=temperature,
+            top_k=top_k,
+            compile_mode=smash_config["mode"],
+            compile_fullgraph=smash_config["fullgraph"],
+            batch_size=smash_config["batch_size"],
         )
-        compiled_decoding = compile_callable(decode_one_token, smash_config)
-        generate = create_generate_fn(model, top_k, temperature, past_kv, compiled_decoding)
-    model.generate = generate
+    # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
+    if smash_config["mode"] == "max-autotune-no-cudagraphs":
+        gen.enable_cuda_graph()
+    model.generate = gen.generate
     return model
 
 
