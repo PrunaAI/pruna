@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import contextlib
+from typing import Callable
 
 import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
@@ -114,38 +115,44 @@ class HFGenerator:
         self.past_key_values.reset()
 
     # Ideally only compile this, but it creates issues with generation: https://github.com/huggingface/transformers/issues/30351
-    def compile_partial(self, decode_one_token):
+    def compile_partial(self, decode_one_token: Callable):
         """
         Compile the partial function for the model.
 
         Parameters
         ----------
-        decode_one_token: The function to compile.
+        decode_one_token : Callable
+            Function to compile that takes a token and returns the next predicted token.
+            This is typically the model's token decoding function.
 
         Returns
         -------
         None
+            This function modifies the internal state by compiling and setting the decode_one_token
+            function but does not return anything.
         """
         self.decode_one_token = torch.compile(decode_one_token, mode=self.compile_mode, fullgraph=self.compile_fullgraph)
         self.is_compiled = True
 
-    def next_multiple(self, val):  # next power of 2
+    def next_multiple(self, val: int) -> int:  # next power of 2
         """
         Get the next multiple of 2 for the given value.
 
         Parameters
         ----------
-        val: The value to get the next multiple of 2 for.
+        val : int
+            The value to get the next multiple of 2 for.
 
         Returns
         -------
-        new_val: The next multiple of 2 for the given value.
+        new_val : int
+            The next multiple of 2 for the given value.
         """
         vals = [2**i for i in range(5, 20)]  # [32, 64, ...]
         new_val = vals[[i for i in range(len(vals)) if (vals[i] - val) > 0][0]]
         return new_val
 
-    def init(self):
+    def init(self) -> None:
         """
         Initialize the model.
 
@@ -157,34 +164,40 @@ class HFGenerator:
         self.model.generation_config.cache_implementation = "static"
         self.model.config.use_cache = True
 
-    def multinomial_sample_one_no_sync(self, probs_sort):
+    def multinomial_sample_one_no_sync(self, probs_sort: torch.Tensor) -> torch.Tensor:
         """
         Sample one token from the model.
 
         Parameters
         ----------
-        probs_sort: The probabilities to sample from.
+        probs_sort : torch.Tensor
+            The probabilities to sample from.
 
         Returns
         -------
-        The next token.
+        idx_next : torch.Tensor
+            The next token.
         """
         q = torch.empty_like(probs_sort).exponential_(1)
         return torch.argmax(probs_sort / q, dim=-1, keepdim=True).to(dtype=torch.int)
 
-    def logits_to_probs(self, logits, temperature=1.0, top_k=None):
+    def logits_to_probs(self, logits: torch.Tensor, temperature: float = 1.0, top_k: int | None = None) -> torch.Tensor:
         """
         Convert logits to probabilities.
 
         Parameters
         ----------
-        logits: The logits to convert.
-        temperature: The temperature to use.
-        top_k: The top-k value to use.
+        logits : torch.Tensor
+            The logits to convert.
+        temperature : float
+            The temperature to use.
+        top_k : int | None
+            The top-k value to use.
 
         Returns
         -------
-        probs: The probabilities.
+        probs : torch.Tensor
+            The probabilities.
         """
         logits = logits / max(temperature, 1e-5)
         if top_k is not None:
@@ -194,18 +207,30 @@ class HFGenerator:
         probs = torch.nn.functional.softmax(logits, dim=-1)
         return probs
 
-    def sample(self, logits, temperature, top_k):
+    def sample(
+        self,
+        logits: torch.Tensor,
+        temperature: float = 1.0,
+        top_k: int | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Sample one token from the model.
 
         Parameters
         ----------
-        logits: The logits to sample from.
+        logits : torch.Tensor
+            The logits to sample from.
+        temperature : float
+            The temperature to use.
+        top_k : int | None
+            The top-k value to use.
 
         Returns
         -------
-        idx_next: The next token.
-        probs: The probabilities.
+        idx_next : torch.Tensor
+            The next token.
+        probs : torch.Tensor
+            The probabilities.
         """
         probs = self.logits_to_probs(logits[:, -1], temperature, top_k)
         idx_next = self.multinomial_sample_one_no_sync(probs)
@@ -213,26 +238,32 @@ class HFGenerator:
 
     def decode_one_token_sampled(
         self,
-        cur_token,
-        cache_position,
-        past_key_values,
-        temperature=0.6,
-        top_k=5,
-    ):
+        cur_token: torch.Tensor,
+        cache_position: torch.Tensor,
+        past_key_values: torch.Tensor,
+        temperature: float = 0.6,
+        top_k: int = 5,
+    ) -> torch.Tensor:
         """
         Decode one token sampled from the model.
 
         Parameters
         ----------
-        cur_token: The current token.
-        cache_position: The cache position.
-        past_key_values: The past key values.
-        temperature: The temperature to use.
-        top_k: The top-k value to use.
+        cur_token : torch.Tensor
+            The current token.
+        cache_position : torch.Tensor
+            The cache position.
+        past_key_values : torch.Tensor
+            The past key values.
+        temperature : float
+            The temperature to use.
+        top_k : int
+            The top-k value to use.
 
         Returns
         -------
-        new_token: The next token.
+        new_token : torch.Tensor
+            The next token.
         """
         # run the model with the current token, cache position, past key values.
         # (kv cache will be updated internally by the model)
@@ -249,14 +280,16 @@ class HFGenerator:
         new_token = self.sample(logits, temperature=temperature, top_k=top_k)[0]
         return new_token
 
-    def setup(self, inputs, max_new_tokens):
+    def setup(self, inputs: torch.Tensor, max_new_tokens: int):
         """
         Setup the inputs for the model.
 
         Parameters
         ----------
-        inputs: The inputs to the model.
-        max_new_tokens: The maximum number of new tokens to generate.
+        inputs : torch.Tensor
+            The inputs to the model.
+        max_new_tokens : int
+            The maximum number of new tokens to generate.
 
         Returns
         -------
@@ -276,7 +309,7 @@ class HFGenerator:
         # copy the input ids to the generated ids at the cache position.
         self.generated_ids[:, self.cache_position] = self.inputs.to(torch.int)
 
-    def prefill(self):
+    def prefill(self) -> torch.Tensor:
         """
         Prefill the model.
 
@@ -284,7 +317,8 @@ class HFGenerator:
 
         Returns
         -------
-        next_token: The next token.
+        next_token : torch.Tensor
+            The next token.
         """
         out = self.model(
             self.inputs,
@@ -300,17 +334,19 @@ class HFGenerator:
         self.begin_gen_position = self.cache_position.item()
         return next_token
 
-    def gen_next_token_raw(self, next_token):
+    def gen_next_token_raw(self, next_token: torch.Tensor) -> torch.Tensor:
         """
         Generate the next token.
 
         Parameters
         ----------
-        next_token: The current token.
+        next_token : torch.Tensor
+            The current token.
 
         Returns
         -------
-        next_token: The next token.
+        next_token : torch.Tensor
+            The next token.
         """
         next_token = self.decode_one_token(
                 next_token.clone(),
@@ -323,28 +359,49 @@ class HFGenerator:
         self.generated_ids[:, self.cache_position] = next_token.int()
         return next_token
 
-    def gen_next_token(self, next_token):
+    def gen_next_token(self, next_token: torch.Tensor) -> torch.Tensor:
         """
         Generate the next token.
 
         Parameters
         ----------
-        next_token: The current token.
+        next_token : torch.Tensor
+            The current token.
+
+        Returns
+        -------
+        next_token : torch.Tensor
+            The next token.
         """
         return self.gen_next_token_raw(next_token)
 
-    def enable_cuda_graph_(self):
+    def enable_cuda_graph_(self) -> None:
         """Enable the CUDA graph."""
         self.do_capture_graph = True
-        self.gen_next_token = self.gen_next_token_withgraph
+        self.gen_next_token = self.gen_next_token_withgraph  # type: ignore
 
     def enable_cuda_graph(
         self,
-        iters=2,
-        prompt_tokenized=[596, 8830, 315, 6913, 19476, 11, 1778, 439, 279, 12939],
-        max_kv_cache_size=1024
-    ):
-        """Enable the CUDA graph and capture the graph on random prompt."""
+        iters: int = 2,
+        prompt_tokenized: list[int] = [596, 8830, 315, 6913, 19476, 11, 1778, 439, 279, 12939],
+        max_kv_cache_size: int = 1024
+    ) -> None:
+        """
+        Enable the CUDA graph and capture the graph on random prompt.
+
+        Parameters
+        ----------
+        iters : int
+            The number of iterations to run.
+        prompt_tokenized : list[int]
+            The prompt tokenized.
+        max_kv_cache_size : int
+            The maximum KV cache size.
+
+        Returns
+        -------
+        None
+        """
         _ = self.generate(
             torch.tensor(prompt_tokenized, device=self.model.device).unsqueeze(0),
             max_new_tokens=max_kv_cache_size
@@ -356,17 +413,19 @@ class HFGenerator:
                 max_new_tokens=max_kv_cache_size
             )
 
-    def gen_next_token_withgraph(self, next_token):
+    def gen_next_token_withgraph(self, next_token: torch.Tensor) -> torch.Tensor:
         """
         Generate the next token with the CUDA graph.
 
         Parameters
         ----------
-        next_token: The current token.
+        next_token : torch.Tensor
+            The current token.
 
         Returns
         -------
-        next_token: The next token.
+        next_token : torch.Tensor
+            The next token.
         """
         self.static_input.copy_(next_token)
 
@@ -381,7 +440,8 @@ class HFGenerator:
                     top_k=self.top_k,
                 )
         else:
-            self.cuda_graph.replay()
+            if self.cuda_graph is not None:
+                self.cuda_graph.replay()
 
         self.do_capture_graph = False
         next_token = self.static_output
@@ -390,19 +450,23 @@ class HFGenerator:
         self.generated_ids[:, self.cache_position] = next_token.int()
         return next_token
 
-    def next_token_iterator(self, next_token, max_new_tokens, cleanup=True):
+    def next_token_iterator(self, next_token: torch.Tensor, max_new_tokens: int, cleanup: bool = True) -> torch.Tensor:
         """
         Generate the next token.
 
         Parameters
         ----------
-        next_token: The current token.
-        max_new_tokens: The maximum number of new tokens to generate.
-        cleanup: Whether to cleanup the inputs, generated ids, and cache position.
+        next_token : torch.Tensor
+            The current token.
+        max_new_tokens : int
+            The maximum number of new tokens to generate.
+        cleanup : bool
+            Whether to cleanup the inputs, generated ids, and cache position.
 
         Returns
         -------
-        output_tokens: The generated tokens.
+        output_tokens : torch.Tensor
+            The generated tokens.
         """
         for i in range(1, max_new_tokens):
             next_token = self.gen_next_token(next_token)
@@ -415,18 +479,21 @@ class HFGenerator:
         return output_tokens
 
     @torch.inference_mode()
-    def generate(self, input_ids, max_new_tokens=100):
+    def generate(self, input_ids: torch.Tensor, max_new_tokens: int = 100) -> torch.Tensor:
         """
         Generate the tokens.
 
         Parameters
         ----------
-        input_ids: The input ids.
-        max_new_tokens: The maximum number of new tokens to generate.
+        input_ids : torch.Tensor
+            The input ids.
+        max_new_tokens : int
+            The maximum number of new tokens to generate.
 
         Returns
         -------
-        output_tokens: The generated tokens.
+        output_tokens : torch.Tensor
+            The generated tokens.
         """
         self.setup(inputs=input_ids, max_new_tokens=max_new_tokens)
         return self.next_token_iterator(self.prefill(), max_new_tokens)
