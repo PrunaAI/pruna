@@ -338,12 +338,23 @@ class HFGenerator:
         self.do_capture_graph = True
         self.gen_next_token = self.gen_next_token_withgraph
 
-    def enable_cuda_graph(self, iters=2, prompt_tokenized=[596, 8830, 315, 6913, 19476, 11, 1778, 439, 279, 12939]):
+    def enable_cuda_graph(
+        self,
+        iters=2,
+        prompt_tokenized=[596, 8830, 315, 6913, 19476, 11, 1778, 439, 279, 12939],
+        max_kv_cache_size=1024
+    ):
         """Enable the CUDA graph and capture the graph on random prompt."""
-        _ = self.generate(torch.tensor(prompt_tokenized, device=self.model.device).unsqueeze(0))
+        _ = self.generate(
+            torch.tensor(prompt_tokenized, device=self.model.device).unsqueeze(0),
+            max_new_tokens=max_kv_cache_size
+        )
         for _ in range(iters):
             self.enable_cuda_graph_()
-            _ = self.generate(torch.tensor(prompt_tokenized, device=self.model.device).unsqueeze(0))
+            _ = self.generate(
+                torch.tensor(prompt_tokenized, device=self.model.device).unsqueeze(0),
+                max_new_tokens=max_kv_cache_size
+            )
 
     def gen_next_token_withgraph(self, next_token):
         """
@@ -404,7 +415,7 @@ class HFGenerator:
         return output_tokens
 
     @torch.inference_mode()
-    def generate(self, input_ids, max_new_tokens=1):
+    def generate(self, input_ids, max_new_tokens=100):
         """
         Generate the tokens.
 

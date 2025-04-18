@@ -94,8 +94,18 @@ class TorchCompileCompiler(PrunaCompiler):
             OrdinalHyperparameter(
                 "max_kv_cache_size",
                 sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
-                default_value=100,
+                default_value=400,
                 meta=dict(desc="The maximum number of new tokens to generate, for LLMs."),
+            ),
+            OrdinalHyperparameter(
+                "seqlen_manual_cuda_graph",
+                sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
+                default_value=100,
+                meta=dict(
+                    desc="The sequence length to use for manual CUDA graph capture, for LLMs. "
+                    "We recommend to use a smaller value than max_kv_cache_size to avoid "
+                    "CUDA graph capture overhead."
+                ),
             ),
         ]
 
@@ -299,7 +309,7 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         )
     # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
     if smash_config["mode"] == "max-autotune-no-cudagraphs":
-        gen.enable_cuda_graph()
+        gen.enable_cuda_graph(max_kv_cache_size=smash_config["seqlen_manual_cuda_graph"])
     model.generate = gen.generate
     return model
 
