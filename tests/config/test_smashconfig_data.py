@@ -44,7 +44,7 @@ def test_dm_from_datasets_to_config(setup_fn: Callable, collate_fn: Callable, co
 @pytest.mark.cpu
 @pytest.mark.parametrize(
     "setup_fn, collate_fn_defaults, args_override",
-    [(setup_imagenet_dataset, dict(img_size=224), dict(img_size=16, batch_size=5))],
+    [(setup_imagenet_dataset, dict(img_size=224))],
 )
 def test_img_args_override(
     setup_fn: Callable, collate_fn_defaults: dict[str, Any], args_override: dict[str, Any]
