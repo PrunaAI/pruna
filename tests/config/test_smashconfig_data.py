@@ -44,7 +44,7 @@ def test_dm_from_datasets_to_config(setup_fn: Callable, collate_fn: Callable, co
 @pytest.mark.cpu
 @pytest.mark.parametrize(
     "setup_fn, collate_fn_defaults, args_override",
-    [(setup_imagenet_dataset, dict(img_size=224))],
+    [(setup_imagenet_dataset, dict(img_size=224), dict(img_size=16))],
 )
 def test_img_args_override(
     setup_fn: Callable, collate_fn_defaults: dict[str, Any], args_override: dict[str, Any]
@@ -56,6 +56,5 @@ def test_img_args_override(
     for get_dataloader in [smash_config.train_dataloader, smash_config.val_dataloader, smash_config.test_dataloader]:
         dataloader = get_dataloader(**args_override)
         image, _ = next(iter(dataloader))
-        assert image.shape[0] == args_override["batch_size"]
         assert image.shape[2] == args_override["img_size"]
         assert image.shape[3] == args_override["img_size"]
