@@ -262,7 +262,7 @@ class SmashConfig:
         if "batch_size" in kwargs and kwargs["batch_size"] != self.batch_size:
             pruna_logger.warning(
                 f"Batch size {kwargs['batch_size']} is not the same as the batch size {self.batch_size}"
-                f"set in the SmashConfig. Using the {self.batch_size} from the SmashConfig."
+                f"set in the SmashConfig. Using the {self.batch_size}."
             )
         kwargs["batch_size"] = self.batch_size
         return getattr(self.data, dataloader_name)(**kwargs)
@@ -298,7 +298,7 @@ class SmashConfig:
 
         Returns
         -------
-        DataLoader | None
+        torch.utils.data.DataLoader | None
             The DataLoader instance associated with the SmashConfig.
         """
         return self.__get_dataloader("val_dataloader", **kwargs)
@@ -316,7 +316,7 @@ class SmashConfig:
 
         Returns
         -------
-        DataLoader | None
+        torch.utils.data.DataLoader | None
             The DataLoader instance associated with the SmashConfig.
         """
         return self.__get_dataloader("test_dataloader", **kwargs)
