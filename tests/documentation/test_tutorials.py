@@ -20,6 +20,7 @@ TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
         pytest.param("sana_diffusers_int8", marks=(pytest.mark.cuda, pytest.mark.high)),
         pytest.param("sd_deepcache", marks=pytest.mark.cuda),
         pytest.param("evaluation_agent_cmmd", marks=pytest.mark.cuda),
+        pytest.param("portable_compilation", marks=pytest.mark.cuda),  
     ],
 )
 def test_notebook_execution(notebook_name: str) -> None:
