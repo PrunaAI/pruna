@@ -377,6 +377,12 @@ def save_torch_artifacts(model: Any, model_path: str, smash_config: SmashConfig)
     assert artifacts is not None
     artifact_bytes, cache_info = artifacts
 
+    # check if the bytes are empty
+    if artifact_bytes == b"\x00\x00\x00\x00\x00\x00\x00\x01":
+        pruna_logger.error(
+            "Model has not been run before. Please run the model before saving to construct the compilation graph."
+        )
+
     with open(os.path.join(model_path, "artifact_bytes.bin"), "wb") as f:
         f.write(artifact_bytes)
 

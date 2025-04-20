@@ -65,13 +65,13 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
     if len(smash_config.load_fns) == 0:
         raise ValueError("Load function has not been set.")
 
+    # load torch artifacts if they exist
     if LOAD_FUNCTIONS.torch_artifacts.name in smash_config.load_fns:
         load_torch_artifacts(model_path, **kwargs)
         smash_config.load_fns.remove(LOAD_FUNCTIONS.torch_artifacts.name)
 
     if len(smash_config.load_fns) > 1:
         pruna_logger.error(f"Load functions not used: {smash_config.load_fns[1:]}")
-        smash_config.load_fns = smash_config.load_fns[:1]
 
     model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, **kwargs)
 
@@ -392,12 +392,6 @@ def load_torch_artifacts(model_path: str, **kwargs) -> None:
     """
     with open(os.path.join(model_path, "artifact_bytes.bin"), "rb") as f:
         artifact_bytes = f.read()
-
-    # check if the bytes are empty
-    if artifact_bytes == b"\x00\x00\x00\x00\x00\x00\x00\x01":
-        pruna_logger.error(
-            "Model has not been run before. Please run the model before saving to construct the compilation graph."
-        )
 
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
