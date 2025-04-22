@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import Any, Callable, List, Tuple
 
 import torch
 from torchvision import transforms
-from transformers import AutoTokenizer
+from transformers.tokenization_utils import PreTrainedTokenizer as AutoTokenizer
 
 
 def image_format_to_transforms(output_format: str, img_size: int) -> transforms.Compose:

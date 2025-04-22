@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
@@ -90,7 +92,7 @@ class PrunaModel:
         """
         batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
-        if prepared_inputs:
+        if prepared_inputs is not None:
             outputs = self(prepared_inputs, **self.inference_handler.model_args)
         else:
             outputs = self(**self.inference_handler.model_args)

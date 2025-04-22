@@ -107,6 +107,8 @@ def get_automodel_transformers(model_id: str) -> tuple[Any, SmashConfig]:
     except Exception:
         smash_config.add_tokenizer("bert-base-uncased")
 
+    if hasattr(smash_config.tokenizer, "pad_token"):
+        smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
     smash_config.add_data("WikiText")
     return model, smash_config
 
@@ -139,5 +141,6 @@ MODEL_FACTORY: dict[str, Callable] = {
         torch_dtype=torch.float16,
     ),
     "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
+    "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
     "dummy_lambda": dummy_model,
 }

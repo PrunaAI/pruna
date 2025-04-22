@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_space import QUANTIZER
 from pruna.engine.save import SAVE_FUNCTIONS

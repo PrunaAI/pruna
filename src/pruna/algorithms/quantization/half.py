@@ -46,7 +46,6 @@ class HalfQuantizer(PrunaQuantizer):
             "c_generate",
             "c_whisper",
             "stable_fast",
-            "onediff",
             "torch_compile",
         ],
         pruner=["torch_structured", "torch_unstructured"],

@@ -16,7 +16,7 @@ repos:
       - id: check-pruna-pro
         name: Check for pruna_pro
         entry: >
-          bash -c "git diff --cached --name-status | awk '$1 != \"D\" {print $2}' | xargs grep -q 'pruna_pro' && { echo 'Error: pruna_pro found'; exit 1; } || exit 0"
+          bash -c "git diff --cached --name-status | awk '\$1 != \"D\" && \$2 !~ /^docs\\// {print \$2}'| xargs grep -q 'pruna_pro' && { echo 'Error: pruna_pro found'; exit 1; } || exit 0"
         language: system
         stages: [pre-commit]
         types: [text]

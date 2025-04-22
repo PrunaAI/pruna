@@ -14,14 +14,16 @@
 
 import inspect
 from types import ModuleType
-from typing import Any, List
+from typing import Any, Dict, List, Type
 
 import diffusers
 import diffusers.models.transformers as diffusers_transformers
-from transformers import (
+from transformers.configuration_utils import PretrainedConfig
+from transformers.modeling_utils import PreTrainedModel
+from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING,
-    AutoModelForSeq2SeqLM,
-    AutoModelForSpeechSeq2Seq,
+    MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING,
+    MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING,
 )
 
 
@@ -56,7 +58,7 @@ def is_translation_model(model: Any) -> bool:
     bool
         True if the model is a translation model, False otherwise.
     """
-    seq2seq_mapping = AutoModelForSeq2SeqLM._model_mapping
+    seq2seq_mapping: Dict[str, Type[PreTrainedModel]] = MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING
     return isinstance(model, tuple(seq2seq_mapping.values()))
 
 
@@ -74,7 +76,7 @@ def is_speech_seq2seq_model(model: Any) -> bool:
     bool
         True if the model is a speech seq2seq model, False otherwise.
     """
-    speech_seq2seq_mapping = AutoModelForSpeechSeq2Seq._model_mapping
+    speech_seq2seq_mapping: Dict[Type[PretrainedConfig], Type[PreTrainedModel]] = MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING
     return isinstance(model, tuple(speech_seq2seq_mapping.values()))
 
 

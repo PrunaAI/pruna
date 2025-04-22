@@ -321,17 +321,6 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>OneDiff <sup><a href="#footnote1" id="ref1">1</a></sup></strong></td>
-      <td></td>
-      <td>compiler</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
       <td><strong>Stable Fast</strong></td>
       <td></td>
       <td>compiler</td>
@@ -365,7 +354,7 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
     </tr>
     <tr>
-      <td><strong>DeepCache<sup><a href="#footnote2" id="ref2">2</a></sup></strong></td>
+      <td><strong>DeepCache<sup><a href="#footnote1" id="ref1">1</a></sup></strong></td>
       <td></td>
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -398,7 +387,7 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>FLUX Caching<sup><a href="#footnote3" id="ref3">3</a></sup></strong></td>
+      <td><strong>FLUX Caching<sup><a href="#footnote2" id="ref2">2</a></sup></strong></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>cacher</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -420,7 +409,7 @@ Since Pruna offers a broad range of compression algorithms, the following table 
       <td></td>
     </tr>
     <tr>
-      <td><strong>HYPER<sup><a href="#footnote4" id="ref4">4</a></sup></strong></td>
+      <td><strong>HYPER<sup><a href="#footnote3" id="ref3">3</a></sup></strong></td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
       <td>distiller</td>
       <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
@@ -477,10 +466,9 @@ Since Pruna offers a broad range of compression algorithms, the following table 
   </tbody>
 </table>
 
-<span id="footnote1">1. Only available for transformer-based diffusers pipelines.</span><br>
-<span id="footnote2">2. Only available for unet-based diffusers pipelines.</span><br>
-<span id="footnote3">3. Only available for FLUX models.</span><br>
-<span id="footnote4">4. Only available for FLUX, SD-XL, SD-v1-4, SD-v1-5, SD-3.5.</span>
+<span id="footnote1">1. Only available for unet-based diffusers pipelines.</span><br>
+<span id="footnote2">2. Only available for FLUX models.</span><br>
+<span id="footnote3">3. Only available for FLUX, SD-XL, SD-v1-4, SD-v1-5, SD-3.5.</span>
 
 <br><br>
 

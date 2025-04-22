@@ -12,28 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import sys
 from argparse import Namespace
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import torch
 import transformers
 from ConfigSpace import OrdinalHyperparameter
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
-    AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
-    AutoModelForSpeechSeq2Seq,
-    AutoProcessor,
-    AutoTokenizer,
     WhisperConfig,
 )
+from transformers.modeling_utils import PreTrainedModel
+from transformers.processing_utils import ProcessorMixin
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm, is_translation_model
 from pruna.logging.logger import pruna_logger
+
+if TYPE_CHECKING:
+    from ctranslate2.models import Whisper
 
 
 class CTranslateCompiler(PrunaCompiler):
@@ -312,15 +315,15 @@ class GeneratorWrapper:
 
     Parameters
     ----------
-    generator : AutoModelForCausalLM
+    generator : PreTrainedModel
         The underlying Hugging Face Generator model.
     output_dir : str
         The output directory for the model.
-    tokenizer : AutoTokenizer
+    tokenizer : PreTrainedTokenizerBase
         The tokenizer for the model.
     """
 
-    def __init__(self, generator: AutoModelForCausalLM, output_dir: str, tokenizer: AutoTokenizer) -> None:
+    def __init__(self, generator: PreTrainedModel, output_dir: str, tokenizer: PreTrainedTokenizerBase) -> None:
         self.generator = generator
         self.output_dir = output_dir
         self.task = "generation"
@@ -383,15 +386,15 @@ class TranslatorWrapper:
 
     Parameters
     ----------
-    translator : AutoModelForSeq2SeqLM
+    translator : PreTrainedModel
         The underlying Hugging Face Translator model.
     output_dir : str
         The output directory for the model.
-    tokenizer : AutoTokenizer
+    tokenizer : PreTrainedTokenizerBase
         The tokenizer for the model.
     """
 
-    def __init__(self, translator: AutoModelForSeq2SeqLM, output_dir: str, tokenizer: AutoTokenizer) -> None:
+    def __init__(self, translator: PreTrainedModel, output_dir: str, tokenizer: PreTrainedTokenizerBase) -> None:
         self.translator = translator
         self.output_dir = output_dir
         self.task = "translation"
@@ -460,15 +463,15 @@ class WhisperWrapper:
 
     Parameters
     ----------
-    whisper : AutoModelForSpeechSeq2Seq
+    whisper : PreTrainedModel
         The underlying Hugging Face Whisper model.
     output_dir : str
         The output directory for the model.
-    processor : AutoProcessor
+    processor : ProcessorMixin
         The tokenizer for the model.
     """
 
-    def __init__(self, whisper: AutoModelForSpeechSeq2Seq, output_dir: str, processor: AutoProcessor) -> None:
+    def __init__(self, whisper: Whisper, output_dir: str, processor: ProcessorMixin) -> None:
         self.whisper = whisper
         self.output_dir = output_dir
         self.task = "whisper"
@@ -534,7 +537,7 @@ class WhisperWrapper:
         if kwargs.get("prompt"):
             self.prompt = kwargs["prompt"]
         elif self.prompt is None:
-            self.prompt = self.processor.tokenizer.convert_tokens_to_ids(
+            self.prompt = self.processor.tokenizer.convert_tokens_to_ids(  # type: ignore[attr-defined]
                 [
                     "<|startoftranscript|>",
                     language,

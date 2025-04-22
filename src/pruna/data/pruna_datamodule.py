@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import inspect
 from functools import partial
 from typing import Callable, List, Tuple, Union
@@ -20,7 +22,7 @@ from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Subset
 from torch.utils.data import Dataset as TorchDataset
-from transformers import AutoTokenizer
+from transformers.tokenization_utils import PreTrainedTokenizer as AutoTokenizer
 
 from pruna.data import base_datasets
 from pruna.data.collate import pruna_collate_fns

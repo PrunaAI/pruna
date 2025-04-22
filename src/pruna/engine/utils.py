@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import contextlib
 import gc
 import inspect
 import json
@@ -91,10 +94,12 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
     raise_error : bool
         Whether to raise an error when the device movement fails.
     """
+    if hasattr(model, "device") and check_model_already_on_device(model, device):
+        return
     if hasattr(model, "to"):
         try:
             model.to(device)
-        except ValueError as e:
+        except (ValueError, RecursionError, RuntimeError) as e:
             if raise_error:
                 raise ValueError(f"Could not move model to device: {str(e)}")
             else:
@@ -108,6 +113,25 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
             pruna_logger.warning("Model does not support device movement.")
 
 
+def check_model_already_on_device(model: Any, device: str | torch.device) -> bool:
+    """
+    Check if the model is already on the device.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    device : str | torch.device
+        The device to check.
+
+    Returns
+    -------
+    bool
+        True if the model is already on the device, False otherwise.
+    """
+    return model.device == device or model.device == torch.device(device)
+
+
 def set_to_eval(model: Any) -> None:
     """
     Set the model to evaluation mode.
@@ -118,12 +142,46 @@ def set_to_eval(model: Any) -> None:
         The model to set to evaluation mode.
     """
     if hasattr(model, "eval"):
-        model.eval()
+        try:
+            model.eval()
+        except RecursionError:
+            recursive_set_to_eval(model)
     else:
         nn_modules = get_nn_modules(model)
         for _, module in nn_modules.items():
             if hasattr(module, "eval"):
                 module.eval()
+
+
+def recursive_set_to_eval(model: Any, visited: set | None = None) -> None:
+    """
+    For the case where the model is referencing itself.
+
+    This is a recursive function that will set the model to evaluation mode.
+    It is used to avoid the RecursionError that occurs when the model is referencing itself.
+
+    Parameters
+    ----------
+    model : Any
+        The model to set to evaluation mode.
+    visited : set
+        A set of visited models to avoid infinite recursion.
+    """
+    if visited is None:
+        visited = set()
+
+    model_id = id(model)
+    if model_id in visited:
+        return
+    visited.add(model_id)
+
+    with contextlib.suppress(Exception):
+        model.eval()
+
+    if hasattr(model, "_modules") and isinstance(model._modules, dict):
+        for child in model._modules.values():
+            if isinstance(child, torch.nn.Module):
+                recursive_set_to_eval(child, visited)
 
 
 def set_to_train(model: Any) -> None:

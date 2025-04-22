@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import shutil
@@ -20,10 +21,10 @@ from ConfigSpace import OrdinalHyperparameter
 from tokenizers import Tokenizer
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
-    AutoModelForSpeechSeq2Seq,
     AutoTokenizer,
     WhisperForConditionalGeneration,
 )
+from transformers.modeling_utils import PreTrainedModel
 
 from pruna.algorithms.batching import PrunaBatcher
 from pruna.algorithms.compilation.c_translate import WhisperWrapper
@@ -196,13 +197,13 @@ class WhisperS2TWrapper:
 
     Parameters
     ----------
-    whisper : AutoModelForSpeechSeq2Seq
+    whisper : PreTrainedModel
         The underlying WhisperS2T model.
     batch_size : int | None
         The batch size for the model.
     """
 
-    def __init__(self, whisper: AutoModelForSpeechSeq2Seq, batch_size: int | None = None) -> None:
+    def __init__(self, whisper: PreTrainedModel, batch_size: int | None = None) -> None:
         self.whisper = whisper
         self.batch_size = batch_size
         self._device = whisper.device

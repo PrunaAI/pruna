@@ -43,6 +43,8 @@ Configuration:
     >>> set_telemetry_metrics(True, set_as_default=True)
 """
 
+from __future__ import annotations
+
 import functools
 import inspect
 import logging

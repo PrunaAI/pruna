@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import json
 import os
@@ -23,9 +25,10 @@ from warnings import warn
 
 import numpy as np
 import torch
-import transformers
 from ConfigSpace import Configuration, ConfigurationSpace
 from transformers import AutoProcessor, AutoTokenizer
+from transformers.processing_utils import ProcessorMixin
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
@@ -84,8 +87,8 @@ class SmashConfig:
         self.save_fns: list[str] = []
         self.load_fn: str | None = None
         self.reapply_after_load: dict[str, str | None] = dict.fromkeys(ALGORITHM_GROUPS)
-        self.tokenizer = None
-        self.processor = None
+        self.tokenizer: PreTrainedTokenizerBase | None = None
+        self.processor: ProcessorMixin | None = None
         self._data: PrunaDataModule | None = None
 
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
@@ -349,7 +352,7 @@ class SmashConfig:
     def _(self, datamodule: PrunaDataModule) -> None:
         self._data = datamodule
 
-    def add_tokenizer(self, tokenizer: str | transformers.AutoTokenizer) -> None:
+    def add_tokenizer(self, tokenizer: str | PreTrainedTokenizerBase) -> None:
         """
         Add a tokenizer to the SmashConfig.
 
@@ -363,7 +366,7 @@ class SmashConfig:
         else:
             self.tokenizer = tokenizer
 
-    def add_processor(self, processor: str | transformers.AutoProcessor) -> None:
+    def add_processor(self, processor: str | ProcessorMixin) -> None:
         """
         Add a processor to the SmashConfig.
 

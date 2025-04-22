@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import torch
 import torch.nn as nn
@@ -495,7 +496,7 @@ def update_dimensions_post_pruning(model: nn.Module, pruner: Any, imported_modul
             if isinstance(m, LlamaAttention):
                 # override attention parameters to handle pruned model
                 # handles both prune_num_heads and prune_head_dims
-                m.num_heads = pruner.num_heads[m.q_proj]
+                m.num_heads = cast(int, pruner.num_heads[m.q_proj])  # type: ignore[assignment]
                 m.num_key_value_heads = pruner.num_heads[m.k_proj]
                 m.head_dim = m.q_proj.out_features // m.num_heads
                 m.hidden_size = m.head_dim * m.num_heads

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import Any, List, cast
 
 import torch
 from torch import Tensor
 from torchmetrics.multimodal.clip_score import CLIPScore
-from transformers import CLIPModel as _CLIPModel
-from transformers import CLIPProcessor as _CLIPProcessor
+from transformers.models.clip.modeling_clip import CLIPModel as _CLIPModel
+from transformers.models.clip.processing_clip import CLIPProcessor as _CLIPProcessor
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -64,7 +66,12 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         """
         metric_inputs = metric_data_processor(x, gt, outputs, self.call_type)
         source, target = metric_inputs
-        score, n_samples = _clip_score_update(cast(Tensor, source), cast(Tensor, target), self.model, self.processor)
+        score, n_samples = _clip_score_update(
+            cast(Tensor, source),
+            cast(Tensor, target),
+            cast(_CLIPModel, self.model),
+            cast(_CLIPProcessor, self.processor),
+        )
         self.score += score.sum(0)
         self.n_samples += n_samples
 
@@ -156,7 +163,7 @@ def _clip_score_update(
     target_data = _process_image_data(target)
 
     device = source_data[0].device
-    model = model.to(device)
+    model = cast(Any, model).to(device)
 
     source_features = _get_features(source_data, device, model, processor)
     target_features = _get_features(target_data, device, model, processor)
