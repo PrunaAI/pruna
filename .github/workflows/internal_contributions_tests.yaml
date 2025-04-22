@@ -52,6 +52,6 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "cpu and not slow and not high_cpu" --cov=pruna --cov-report=xml
+          poetry run pytest -m "cpu and not slow and not high_cpu"
 
       

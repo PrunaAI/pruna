@@ -46,9 +46,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "cpu and not slow and not high_cpu" --cov=pruna --cov-report=xml
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          pytest -m "cpu and not slow and not high_cpu"
