@@ -27,6 +27,23 @@ class HFGenerator:
 
     The code is adapted from # https://gist.github.com/ArthurZucker/5dc54a3fb443e979fac437e5df7c800b
     and https://github.com/mobiusml/hqq/blob/1f052eb5a0aab0572d380d48b708ae1c74936d23/hqq/utils/generation_hf.py.
+
+    Parameters
+    ----------
+    model : transformers.PreTrainedModel
+        The Hugging Face model to use for text generation.
+    max_kv_cache_size : int
+        The maximum size of the key-value cache used during generation.
+    temperature : float, default=0.6
+        The sampling temperature to use for text generation. Higher values increase randomness.
+    top_k : int, default=5
+        The number of highest probability vocabulary tokens to keep for top-k filtering.
+    compile_mode : str, default='reduce-overhead'
+        The compilation mode to use with torch.compile(). Options include 'reduce-overhead', 'max-autotune', etc.
+    compile_fullgraph : bool, default=True
+        Whether to compile the full computation graph or use partial graph compilation.
+    batch_size : int, default=1
+        The batch size to use for text generation.
     """
 
     def __init__(
