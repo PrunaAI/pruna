@@ -430,7 +430,7 @@ class HFGenerator:
         self.static_input.copy_(next_token)
 
         if self.do_capture_graph:
-            self.cuda_graph = torch.cuda.CUDAGraph()
+            self.cuda_graph = torch.cuda.CUDAGraph()  # type: ignore
             with torch.cuda.graph(self.cuda_graph), sdpa_kernel([SDPBackend.MATH]):
                 self.static_output = self.decode_one_token(
                     self.static_input.clone(),
