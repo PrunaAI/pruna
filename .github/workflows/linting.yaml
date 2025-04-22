@@ -48,6 +48,8 @@ jobs:
 
       - name: Run ruff on Pruna code
         uses: astral-sh/ruff-action@v3
+        with:
+          version: "latest"
 
       - name: Run mypy on Pruna code
         run: poetry run mypy --show-traceback src/pruna
