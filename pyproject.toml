@@ -38,7 +38,7 @@ exclude = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.9,<3.12"
 wget = "*"
 torch = "2.7.0"
 torchvision = "0.22.0"
@@ -105,6 +105,7 @@ numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 types-PyYAML = { version = "*", optional = true }
 gptqmodel = { version = "*", optional = true }
+
 
 [tool.poetry.extras]
 stable-fast = [

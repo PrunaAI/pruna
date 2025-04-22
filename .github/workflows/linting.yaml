@@ -1,5 +1,9 @@
 name: Code Quality Checks
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   pull_request:
     branches:
@@ -13,35 +17,40 @@ jobs:
       matrix:
         python-version: ["3.10"]
 
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        uses: abatilo/actions-poetry@v2
 
-      - name: Configure Poetry to not create virtual environments
-        run: poetry config virtualenvs.create false
+      - name: Update Poetry lock file
+        run: poetry lock
 
-      - name: Run ruff on Pruna code
-        uses: astral-sh/ruff-action@v3
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: pip install -e .[tests]
+      - name: Install dependencies using Poetry
+        run: poetry install --extras tests
 
       - name: Remove .so files
         run: find . -name "*.so" -delete
 
-      - name: Run mypy on Pruna code
-        run: mypy --show-traceback src/pruna
+      - name: Run ruff on Pruna code
+        uses: astral-sh/ruff-action@v3
 
-      - name: Run docstrings on Pruna code
-        run: pytest -m "style"
+      - name: Run mypy on Pruna code
+        run: poetry run mypy --show-traceback src/pruna
+
+      - name: Run docstring checks with pytest
+        run: poetry run pytest -m "style"
