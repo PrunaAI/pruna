@@ -119,9 +119,3 @@ Set ``verbose=True`` when loading if you want to see warning messages as well as
     from pruna import PrunaModel
 
     loaded_model = PrunaModel.from_pretrained("saved_model/", verbose=True)
-
-``PrunaModel`` Function Documentation
----------------------------------------------
-
-.. autoclass:: pruna.engine.pruna_model.PrunaModel
-   :members: from_pretrained, from_hub, save_to_hub, save_pretrained

@@ -98,7 +98,7 @@ Your dataset will have to adhere to the formats expected by the ``collate_fn`` a
 .. _prunadatamodule:
 
 Accessing the PrunaDataModule directly
--------------------------------------
+--------------------------------------
 
 You can also create and access the PrunaDataModule directly and use it in your workflow, e.g., if you want to pass it to the :doc:`evaluation agent <evaluation_agent>`.
 

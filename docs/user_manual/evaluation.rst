@@ -1,7 +1,7 @@
 .. _evaluation:
 
-Evaluation Metrics
-===================
+Evaluate optimized models
+=========================
 
 The |pruna| package provides helpful evaluation tools to assess your models. In this section, we'll introduce the evaluation metrics you can use with the package.
 
@@ -19,7 +19,7 @@ The rest of this guide provides more detailed explanations of each component and
 .. code-block:: python
 
   import copy
-  
+
   from diffusers import StableDiffusionPipeline
 
   from pruna import smash, SmashConfig
@@ -41,11 +41,11 @@ The rest of this guide provides more detailed explanations of each component and
 
   # Define the task and the evaluation agent
   metrics = ['clip_score', 'psnr']
-  task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256')) 
+  task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
   eval_agent = EvaluationAgent(task)
 
   # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
-  first_results = eval_agent.evaluate(pipe) 
+  first_results = eval_agent.evaluate(pipe)
   print(first_results)
 
   # Evaluate smashed model
@@ -88,7 +88,7 @@ Currently, ``Task`` supports the following plain textrequests:
   from pruna.evaluation.task import Task
   from pruna.data.pruna_datamodule import PrunaDataModule
 
-  task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string('LAION256')) 
+  task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string('LAION256'))
 
 EvaluationAgent
 ^^^^^^^^^^^^^^^
@@ -108,21 +108,21 @@ The main entry point for evaluating models. The ``EvaluationAgent``:
 .. container:: hidden_code
 
     .. code-block:: python
-      
+
       from pruna.evaluation.task import Task
       from pruna.data.pruna_datamodule import PrunaDataModule
 
       data_module = PrunaDataModule.from_string('LAION256')
       data_module.limit_datasets(10)
 
-      task = Task("image_generation_quality", datamodule=data_module) 
+      task = Task("image_generation_quality", datamodule=data_module)
 
 .. code-block:: python
-  
+
   from pruna.evaluation.evaluation_agent import EvaluationAgent
-  
+
   eval_agent = EvaluationAgent(task)
-  
+
 
 For the full example running evaluation please see :ref:`Quick Tutorial <quicktutorial>` above.
 
@@ -174,7 +174,7 @@ Measures peak GPU memory usage during model loading and execution.
 :Required:
   Path to the PrunaModel to evaluate.
   A DataLoader object that defines the dataloader to evaluate the model on.
-  The model class to load the model from the path. 
+  The model class to load the model from the path.
 :Parameters:
 
   | ``mode``: Memory measurement mode ("disk", "inference", or "training").
@@ -187,7 +187,7 @@ Measures energy consumption in kilowatt-hours (kWh) and CO2 emissions in kilogra
 
 :Evaluation on CPU: Yes.
 :Description: Measures energy consumption in kilowatt-hours (kWh) and CO2 emissions in kilograms (kg).
-:Required: 
+:Required:
     A PrunaModel object that defines the model to evaluate.
     A DataLoader object that defines the dataloader to evaluate the model on.
 :Parameters:
@@ -202,7 +202,7 @@ Measures energy consumption in kilowatt-hours (kWh) and CO2 emissions in kilogra
 Measures the number of parameters and MACs (multiply-accumulate operations) in the model.
 
 :Evaluation on CPU: Yes.
-:Required: 
+:Required:
     A PrunaModel object that defines the model to evaluate.
     A DataLoader object that defines the dataloader to evaluate the model on.
 :Parameters:
@@ -248,10 +248,10 @@ Key Benefits:
 
 :Evaluation on CPU: Yes.
 :Required: Inputs, ground truth and predictions.
-:Parameters: 
+:Parameters:
 
   | ``clip_model_name``: Name of the CLIP model to use (default "openai/clip-vit-large-patch14-336").
-  | ``call_type``: Call type to use for the metric (default "gt_y"). For pairwise evaluation pass "pairwise" or "pairwise_gt_y".    
+  | ``call_type``: Call type to use for the metric (default "gt_y"). For pairwise evaluation pass "pairwise" or "pairwise_gt_y".
   | ``device``: Device to run the metric on (default "cuda").
 
 
@@ -278,7 +278,7 @@ Measures the proportion of positive identifications that were actually correct.
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Measures the proportion of actual positives that were identified correctly.
 
- 
+
 :Evaluation on CPU: Yes.
 :Required: Inputs, ground truth and predictions. TorchMetrics requires a 'task' parameter to be set to 'binary', 'multiclass', or 'multilabel'. Each task type may have additional specific requirements - please refer to the TorchMetrics documentation for details.
 :Parameters: Accepts all parameters from the TorchMetrics Recall implementation (task, num_classes, threshold, etc.).
@@ -288,7 +288,7 @@ Measures the proportion of actual positives that were identified correctly.
 Measures how well a probability model predicts a text sample.
 
 :Evaluation on CPU: Yes.
-:Required: Inputs, ground truth and predictions. 
+:Required: Inputs, ground truth and predictions.
 :Parameters: Accepts all parameters from the TorchMetrics Perplexity implementation.
 
 `fid <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/image/fid.py>`_
@@ -297,7 +297,7 @@ Measures the similarity between generated and real image distributions using the
 
 FID compares the **distribution** of real and generated images in a high-dimensional feature space. Since it estimates **mean and covariance statistics**, smaller sample sizes can introduce high variance, making the metric less stable. Large-scale evaluations often use **tens of thousands of images**, but for practical use, smaller sample sizes may still provide a reasonable approximation.
 
-**Computation Considerations**  
+**Computation Considerations**
 
 When generating images and computing FID on **thousands to tens of thousands of samples**, the process can take **multiple hours to several days**, even on a high-end GPU like an **A100 or RTX 4090**. On mid-range GPUs like a **3060 or 4060**, it can take **significantly longer**. A rough approximation using **a few thousand images** may still take **several hours**, even with strong hardware.
 
