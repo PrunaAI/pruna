@@ -86,15 +86,6 @@ pip install -e .
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Quick Start
 
-Before we start: Pruna allows to collect [a minimal set of aggregated, non-personal telemetry data](https://docs.pruna.ai/en/stable/docs_pruna/user_manual/telemetry.html) to help us identify popular algorithms and improve the product. Telemetry is enabled by default because your participation helps us make Pruna better. However, if you'd prefer not to share this, you can always disable telemetry with:
-
-```python
-from pruna.telemetry import set_telemetry_metrics
-
-set_telemetry_metrics(False)  # disable telemetry for current session
-set_telemetry_metrics(False, set_as_default=True)  # disable telemetry globally
-```
-
 
 Getting started with Pruna is easy-peasy pruna-squeezy!
 
@@ -148,9 +139,7 @@ eval_agent = EvaluationAgent(task)
 eval_agent.evaluate(smashed_model)
 ```
 
-
 This was the minimal example, but you are looking for the maximal example? You can check out our [documentation][documentation] for an overview of all supported [algorithms][docs-algorithms] as well as our tutorials for more use-cases and examples.
-
 
 
 ## <img src="./docs/assets/images/pruna_heart.png" alt="Pruna Heart" width=20></img> Pruna Pro
