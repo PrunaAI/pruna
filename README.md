@@ -209,13 +209,13 @@ Contributors are displayed in a random order to avoid any perceived ranking.
 
 If you use Pruna in your research, feel free to cite the project! 💜
 
-```
-    @misc{pruna,
+```bibtex
+@misc{pruna,
     title = {Efficient Machine Learning with Pruna},
     year = {2023},
     note = {Software available from pruna.ai},
-    url={https://www.pruna.ai/}
-    }
+    url = {https://www.pruna.ai/}
+}
 ```
 
 <br>
