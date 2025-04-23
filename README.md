@@ -4,7 +4,7 @@
 
 
   <img src="./docs/assets/images/element.png" alt="Element" width=10></img>
-  **Simply make AI models faster, cheaper, smaller, greener!** 
+  **Simply make AI models faster, cheaper, smaller, greener!**
   <img src="./docs/assets/images/element.png" alt="Element" width=10></img>
 
 <br>
@@ -96,7 +96,7 @@ set_telemetry_metrics(False, set_as_default=True)  # disable telemetry globally
 ```
 
 
-Getting started with Pruna is easy-peasy pruna-squeezy! 
+Getting started with Pruna is easy-peasy pruna-squeezy!
 
 First, load any pre-trained model. Here's an example using Stable Diffusion:
 
@@ -143,8 +143,8 @@ from pruna.evaluation.task import Task
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.data.pruna_datamodule import PrunaDataModule
 
-task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string("LAION256")) 
-eval_agent = EvaluationAgent(task) 
+task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string("LAION256"))
+eval_agent = EvaluationAgent(task)
 eval_agent.evaluate(smashed_model)
 ```
 
@@ -157,318 +157,54 @@ This was the minimal example, but you are looking for the maximal example? You c
 
 Pruna has everything you need to get started on optimizing your own models. To push the efficiency of your models even further, we offer Pruna Pro. To give you a glimpse of what is possible with Pruna Pro, let us consider three of the most widely used diffusers pipelines and see how much smaller and faster we can make them. In addition to popular open-source algorithms, we use our proprietary Auto Caching algorithm. We compare the fidelity of the compressed models. Fidelity measures the similarity between the images of the compressed models and the images of the original model.
 
-### Stable Diffusion XL
-
-For [Stable Diffusion XL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0), we compare Auto Caching with [DeepCache](https://github.com/horseee/DeepCache) (available with Pruna). We combine these caching algorithms with torch.compile to get an additional **9%** reduction in inference latency, and we use [HQQ](https://github.com/mobiusml/hqq) 8-bit quantization to reduce the size of the model from **8.8GB** to **6.7GB**.
-
-<img src="./docs/assets/plots/benchmark_sdxl.svg" alt="SDXL Benchmark"/>
-
-### FLUX [dev]
-For [FLUX [dev]](https://huggingface.co/black-forest-labs/FLUX.1-dev), we compare Auto Caching with the popular [TeaCache](https://github.com/ali-vilab/TeaCache) algorithm. In this case, we used [Stable Fast](https://github.com/chengzeyi/stable-fast) to reduce the latency of Auto Caching by additional **13%**, and [HQQ](https://github.com/mobiusml/hqq) with 8-bit reduced the size of FLUX from **33GB** to **23GB**.
-
-<img src="./docs/assets/plots/benchmark_flux.svg" alt="FLUX [dev] Benchmark"/>
-
-### HunyuanVideo
-For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto Caching with [TeaCache](https://github.com/ali-vilab/TeaCache). Applying [HQQ](https://github.com/mobiusml/hqq) 8-bit quantization to the model reduced the size from **41GB** to **29GB**.
-
-<img src="./docs/assets/plots/benchmark_hunyuan.svg" alt="HunyuanVideo Benchmark"/>
-
-
-
-## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
-
-Since Pruna offers a broad range of compression algorithms, the following table provides an overview of all methods available in Pruna and those exclusive to Pruna Pro. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/stable/).
-
-<table>
+<table width="100%">
   <thead>
-    <tr align="center">
-      <th rowspan="2">Algorithm</th>
-      <th rowspan="2"><div align="center">Pruna Pro</div></th>
-      <th rowspan="2">Type</th>
-      <th colspan="2" align="center"><div align="center">Hardware</div></th>
-      <th colspan="4" align="center"><div align="center">Model Format</div></th>
-    </tr>
     <tr>
-      <th>CPU</th>
-      <th>GPU</th>
-      <th>🤗 Transformers CausalLM</th>
-      <th>🤗 Diffusers Pipeline</th>
-      <th>🤗 Transformers Whisper</th>
-      <th>torch Module</th>
+      <th width="33%">Stable Diffusion XL</th>
+      <th width="33%">FLUX [dev]</th>
+      <th width="33%">HunyuanVideo</th>
     </tr>
   </thead>
   <tbody>
-    <!-- Quantizer group -->
     <tr>
-      <td><strong>AWQ</strong></td>
-      <td></td>
-      <td>quantizer</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>GPTQ</strong></td>
-      <td></td>
-      <td>quantizer</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>HQQ</strong></td>
-      <td></td>
-      <td>quantizer</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>Int8</strong></td>
-      <td></td>
-      <td>quantizer</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>QUANTO</strong></td>
-      <td></td>
-      <td>quantizer</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>Torch Dynamic</strong></td>
-      <td></td>
-      <td>quantizer</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>HIGGS</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>quantizer</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>torchao</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>quantizer</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>PERP</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>recoverer</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>c_translate</strong></td>
-      <td></td>
-      <td>compiler</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>IPEX</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>compiler</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>Stable Fast</strong></td>
-      <td></td>
-      <td>compiler</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>torch.compile</strong></td>
-      <td></td>
-      <td>compiler</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>x-fast</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>compiler</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>DeepCache<sup><a href="#footnote1" id="ref1">1</a></sup></strong></td>
-      <td></td>
-      <td>cacher</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>Adaptive Caching</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>cacher</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>Auto Caching</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>cacher</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>FLUX Caching<sup><a href="#footnote2" id="ref2">2</a></sup></strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>cacher</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>Periodic Caching</strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>cacher</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>HYPER<sup><a href="#footnote3" id="ref3">3</a></sup></strong></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td>distiller</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>Structured Pruning</strong></td>
-      <td></td>
-      <td>pruner</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>Unstructured Pruning</strong></td>
-      <td></td>
-      <td>pruner</td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-    </tr>
-    <tr>
-      <td><strong>ifw</strong></td>
-      <td></td>
-      <td>batcher</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td><strong>ws2t</strong></td>
-      <td></td>
-      <td>batcher</td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
-      <td></td>
-      <td align="center"><img src="./docs/assets/images/check.png" alt="Check" height="16"></td>
-      <td></td>
+      <td style="vertical-align: top;">
+        <div style="height: 110px; overflow: auto;">
+          For <a href="https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0">Stable Diffusion XL</a>, we compare Auto Caching with <a href="https://github.com/horseee/DeepCache">DeepCache</a> (available with Pruna). We combine these caching algorithms with torch.compile to get an additional <strong>9%</strong> reduction in inference latency, and we use <a href="https://github.com/mobiusml/hqq">HQQ</a> 8-bit quantization to reduce the size of the model from <strong>8.8GB</strong> to <strong>6.7GB</strong>.
+        </div>
+        <img src="./docs/assets/plots/benchmark_sdxl.svg" alt="SDXL Benchmark" style="height: 400px; width: 100%; object-fit: contain;"/>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="height: 110px; overflow: auto;">
+          For <a href="https://huggingface.co/black-forest-labs/FLUX.1-dev">FLUX [dev]</a>, we compare Auto Caching with the popular <a href="https://github.com/ali-vilab/TeaCache">TeaCache</a> algorithm. In this case, we used <a href="https://github.com/chengzeyi/stable-fast">Stable Fast</a> to reduce the latency of Auto Caching by additional <strong>13%</strong>, and <a href="https://github.com/mobiusml/hqq">HQQ</a> with 8-bit reduced the size of FLUX from <strong>33GB</strong> to <strong>23GB</strong>.
+        </div>
+        <img src="./docs/assets/plots/benchmark_flux.svg" alt="FLUX [dev] Benchmark" style="height: 400px; width: 100%; object-fit: contain;"/>
+      </td>
+      <td style="vertical-align: top;">
+        <div style="height: 110px; overflow: auto;">
+          For <a href="https://huggingface.co/tencent/HunyuanVideo">HunyuanVideo</a>, we compare Auto Caching with <a href="https://github.com/ali-vilab/TeaCache">TeaCache</a>. Applying <a href="https://github.com/mobiusml/hqq">HQQ</a> 8-bit quantization to the model reduced the size from <strong>41GB</strong> to <strong>29GB</strong>.
+        </div>
+        <img src="./docs/assets/plots/benchmark_hunyuan.svg" alt="HunyuanVideo Benchmark" style="height: 400px; width: 100%; object-fit: contain;"/>
+      </td>
     </tr>
   </tbody>
 </table>
 
-<span id="footnote1">1. Only available for unet-based diffusers pipelines.</span><br>
-<span id="footnote2">2. Only available for FLUX models.</span><br>
-<span id="footnote3">3. Only available for FLUX, SD-XL, SD-v1-4, SD-v1-5, SD-3.5.</span>
+## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
+
+Since Pruna offers a broad range of compression algorithms, the following table provides a high-level overview of all methods available in Pruna. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/stable/).
+
+
+| Technique | Description | Speed | Memory | Accuracy |
+| --- | --- | --- | --- | --- |
+| Batching | Groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing overall processing time. | ✅ | ❌ | 〰️ |
+| Caching | Stores intermediate results of computations to speed up subsequent operations, reducing inference time by reusing previously computed results. | ✅ | 〰️ | 〰️ |
+| Compilation | Compilation optimises the model with instructions for specific hardware. | ✅ | ➖ | 〰️ |
+| Distillation | Trains a smaller, simpler model to mimic a larger, more complex model. | ✅ | ✅ | ❌ |
+| Quantization | Reduces the precision of weights and activations, lowering memory requirements. | ✅ | ✅ | ❌ |
+| Pruning | Removes less important or redundant connections and neurons, resulting in a sparser, more efficient network. | ✅ | ✅ | ❌ |
+| Recovering | Restores the performance of a model after compression. | 〰️ | 〰️ | ✅ |
+
+✅(improves), ➖(stays the same), 〰️(could worsen), ❌(worsens)
 
 <br><br>
 
