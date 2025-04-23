@@ -96,26 +96,7 @@ from diffusers import StableDiffusionPipeline
 base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
 ```
 
-Then, use Pruna's `smash` function to optimize your model. You can customize the optimization process using `SmashConfig`:
-
-```python
-from pruna import smash, SmashConfig
-
-# Create and smash your model
-smash_config = SmashConfig()
-smash_config["cacher"] = "deepcache"
-smashed_model = smash(model=base_model, smash_config=smash_config)
-```
-
-Your model is now optimized and you can use it as you would use the original model:
-
-```python
-smashed_model("An image of a cute prune.").images[0]
-```
-
-<br>
-
-Pruna provides a variety of different compression and optimization algorithms, allowing you to combine different algorithms to get the best possible results:
+Then, use Pruna's `smash` function to optimize your model. Pruna provides a variety of different compression and optimization algorithms, allowing you to combine different algorithms to get the best possible results. You can customize the optimization process using `SmashConfig`:
 
 ```python
 from pruna import smash, SmashConfig
@@ -126,6 +107,14 @@ smash_config["cacher"] = "deepcache"
 smash_config["compiler"] = "stable_fast"
 smashed_model = smash(model=base_model, smash_config=smash_config)
 ```
+
+Your model is now optimized and you can use it as you would use the original model:
+
+```python
+smashed_model("An image of a cute prune.").images[0]
+```
+
+<br>
 
 You can then use our evaluation interface to measure the performance of your model:
 
