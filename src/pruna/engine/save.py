@@ -51,6 +51,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+    model_path = str(model_path)
     if not os.path.exists(model_path):
         os.makedirs(model_path)
     # in the case of no specialized save functions, we use the model's original save function
@@ -65,7 +66,8 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
 
     # if the original save function was overwritten *once*, we can use the new save function
     elif len(smash_config.save_fns) == 1:
-        pruna_logger.debug(f"Using new save function {smash_config.save_fns[-1]}...")
+        pruna_logger.debug(
+            f"Using new save function {smash_config.save_fns[-1]}...")
         save_fn = SAVE_FUNCTIONS[smash_config.save_fns[-1]]
         pruna_logger.debug(
             f"Overwriting original load function {smash_config.load_fn} with {smash_config.save_fns[-1]}..."
@@ -73,7 +75,8 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
 
     # in the case of multiple, specialized save functions, we default to pickled
     else:
-        pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
+        pruna_logger.debug(
+            f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
         save_fn = SAVE_FUNCTIONS.pickled
         smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
     # execute selected save function
@@ -130,7 +133,8 @@ def save_pruna_model_to_hub(
         # If no model_path is provided, use the temporary directory
         model_path = model_path or temp_dir
         # Save the model and its configuration to the temporary directory
-        save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
+        save_pruna_model(model=model, model_path=model_path,
+                         smash_config=smash_config)
         model_path_pathlib = Path(model_path)
 
         # Open and load the model configuration and smash configuration data from their respective files
@@ -141,7 +145,8 @@ def save_pruna_model_to_hub(
             smash_config_data = json.load(smash_config_file)
 
         # Format the content for the README using the template and the loaded configuration data
-        template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
+        template_path = Path(__file__).parent / \
+            "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
         content = template.format(
             repo_id=repo_id,
@@ -182,6 +187,7 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+    model_path = str(model_path)
     # catch any huggingface diffuser or transformer model and record which load function to use
     if "diffusers" in model.__module__:
         smash_config.load_fn = LOAD_FUNCTIONS.diffusers.name
@@ -212,7 +218,9 @@ def save_pipeline_info(pipeline_obj: Any, save_directory: str) -> None:
     save_directory : str
         The directory to save the pipeline information to.
     """
-    pruna_logger.info(f"Detected pipeline, saving info to {PIPELINE_INFO_FILE_NAME}")
+    save_directory = str(save_directory)
+    pruna_logger.info(
+        f"Detected pipeline, saving info to {PIPELINE_INFO_FILE_NAME}")
     info = {
         "pipeline_type": type(pipeline_obj).__name__,
         "task": pipeline_obj.task,
@@ -237,7 +245,10 @@ def save_before_apply(model: Any, model_path: str, smash_config: SmashConfig) ->
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
+    model_path = str(model_path)
+
+    save_dir = os.path.join(smash_config.cache_dir,
+                            SAVE_BEFORE_SMASH_CACHE_DIR)
 
     # load old smash config to get load_fn assigned previously
     # load json directly from file
@@ -248,7 +259,8 @@ def save_before_apply(model: Any, model_path: str, smash_config: SmashConfig) ->
 
     # move files in save dir into model path
     for file in os.listdir(save_dir):
-        shutil.move(os.path.join(save_dir, file), os.path.join(model_path, file))
+        shutil.move(os.path.join(save_dir, file),
+                    os.path.join(model_path, file))
 
 
 def save_pickled(model: Any, model_path: str, smash_config: SmashConfig) -> None:
@@ -264,6 +276,7 @@ def save_pickled(model: Any, model_path: str, smash_config: SmashConfig) -> None
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+    model_path = str(model_path)
     # helpers can not be pickled, we will disable and just reapply them later
     smash_helpers = get_helpers(model)
     for helper in smash_helpers:
@@ -285,6 +298,7 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+    model_path = str(model_path)
     from hqq.engine.hf import HQQModelForCausalLM
     from hqq.models.hf.base import AutoHQQHFModel
 
@@ -313,12 +327,14 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
         HQQDiffusersQuantizer,
         construct_base_class,
     )
-
+    model_path = str(model_path)
     hf_quantizer = HQQDiffusersQuantizer()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
+    auto_hqq_hf_diffusers_model = construct_base_class(
+        hf_quantizer.import_algorithm_packages())
     if hasattr(model, "transformer"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(
+            model.transformer, os.path.join(model_path, "backbone_quantized"))
         transformer_backup = model.transformer
         model.transformer = None
         # save the rest of the pipeline
@@ -326,7 +342,8 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(
+            model.unet, os.path.join(model_path, "backbone_quantized"))
         unet_backup = model.unet
         model.unet = None
         # save the rest of the pipeline
@@ -350,6 +367,7 @@ def save_quantized(model: Any, model_path: str, smash_config: SmashConfig) -> No
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+    model_path = str(model_path)
     model.save_quantized(model_path)
     smash_config.load_fn = LOAD_FUNCTIONS.awq_quantized.name
 
@@ -367,7 +385,8 @@ def reapply(model: Any, model_path: str, smash_config: SmashConfig) -> None:
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    raise ValueError("Reapply function is not a save function to call directly")
+    raise ValueError(
+        "Reapply function is not a save function to call directly")
 
 
 class SAVE_FUNCTIONS(Enum):  # noqa: N801
