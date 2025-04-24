@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, cast
+from warnings import warn
 
 import torch
 from codecarbon import EmissionsTracker
@@ -23,11 +24,14 @@ from torch.utils.data import DataLoader
 from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
 
+ENERGY_CONSUMED = "energy_consumed"
+CO2_EMISSIONS = "co2_emissions"
 
-@MetricRegistry.register("energy")
-class EnergyMetric(BaseMetric):
+
+class EnvironmentalImpactStats(BaseMetric):
     """
     Evaluate the energy metrics of a model.
 
@@ -55,7 +59,7 @@ class EnergyMetric(BaseMetric):
         self.device = device
 
     @torch.no_grad()
-    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any]:
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any] | MetricResult:
         """
         Compute the energy metrics of a model.
 
@@ -119,10 +123,8 @@ class EnergyMetric(BaseMetric):
                 task.emissions_data, "energy_consumed", task_name
             )
 
-        emissions_data["tracker_emissions"] = self._get_data(tracker.final_emissions_data, "emissions", "tracker")
-        emissions_data["tracker_energy_consumed"] = self._get_data(
-            tracker.final_emissions_data, "energy_consumed", "tracker"
-        )
+        emissions_data[CO2_EMISSIONS] = self._get_data(tracker.final_emissions_data, "emissions", "tracker")
+        emissions_data[ENERGY_CONSUMED] = self._get_data(tracker.final_emissions_data, "energy_consumed", "tracker")
 
         return emissions_data
 
@@ -133,3 +135,114 @@ class EnergyMetric(BaseMetric):
             pruna_logger.error(f"Could not get {attribute} data for {name}")
             pruna_logger.error(e)
             return 0
+
+
+@MetricRegistry.register(ENERGY_CONSUMED)
+class EnergyConsumed(EnvironmentalImpactStats):
+    """
+    View over EnvironmentalImpactStats with energy consumed as primary metric.
+
+    Parameters
+    ----------
+    n_iterations : int, default=100
+        The number of batches to evaluate the model. Note that the energy consumption and CO2 emissions
+        are not averaged and will therefore increase with this argument.
+    n_warmup_iterations : int, default=10
+        The number of warmup batches to evaluate the model.
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    """
+
+    higher_is_better: bool = False
+    metric_name: str = ENERGY_CONSUMED
+    benchmark_metric: bool = False
+    metric_units: str = "kWh"
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the energy consumed by a model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The energy consumed by the model.
+        """
+        raw_results = super().compute(model, dataloader)
+        return MetricResult.from_results_dict(
+            self.metric_name, self.__dict__, cast(Dict[str, Any], raw_results), self.benchmark_metric
+        )
+
+
+@MetricRegistry.register(CO2_EMISSIONS)
+class CO2Emissions(EnvironmentalImpactStats):
+    """
+    View over EnvironmentalImpactStats with CO2 emissions as primary metric.
+
+    Parameters
+    ----------
+    n_iterations : int, default=100
+        The number of batches to evaluate the model. Note that the energy consumption and CO2 emissions
+        are not averaged and will therefore increase with this argument.
+    n_warmup_iterations : int, default=10
+        The number of warmup batches to evaluate the model.
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    """
+
+    higher_is_better: bool = False
+    metric_name: str = CO2_EMISSIONS
+    benchmark_metric: bool = True
+    metric_units: str = "kgCO2e"
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the CO2 emissions of a model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The CO2 emissions of the model.
+        """
+        raw_results = super().compute(model, dataloader)
+        return MetricResult.from_results_dict(
+            self.metric_name, self.__dict__, cast(Dict[str, Any], raw_results), self.benchmark_metric
+        )
+
+
+class EnergyMetric:
+    """
+    Deprecated class.
+
+    Parameters
+    ----------
+    *args : Any
+        Arguments for EnvironmentalImpactStats.
+    **kwargs : Any
+        Keyword arguments for EnvironmentalImpactStats.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        """Forwards to EnvironmentalImpactStats."""
+        warn(
+            "Class EnergyMetric is deprecated and will be removed in a future release. \n"
+            "It has been replaced by EnvironmentalImpactStats, \n"
+            "which is a shared parent class for 'EnergyConsumed' and 'CO2Emissions'. \n"
+            "In the future please use 'EnergyConsumed' or 'CO2Emissions' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return EnvironmentalImpactStats(*args, **kwargs)
