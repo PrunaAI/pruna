@@ -33,6 +33,7 @@ from torchvision import transforms
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import metric_data_processor
 from pruna.logging.logger import pruna_logger
 
@@ -285,4 +286,9 @@ class TorchMetricWrapper(StatefulMetric):
         Any
             The computed metric value.
         """
-        return self.metric.compute()
+        result = self.metric.compute()
+        return MetricResult(
+            self.metric_name,
+            self.__dict__,
+            result.item() if isinstance(result, Tensor) else result,
+        )

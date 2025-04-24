@@ -24,6 +24,7 @@ from transformers.models.clip.processing_clip import CLIPProcessor as _CLIPProce
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import metric_data_processor
 from pruna.logging.logger import pruna_logger
 
@@ -43,10 +44,13 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         Keyword arguments for the CLIPScore metric.
     """
 
+    higher_is_better: bool = True
+    metric_name: str = "pairwise_clip_score"
+    benchmark_metric: bool = True
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.call_type = "pairwise_y_gt"
-        self.metric_name = "pairwise_clip_score"
         pruna_logger.info(f"Using call_type: {self.call_type} for metric {self.metric_name}")
 
     def update(  # type: ignore[override]
@@ -74,6 +78,20 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         )
         self.score += score.sum(0)
         self.n_samples += n_samples
+
+    def compute(self) -> Any:
+        """
+        Compute the metric.
+
+        Returns
+        -------
+        Any
+            The metric result.
+        """
+        pairwise_score = super().compute()  # type: ignore[safe-super]
+        pairwise_score_item = pairwise_score.item() if isinstance(pairwise_score, Tensor) else pairwise_score
+        params = self.__dict__
+        return MetricResult(self.metric_name, params, pairwise_score_item)
 
 
 def _process_image_data(images: Tensor) -> List[Tensor]:
