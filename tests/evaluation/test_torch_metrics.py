@@ -23,7 +23,7 @@ def test_perplexity(dataloader_fixture: Any) -> None:
 
     metric.update(gt, gt, logits)
     result = metric.compute()
-    assert result == 1.0
+    assert result.result == 1.0
 
 
 @pytest.mark.cpu
@@ -38,7 +38,7 @@ def test_fid(dataloader_fixture: Any) -> None:
     _, gt2 = next(dataloader_iter)
     gt = torch.cat([gt1, gt2], dim=0)
     metric.update(gt, gt, gt)
-    assert metric.compute() == pytest.approx(0.0, abs=1e-2)
+    assert metric.compute().result == pytest.approx(0.0, abs=1e-2)
 
 
 @pytest.mark.cpu
@@ -49,15 +49,15 @@ def test_clip_score(dataloader_fixture: Any) -> None:
     x, gt = next(iter(dataloader_fixture))
     metric.update(x, gt, gt)
     score = metric.compute()
-    assert score > 0.0 and score < 100.0
+    assert score.result > 0.0 and score.result < 100.0
 
 
 @pytest.mark.cpu
 @pytest.mark.parametrize("dataloader_fixture", ["ImageNet"], indirect=True)
 @pytest.mark.parametrize("metric", ["accuracy", "recall", "precision"])
 def test_torch_metrics(dataloader_fixture: Any, metric: str) -> None:
-    """Test the torch metrics."""
+    """Test the torch metrics accuracy, recall, precision."""
     metric = TorchMetricWrapper(metric, task="multiclass", num_classes=1000)
     _, gt = next(iter(dataloader_fixture))
     metric.update(gt, gt, gt)
-    assert metric.compute() == 1.0
+    assert metric.compute().result == 1.0

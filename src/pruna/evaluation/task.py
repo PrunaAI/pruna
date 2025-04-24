@@ -15,19 +15,36 @@
 from __future__ import annotations
 
 from typing import Any, List, cast
+from warnings import warn
 
 import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TOTAL_TIME
+from pruna.evaluation.metrics.metric_energy import CO2_EMISSIONS, ENERGY_CONSUMED
+from pruna.evaluation.metrics.metric_memory import DISK_MEMORY
+from pruna.evaluation.metrics.metric_model_architecture import TOTAL_MACS, TOTAL_PARAMS
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.utils import get_hyperparameters
 from pruna.logging.logger import pruna_logger
 
 AVAILABLE_REQUESTS = ("image_generation_quality",)
+PARENT_TO_CHILD_MAP = {
+    "ModelArchitectureStats": [TOTAL_MACS, TOTAL_PARAMS],
+    "InferenceTimeStats": [LATENCY, THROUGHPUT, TOTAL_TIME],
+    "EnvironmentalImpactStats": [ENERGY_CONSUMED, CO2_EMISSIONS],
+}
+DEPRECATION_TO_NEW_MAP = {
+    "elapsed_time": [LATENCY, THROUGHPUT, TOTAL_TIME],
+    "gpu_memory": [DISK_MEMORY],
+    "energy": [ENERGY_CONSUMED, CO2_EMISSIONS],
+    "model_architecture": [TOTAL_MACS, TOTAL_PARAMS],
+}
 
 
 class Task:
@@ -124,12 +141,33 @@ def get_metrics(request: str | List[str | BaseMetric]) -> List[BaseMetric]:
     if isinstance(request, List):
         if all(isinstance(item, BaseMetric) for item in request):
             pruna_logger.info("Using provided list of metric instances.")
-            metrics: List[BaseMetric] = cast(List[BaseMetric], request)  # for mypy
-            return metrics
+            new_request_metrics: List[BaseMetric] = []
+            for metric in request:
+                if metric.__class__.__name__ in PARENT_TO_CHILD_MAP:
+                    # We want the new separated metrics rather than the old parent class.
+                    for child in PARENT_TO_CHILD_MAP[metric.__class__.__name__]:
+                        hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
+                        new_request_metrics.append(MetricRegistry.get_metric(child, **hyperparameters))
+                else:
+                    new_request_metrics.append(cast(BaseMetric, metric))
+            return new_request_metrics
         elif all(isinstance(item, str) for item in request):
             pruna_logger.info(f"Creating metrics from names: {request}")
-            metric_names: List[str] = cast(List[str], request)
-            return MetricRegistry.get_metrics(metric_names)
+            new_requests: List[str] = []
+            for metric_name in request:
+                metric_name = cast(str, metric_name)
+                if metric_name in DEPRECATION_TO_NEW_MAP:
+                    warn(
+                        f"Metric {metric_name} is deprecated and will be removed in a future release. "
+                        f"Use {DEPRECATION_TO_NEW_MAP[metric_name]} instead.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    for new_metric in DEPRECATION_TO_NEW_MAP[metric_name]:
+                        new_requests.append(cast(str, new_metric))
+                else:
+                    new_requests.append(cast(str, metric_name))
+            return MetricRegistry.get_metrics(new_requests)
         else:
             pruna_logger.error("List must contain either all strings or all BaseMetric instances.")
             raise ValueError("List must contain either all strings or all BaseMetric instances.")

@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from __future__ import annotations
 
-from typing import Any, List
+from collections import defaultdict
+from inspect import Signature, getmro, signature
+from typing import Any, Callable, Dict, List, Tuple, Type, cast
 
 import torch
+
+from pruna.evaluation.metrics.metric_base import BaseMetric
 
 
 def metric_data_processor(
@@ -77,3 +82,83 @@ def metric_data_processor(
         return [outputs, gt]
     else:
         raise ValueError(f"Invalid call type: {call_type}")
+
+
+def get_param_names_from_signature(sig: Signature) -> list[str]:
+    """
+    Extract the parameter names (excluding 'self') from a constructor signature.
+
+    Parameters
+    ----------
+    sig : Signature
+        The signature to extract the parameter names from.
+
+    Returns
+    -------
+    List[str]
+        A list of the parameter names.
+    """
+    return [
+        p.name
+        for p in sig.parameters.values()
+        if p.name != "self" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
+    ]
+
+
+def get_hyperparameters(instance: Any, reference_function: Callable[..., Any]) -> Dict[str, Any]:
+    """
+    Get hyperparameters from an instance.
+
+    This is the most basic and self-contained case.
+
+    Parameters
+    ----------
+    instance : Any
+        The instance to get the hyperparameters from.
+    reference_function : Callable[..., Any]
+        The reference function to get the hyperparameters from.
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary of the hyperparameters.
+    """
+    sig = signature(reference_function)
+    param_names = get_param_names_from_signature(sig)
+    return {name: getattr(instance, name, None) for name in param_names}
+
+
+def get_direct_parents(list_of_instances: List[Any]) -> Tuple[Dict[Any, List[Any]], List[Any]]:
+    """
+    Get the direct parents of a list of instances.
+
+    Returns a dictionary where the keys are the direct parents and the values are the direct children.
+    Also returns a list of instances that directly inherit from BaseMetric.
+
+    Parameters
+    ----------
+    list_of_instances : List[Any]
+        A list of instances.
+
+    Returns
+    -------
+    Tuple[Dict[Any, List[Any]], List[Any]]
+        A tuple of a dictionary where the keys are the direct parents and the values are the direct children,
+        and a list of instances that directly inherit from BaseMetric.
+    """
+    # Metrics with shared parents and configs are grouped together
+    parents_to_children = defaultdict(list)
+    # Metrics who directly inherit from BaseMetric should not be included
+    children_of_base = []
+
+    for instance in list_of_instances:
+        mro = getmro(instance.__class__)
+        parent = cast(Type, mro[1])
+        if parent == BaseMetric:
+            children_of_base.append(instance)
+            continue
+        # Only group metrics with shared inference hyper-parameters.
+        config = frozenset(get_hyperparameters(instance, parent.__init__).items())
+        key = (parent, config)
+        parents_to_children[key].append(instance)
+    return parents_to_children, children_of_base
