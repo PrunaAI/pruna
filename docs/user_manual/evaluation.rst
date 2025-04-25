@@ -149,8 +149,8 @@ Simple metrics that compute values directly from inputs without maintaining stat
 - Energy consumption metrics
 - Memory usage metrics
 
-`elapsed_time 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+elapsed_time
+""""""""""""
 
 Measures inference time, latency, and throughput.
 
@@ -265,7 +265,7 @@ Measures the proportion of correct predictions in classification tasks.
 :Required: Inputs, ground truth and predictions. TorchMetrics requires a 'task' parameter to be set to 'binary', 'multiclass', or 'multilabel'. Each task type may have additional specific requirements - please refer to the TorchMetrics documentation for details.
 :Parameters: Accepts all parameters from the TorchMetrics Accuracy implementation (task, num_classes, threshold, etc.).
 
-`precision <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/precision.py>`_
+`precision <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/precision_recall.py>`_
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Measures the proportion of positive identifications that were actually correct.
 
@@ -283,7 +283,7 @@ Measures the proportion of actual positives that were identified correctly.
 :Required: Inputs, ground truth and predictions. TorchMetrics requires a 'task' parameter to be set to 'binary', 'multiclass', or 'multilabel'. Each task type may have additional specific requirements - please refer to the TorchMetrics documentation for details.
 :Parameters: Accepts all parameters from the TorchMetrics Recall implementation (task, num_classes, threshold, etc.).
 
-`perplexity <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/precision_recall.py>`_
+`perplexity <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/text/perplexity.py>`_
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Measures how well a probability model predicts a text sample.
 

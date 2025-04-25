@@ -16,8 +16,18 @@ repos:
       - id: check-pruna-pro
         name: Check for pruna_pro
         entry: >
-          bash -c "git diff --cached --name-status | grep -v \"^D\" | (grep -vE "^[A-Z]\s+docs/"  || true) | cut -f2- | while IFS= read -r file; do if [ -f \"$file\" ] && grep -q \"pruna_pro\" \"$file\"; then echo \"Error: pruna_pro found in staged file $file\"; exit 1; fi; done"
+          bash -c '
+          git diff --cached --name-status |
+          grep -v "^D" |
+          cut -f2- |                       
+          while IFS= read -r file; do
+              if [ -f "$file" ] && grep -q "pruna_pro" "$file"; then
+                  echo "Error: pruna_pro found in staged file $file"
+                  exit 1
+              fi
+          done
+          '
         language: system
         stages: [pre-commit]
-        types: [text]
-        files: '^docs/'
+        types: [python]
+        exclude: '^docs/'
