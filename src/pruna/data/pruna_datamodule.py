@@ -116,7 +116,8 @@ class PrunaDataModule(LightningDataModule):
         train_ds, val_ds, test_ds = datasets
         collate_func = get_collate_fn(collate_fn, collate_fn_args)
 
-        pruna_logger.info(f"Testing compatibility with {collate_func}...")
+        collate_func_name = collate_func.func.__name__ if isinstance(collate_func, partial) else collate_func.__name__
+        pruna_logger.info(f"Testing compatibility with {collate_func_name}...")
         try:
             for ds in [train_ds, val_ds, test_ds]:
                 # try collating two samples to test if batching works with the dataset
