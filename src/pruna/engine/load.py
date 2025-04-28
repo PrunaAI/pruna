@@ -235,6 +235,10 @@ def load_transformers_model(path: str, **kwargs) -> Any:
     AutoModel | pipeline
         The loaded model or pipeline.
     """
+    if "torch_dtype" not in kwargs:
+        # unless specified by the user, load the model in the same dtype as the base model
+        kwargs["torch_dtype"] = "auto"
+
     if os.path.exists(os.path.join(path, PIPELINE_INFO_FILE_NAME)):
         with open(os.path.join(path, PIPELINE_INFO_FILE_NAME), "r") as f:
             pipeline_info = json.load(f)
