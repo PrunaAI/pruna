@@ -80,7 +80,7 @@ class ModelArchitectureStats(BaseMetric):
         batch = model.inference_handler.move_inputs_to_device(batch, self.device)
         inputs = model.inference_handler.prepare_inputs(batch)
 
-        model(inputs)
+        model(inputs, **model.inference_handler.model_args)
 
         total_macs = 0
         self.module_macs = {}
@@ -213,9 +213,7 @@ class TotalMACsMetric(ModelArchitectureStats):
             The total MACs of the model.
         """
         results = super().compute(model, dataloader)
-        return MetricResult.from_results_dict(
-            self.metric_name, self.__dict__, cast(Dict[str, Any], results), self.benchmark_metric
-        )
+        return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
 
 
 @MetricRegistry.register(TOTAL_PARAMS)
@@ -251,9 +249,7 @@ class TotalParamsMetric(ModelArchitectureStats):
             The total parameters of the model.
         """
         results = super().compute(model, dataloader)
-        return MetricResult.from_results_dict(
-            self.metric_name, self.__dict__, cast(Dict[str, Any], results), self.benchmark_metric
-        )
+        return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
 
 
 class ModelArchitectureMetric:

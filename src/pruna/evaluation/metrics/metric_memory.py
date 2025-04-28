@@ -193,7 +193,7 @@ class GPUMemoryStats(BaseMetric):
 
             safe_memory_cleanup()
 
-            return MetricResult(self.mode, self.__dict__, peak_memory)
+        return MetricResult(self.mode, self.__dict__.copy(), peak_memory)
 
     def _detect_model_gpus(self, model: PrunaModel) -> List[int]:
         """

@@ -32,13 +32,13 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
 
     # Calculate CMMD between model outputs and ground truth
     metric.update(x, gt, outputs)
-    comparison_results = metric.compute().detach().cpu().numpy()
+    comparison_results = metric.compute().result
 
     metric.reset()
 
     # Calculate CMMD between ground truth and itself
     metric.update(x, gt, gt)
-    self_comparison_results = metric.compute().detach().cpu().numpy()
+    self_comparison_results = metric.compute().result
 
     assert self_comparison_results == pytest.approx(0.0, abs=1e-2)
     assert comparison_results > self_comparison_results
@@ -67,4 +67,4 @@ def test_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip
     eval_agent.evaluate(model)
     result = eval_agent.evaluate(model)
 
-    assert list(result.values())[0] == pytest.approx(0.0, abs=1e-2)
+    assert result[0].result == pytest.approx(0.0, abs=1e-2)

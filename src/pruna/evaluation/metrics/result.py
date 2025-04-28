@@ -42,7 +42,6 @@ class MetricResult:
         metric_name: str,
         metric_params: Dict[str, Any],
         results_dict: Dict[str, Any],
-        benchmark_metric: bool = False,
     ) -> "MetricResult":
         """
         Create a MetricResult from a raw results dictionary.
@@ -55,8 +54,6 @@ class MetricResult:
             The parameters of the metric.
         results_dict : Dict[str, Any]
             The raw results dictionary.
-        benchmark_metric : bool
-            Whether the metric is a benchmark metric.
 
         Returns
         -------
@@ -66,5 +63,4 @@ class MetricResult:
         assert metric_name in results_dict, f"Metric name {metric_name} not found in raw results"
         result = results_dict[metric_name]
         assert isinstance(result, (float, int)), f"Result for metric {metric_name} is not a float or int"
-        metric_params["benchmark_metric"] = benchmark_metric
         return cls(metric_name, metric_params, result)

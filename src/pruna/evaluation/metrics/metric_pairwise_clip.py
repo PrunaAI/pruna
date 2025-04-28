@@ -90,8 +90,7 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         """
         pairwise_score = super().compute()  # type: ignore[safe-super]
         pairwise_score_item = pairwise_score.item() if isinstance(pairwise_score, Tensor) else pairwise_score
-        params = self.__dict__
-        return MetricResult(self.metric_name, params, pairwise_score_item)
+        return MetricResult(self.metric_name, self.__dict__.copy(), pairwise_score_item)
 
 
 def _process_image_data(images: Tensor) -> List[Tensor]:

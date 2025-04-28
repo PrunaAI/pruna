@@ -95,7 +95,7 @@ class InferenceTimeStats(BaseMetric):
             for batch in dataloader:
                 batch = model.inference_handler.move_inputs_to_device(batch, self.device)
                 x = model.inference_handler.prepare_inputs(batch)
-                model(x)
+                model(x, **model.inference_handler.model_args)
                 c += 1
                 if c >= self.n_warmup_iterations:
                     break
@@ -109,14 +109,14 @@ class InferenceTimeStats(BaseMetric):
                 x = model.inference_handler.prepare_inputs(batch)
                 if self.timing_type == "async" or self.device == "cpu":
                     startevent_time = time.time()
-                    _ = model(x)
+                    _ = model(x, **model.inference_handler.model_args)
                     endevent_time = time.time()
                     elapsed_time = (endevent_time - startevent_time) * 1000  # in ms
                 elif self.timing_type == "sync":
                     startevent = torch.cuda.Event(enable_timing=True)
                     endevent = torch.cuda.Event(enable_timing=True)
                     startevent.record()
-                    _ = model(x)
+                    _ = model(x, **model.inference_handler.model_args)
                     endevent.record()
                     torch.cuda.synchronize()
                     elapsed_time = startevent.elapsed_time(endevent)  # in ms
@@ -177,11 +177,9 @@ class LatencyMetric(InferenceTimeStats):
         MetricResult
             The latency for model inference.
         """
-        raw_resuls = super().compute(model, dataloader)
-        params = self.__dict__
-        params["benchmark_metric"] = self.benchmark_metric
-        result = cast(Dict[str, Any], raw_resuls)[self.metric_name]
-        return MetricResult(self.metric_name, params, result)
+        raw_results = super().compute(model, dataloader)
+        result = cast(Dict[str, Any], raw_results)[self.metric_name]
+        return MetricResult(self.metric_name, self.__dict__.copy(), result)
 
 
 @MetricRegistry.register(THROUGHPUT)
@@ -222,11 +220,9 @@ class ThroughputMetric(InferenceTimeStats):
         MetricResult
             The throughput for model inference.
         """
-        raw_resuls = super().compute(model, dataloader)
-        params = self.__dict__
-        params["benchmark_metric"] = self.benchmark_metric
-        result = cast(Dict[str, Any], raw_resuls)[self.metric_name]
-        return MetricResult(self.metric_name, params, result)
+        raw_results = super().compute(model, dataloader)
+        result = cast(Dict[str, Any], raw_results)[self.metric_name]
+        return MetricResult(self.metric_name, self.__dict__.copy(), result)
 
 
 @MetricRegistry.register(TOTAL_TIME)
@@ -267,11 +263,9 @@ class TotalTimeMetric(InferenceTimeStats):
         MetricResult
             The total time for model inference.
         """
-        raw_resuls = super().compute(model, dataloader)
-        params = self.__dict__
-        params["benchmark_metric"] = self.benchmark_metric
-        result = cast(Dict[str, Any], raw_resuls)[self.metric_name]
-        return MetricResult(self.metric_name, params, result)
+        raw_results = super().compute(model, dataloader)
+        result = cast(Dict[str, Any], raw_results)[self.metric_name]
+        return MetricResult(self.metric_name, self.__dict__.copy(), result)
 
 
 class ElapsedTimeMetric:
