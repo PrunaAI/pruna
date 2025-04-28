@@ -139,6 +139,11 @@ class SmashConfig:
             json_string = f.read()
             config_dict = json.loads(json_string)
 
+        # support deprecated load_fn
+        if "load_fn" in config_dict:
+            value = config_dict.pop("load_fn")
+            config_dict["load_fns"] = [value]
+
         for name in ADDITIONAL_ARGS:
             # do not load the old cache directory
             if name == "cache_dir":
