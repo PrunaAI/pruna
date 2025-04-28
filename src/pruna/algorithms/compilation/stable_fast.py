@@ -36,10 +36,7 @@ class StableFastCompiler(PrunaCompiler):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(cacher=["deepcache"], quantizer=["half"])
-    required_install = (
-        "``pip install pruna[stable-fast]`` or "
-        "``pip install pruna[stable-fast-cu11] --extra-index-url https://prunaai.pythonanywhere.com/``"
-    )
+    required_install = "``pip install pruna[stable-fast]``"
 
     def get_hyperparameters(self) -> list:
         """
