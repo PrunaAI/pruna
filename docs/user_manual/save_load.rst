@@ -80,31 +80,6 @@ The load operation will:
 Special Considerations
 ----------------------
 
-Loading Keyword Arguments
-~~~~~~~~~~~~~~~~~~~~~~~~~
-We generally recommend to load the smashed model in the same configuration as the base model, **in particular** if the two should be compared in terms of efficiency and quality.
-So, when the base model was loaded with e.g. a specific precision:
-
-.. code-block:: python
-
-    import torch
-    from diffusers import StableDiffusionPipeline
-
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16)
-
-you should also load the smashed model as follows:
-
-.. code-block:: python
-
-    from pruna import PrunaModel
-
-    loaded_model = PrunaModel.from_pretrained("saved_model/", torch_dtype=torch.float16)
-
-Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
-In that case, we discard and log a warning about unused keyword arguments.
-
-
-
 Algorithm Reapplication
 ~~~~~~~~~~~~~~~~~~~~~~~~
 Some algorithms, particularly compilers and certain quantization methods, need to be reapplied after loading, as, for example, a compiled model can be rarely saved in its compiled state.
