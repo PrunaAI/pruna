@@ -40,8 +40,8 @@ exclude = [
 [tool.poetry.dependencies]
 python = ">=3.8"
 wget = "*"
-torch = "2.5.1"
-torchvision = "0.20.1"
+torch = "2.7.0"
+torchvision = "0.22.0"
 torchmetrics = { version = "*", extras = ["image"] }
 requests = ">=2.31.0"
 transformers = "*"
@@ -100,10 +100,7 @@ coverage = { version = "*", optional = true }
 pytest = { version = "7.4.4", optional = true }
 docutils = { version = "*", optional = true }
 xformers = { version = "==0.0.29.post1", optional = true }
-stable-fast-pruna = [
-    { version = "1.0.6", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"},
-    { version = "1.0.6+torch251cu118", optional = true, markers = "extra == 'stable-fast-cu11'"},
-]
+stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"}
 numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 types-PyYAML = { version = "*", optional = true }
