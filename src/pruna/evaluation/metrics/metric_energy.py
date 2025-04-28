@@ -99,11 +99,11 @@ class EnvironmentalImpactStats(BaseMetric):
 
         # Warmup
         for _ in range(self.n_warmup_iterations):
-            model(inputs)
+            model(inputs, **model.inference_handler.model_args)
 
         tracker.start_task("Inference")
         for _ in range(self.n_iterations):
-            model(inputs)
+            model(inputs, **model.inference_handler.model_args)
         tracker.stop_task()
 
         # Make sure all the operations are finished before stopping the tracker
@@ -175,9 +175,7 @@ class EnergyConsumed(EnvironmentalImpactStats):
             The energy consumed by the model.
         """
         raw_results = super().compute(model, dataloader)
-        return MetricResult.from_results_dict(
-            self.metric_name, self.__dict__, cast(Dict[str, Any], raw_results), self.benchmark_metric
-        )
+        return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], raw_results))
 
 
 @MetricRegistry.register(CO2_EMISSIONS)
@@ -218,9 +216,7 @@ class CO2Emissions(EnvironmentalImpactStats):
             The CO2 emissions of the model.
         """
         raw_results = super().compute(model, dataloader)
-        return MetricResult.from_results_dict(
-            self.metric_name, self.__dict__, cast(Dict[str, Any], raw_results), self.benchmark_metric
-        )
+        return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], raw_results))
 
 
 class EnergyMetric:

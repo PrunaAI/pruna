@@ -18,6 +18,7 @@ from enum import Enum
 from functools import partial
 from typing import Any, Callable, List, Optional, Union
 
+import torch
 from torch import Tensor
 from torchmetrics import Metric
 from torchmetrics.classification import Accuracy, Precision, Recall
@@ -95,6 +96,26 @@ def lpips_update(metric: LearnedPerceptualImagePatchSimilarity, preds: Any, targ
     metric.update(preds, target)
 
 
+def ssim_update(metric: StructuralSimilarityIndexMeasure, preds: Any, target: Any) -> None:
+    """
+    Update handler for SSIM metric.
+
+    Parameters
+    ----------
+    metric : StructuralSimilarityIndexMeasure instance
+        The SSIM metric instance.
+    preds : Any
+        The generated images tensor.
+    target : Any
+        The ground truth images tensor.
+    """
+    if preds.dtype != torch.float32:
+        preds = preds.float()
+    if target.dtype != torch.float32:
+        target = target.float()
+    metric.update(preds, target)
+
+
 # Available metrics
 class TorchMetrics(Enum):
     """
@@ -119,13 +140,17 @@ class TorchMetrics(Enum):
     """
 
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
-    accuracy = (partial(Accuracy), None, "y_gt")
+    accuracy = (
+        partial(Accuracy),
+        None,
+        "y_gt",
+    )
     perplexity = (partial(Perplexity), None, "y_gt")
     clip_score = (partial(CLIPScore), None, "y_x")
     precision = (partial(Precision), None, "y_gt")
     recall = (partial(Recall), None, "y_gt")
     psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
-    ssim = (partial(StructuralSimilarityIndexMeasure), None, "pairwise_y_gt")
+    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
 
     def __init__(self, *args, **kwargs) -> None:
@@ -214,6 +239,7 @@ class TorchMetricWrapper(StatefulMetric):
 
         pruna_logger.info(f"Using call_type: {self.call_type} for metric {metric_name}")
         self.metric_name = metric_name
+        self.higher_is_better = self.metric.higher_is_better
 
     def update(self, x: List[Any] | Tensor, gt: List[Any] | Tensor, outputs: Any) -> None:
         """
@@ -289,6 +315,6 @@ class TorchMetricWrapper(StatefulMetric):
         result = self.metric.compute()
         return MetricResult(
             self.metric_name,
-            self.__dict__,
+            self.__dict__.copy(),
             result.item() if isinstance(result, Tensor) else result,
         )
