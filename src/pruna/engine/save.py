@@ -79,7 +79,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     else:
         pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
         save_fn = SAVE_FUNCTIONS.pickled
-        smash_config.load_fn = LOAD_FUNCTIONS.pickled.name
+        smash_config.load_fns = [LOAD_FUNCTIONS.pickled.name]
     # execute selected save function
     save_fn(model, model_path, smash_config)
 
