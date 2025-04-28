@@ -34,11 +34,13 @@ class StatefulMetric(BaseMetric):
     aggregated values over time.
     """
 
+    benchmark_metric: bool = True
+    metric_name: str
+
     def __init__(self) -> None:
         """Initialize the StatefulMetric class."""
         super().__init__()
         self.metric_config: Dict[str, Any] = {}
-        self.metric_name: str = ""
         self.call_type: str = ""
         self._defaults: Dict[str, List | Tensor] = {}
 

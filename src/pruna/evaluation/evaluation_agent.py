@@ -230,9 +230,7 @@ class EvaluationAgent:
             raw_results = parent.compute(children[0], model, self.task.dataloader)
             for child in children:
                 results.append(
-                    MetricResult.from_results_dict(
-                        child.metric_name, dict(children[0].__dict__), raw_results, child.benchmark_metric
-                    )
+                    MetricResult.from_results_dict(child.metric_name, dict(children[0].__dict__), raw_results)
                 )
         for metric in children_of_base:
             results.append(metric.compute(model, self.task.dataloader))
