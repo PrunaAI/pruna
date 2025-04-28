@@ -135,6 +135,7 @@ class GPUMemoryMetric(BaseMetric):
         save_path = model.smash_config.cache_dir + "/metrics_save"
         model_cls = model.__class__
         model.save_pretrained(save_path)
+        model.move_to_device("cpu")
 
         gpu_manager = GPUManager(self.gpu_indices)
         with gpu_manager.manage_resources():
