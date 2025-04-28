@@ -243,5 +243,5 @@ class WhisperS2TWrapper:
         """
         if isinstance(files, str):
             files = [files]
-        results = self.whisper.transcribe_with_vad(files, batch_size=self.batch_size)
+        results = self.whisper.transcribe_with_vad(files, batch_size=self.batch_size)  # type: ignore[operator]
         return " ".join([item["text"] for item in results[0]])

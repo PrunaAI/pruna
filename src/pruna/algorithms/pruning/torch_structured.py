@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import torch
 import torch.nn as nn
@@ -23,12 +23,12 @@ from ConfigSpace import (
     UniformFloatHyperparameter,
     UniformIntegerHyperparameter,
 )
-from transformers import ViTForImageClassification as ViT
 from transformers.modeling_outputs import ImageClassifierOutput
 from transformers.models.llama.modeling_llama import LlamaAttention, LlamaRotaryEmbedding
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
 from transformers.models.opt.modeling_opt import OPTAttention
 from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
+from transformers.models.vit.modeling_vit import ViTForImageClassification as ViT
 from transformers.models.vit.modeling_vit import ViTSelfAttention
 
 from pruna.algorithms.pruning import PrunaPruner
@@ -343,7 +343,7 @@ def get_llama_params(model: nn.Module, smash_config: SmashConfigPrefixWrapper) -
     return dict(), num_heads, ignored_layers
 
 
-def get_vit_params(model: nn.Module, smash_config: SmashConfigPrefixWrapper) -> Tuple[Dict, Dict, List]:
+def get_vit_params(model: ViT, smash_config: SmashConfigPrefixWrapper) -> Tuple[Dict, Dict, List]:
     """
     Get the parameters related to the Vision Transformer (ViT) model.
 
@@ -374,7 +374,7 @@ def get_vit_params(model: nn.Module, smash_config: SmashConfigPrefixWrapper) -> 
     return ch_groups, num_heads, ignored_layers
 
 
-def add_grad_checkpointing(model: nn.Module, pruning_device: torch.device) -> nn.Module:
+def add_grad_checkpointing(model: Union[Opt, Llama], pruning_device: torch.device) -> Union[Opt, Llama]:
     """
     Enable gradient checkpointing for the given model.
 
@@ -398,12 +398,12 @@ def add_grad_checkpointing(model: nn.Module, pruning_device: torch.device) -> nn
 
 
 def compute_loss_and_accumulate_gradients(
-    model: nn.Module,
+    model: Union[Opt, Llama],
     calibration_dataloader: torch.utils.data.DataLoader,
     device: torch.device,
     smash_config: SmashConfigPrefixWrapper,
     calibration_data_size: int = 4096,
-) -> nn.Module:
+) -> Union[Opt, Llama]:
     """
     Calculate loss and perform backpropagation for the given model.
 
@@ -498,8 +498,8 @@ def update_dimensions_post_pruning(model: nn.Module, pruner: Any, imported_modul
                 # handles both prune_num_heads and prune_head_dims
                 m.num_heads = cast(int, pruner.num_heads[m.q_proj])  # type: ignore[assignment]
                 m.num_key_value_heads = pruner.num_heads[m.k_proj]
-                m.head_dim = m.q_proj.out_features // m.num_heads
-                m.hidden_size = m.head_dim * m.num_heads
+                m.head_dim = m.q_proj.out_features // cast(int, m.num_heads)
+                m.hidden_size = m.head_dim * torch.tensor(cast(int, m.num_heads))
 
             elif isinstance(m, LlamaRotaryEmbedding):
                 # override forward function to handle pruned head dimension
