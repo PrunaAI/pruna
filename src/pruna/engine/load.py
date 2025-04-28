@@ -296,7 +296,9 @@ def load_pickled(path: str, **kwargs) -> Any:
     Any
         The loaded pickled model.
     """
-    return torch.load(os.path.join(path, PICKLED_FILE_NAME), **filter_load_kwargs(torch.load, kwargs))
+    return torch.load(
+        os.path.join(path, PICKLED_FILE_NAME), weights_only=False, **filter_load_kwargs(torch.load, kwargs)
+    )
 
 
 def load_hqq(model_path: str, **kwargs) -> Any:
