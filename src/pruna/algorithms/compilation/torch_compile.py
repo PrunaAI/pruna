@@ -148,6 +148,11 @@ class TorchCompileCompiler(PrunaCompiler):
             The model to compile.
         smash_config : SmashConfig
             The configuration for the compilation.
+
+        Returns
+        -------
+        Any
+            The compiled model.
         """
         if smash_config["torch_compile_make_portable"]:
             os.environ["TORCHINDUCTOR_FX_GRAPH_CACHE"] = "1"
