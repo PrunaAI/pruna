@@ -31,7 +31,7 @@ from tqdm.auto import tqdm as base_tqdm
 from transformers import pipeline
 
 from pruna import SmashConfig
-from pruna.engine.utils import load_json_config
+from pruna.engine.utils import load_json_config, move_to_device
 from pruna.logging.logger import pruna_logger
 
 PICKLED_FILE_NAME = "optimized_model.pt"
@@ -75,11 +75,8 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
 
     model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, **kwargs)
 
-    try:
-        if hasattr(model, "to") and "device_map" not in kwargs and "device" not in kwargs:
-            model.to(smash_config.device)
-    except Exception:
-        pruna_logger.error(f"Error casting model to device: {smash_config.device}. Skipping device casting.")
+    if "device_map" not in kwargs and "device" not in kwargs:
+        move_to_device(model, smash_config.device)
 
     # check if there are any algorithms to reapply
     if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
