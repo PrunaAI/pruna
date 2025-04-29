@@ -99,7 +99,7 @@ pytest-cov = { version = "*", optional = true }
 coverage = { version = "*", optional = true }
 pytest = { version = "7.4.4", optional = true }
 docutils = { version = "*", optional = true }
-xformers = { version = "==0.0.29.post3", optional = true }
+xformers = { version = "==0.0.30", optional = true }
 stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"}
 numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
