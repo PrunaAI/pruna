@@ -44,7 +44,7 @@ class HQQQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict()
+    compatible_algorithms = dict(compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -71,8 +71,8 @@ class HQQQuantizer(PrunaQuantizer):
             Constant("backend", value="torchao_int4"),
             CategoricalHyperparameter(
                 "compute_dtype",
-                choices=['torch.bfloat16', 'torch.float16'],
-                default_value='torch.float16',
+                choices=["torch.bfloat16", "torch.float16"],
+                default_value="torch.float16",
                 meta=dict(desc="Compute dtype for quantization."),
             ),
         ]
@@ -122,7 +122,7 @@ class HQQQuantizer(PrunaQuantizer):
                 model,
                 quant_config=quant_config_hqq,
                 device=smash_config["device"],
-                compute_dtype=torch.float16 if smash_config["compute_dtype"] == 'torch.float16' else torch.bfloat16
+                compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
             )
         except Exception as e:  # Default to generic HF quantization if it fails
             pruna_logger.error(f"Error: {e}")
@@ -135,8 +135,8 @@ class HQQQuantizer(PrunaQuantizer):
                 temp_dir,
                 quantization_config=quant_config_hf,
                 trust_remote_code=True,
-                device_map='auto',
-                torch_dtype=torch.float16 if smash_config["compute_dtype"] == 'torch.float16' else torch.bfloat16
+                device_map="auto",
+                torch_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
             )
 
             # Delete the temporary directory and its contents
