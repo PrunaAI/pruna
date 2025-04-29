@@ -20,7 +20,7 @@ from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers.cache_utils import StaticCache
 
 
-class HFGenerator:
+class TransformersGenerator:
     """
     A class for generating text using a Hugging Face model, and using torch.compile.
 
@@ -56,7 +56,7 @@ class HFGenerator:
         batch_size: int = 1,
     ):
         """
-        Initialize the HFGenerator.
+        Initialize the TransformersGenerator.
 
         Parameters
         ----------

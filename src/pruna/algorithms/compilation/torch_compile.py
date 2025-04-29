@@ -18,7 +18,7 @@ import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
 from pruna.algorithms.compilation import PrunaCompiler
-from pruna.algorithms.compilation.utils import HFGenerator
+from pruna.algorithms.compilation.utils import TransformersGenerator
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
@@ -298,7 +298,7 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         temperature = 1.0
 
     # We use a generator as in https://github.com/mobiusml/hqq/blob/1f052eb5a0aab0572d380d48b708ae1c74936d23/hqq/utils/generation_hf.py
-    gen = HFGenerator(
+    gen = TransformersGenerator(
             model,
             max_kv_cache_size=smash_config["max_kv_cache_size"],
             temperature=temperature,
