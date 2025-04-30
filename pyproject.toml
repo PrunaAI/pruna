@@ -38,7 +38,7 @@ exclude = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<=3.12"
+python = ">=3.9,<3.13"
 wget = "*"
 torch = "2.7.0"
 torchvision = "0.22.0"
