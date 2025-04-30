@@ -43,6 +43,8 @@ class TransformersGenerator:
         Whether to compile the full computation graph or use partial graph compilation.
     batch_size : int, default=1
         The batch size to use for text generation.
+    device : str, default='cuda'
+        The device to use for text generation.
     """
 
     def __init__(
@@ -462,19 +464,26 @@ class TransformersGenerator:
     @torch.inference_mode()
     def generate(self, *args, **kwargs) -> torch.Tensor:
         """
-        Generate the tokens.
+        Generate tokens using the model.
 
         Parameters
         ----------
-        input_ids : torch.Tensor
-            The input ids.
-        max_new_tokens : int
-            The maximum number of new tokens to generate.
+        *args : tuple
+            Variable length argument list (not used directly).
+        **kwargs : dict
+            Keyword arguments dictionary that must contain:
+            - input_ids : torch.Tensor
+                The input token ids that serve as the prompt.
+            - max_new_tokens : int
+                The maximum number of new tokens to generate.
 
         Returns
         -------
         torch.Tensor
-            The generated tokens.
+            The generated tokens, including the input prompt and potentially an EOS token.
         """
-        self.setup(inputs=kwargs["input_ids"], max_new_tokens=kwargs["max_new_tokens"])
+        self.setup(
+            inputs=kwargs["input_ids"] if "input_ids" in kwargs else args[0],
+            max_new_tokens=kwargs["max_new_tokens"] if "max_new_tokens" in kwargs else args[1],
+        )
         return self.next_token_iterator(self.prefill(), kwargs["max_new_tokens"])
