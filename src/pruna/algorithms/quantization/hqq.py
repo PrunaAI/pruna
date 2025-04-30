@@ -24,6 +24,7 @@ from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.utils import safe_memory_cleanup
 from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
@@ -116,14 +117,19 @@ class HQQQuantizer(PrunaQuantizer):
 
         quant_config_hqq = imported_modules["BaseQuantizeConfig"](nbits=weight_quantization_bits, group_size=group_size)
         quant_config_hf = imported_modules["HqqConfig"](nbits=weight_quantization_bits, group_size=group_size)
-
+        if hasattr(model, "to"):
+            model_device = model.device
+            model.to("cpu")
+            safe_memory_cleanup()
         try:  # Try to quantize the model using HQQ
-            smashed_model = imported_modules["AutoHQQHFModel"].quantize_model(
+            model = imported_modules["AutoHQQHFModel"].quantize_model(
                 model,
                 quant_config=quant_config_hqq,
                 device=smash_config["device"],
                 compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
             )
+            if hasattr(model, "to"):
+                model.to(model_device)
         except Exception as e:  # Default to generic HF quantization if it fails
             pruna_logger.error(f"Error: {e}")
             # Create a temporary directory in a specific location
@@ -131,7 +137,7 @@ class HQQQuantizer(PrunaQuantizer):
             temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
             model.save_pretrained(temp_dir)
 
-            smashed_model = AutoModelForCausalLM.from_pretrained(
+            model = AutoModelForCausalLM.from_pretrained(
                 temp_dir,
                 quantization_config=quant_config_hf,
                 trust_remote_code=True,
@@ -149,7 +155,7 @@ class HQQQuantizer(PrunaQuantizer):
         except Exception as e:
             pruna_logger.error(f"Error: {e}")
             pass
-        return smashed_model
+        return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
