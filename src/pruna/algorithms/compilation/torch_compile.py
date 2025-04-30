@@ -343,6 +343,7 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         compile_mode=smash_config["mode"],
         compile_fullgraph=smash_config["fullgraph"],
         batch_size=smash_config["batch_size"],
+        device=smash_config.device,
     )
     # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
     if smash_config["mode"] == "max-autotune-no-cudagraphs":
