@@ -22,6 +22,7 @@ import os
 from typing import Any
 
 import torch
+import torch.nn as nn
 
 from pruna.logging.logger import pruna_logger
 
@@ -204,3 +205,39 @@ def set_to_train(model: Any) -> None:
         # Since after compression most of the models are inference only, the iteration could lead to unexpected behavior. # noqa: E501
         # This should be investigated in the future.
         pruna_logger.warning("Model does not support training mode.")
+
+
+def determine_dtype(pipeline: Any) -> torch.dtype:
+    """
+    Determine the dtype of a given diffusers pipeline or model.
+
+    Parameters
+    ----------
+    pipeline : Any
+        The pipeline or model to determine the dtype of.
+
+    Returns
+    -------
+    torch.dtype
+        The dtype of the model.
+    """
+    if hasattr(pipeline, "torch_dtype"):
+        return pipeline.torch_dtype
+
+    if hasattr(pipeline, "dtype"):
+        return pipeline.dtype
+
+    found_dtypes = set()
+    for m in pipeline.components.values():
+        if isinstance(m, nn.Module):
+            try:
+                p = next(m.parameters())
+                found_dtypes.add(p.dtype)
+            except StopIteration:
+                pass
+
+    if len(found_dtypes) == 1:
+        return list(found_dtypes)[0]
+
+    pruna_logger.warning("Could not determine dtype of model, defaulting to torch.float32.")
+    return torch.float32

@@ -276,6 +276,19 @@ def load_diffusers_model(path: str, **kwargs) -> Any:
         # individual components like the unet or the vae are saved with a config.json file
         model_index = load_json_config(path, "config.json")
 
+    # make loading of model backward compatible with older versions
+    # in newer versions the dtype is always saved in the model_config.json file
+    dtype_info = load_json_config(path, "dtype_info.json")
+    try:
+        dtype = dtype_info["dtype"]
+        dtype = getattr(torch, dtype)
+    except KeyError:
+        dtype = torch.float32
+
+    # do not override user specified dtype
+    if "torch_dtype" not in kwargs:
+        kwargs["torch_dtype"] = dtype
+
     cls = getattr(diffusers, model_index["_class_name"])
     # transformers discards kwargs automatically, no need for filtering
     return cls.from_pretrained(path, **kwargs)

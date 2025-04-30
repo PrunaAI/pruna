@@ -34,6 +34,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers
+from pruna.engine.utils import determine_dtype
 from pruna.logging.logger import pruna_logger
 
 
@@ -190,6 +191,11 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
     if "diffusers" in model.__module__:
         smash_config.load_fns.append(LOAD_FUNCTIONS.diffusers.name)
         model.save_pretrained(model_path)
+        # save dtype of the model as diffusers does not provide this at the moment
+        dtype = determine_dtype(model)
+        # save dtype
+        with open(os.path.join(model_path, "dtype_info.json"), "w") as f:
+            json.dump({"dtype": str(dtype).split(".")[-1]}, f)
 
     elif "transformers" in model.__module__:
         smash_config.load_fns.append(LOAD_FUNCTIONS.transformers.name)
