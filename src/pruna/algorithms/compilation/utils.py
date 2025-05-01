@@ -19,6 +19,8 @@ import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers.cache_utils import StaticCache
 
+from pruna.logging.logger import pruna_logger
+
 
 class TransformersGenerator:
     """
@@ -97,8 +99,11 @@ class TransformersGenerator:
         self.compile_mode = compile_mode
         self.compile_fullgraph = compile_fullgraph
         self.batch_size = batch_size
+        self.cache_batch_size = batch_size
         self.cache_size = max_kv_cache_size
         self.eos_token_id = getattr(model.config, "eos_token_id", None)
+        if self.eos_token_id is None:
+            pruna_logger.warning("Warning: eos_token_id is None. This may affect generation stopping criteria.")
 
         self.setup_cache()
 
@@ -112,6 +117,7 @@ class TransformersGenerator:
         # Cuda Graph section
         self.static_input = torch.zeros((1, 1), device=self.device, dtype=torch.int32)
         self.static_output = torch.zeros((1, 1), device=self.device, dtype=torch.int32)
+        self.original_gen_next_token = self.gen_next_token
         self.cuda_graph = None
         self.do_capture_graph = False
         ############################
@@ -285,18 +291,38 @@ class TransformersGenerator:
         None
             This method initializes internal state for generation but does not return a value.
         """
+        new_batch_size = inputs.shape[0]
+
+        # Check if batch size changed compared to the cache configuration
+        if new_batch_size != self.cache_batch_size:
+            pruna_logger.info(
+                f"Batch size changed from {self.cache_batch_size} to {new_batch_size}. Re-initializing StaticCache."
+            )
+            self.batch_size = new_batch_size
+            self.cache_batch_size = new_batch_size
+            self.setup_cache()
+
+            # If CUDA graph was used, it's now invalid
+            if hasattr(self, "cuda_graph") and self.cuda_graph is not None:
+                pruna_logger.warning("CUDA graph is invalidated due to batch size change. Disabling CUDA graph usage.")
+                self.cuda_graph = None
+                self.gen_next_token = self.original_gen_next_token
+                self.do_capture_graph = False
+
+        # Reset cache contents (does not change shape)
         self.reset_cache()
+
         self.inputs = inputs
         self.batch_size, self.seq_length = self.inputs.shape
         self.cache_position = torch.arange(self.seq_length, device=self.device)
-        # initialize the generated ids with zeros of the shape (batch_size, seq_length + max_new_tokens + 1)
+        # initialize the generated ids with zeros
         self.generated_ids = torch.zeros(
             self.batch_size,
             self.seq_length + max_new_tokens + 1,
             dtype=torch.int,
             device=self.device,
         )
-        # copy the input ids to the generated ids at the cache position.
+        # copy the input ids to the generated ids
         self.generated_ids[:, self.cache_position] = self.inputs.to(torch.int)
 
     def prefill(self) -> torch.Tensor:
@@ -426,36 +452,54 @@ class TransformersGenerator:
         self, current_token: torch.Tensor, max_new_tokens: int, cleanup: bool = True
     ) -> torch.Tensor:
         """
-        Generate the next token, stopping at max_new_tokens or EOS.
+        Generate the next token, stopping at max_new_tokens or EOS for each sequence in the batch.
 
         Parameters
         ----------
         current_token : torch.Tensor
-            The current token.
+            The current token tensor of shape (batch_size, 1).
         max_new_tokens : int
             The maximum number of new tokens to generate.
         cleanup : bool
-            Whether to cleanup the inputs, generated ids, and cache position.
+            Whether to cleanup the inputs, generated ids, and cache position after generation.
 
         Returns
         -------
         torch.Tensor
-            The generated tokens, including the input prompt and potentially an EOS token.
+            The generated tokens tensor of shape (batch_size, seq_length + generated_length),
+            including the input prompt and potentially EOS tokens. Sequences that finish early
+            will have EOS followed by padding (initial zeros).
         """
+        # Keep track of sequences that haven't finished yet (encountered EOS)
+        # Assumes initial state is unfinished for all sequences in the batch
+        unfinished_sequences = torch.ones(self.batch_size, dtype=torch.bool, device=self.device)
+
         # Loop for a maximum of max_new_tokens - 1 steps (as prefill generates the first)
         for i in range(1, max_new_tokens):
-            current_token = self.gen_next_token(current_token)
-            # Check if the generated token is the EOS token
-            # Assumes batch_size = 1, use current_token[0, 0] if shape is (1, 1)
-            # or adapt if current_token shape is different. .item() is safe for single element tensor.
-            if self.eos_token_id is not None and current_token.item() == self.eos_token_id:
-                # Cut the generated_ids to include only up to the current position (including EOS token)
-                self.generated_ids = self.generated_ids[:, : self.cache_position + 1]
-                break  # Stop generation if EOS token is found
+            # Generate the next token for all sequences
+            current_token = self.gen_next_token(current_token)  # Updates self.generated_ids internally
 
-        output_tokens = self.generated_ids
+            # Check if the generated token is the EOS token for any currently unfinished sequence
+            if self.eos_token_id is not None:
+                # Check which sequences produced the EOS token THIS step
+                # current_token shape is (batch_size, 1), squeeze to (batch_size,)
+                # Only consider sequences that were previously unfinished
+                finished_this_step = (current_token.squeeze(-1) == self.eos_token_id) & unfinished_sequences
+                # Update the overall tracker for unfinished sequences
+                unfinished_sequences &= ~finished_this_step
+
+            # Stop generation if all sequences in the batch have finished
+            if not unfinished_sequences.any():
+                break
+
+        # Determine the actual length generated (up to the current cache position)
+        # .item() is safe as cache_position should be a 0-dim tensor
+        final_seq_len = self.cache_position.item() + 1
+        # Clone the relevant part of generated_ids before potential cleanup
+        output_tokens = self.generated_ids[:, :final_seq_len].clone()
 
         if cleanup:
+            # Delete internal state tensors, but not output_tokens which is returned
             del self.inputs, self.generated_ids, self.cache_position
             torch.cuda.empty_cache()
 
@@ -482,6 +526,21 @@ class TransformersGenerator:
         torch.Tensor
             The generated tokens, including the input prompt and potentially an EOS token.
         """
+        # Extract parameters from kwargs with defaults from instance variables
+        self.temperature = kwargs.pop("temperature", self.temperature)
+        self.top_k = kwargs.pop("top_k", self.top_k)
+        self.use_cache = kwargs.pop("use_cache", self.use_cache)
+
+        # Log any kwargs that are not explicitly handled
+        unhandled_kwargs = {
+            k: v
+            for k, v in kwargs.items()
+            if k not in ["input_ids", "max_new_tokens", "temperature", "top_k", "batch_size"]
+        }
+        if unhandled_kwargs:
+            pruna_logger.warning(f"Unhandled kwargs in generate method: {unhandled_kwargs}")
+
+        # Update instance variables with any provided values
         self.setup(
             inputs=kwargs["input_ids"] if "input_ids" in kwargs else args[0],
             max_new_tokens=kwargs["max_new_tokens"] if "max_new_tokens" in kwargs else args[1],
