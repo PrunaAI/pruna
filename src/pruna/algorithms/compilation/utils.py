@@ -496,7 +496,7 @@ class TransformersGenerator:
         # .item() is safe as cache_position should be a 0-dim tensor
         final_seq_len = self.cache_position.item() + 1
         # Clone the relevant part of generated_ids before potential cleanup
-        output_tokens = self.generated_ids[:, :final_seq_len].clone()
+        output_tokens = self.generated_ids[:, : int(final_seq_len)].clone()
 
         if cleanup:
             # Delete internal state tensors, but not output_tokens which is returned
