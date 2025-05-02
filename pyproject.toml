@@ -23,7 +23,7 @@ ignore_missing_imports = true
 
 [tool.poetry]
 name = "pruna"
-version = "0.2.2"
+version = "0.2.3"
 description = "Smash your AI models"
 authors = ["Pruna AI <hello@pruna.ai>"]
 license = "All Rights Reserved"
