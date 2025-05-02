@@ -347,7 +347,7 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     )
     # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
     if smash_config["mode"] == "max-autotune-no-cudagraphs":
-        gen.enable_cuda_graph(max_kv_cache_size=smash_config["seqlen_manual_cuda_graph"])
+        pruna_logger.error("max-autotune-no-cudagraphs is not supported for causal language models.")
     model.generate = gen.generate
     return model
 
