@@ -295,7 +295,7 @@ class TransformersGenerator:
 
         # Check if batch size changed compared to the cache configuration
         # Round up max_new_tokens to the nearest 1000 for better memory allocation
-        rounded_cache_size = ((max_new_tokens + 999) // 1000) * 1000
+        rounded_cache_size = ((inputs.shape[1] + max_new_tokens + 999) // 1000) * 1000
         if new_batch_size != self.cache_batch_size or self.cache_size != rounded_cache_size:
             if new_batch_size != self.cache_batch_size:
                 pruna_logger.info(
