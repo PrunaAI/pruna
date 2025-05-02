@@ -294,12 +294,20 @@ class TransformersGenerator:
         new_batch_size = inputs.shape[0]
 
         # Check if batch size changed compared to the cache configuration
-        if new_batch_size != self.cache_batch_size:
-            pruna_logger.info(
-                f"Batch size changed from {self.cache_batch_size} to {new_batch_size}. Re-initializing StaticCache."
-            )
+        # Round up max_new_tokens to the nearest 1000 for better memory allocation
+        rounded_cache_size = ((max_new_tokens + 999) // 1000) * 1000
+        if new_batch_size != self.cache_batch_size or self.cache_size != rounded_cache_size:
+            if new_batch_size != self.cache_batch_size:
+                pruna_logger.info(
+                    f"Batch size changed from {self.cache_batch_size} to {new_batch_size}. Re-initializing StaticCache."
+                )
+            else:
+                pruna_logger.info(
+                    f"Cache size changed from {self.cache_size} to {rounded_cache_size}. Re-initializing StaticCache."
+                )
             self.batch_size = new_batch_size
             self.cache_batch_size = new_batch_size
+            self.cache_size = rounded_cache_size
             self.setup_cache()
 
             # If CUDA graph was used, it's now invalid
