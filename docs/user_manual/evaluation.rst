@@ -19,7 +19,7 @@ The rest of this guide provides more detailed explanations of each component and
 .. code-block:: python
 
   import copy
-  
+
   from diffusers import StableDiffusionPipeline
 
   from pruna import smash, SmashConfig
@@ -78,7 +78,7 @@ In addition to metrics, ``Task`` requires a :ref:`PrunaDataModule <prunadatamodu
 
 .. autoclass:: pruna.evaluation.task.Task
 
-Currently, ``Task`` supports the following plain textrequests:
+Currently, ``Task`` supports the following plain text requests:
 
 - ``image_generation_quality``: Creates metrics for evaluating image generation models (``clip_score``, ``pairwise_clip_score``, ``psnr``)
 
@@ -108,21 +108,20 @@ The main entry point for evaluating models. The ``EvaluationAgent``:
 .. container:: hidden_code
 
     .. code-block:: python
-      
+
       from pruna.evaluation.task import Task
       from pruna.data.pruna_datamodule import PrunaDataModule
 
       data_module = PrunaDataModule.from_string('LAION256')
       data_module.limit_datasets(10)
 
-      task = Task("image_generation_quality", datamodule=data_module) 
+      task = Task("image_generation_quality", datamodule=data_module)
 
 .. code-block:: python
-  
+
   from pruna.evaluation.evaluation_agent import EvaluationAgent
-  
+
   eval_agent = EvaluationAgent(task)
-  
 
 For the full example running evaluation please see :ref:`Quick Tutorial <quicktutorial>` above.
 
@@ -135,24 +134,10 @@ Metrics help quantify different aspects of model performance, from output qualit
 
 When using the ``EvaluationAgent``, all metrics are executed automatically as part of the evaluation pipeline. The agent handles model inference, data preparation, and passing the appropriate inputs to each metric, eliminating the need to run metrics individually.
 
-Metrics can operate in both single-model and pairwise modes:
+total_time
+^^^^^^^^^^^
 
-- In single-model mode, each evaluation produces independent scores for the model being evaluated.
-- In pairwise mode, metrics compare a subsequent model against the first model evaluated by the agent. Usually, this is used to compare the base model (first model) with its smashed version (subsequent model). The first model's outputs are cached and used as a reference point for all following evaluations. The pairwise comparison produces a single score that quantifies the relationship (e.g., similarity or difference) between the two models.
-
-Our metrics fall into two implementation categories that work differently under the hood:
-
-Base Metrics
-^^^^^^^^^^^^^
-Simple metrics that compute values directly from inputs without maintaining state across batches. Examples include:
-- Model Architecture metrics
-- Energy consumption metrics
-- Memory usage metrics
-
-elapsed_time
-""""""""""""
-
-Measures inference time, latency, and throughput.
+Measures total time taken to run the model.
 
 :Evaluation on CPU: Yes.
 :Required:
@@ -165,10 +150,45 @@ Measures inference time, latency, and throughput.
   | ``device``: Device to run inference on (default "cuda").
   | ``timing_type``: Type of timing to use ("sync" or "async", default "sync").
 
-`gpu_memory <https://pypi.org/project/nvidia-ml-py/>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-Measures peak GPU memory usage during model loading and execution.
+latency
+^^^^^^^
+
+Measures the latency of the model.
+
+:Evaluation on CPU: Yes.
+:Required:
+  A PrunaModel object that defines the model to evaluate.
+  A DataLoader object that defines the dataloader to evaluate the model on.
+:Parameters:
+
+  | ``n_iterations``: Number of inference iterations to measure (default 100).
+  | ``n_warmup_iterations``: Number of warmup iterations before measurement (default 10).
+  | ``device``: Device to run inference on (default "cuda").
+  | ``timing_type``: Type of timing to use ("sync" or "async", default "sync").
+
+
+throughput
+^^^^^^^^^^^
+
+Measures the throughput of the model.
+
+:Evaluation on CPU: Yes.
+:Required:
+  A PrunaModel object that defines the model to evaluate.
+  A DataLoader object that defines the dataloader to evaluate the model on.
+:Parameters:
+
+  | ``n_iterations``: Number of inference iterations to measure (default 100).
+  | ``n_warmup_iterations``: Number of warmup iterations before measurement (default 10).
+  | ``device``: Device to run inference on (default "cuda").
+  | ``timing_type``: Type of timing to use ("sync" or "async", default "sync").
+
+
+`disk_memory <https://pypi.org/project/nvidia-ml-py/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures peak GPU memory usage during model loading.
 
 :Evaluation on CPU: No.
 :Required:
@@ -176,17 +196,43 @@ Measures peak GPU memory usage during model loading and execution.
   A DataLoader object that defines the dataloader to evaluate the model on.
   The model class to load the model from the path. 
 :Parameters:
-
-  | ``mode``: Memory measurement mode ("disk", "inference", or "training").
   | ``gpu_indices``: List of GPU indices to monitor (default all available GPUs).
 
-`energy <https://github.com/mlco2/codecarbon>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-Measures energy consumption in kilowatt-hours (kWh) and CO2 emissions in kilograms (kg).
+`inference_memory <https://pypi.org/project/nvidia-ml-py/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures peak GPU memory usage during model inference.
+
+:Evaluation on CPU: No.
+:Required:
+  Path to the PrunaModel to evaluate.
+  A DataLoader object that defines the dataloader to evaluate the model on.
+  The model class to load the model from the path. 
+:Parameters:
+  | ``gpu_indices``: List of GPU indices to monitor (default all available GPUs).
+
+
+`training_memory <https://pypi.org/project/nvidia-ml-py/l>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures peak GPU memory usage during model training.
+
+:Evaluation on CPU: No.
+:Required:
+  Path to the PrunaModel to evaluate.
+  A DataLoader object that defines the dataloader to evaluate the model on.
+  The model class to load the model from the path. 
+:Parameters:
+  | ``gpu_indices``: List of GPU indices to monitor (default all available GPUs).
+
+`energy_consumed <https://github.com/mlco2/codecarbon>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures energy consumption in kilowatt-hours (kWh)
 
 :Evaluation on CPU: Yes.
-:Description: Measures energy consumption in kilowatt-hours (kWh) and CO2 emissions in kilograms (kg).
+:Description: Measures energy consumption in kilowatt-hours (kWh).
 :Required: 
     A PrunaModel object that defines the model to evaluate.
     A DataLoader object that defines the dataloader to evaluate the model on.
@@ -196,10 +242,27 @@ Measures energy consumption in kilowatt-hours (kWh) and CO2 emissions in kilogra
   | ``n_warmup_iterations``: Number of warmup iterations before measurement (default 10).
   | ``device``: Device to run inference on (default "cuda").
 
-`model_architecture <https://github.com/Lyken17/pytorch-OpCounter>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-Measures the number of parameters and MACs (multiply-accumulate operations) in the model.
+`co2_emissions <https://github.com/mlco2/codecarbon>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures CO2 emissions in kilograms (kg).
+
+:Evaluation on CPU: Yes.
+:Description: Measures CO2 emissions in kilograms (kg).
+:Required: 
+    A PrunaModel object that defines the model to evaluate.
+    A DataLoader object that defines the dataloader to evaluate the model on.
+:Parameters:
+
+  | ``n_iterations``: Number of inference iterations to measure (default 100).
+  | ``n_warmup_iterations``: Number of warmup iterations before measurement (default 10).
+  | ``device``: Device to run inference on (default "cuda").
+
+`total_params <https://github.com/Lyken17/pytorch-OpCounter>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures the number of parameters of the model.
 
 :Evaluation on CPU: Yes.
 :Required: 
@@ -209,14 +272,23 @@ Measures the number of parameters and MACs (multiply-accumulate operations) in t
 
   | ``device``: Device to evaluate the model on (default "cuda").
 
-Stateful Metrics
-^^^^^^^^^^^^^^^^^
-Metrics that maintain internal state and accumulate information across multiple batches. These are typically used for quality assessment.
 
-Most of our stateful metrics are implemented using the TorchMetricsWrapper, which adapts metrics from the `TorchMetrics <https://github.com/Lightning-AI/torchmetrics>`_ library to work within our evaluation framework. This allows us to leverage the robust implementations provided by TorchMetrics while maintaining a consistent API.
+`total_macs <https://github.com/Lyken17/pytorch-OpCounter>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Measures the number of MACs (multiply-accumulate operations) in the model.
+
+:Evaluation on CPU: Yes.
+:Required: 
+    A PrunaModel object that defines the model to evaluate.
+    A DataLoader object that defines the dataloader to evaluate the model on.
+:Parameters:
+
+  | ``device``: Device to evaluate the model on (default "cuda").
+
 
 `clip_score <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/multimodal/clip_score.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Measures the similarity between images and text using the CLIP model.
 
@@ -226,7 +298,7 @@ Measures the similarity between images and text using the CLIP model.
 :Parameters: Accepts all parameters from the TorchMetrics CLIPScore implementation.
 
 `pairwise_clip_score <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/multimodal/clip_score.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Measures the similarity between images of first and subsequent models using the CLIP model.
 
@@ -235,7 +307,7 @@ Measures the similarity between images of first and subsequent models using the 
 :Parameters: Accepts all parameters from the TorchMetrics CLIPScore implementation.
 
 `cmmd <https://arxiv.org/abs/2401.09603>`_
-""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 CMMD measures the distributional discrepancy between two sets of images or text by computing Maximum Mean Discrepancy (MMD) in the CLIP embedding space. It captures both semantic and visual alignment.
 
@@ -257,7 +329,8 @@ Key Benefits:
 
 
 `accuracy <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/accuracy.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the proportion of correct predictions in classification tasks.
 
 
@@ -266,7 +339,8 @@ Measures the proportion of correct predictions in classification tasks.
 :Parameters: Accepts all parameters from the TorchMetrics Accuracy implementation (task, num_classes, threshold, etc.).
 
 `precision <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/precision_recall.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the proportion of positive identifications that were actually correct.
 
 
@@ -275,7 +349,8 @@ Measures the proportion of positive identifications that were actually correct.
 :Parameters: Accepts all parameters from the TorchMetrics Precision implementation (task, num_classes, threshold, etc.).
 
 `recall <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/classification/precision_recall.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the proportion of actual positives that were identified correctly.
 
  
@@ -284,7 +359,8 @@ Measures the proportion of actual positives that were identified correctly.
 :Parameters: Accepts all parameters from the TorchMetrics Recall implementation (task, num_classes, threshold, etc.).
 
 `perplexity <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/text/perplexity.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures how well a probability model predicts a text sample.
 
 :Evaluation on CPU: Yes.
@@ -292,7 +368,8 @@ Measures how well a probability model predicts a text sample.
 :Parameters: Accepts all parameters from the TorchMetrics Perplexity implementation.
 
 `fid <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/image/fid.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the similarity between generated and real image distributions using the Frechet Distance between Gaussian distributions fitted to the Inception embeddings of the generated and real images.
 
 FID compares the **distribution** of real and generated images in a high-dimensional feature space. Since it estimates **mean and covariance statistics**, smaller sample sizes can introduce high variance, making the metric less stable. Large-scale evaluations often use **tens of thousands of images**, but for practical use, smaller sample sizes may still provide a reasonable approximation.
@@ -306,7 +383,8 @@ When generating images and computing FID on **thousands to tens of thousands of 
 :Parameters: Accepts all parameters from the TorchMetrics FrechetInceptionDistance implementation (feature extraction parameters, etc.).
 
 `psnr <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/image/psnr.py>`_
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the peak signal-to-noise ratio (PSNR) between two images.
 
 :Evaluation on CPU: Yes.
@@ -314,7 +392,8 @@ Measures the peak signal-to-noise ratio (PSNR) between two images.
 :Parameters: Accepts all parameters from the TorchMetrics PSNR implementation.
 
 `ssim <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/image/ssim.py>`_
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the structural similarity index (SSIM) between two images.
 
 :Evaluation on CPU: Yes.
@@ -322,7 +401,8 @@ Measures the structural similarity index (SSIM) between two images.
 :Parameters: Accepts all parameters from the TorchMetrics SSIM implementation.
 
 `lpips <https://github.com/Lightning-AI/torchmetrics/blob/master/src/torchmetrics/image/lpip.py>`_
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Measures the Learned Perceptual Image Patch Similarity (LPIPS) between two images.
 
 :Evaluation on CPU: Yes.
