@@ -25,7 +25,7 @@ from transformers.models.clip.processing_clip import CLIPProcessor as _CLIPProce
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.utils import PAIRWISE, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 
@@ -49,6 +49,9 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
     benchmark_metric: bool = True
 
     def __init__(self, **kwargs: Any) -> None:
+        if "call_type" in kwargs:
+            pruna_logger.error(f"Call type is not supported for {self.metric_name}. Using default call type {PAIRWISE}")
+            kwargs.pop("call_type")
         super().__init__(**kwargs)
         self.call_type = "pairwise_y_gt"
         pruna_logger.info(f"Using call_type: {self.call_type} for metric {self.metric_name}")

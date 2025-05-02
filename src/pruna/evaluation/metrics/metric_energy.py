@@ -138,7 +138,7 @@ class EnvironmentalImpactStats(BaseMetric):
 
 
 @MetricRegistry.register(ENERGY_CONSUMED)
-class EnergyConsumed(EnvironmentalImpactStats):
+class EnergyConsumedMetric(EnvironmentalImpactStats):
     """
     View over EnvironmentalImpactStats with energy consumed as primary metric.
 
@@ -179,7 +179,7 @@ class EnergyConsumed(EnvironmentalImpactStats):
 
 
 @MetricRegistry.register(CO2_EMISSIONS)
-class CO2Emissions(EnvironmentalImpactStats):
+class CO2EmissionsMetric(EnvironmentalImpactStats):
     """
     View over EnvironmentalImpactStats with CO2 emissions as primary metric.
 
@@ -236,8 +236,8 @@ class EnergyMetric:
         warn(
             "Class EnergyMetric is deprecated and will be removed in a future release. \n"
             "It has been replaced by EnvironmentalImpactStats, \n"
-            "which is a shared parent class for 'EnergyConsumed' and 'CO2Emissions'. \n"
-            "In the future please use 'EnergyConsumed' or 'CO2Emissions' instead.",
+            "which is a shared parent class for 'EnergyConsumedMetric' and 'CO2EmissionsMetric'. \n"
+            "In the future please use 'EnergyConsumedMetric' or 'CO2EmissionsMetric' instead.",
             DeprecationWarning,
             stacklevel=2,
         )

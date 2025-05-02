@@ -18,10 +18,16 @@ from __future__ import annotations
 from collections import defaultdict
 from inspect import Signature, getmro, signature
 from typing import Any, Callable, Dict, List, Tuple, Type, cast
+from warnings import warn
 
 import torch
 
 from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.logging.logger import pruna_logger
+
+SINGLE = "single"
+PAIRWISE = "pairwise"
+CALL_TYPES = (SINGLE, PAIRWISE)
 
 
 def metric_data_processor(
@@ -162,3 +168,128 @@ def get_direct_parents(list_of_instances: List[Any]) -> Tuple[Dict[Any, List[Any
         key = (parent, config)
         parents_to_children[key].append(instance)
     return parents_to_children, children_of_base
+
+
+def get_pairwise_pairing(call_type: str) -> str:
+    """
+    Get the pairwise pairing for a call type.
+
+    Parameters
+    ----------
+    call_type : str
+        The call type to get the pairing for.
+
+    Returns
+    -------
+    str
+        The pairwise pairing for the call type.
+    """
+    if call_type.startswith("y_"):
+        return "pairwise_y_gt"
+    else:
+        return "pairwise_gt_y"
+
+
+def get_single_pairing(call_type: str) -> str:
+    """
+    Get the single pairing for a call type.
+
+    Parameters
+    ----------
+    call_type : str
+        The call type to get the pairing for.
+
+    Returns
+    -------
+    str
+        The single pairing for the call type.
+    """
+    return call_type.removeprefix(PAIRWISE + "_")
+
+
+def get_any_call_type_pairing(call_type: str) -> str:
+    """
+    Get the pairing for a call type.
+
+    Parameters
+    ----------
+    call_type : str
+        The call type to get the pairing for.
+
+    Returns
+    -------
+    str
+        The pairing for the call type.
+    """
+    if call_type.startswith(PAIRWISE):
+        return get_single_pairing(call_type)
+    else:
+        return get_pairwise_pairing(call_type)
+
+
+def get_call_type_for_pairwise_metric(call_type_requested: str, default_call_type: str) -> str:
+    """
+    Get the call type for a pairwise metric.
+
+    Parameters
+    ----------
+    call_type_requested : str
+        The call type to get the pairing for.
+    default_call_type : str
+        The default call type for the metric.
+
+    Returns
+    -------
+    str
+        The call type pairing for the metric.
+    """
+    if call_type_requested == PAIRWISE:
+        return default_call_type
+    elif call_type_requested == SINGLE:
+        return get_single_pairing(default_call_type)
+    else:
+        if call_type_requested == default_call_type or call_type_requested == get_single_pairing(default_call_type):
+            warn(
+                f"Calling metric with its call type is deprecated. Use {SINGLE} or {PAIRWISE} instead.\n"
+                f"Using default call type {default_call_type}.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return default_call_type
+        else:
+            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+
+
+def get_call_type_for_single_metric(call_type_requested: str, default_call_type: str) -> str:
+    """
+    Get the call type for a single metric.
+
+    Parameters
+    ----------
+    call_type_requested : str
+        The call type to get the pairing for.
+    default_call_type : str
+        The default call type for the metric.
+
+    Returns
+    -------
+    str
+        The call type for the metric.
+    """
+    if call_type_requested == PAIRWISE:
+        return get_pairwise_pairing(default_call_type)
+    elif call_type_requested == SINGLE:
+        return default_call_type
+    else:
+        if call_type_requested == default_call_type or call_type_requested == get_pairwise_pairing(default_call_type):
+            warn(
+                f"Calling metric with its call type is deprecated. Use {SINGLE} or {PAIRWISE} instead.\n"
+                f"Using default call type {default_call_type}.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return default_call_type
+        else:
+            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")

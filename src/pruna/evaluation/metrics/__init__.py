@@ -16,7 +16,7 @@ from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
-from pruna.evaluation.metrics.metric_energy import CO2Emissions, EnergyConsumed
+from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
@@ -28,8 +28,8 @@ __all__ = [
     "TotalTimeMetric",
     "LatencyMetric",
     "ThroughputMetric",
-    "EnergyConsumed",
-    "CO2Emissions",
+    "EnergyConsumedMetric",
+    "CO2EmissionsMetric",
     "DiskMemoryMetric",
     "TrainingMemoryMetric",
     "InferenceMemoryMetric",

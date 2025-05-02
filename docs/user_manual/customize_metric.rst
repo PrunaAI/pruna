@@ -7,38 +7,51 @@ If anything is unclear or you want to discuss your contribution before opening a
 
 If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
 
-Understanding Pruna's Metric System
------------------------------------
+1. Choosing the right type of metric
+------------------------------------
 
-|pruna| has two main types of metrics that live under ``pruna/evaluation/metrics``:
+|pruna|'s evaluation system supports two types of metrics, located under ``pruna/evaluation/metrics``: ``BaseMetric`` and ``StatefulMetric``. 
 
-1. **Base Metrics** - Inherit from ``BaseMetric`` and compute values directly without maintaining state. These metrics usually require isolated inference computation. Examples: ``GPUMemoryMetric``, ``ElapsedTimeMetric``.
-2. **Stateful Metrics** - Inherit from ``StatefulMetric`` and maintain internal state across multiple computations. State here refers to the information that is accumulated across multiple batches. Examples: all metrics under ``TorchMetricWrapper`` like ``Accuracy``, ``CLIPScore``.
+These two types are designed to accommodate different use cases.
 
-When adding a new metric to |pruna|, you should place your implementation in ``pruna/evaluation/metrics`` directory to ensure it's properly integrated with the rest of the system. Use snake_case for the file name (e.g., ``your_new_metric.py``).
-
-In |pruna|, we evaluate metrics by sharing inference runs across multiple metrics whenever possible. This means that |pruna| runs inference once for all compatible metrics.
-
-- **Stateful metrics** are preferred for most use cases, especially quality metrics, as they can share inference results across multiple metrics
-- **Base metrics** are primarily used when isolated inference is required (e.g., for GPU memory metrics where sharing inference would distort results)
+- **BaseMetric**: Inherit from ``BaseMetric`` and compute values directly without maintaining state. 
+    - Used when isolated inference is required (e.g., ``latency``, ``disk_memory``, etc.)
+- **StatefulMetric**: Inherit from ``StatefulMetric`` and accumulate state across multiple batches.
+    - Best suited for quality evaluations (e.g, ``accuracy``, ``clip_score``, etc.)
 
 .. note::
-   If you are confused about which type of metric to implement, you will likely need to implement stateful metrics. Base metrics are typically only used for specialized performance measurements that require isolated inference.
+    In most cases, you should implement a ``StatefulMetric``. ``BaseMetric`` is reserved for specialized performance measurements where shared inference would distort results.
 
-We use PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation.
+2. Implement the metric class
+-----------------------------
 
-Base Metrics
-~~~~~~~~~~~~
+Create a new file in ``pruna/evaluation/metrics`` with a descriptive name for your metric. (e.g, ``your_new_metric.py``)
 
-Base metrics inherit from the ``BaseMetric`` class and implement the ``compute()`` method. These are used when a metric requires isolated inference or cannot share computation with other metrics.
+We use snake_case for the file names (e.g., ``your_new_metric.py``), PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation. 
 
-|pruna| ``EvaluationAgent`` (`documentation <../user_manual/evaluation.html#evaluationagent>`_) requires all ``BaseMetric`` s to implement the ``compute`` method with two specific parameters: ``model`` and ``dataloader``. Please take note that the ``EvaluationAgent`` does not handle inference for base metrics. You will need to handle inference computations yourself.
+Both  ``BaseMetric`` and ``StatefulMetric`` return a ``MetricResult`` object, which contains the metric name, result value and other metadata.
+
+Implementing a ``BaseMetric``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a new class that inherits from ``BaseMetric`` and implements the ``compute()`` method.
+
+``compute()`` takes two parameters: ``model`` and ``dataloader``.
+
+Inside ``compute()``, you are responsible for running inference manually. 
+
+Your method should return a ``MetricResult`` object with the metric name, result value and other metadata. The result value should be a float or int.
 
 .. code-block:: python
 
     from pruna.evaluation.metrics.metric_base import BaseMetric
+    from pruna.evaluation.metrics.metric_result import MetricResult
 
     class YourNewMetric(BaseMetric):
+        '''Your metric description'''
+
+        metric_name = "your_metric_name"
+        
         def __init__(self):
             super().__init__()
             # Initialize any parameters your metric needs
@@ -48,50 +61,45 @@ Base metrics inherit from the ``BaseMetric`` class and implement the ``compute()
 
             outputs = run_inference(model, dataloader)
             result = some_calculation(outputs)
-            return result
+            params = self.__dict__.copy() # or any metadata you prefer
+            return MetricResult(self.metric_name, params, result)
 
-Stateful Metrics
-~~~~~~~~~~~~~~~~
+Implementing a ``StatefulMetric``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Stateful metrics inherit from the ``StatefulMetric`` class and are the preferred approach for most metrics in |pruna|. They maintain internal state variables that accumulate information across multiple batches, allowing for efficient sharing of inference across different metrics.
+To implement a ``StatefulMetric``, create a class that inherits from ``StatefulMetric``. These metrics are designed to accumulate state across multiple batches and can share inference with other metrics.
 
-Every stateful metric must implement the following methods:
+Use ``add_state()`` method to define internal state variables that will accumulate data across batches. For example, you might track totals and counts to compute an average.
 
-1. ``__init__(self, **kwargs)``: Initialize your metric and its parameters
-    - Call ``super().__init__()``
-    - Set ``self.metric_name``
-    - Set ``self.default_call_type``. We also recommend passing ``call_type`` to the ``__init__`` method to allow for pairwise evaluation.
-    - Initialize state variables using ``add_state()``
-    - Define any additional parameters
+The ``update()`` method processes each batch of data, updating the state variables based on the current batch. It takes three parameters: ``inputs``, ``ground_truths`` and ``predictions``.
 
-2. ``update(self, inputs, ground_truths, predictions)``: Process each batch
-    - Called automatically by the evaluation pipeline
-    - Update your state variables based on the current batch. Your implementation can use any combination of these parameters as needed for its specific calculations.
-    - No return value needed
+The ``compute()`` method is called after all batches are processed and returns a ``MetricResult`` object, which contains the final metric value calculated from the accumulated state.
 
-3. ``compute(self)``: Calculate final metric value
-    - Use accumulated state to compute final result
-    - Called after all batches are processed
-    - Must return the final metric value
+Metrics can operate in both single-model and pairwise modes, determined by the ``call_type`` parameter. Common ``call_types`` include ``y_gt``, ``gt_y``, ``x_gt``, ``gt_x``, ``pairwise_y_gt``, and ``pairwise_gt_y``. For more details, see the :ref:`Understanding Call Types <understanding-call-types>` section.
 
+Once you have implemented your metric, you can switch the mode of the metric despite your default ``call_type`` simply by passing ``single`` or ``pairwise`` to the ``call_type`` parameter of the ``StatefulMetric`` constructor.
 
-Here's a complete example showing all required methods:
+Here's a complete example implementing a ``StatefulMetric`` with a single ``call_type`` showing all required methods:
 
 .. code-block:: python
 
     from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-    from pruna.evaluation.metrics.utils import metric_data_processor
+    from pruna.evaluation.metrics.result import MetricResult
+    from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor # for pairwise metrics, you would need to change the imports to pairwise
     import torch
 
     class YourNewStatefulMetric(StatefulMetric):
-        def __init__(self, param1='default1', param2='default2', call_type=""):
+        '''Your metric description'''
+
+        default_call_type = "y_gt"
+        metric_name = "your_metric_name"
+
+        def __init__(self, param1='default1', param2='default2', call_type=SINGLE): # Since we picked a single call_type for default, we can use it as a default value
             super().__init__()
             self.param1 = param1
             self.param2 = param2
-            self.metric_name = "your_metric_name"
-            self.default_call_type = "y_gt"
-            self.call_type = call_type if call_type else self.default_call_type
-
+            self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type) # Call the correct helper function to get the correct call_type
+            
             # Initialize state variables
             self.add_state("total", torch.zeros(1))
             self.add_state("count", torch.zeros(1))
@@ -108,19 +116,71 @@ Here's a complete example showing all required methods:
             # Compute the final metric value using the accumulated state
             if self.count == 0:
                 return 0
-            return self.total / self.count
+            return MetricResult(self.metric_name, self.__dict__.copy(), self.total / self.count)
+
+.. _understanding-call-types:
+
+Understanding Call Types
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+|pruna| metrics can operate in both single-model and pairwise modes:
+
+ - **Single-model mode**: Each evaluation produces independent scores for the model being evaluated.
+ - **Pairwise mode**: Metrics compare a subsequent model against the first model evaluated by the agent and produce a single comparison score.
+
++--------------------+-------------------------------------------------------------+
+| Call Type          | Description                                                 |
++====================+=============================================================+
+| `y_gt`             | Model's output first, then ground truth                     |
++--------------------+-------------------------------------------------------------+
+| `gt_y`             | Ground truth first, then model's output                     |
++--------------------+-------------------------------------------------------------+
+| `x_gt`             | Input data first, then ground truth                         |
++--------------------+-------------------------------------------------------------+
+| `gt_x`             | Ground truth first, then input data                         |
++--------------------+-------------------------------------------------------------+
+| `pairwise_y_gt`    | Base model's output first, then subsequent model's output   |
++--------------------+-------------------------------------------------------------+
+| `pairwise_gt_y`    | Subsequent model's output first, then base model's output   |
++--------------------+-------------------------------------------------------------+ 
 
 
-When to Use Each Type
-~~~~~~~~~~~~~~~~~~~~~
+You need to decide on the default ``call_type`` based on the metric you are implementing. 
 
-- **Use Stateful Metrics when**: Your metric can share inference with other metrics without affecting results (most quality metrics fall into this category)
-- **Use Basic Metrics when**: Your metric requires isolated inference or would produce incorrect results if inference were shared (e.g., performance metrics like GPU memory usage)
+For example, if you are implementing a metric that compares two models, you should use the ``pairwise_y_gt`` call type. Examples from |pruna| include ``psnr``, ``ssim``, ``lpips``.
 
-By using stateful metrics whenever possible, |pruna| can efficiently evaluate multiple metrics with just a single inference pass.
+If you are implementing an alignment metric comparing model's output with the input, you should use the ``x_gt`` or ``gt_x`` call type. Examples from |pruna| include ``clip_score``.
 
-Registering Your Metric
------------------------
+If you are implementing a metric that compares the model's output with the ground truth, you should use the ``y_gt`` or ``gt_y`` call type. Examples from |pruna| include ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``.
+
+You may want to switch the mode of the metric despite your default ``call_type``. For instance you may want to use ``fid`` in pairwise mode to get a single comparison score for two models. 
+
+In this case, you can pass ``pairwise`` to the ``call_type`` parameter of the ``StatefulMetric`` constructor.
+
+
+.. container:: hidden_code
+
+    .. code-block:: python
+
+        import sys
+        import types
+
+        dummy_your_metric = types.ModuleType("pruna.evaluation.metrics.your_metric_file")
+        dummy_your_metric.YourNewStatefulMetric = "dummy_your_metric"
+        sys.modules["pruna.evaluation.metrics.your_metric_file"] = dummy_your_metric
+
+.. code-block:: python
+
+    from pruna.evaluation.metrics.your_metric_file import YourNewStatefulMetric
+    
+    # Initialize your metric from the instance
+    YourNewStatefulMetric(param1='value1', param2='value2', call_type="pairwise") 
+
+If you have implemented your metric using the correct ``get_call_type_for_metric`` function and ``metric_data_processor`` function, this will work as expected.
+
+
+3. Register the metric
+----------------------
 
 After implementing your metric, you need to register it with Pruna's ``MetricRegistry`` system.
 
@@ -131,7 +191,7 @@ The simplest way to do this is with the ``@MetricRegistry.register`` decorator:
     from pruna.evaluation.metrics.registry import MetricRegistry
     from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 
-    @MetricRegistry.register("your_new_metric_name")
+    @MetricRegistry.register("your_metric_name")
     class YourNewMetric(StatefulMetric):
         def __init__(self, param1='default1', param2='default2'): # Don't forget to add default values for your parameters!
             super().__init__()
@@ -141,24 +201,46 @@ The simplest way to do this is with the ``@MetricRegistry.register`` decorator:
 
 Thanks to this registry system, everyone using |pruna| can now refer to your metric by name without having to create instances directly!
 
+.. container:: hidden_code
+
+    .. code-block:: python
+
+        # mock certain imports to make the code block runnable
+        import sys
+        import types
+
+        dummy_your_metric = types.ModuleType("pruna.evaluation.metrics.your_metric_file")
+        dummy_your_metric.YourNewMetric = "dummy_your_metric"
+        sys.modules["pruna.evaluation.metrics.your_metric_file"] = dummy_your_metric
+
+.. code-block:: python
+
+    from pruna.evaluation.metrics.your_metric_file import YourNewMetric
+
+    # Classic way: Initialize your metric from the instance
+    YourNewMetric(param1='value1', param2='value2') 
+
+.. code-block:: python
+
+    from pruna.evaluation.task import Task
+
+    metrics = [
+        'your_metric_name'
+    ]
+
+    # Now you can create a task with your metric from the metric name.
+    task = Task(request=metrics, data_module=pruna.data.pruna_datamodule.PrunaDataModule.from_string('LAION256'))  
+
+    
 One important thing: the registration happens when your module is imported. To ensure your metric is always available, we suggest importing it in ``pruna/evaluation/metrics/__init__.py`` file.
 
-Steps to Add a New Metric
--------------------------
+4. Add tests and update the documentation
+-----------------------------------------
 
-1. **Decide on the metric type**: Determine whether your metric needs isolated inference (use ``BaseMetric``) or can share inference (use ``StatefulMetric``).
+Create tests in ``pruna/tests/evaluation`` for your metric to ensure it works correctly.
 
-2. **Create a new file**: Create a new Python file in the ``pruna/evaluation/metrics/`` directory with a descriptive name for your metric.
+Add documentation for your new metric in the user manual ``docs/user_manual/evaluation.rst``, including examples of how to use it.
 
-3. **Implement your metric class**: Inherit from the appropriate class and implement the required methods.
-
-4.  **Register your metric**: Use the ``MetricRegistry.register`` decorator to make your metric available throughout the system.
-
-5. **Add tests**: Create tests in ``pruna/tests/evaluation`` for your metric to ensure it works correctly.
-
-6. **Update documentation**: Add documentation for your new metric in the user manual ``docs/user_manual/evaluation.rst``, including examples of how to use it.
-
-7. **Submit a pull request**: Follow the standard contribution process to submit your new metric for review.
 
 By following these steps, you'll help expand Pruna's capabilities and contribute to the project's success.
 
@@ -189,21 +271,15 @@ Once you've implemented your metric, everyone can use it in Pruna's evaluation p
 
     from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
     from pruna.evaluation.metrics.your_metric_file import YourNewMetric
-
+    
     metrics = [
         'clip_score',
         'your_new_metric_name'
     ]
 
-    data_module = PrunaDataModule.from_string('LAION256')
-    test_dataloader = data_module.train_dataloader()
-
-    task = Task(request=metrics, dataloader=test_dataloader)
+    task = Task(request=metrics, data_module=pruna.data.pruna_datamodule.PrunaDataModule.from_string('LAION256'))
 
     eval_agent = EvaluationAgent(task=task)
 
     results = eval_agent.evaluate(model)
-
-
-
 
