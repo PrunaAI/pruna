@@ -297,25 +297,21 @@ class TransformersGenerator:
         # Round up max_new_tokens to the nearest 1000 for better memory allocation
         rounded_cache_size = ((inputs.shape[1] + max_new_tokens + 999) // 1000) * 1000
         if new_batch_size != self.cache_batch_size or self.cache_size != rounded_cache_size:
-            if new_batch_size != self.cache_batch_size:
-                pruna_logger.info(
-                    f"Batch size changed from {self.cache_batch_size} to {new_batch_size}. Re-initializing StaticCache."
-                )
-            else:
-                pruna_logger.info(
-                    f"Cache size changed from {self.cache_size} to {rounded_cache_size}. Re-initializing StaticCache."
-                )
+            pruna_logger.info(
+                f"Cache size changed from {self.cache_batch_size}x{self.cache_size} to "
+                f"{new_batch_size}x{rounded_cache_size}. Re-initializing StaticCache."
+            )
             self.batch_size = new_batch_size
             self.cache_batch_size = new_batch_size
             self.cache_size = rounded_cache_size
             self.setup_cache()
 
-            # If CUDA graph was used, it's now invalid
+            # If CUDA graph was used, recompile the graph
             if hasattr(self, "cuda_graph") and self.cuda_graph is not None:
-                pruna_logger.warning("CUDA graph is invalidated due to batch size change. Disabling CUDA graph usage.")
-                self.cuda_graph = None
-                self.gen_next_token = self.original_gen_next_token
-                self.do_capture_graph = False
+                pruna_logger.warning(
+                    "CUDA graph is invalidated due to batch size or cache size change. Recompiling the graph."
+                )
+                self.enable_cuda_graph(max_kv_cache_size=self.cache_size)
 
         # Reset cache contents (does not change shape)
         self.reset_cache()
