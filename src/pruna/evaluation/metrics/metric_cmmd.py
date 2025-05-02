@@ -24,7 +24,7 @@ from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 
@@ -60,7 +60,7 @@ class CMMD(StatefulMetric):
         *args,
         device: str | torch.device = "cuda",
         clip_model_name: str = "openai/clip-vit-large-patch14-336",
-        call_type: str = default_call_type,
+        call_type: str = SINGLE,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -76,10 +76,8 @@ class CMMD(StatefulMetric):
         self.sigma = 10  # Sigma parameter from the paper
         self.scale = 1000  # Scale parameter from the paper
         self.metric_name = "cmmd"
-        if call_type == "pairwise":
-            self.call_type = "pairwise_" + self.default_call_type
-        else:
-            self.call_type = call_type
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+
         self.add_state("ground_truth_embeddings", [])
         self.add_state("output_embeddings", [])
 

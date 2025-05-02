@@ -128,12 +128,12 @@ class InferenceTimeStats(BaseMetric):
                     break
 
         total_elapsed_time = sum(list_elapsed_times)
-        self.batch_size = dataloader.batch_size
+        self.batch_size = cast(int, dataloader.batch_size)
 
         raw_results = {
             TOTAL_TIME: total_elapsed_time,
             LATENCY: total_elapsed_time / self.n_iterations,
-            THROUGHPUT: self.n_iterations / total_elapsed_time,
+            THROUGHPUT: self.n_iterations * self.batch_size / total_elapsed_time,
         }
 
         return cast(Dict[str, Any], raw_results)
