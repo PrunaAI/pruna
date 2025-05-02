@@ -124,6 +124,18 @@ class EvaluationAgent:
             pruna_logger.info("Evaluating a base model.")
 
         model.inference_handler.log_model_info()
+        if (
+            "batch_size" in self.task.datamodule.dataloader_args
+            and self.task.datamodule.dataloader_args["batch_size"] != model.smash_config.batch_size
+            and not is_base
+        ):
+            pruna_logger.warning(
+                "Batch size mismatch between evaluation datamodule and smashed model's smash config. "
+                "This may lead to incorrect metric computation due to compression algorithms being batch size specific. "
+                "Adjust the datamodule creation to match the smashed model's batch size, e.g., "
+                "datamodule = PrunaDataModule.from_string(dataset_name, dataloader_args={'batch_size': %d})",
+                model.smash_config.batch_size,
+            )
 
         return model
 
