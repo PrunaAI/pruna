@@ -1,6 +1,27 @@
 Opening an Issue
 ===============================
 
+
+.. _documentation-improvement:
+
+Documentation Improvement
+------------------------
+
+All bits help! We appreciate your interest in improving |pruna|’s documentation.
+
+Our documentation is built with `Sphinx <https://www.sphinx-doc.org/en/master/>`_ and `Read the Docs <https://readthedocs.org/>`_.
+
+The current set-up relies on restructured text (rst) files for the documentation and forces us to evaluate and build the documentation on our side.
+This means you cannot directly evaluate the documentation changes on your local machine, however, you can still make changes to the documentation and create a pull request based on the changes.
+
+When opening a pull request for a documentation improvement, you will encounter the following template to help you structure your suggestion. Make sure to fill out all sections applicable to your feature request so that we can integrate it in Pruna as fast as possible:
+
+.. literalinclude:: issue_templates/documentation_improvement.md
+   :language: markdown
+   :linenos:
+   :lines: 9-
+
+
 .. _bug-report:
 
 Bug Report
@@ -33,7 +54,7 @@ When opening a bug report on GitHub, you will encounter the following template t
 
 Feature Request
 ---------------
-We appreciate your interest in improving |pruna|! Feature requests help shape the project, and we welcome ideas that align with our mission. 
+We appreciate your interest in improving |pruna|! Feature requests help shape the project, and we welcome ideas that align with our mission.
 
 Before submitting your feature request, consider the following points to ensure your request is clear and actionable:
 
