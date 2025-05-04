@@ -5,6 +5,7 @@ This guide provides an introduction to evaluating model optimizations with |prun
 
 Evaluation helps you understand how compression affects your models across different dimensions - from output quality to resource requirements.
 This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
 
 Basic Evaluation Workflow
 -------------------------
@@ -49,12 +50,12 @@ Let's see what that looks like in code.
     from pruna.data.pruna_datamodule import PrunaDataModule
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_pretrained("CompVis/stable-diffusion-v1-4")
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/opt-125m-smashed")
 
     # Create and configure Task
     task = Task(
-        requests=["clip_score", "psnr"],
-        datamodule=PrunaDataModule.from_string('LAION256'),
+        requests=["accuracy"],
+        datamodule=PrunaDataModule.from_string('WikiText'),
         device="cpu"
     )
 
@@ -73,23 +74,10 @@ In this section, we’ll introduce the evaluation metrics you can use.
 Task
 ^^^^
 
-The ``Task`` is a class that defines the task you want to evaluate your model on and it requires a set of metrics and a :ref:`PrunaDataModule <prunadatamodule>` to perform the evaluation.
-
-.. code-block:: python
-
-    from pruna.evaluation.task import Task
-    from pruna.data.pruna_datamodule import PrunaDataModule
-
-    task = Task(
-        requests=["image_generation_quality"],
-        datamodule=PrunaDataModule.from_string('LAION256'),
-        device="cpu"
-    )
+The ``Task`` is a class that defines the task you want to evaluate your model on and it requires a set of :doc:`Metrics </reference/evaluation>` and a :doc:`PrunaDataModule </reference/pruna_model>` to perform the evaluation.
 
 Metrics
 ~~~~~~~
-
-The ``Metrics`` is a class that defines the metrics you want to evaluate your model on.
 
 Metrics are the core components that calculate specific performance indicators. There are two main types of metrics:
 
@@ -109,7 +97,6 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.evaluation.task import Task
             from pruna.data.pruna_datamodule import PrunaDataModule
 
-            # Create the task
             task = Task(
                 request="image_generation_quality",
                 datamodule=PrunaDataModule.from_string('LAION256'),
@@ -125,7 +112,6 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.evaluation.task import Task
             from pruna.data.pruna_datamodule import PrunaDataModule
 
-            # Create the task
             task = Task(
                 metrics=["clip_score", "psnr"],
                 datamodule=PrunaDataModule.from_string('LAION256'),
@@ -134,22 +120,16 @@ The ``Task`` accepts ``Metrics`` in three ways:
 
     .. tab:: List of Metric Instances
 
-        As a list of metric instances, which provides more flexibility in configuring the metrics.
+        As a list of metric (e.g., ``CMMD()``), which provides more flexibility in configuring the metrics.
 
         .. code-block:: python
 
             from pruna.evaluation.task import Task
             from pruna.data.pruna_datamodule import PrunaDataModule
-            from pruna.evaluation.metrics.metric_psnr import PSNR
+            from pruna.evaluation.metrics import CMMD, TorchMetricWrapper
 
-            # Initialize the metrics
-            metrics = [
-                PSNR()
-            ]
-
-            # Create the task
             task = Task(
-                metrics=metrics,
+                metrics=[CMMD(), TorchMetricWrapper(metric_name="accuracy")],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -164,27 +144,32 @@ PrunaDataModule
 The ``PrunaDataModule`` is a class that defines the data you want to evaluate your model on.
 Data modules are a core component of the evaluation framework, providing standardized access to datasets for evaluating model performance before and after optimization.
 
-They offer the following functionality:
+A more detailed overview of the ``PrunaDataModule``, its datasets and their corresponding collate functions can be found in the :doc:`Data Module Overview </docs_pruna/user_manual/configure>` section.
 
-- Standard dataloaders for training, validation, and testing
-- Integration with appropriate collate functions for different data types
-- Support for dataset size limitations for faster evaluation
-- Compatibility with tokenizers for text-based tasks
-
-The ``Task`` accepts ``PrunaDataModule`` in three ways:
+The ``Task`` accepts ``PrunaDataModule`` in two different ways:
 
 .. tabs::
 
     .. tab:: From String
 
-        As a plain text request from predefined options (e.g., ``LAION256``)
+        As a plain text request from predefined options (e.g., ``WikiText``)
 
         .. code-block:: python
 
             from pruna.data.pruna_datamodule import PrunaDataModule
+            from transformers import AutoTokenizer
+
+            # Load the tokenizer
+            tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
             # Create the data Module
-            datamodule = PrunaDataModule.from_string('LAION256')
+            datamodule = PrunaDataModule.from_string(
+                dataset_name='WikiText',
+                tokenizer=tokenizer,
+                collate_fn="text_generation_collate",
+                collate_fn_args={"max_seq_len": 512},
+                dataloader_args={"batch_size": 16, "num_workers": 4}
+            )
 
     .. tab:: From Datasets
 
@@ -196,7 +181,7 @@ The ``Task`` accepts ``PrunaDataModule`` in three ways:
             from transformers import AutoTokenizer
             from datasets import load_dataset
 
-            # Load a built-in dataset
+            # Load the tokenizer
             tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
             # Load custom datasets
@@ -212,7 +197,86 @@ The ``Task`` accepts ``PrunaDataModule`` in three ways:
                 dataloader_args={"batch_size": 16, "num_workers": 4}
             )
 
+.. tip::
+
+    You can find the full list of available datasets in the :doc:`Dataset Overview </docs_pruna/user_manual/configure>` section.
+
+Lastly, you can limit the number of samples in the dataset by using the ``PrunaDataModule.limit_samples`` method.
+
+.. code-block:: python
+
+    from pruna.data.pruna_datamodule import PrunaDataModule
+
+    # Create the data module
+    datamodule = PrunaDataModule.from_string('WikiText')
+
+    # Limit all splits to 100 samples
+    datamodule.limit_datasets(100)
+
+    # Use different limits for each split
+    datamodule.limit_datasets([500, 100, 200])  # train, val, test
+
 EvaluationAgent
 ^^^^^^^^^^^^^^^
 
-The ``EvaluationAgent`` is a class that evaluates the performance of your model. 
+The ``EvaluationAgent`` is a class that evaluates the performance of your model.
+
+To evaluate a model with the ``EvaluationAgent``, you need to create a ``Task`` with ``Metrics`` and a ``PrunaDataModule``.
+Then, initialize an ``EvaluationAgent`` with that task and call the ``evaluate()`` method with your model.
+
+We can then chose to evaluate a single model or a pair of models.
+
+- **Single-Model Evaluation**: each model is evaluated independently, producing metrics that only pertain to that model's performance. The metrics are computed from the model's outputs without reference to any other model.
+- **Pairwise Evaluation**: metrics compare the outputs of the current model against the first model evaluated by the agent. The first model's outputs are cached by the EvaluationAgent and used as a reference for subsequent evaluations.
+
+Let's see how this works in code.
+
+.. code-block:: python
+
+    import copy
+
+    from diffusers import StableDiffusionPipeline
+
+    from pruna import smash, SmashConfig
+    from pruna.data.pruna_datamodule import PrunaDataModule
+    from pruna.evaluation.evaluation_agent import EvaluationAgent
+    from pruna.evaluation.task import Task
+
+    # Load data and set up smash config
+    smash_config = SmashConfig()
+    smash_config['cacher'] = 'deepcache'
+
+    # Load the base model
+    model_path = "CompVis/stable-diffusion-v1-4"
+    pipe = StableDiffusionPipeline.from_pretrained(model_path)
+
+    # Smash the model
+    copy_pipe = copy.deepcopy(pipe)
+    smashed_pipe = smash(copy_pipe, smash_config)
+
+    # Define the task and the evaluation agent
+    metrics = ['clip_score', 'psnr']
+    task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+    eval_agent = EvaluationAgent(task)
+
+    # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
+    first_results = eval_agent.evaluate(pipe)
+    print(first_results)
+
+    # Evaluate smashed model
+    smashed_results = eval_agent.evaluate(smashed_pipe)
+    print(smashed_results)
+
+
+Best Practices
+--------------
+
+Start with a small dataset
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When first setting up evaluation, limit the dataset size with ``datamodule.limit_datasets(n)`` to make debugging faster.
+
+Use pairwise metrics for comparison
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores.
