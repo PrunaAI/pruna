@@ -5,6 +5,7 @@ This guide provides an introduction to evaluating model optimizations with |prun
 
 Evaluation helps you understand how compression affects your models across different dimensions - from output quality to resource requirements.
 This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs.
+
 Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
 
 Basic Evaluation Workflow
