@@ -15,9 +15,9 @@ There are various ways you can contribute:
 - Found a bug? Open an issue with a :ref:`bug-report`
 - Documentation improvements? Open an issue with a :ref:`documentation-improvement`
 - Want a new feature? Open an issue with a :ref:`feature-request`
-- Have a new algorithm to add? Check out: :doc:`adding_algorithm`
-- Have a new metric to add? Check out: :doc:`adding_metric`
-- Have a new dataset to add? Check out: :doc:`adding_dataset`
+- Have a new algorithm to add? Check out: :doc:`/docs_pruna/user_manual/adding_algorithm`
+- Have a new metric to add? Check out: :doc:`/docs_pruna/user_manual/adding_metric`
+- Have a new dataset to add? Check out: :doc:`/docs_pruna/user_manual/adding_dataset`
 
 
 .. _how-to-contribute:
