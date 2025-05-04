@@ -1,5 +1,5 @@
-Adding a Metric
-===============================
+Customize Metrics
+=================
 
 This guide will walk you through the process of adding a new metric to Pruna's evaluation system.
 
@@ -12,20 +12,20 @@ Understanding Pruna's Metric System
 
 |pruna| has two main types of metrics that live under ``pruna/evaluation/metrics``:
 
-1. **Base Metrics** - Inherit from ``BaseMetric`` and compute values directly without maintaining state. These metrics usually require isolated inference computation. Examples: ``GPUMemoryMetric``, ``ElapsedTimeMetric``. 
-2. **Stateful Metrics** - Inherit from ``StatefulMetric`` and maintain internal state across multiple computations. State here refers to the information that is accumulated across multiple batches. Examples: all metrics under ``TorchMetricWrapper`` like ``Accuracy``, ``CLIPScore``. 
+1. **Base Metrics** - Inherit from ``BaseMetric`` and compute values directly without maintaining state. These metrics usually require isolated inference computation. Examples: ``GPUMemoryMetric``, ``ElapsedTimeMetric``.
+2. **Stateful Metrics** - Inherit from ``StatefulMetric`` and maintain internal state across multiple computations. State here refers to the information that is accumulated across multiple batches. Examples: all metrics under ``TorchMetricWrapper`` like ``Accuracy``, ``CLIPScore``.
 
 When adding a new metric to |pruna|, you should place your implementation in ``pruna/evaluation/metrics`` directory to ensure it's properly integrated with the rest of the system. Use snake_case for the file name (e.g., ``your_new_metric.py``).
 
 In |pruna|, we evaluate metrics by sharing inference runs across multiple metrics whenever possible. This means that |pruna| runs inference once for all compatible metrics.
- 
+
 - **Stateful metrics** are preferred for most use cases, especially quality metrics, as they can share inference results across multiple metrics
 - **Base metrics** are primarily used when isolated inference is required (e.g., for GPU memory metrics where sharing inference would distort results)
 
 .. note::
    If you are confused about which type of metric to implement, you will likely need to implement stateful metrics. Base metrics are typically only used for specialized performance measurements that require isolated inference.
 
-We use PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation. 
+We use PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation.
 
 Base Metrics
 ~~~~~~~~~~~~
@@ -44,10 +44,10 @@ Base metrics inherit from the ``BaseMetric`` class and implement the ``compute()
         def __init__(self):
             super().__init__()
             # Initialize any parameters your metric needs
-            
+
         def compute(self, model, dataloader):
             '''Run inference on the model and compute the metric value.'''
-       
+
             outputs = run_inference(model, dataloader)
             result = some_calculation(outputs)
             return result
@@ -93,11 +93,11 @@ Here's a complete example showing all required methods:
             self.metric_name = "your_metric_name"
             self.default_call_type = "y_gt"
             self.call_type = call_type if call_type else self.default_call_type
-            
+
             # Initialize state variables
             self.add_state("total", torch.zeros(1))
             self.add_state("count", torch.zeros(1))
-        
+
         def update(self, inputs, ground_truths, predictions):
             # Update the state variables based on the current batch
             # Pass the inputs, ground_truths and predictions and the call_type to the metric_data_processor to get the data in the correct format
@@ -105,13 +105,12 @@ Here's a complete example showing all required methods:
             batch_result = some_calculation(*metric_data)
             self.total += batch_result
             self.count += 1
-            
+
         def compute(self):
             # Compute the final metric value using the accumulated state
             if self.count == 0:
                 return 0
             return self.total / self.count
-            
 
 When to Use Each Type
 ~~~~~~~~~~~~~~~~~~~~~
@@ -119,12 +118,12 @@ When to Use Each Type
 - **Use Stateful Metrics when**: Your metric can share inference with other metrics without affecting results (most quality metrics fall into this category)
 - **Use Basic Metrics when**: Your metric requires isolated inference or would produce incorrect results if inference were shared (e.g., performance metrics like GPU memory usage)
 
-By using stateful metrics whenever possible, |pruna| can efficiently evaluate multiple metrics with just a single inference pass. 
+By using stateful metrics whenever possible, |pruna| can efficiently evaluate multiple metrics with just a single inference pass.
 
 Registering Your Metric
 -----------------------
 
-After implementing your metric, you need to register it with Pruna's ``MetricRegistry`` system. 
+After implementing your metric, you need to register it with Pruna's ``MetricRegistry`` system.
 
 The simplest way to do this is with the ``@MetricRegistry.register`` decorator:
 
@@ -140,7 +139,7 @@ The simplest way to do this is with the ``@MetricRegistry.register`` decorator:
             self.param1 = param1
             self.param2 = param2
             self.metric_name = "your_metric_name"
-            
+
 Thanks to this registry system, everyone using |pruna| can now refer to your metric by name without having to create instances directly!
 
 One important thing: the registration happens when your module is imported. To ensure your metric is always available, we suggest importing it in ``pruna/evaluation/metrics/__init__.py`` file.
@@ -194,7 +193,7 @@ Once you've implemented your metric, everyone can use it in Pruna's evaluation p
 
     metrics = [
         'clip_score',
-        'your_new_metric_name' 
+        'your_new_metric_name'
     ]
 
     data_module = PrunaDataModule.from_string('LAION256')
@@ -206,6 +205,6 @@ Once you've implemented your metric, everyone can use it in Pruna's evaluation p
 
     results = eval_agent.evaluate(model)
 
-    
+
 
 

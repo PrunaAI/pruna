@@ -93,8 +93,6 @@ Your dataset will have to adhere to the formats expected by the ``collate_fn`` a
 .. autofunction:: pruna.data.collate.audio_collate
 .. autofunction:: pruna.data.collate.question_answering_collate
 
-
-
 .. _prunadatamodule:
 
 Accessing the PrunaDataModule directly

@@ -1,10 +1,12 @@
-Saving and Loading Pruna Models
-===============================
+Save and Load Models
+=====================
 
-After smashing a model using |pruna|, you can save it to disk and load it later using the built-in save and load functionality.
+This guide provides a quick introduction to saving and loading optimized AI models with |pruna|.
 
-Saving and Loading Models
--------------------------
+You will learn how to save and load a ``PrunaModel`` after smashing a model using |pruna|. Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+
+Saving a ``PrunaModel``
+-----------------------
 
 To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaModel.save_to_hub()`` method. This method saves all necessary model files and as well as the smash configuration to the specified directory:
 
@@ -46,12 +48,19 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
-            smashed_model.save_to_hub("PrunaAI/smashed-stable-diffusion-v1-4")
+            smashed_model.save_to_hub("PrunaAI/smashed-stable-diffusion-v1-4-smashed")
+
+        .. tip::
+
+            When saving models to the hub, we recommend to use a suffix like ``-smashed`` to indicate that the model has been smashed with |pruna|.
 
 The save operation will:
 
 1. Save the model weights and architecture, including information on how to load the model later on
 2. Save the ``smash_config`` (including tokenizer and processor if present, data will be detached and not reloaded)
+
+Loading a ``PrunaModel``
+------------------------
 
 To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained()`` or ``PrunaModel.from_hub()`` class method:
 
@@ -74,6 +83,7 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
             loaded_model = PrunaModel.from_hub("PrunaAI/smashed-stable-diffusion-v1-4")
 
 The load operation will:
+
 1. Load the model architecture and weights and cast them to the device specified in the SmashConfig
 2. Restore the smash configuration
 
@@ -102,8 +112,6 @@ you should also load the smashed model as follows:
 
 Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
 In that case, we discard and log a warning about unused keyword arguments.
-
-
 
 Algorithm Reapplication
 ~~~~~~~~~~~~~~~~~~~~~~~~
