@@ -215,5 +215,4 @@ The ``Task`` accepts ``PrunaDataModule`` in three ways:
 EvaluationAgent
 ^^^^^^^^^^^^^^^
 
-The ``EvaluationAgent`` is a class that evaluates the performance of your model.
-It is a subclass of ``pl.LightningModule`` and ``pruna.SmashConfig``.
+The ``EvaluationAgent`` is a class that evaluates the performance of your model. 
