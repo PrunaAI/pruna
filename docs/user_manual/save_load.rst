@@ -3,7 +3,79 @@ Save and Load Models
 
 This guide provides a quick introduction to saving and loading optimized AI models with |pruna|.
 
-You will learn how to save and load a ``PrunaModel`` after smashing a model using |pruna|. Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+You will learn how to save and load a ``PrunaModel`` after smashing a model using |pruna|.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+
+Basic Save and Load Workflow
+----------------------------
+
+|pruna| follows a simple workflow for saving and loading optimized models:
+
+.. mermaid::
+    :align: center
+
+    flowchart TB
+        subgraph LoadFlow["Load Flow"]
+            direction LR
+            F["Model Files"] --> G{"Load Method"}
+            G --> H1["from_pretrained('saved_model/')"]
+            G --> H2["from_hub('PrunaAI/saved_model')"]
+            H1 --> I["Pruna Model"]
+            H2 --> I
+        end
+
+        subgraph Model["Model Files"]
+            direction TB
+            E1["Model Weights"]
+            E2["Architecture"]
+            E3["Smash Config"]
+            E4["Tokenizer/Processor (if present)"]
+        end
+
+        subgraph SaveFlow["Save Flow"]
+            direction LR
+            A["PrunaModel"] --> B{"Save Method"}
+            B --> C1["save_pretrained('saved_model/')"]
+            B --> C2["save_to_hub('PrunaAI/saved_model')"]
+            C1 --> D["Model Files"]
+            C2 --> D
+        end
+
+        SaveFlow --- Model
+        Model --- LoadFlow
+
+        style A fill:#bbf,stroke:#333,stroke-width:2px
+        style F fill:#f9f,stroke:#333,stroke-width:2px
+        style G fill:#bbf,stroke:#333,stroke-width:2px
+        style H1 fill:#bbf,stroke:#333,stroke-width:2px
+        style H2 fill:#bbf,stroke:#333,stroke-width:2px
+        style I fill:#bbf,stroke:#333,stroke-width:2px
+        style B fill:#bbf,stroke:#333,stroke-width:2px
+        style C1 fill:#bbf,stroke:#333,stroke-width:2px
+        style C2 fill:#bbf,stroke:#333,stroke-width:2px
+        style D fill:#f9f,stroke:#333,stroke-width:2px
+
+Let's see what that looks like in code.
+
+.. code-block:: python
+
+    from pruna import smash, SmashConfig
+    from diffusers import StableDiffusionPipeline
+
+    # prepare the base model
+    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+
+    # Create and smash your model
+    smash_config = SmashConfig()
+    smash_config["cacher"] = "deepcache"
+    smash_config["compiler"] = "diffusers2"
+    smashed_model = smash(model=base_model, smash_config=smash_config)
+
+    # Save the model
+    smashed_model.save_pretrained("saved_model/") # or save_to_hub
+
+    # Load the model
+    loaded_model = PrunaModel.from_pretrained("saved_model/") # or from_hub
 
 Saving a ``PrunaModel``
 -----------------------

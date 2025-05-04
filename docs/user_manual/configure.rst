@@ -6,6 +6,7 @@ This guide provides an introduction to configuring model optimization strategies
 Model optimization configuration relies on the ``SmashConfig`` class.
 The ``SmashConfig`` class provides a flexible dictionary-like interface for configuring model optimization strategies.
 It manages algorithms, hyperparameters, and additional components like tokenizers, processors and datasets.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
 
 Basic Configuration Workflow
 ----------------------------
