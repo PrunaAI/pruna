@@ -80,12 +80,12 @@ class DeepCacheCacher(PrunaCacher):
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Apply the step caching algorithm to the model.
+        Apply the deepcache algorithm to the model.
 
         Parameters
         ----------
         model : Any
-            The model to apply the step caching algorithm to.
+            The model to apply the deepcache algorithm to.
         smash_config : SmashConfigPrefixWrapper
             The configuration for the caching.
 
