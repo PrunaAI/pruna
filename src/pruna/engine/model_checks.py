@@ -262,6 +262,40 @@ def is_sdxl_pipeline(model: Any) -> bool:
     return _check_pipeline_type(model, diffusers.pipelines.stable_diffusion_xl, "StableDiffusionXL")
 
 
+def is_mochi_pipeline(model: Any) -> bool:
+    """
+    Check if model is a Mochi pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if model is a Mochi pipeline, False otherwise.
+    """
+    return _check_pipeline_type(model, diffusers.pipelines.mochi, "Mochi")
+
+
+def is_cogvideo_pipeline(model: Any) -> bool:
+    """
+    Check if model is a CogVideoX pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if model is a CogVideoX pipeline, False otherwise.
+    """
+    return _check_pipeline_type(model, diffusers.pipelines.cogvideo, "CogVideoX")
+
+
 def is_sd_pipeline(model: Any) -> bool:
     """
     Check if model is a Stable Diffusion pipeline.
@@ -277,6 +311,23 @@ def is_sd_pipeline(model: Any) -> bool:
         True if model is a Stable Diffusion pipeline, False otherwise.
     """
     return _check_pipeline_type(model, diffusers.pipelines.stable_diffusion, "StableDiffusion")
+
+
+def is_wan_pipeline(model: Any) -> bool:
+    """
+    Check if model is a WAN pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if model is a WAN pipeline, False otherwise.
+    """
+    return _check_pipeline_type(model, diffusers.pipelines.wan, "Wan")
 
 
 def is_sd_3_pipeline(model: Any) -> bool:
@@ -328,6 +379,40 @@ def is_sana_pipeline(model: Any) -> bool:
         True if the model is a Sana pipeline, False otherwise.
     """
     return _check_pipeline_type(model, diffusers.pipelines.sana, "Sana")
+
+
+def is_latte_pipeline(model: Any) -> bool:
+    """
+    Check if model is a Latte pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if model is a Latte pipeline, False otherwise.
+    """
+    return _check_pipeline_type(model, diffusers.pipelines.latte, "Latte")
+
+
+def is_allegro_pipeline(model: Any) -> bool:
+    """
+    Check if model is an Allegro pipeline.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if model is an Allegro pipeline, False otherwise.
+    """
+    return _check_pipeline_type(model, diffusers.pipelines.allegro, "Allegro")
 
 
 def get_helpers(model: Any) -> List[str]:
