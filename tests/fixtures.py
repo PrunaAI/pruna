@@ -6,6 +6,7 @@ import pytest
 import torch
 from diffusers import (
     DDIMPipeline,
+    FluxPipeline,
     SanaPipeline,
     StableDiffusion3Pipeline,
     StableDiffusionPipeline,
@@ -149,4 +150,5 @@ MODEL_FACTORY: dict[str, Callable] = {
     "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
     "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
     "dummy_lambda": dummy_model,
+    "flux_tiny_random": partial(get_diffusers_model, FluxPipeline, "katuni4ka/tiny-random-flux"),
 }
