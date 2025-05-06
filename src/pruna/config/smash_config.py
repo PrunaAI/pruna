@@ -592,6 +592,7 @@ class SmashConfig:
                 "ifw_batch_size",
                 "higgs_example_batch_size",
                 "diffusers_higgs_example_batch_size",
+                "torch_compile_batch_size",
             ]
             if name in deprecated_hyperparameters:
                 warn(

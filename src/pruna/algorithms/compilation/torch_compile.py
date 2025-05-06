@@ -88,12 +88,6 @@ class TorchCompileCompiler(PrunaCompiler):
                 meta=dict(desc="Whether to use dynamic shape tracing or not."),
             ),
             OrdinalHyperparameter(
-                "batch_size",
-                sequence=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
-                default_value=1,
-                meta=dict(desc="The batch size to use for compilation, for LLMs."),
-            ),
-            OrdinalHyperparameter(
                 "max_kv_cache_size",
                 sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
                 default_value=400,
@@ -342,7 +336,7 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         top_k=top_k,
         compile_mode=smash_config["mode"],
         compile_fullgraph=smash_config["fullgraph"],
-        batch_size=smash_config["batch_size"],
+        batch_size=smash_config.batch_size,
         device=smash_config.device,
     )
     # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
