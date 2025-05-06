@@ -450,7 +450,14 @@ class SmashConfig:
         self.__locked_batch_size = True
 
     def is_batch_size_locked(self) -> bool:
-        """Check if the batch size is locked in the SmashConfig."""
+        """
+        Check if the batch size is locked in the SmashConfig.
+
+        Returns
+        -------
+        bool
+            True if the batch size is locked, False otherwise.
+        """
         return self.__locked_batch_size
 
     def __getitem__(self, name: str) -> Any:
