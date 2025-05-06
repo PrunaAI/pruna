@@ -145,11 +145,12 @@ def save_pruna_model_to_hub(
                 config_files[json_file.stem] = json.load(f)
 
         # Ensure smash_config is loaded
-        if "smash_config" not in config_files:
+        smash_config_file = Path(SMASH_CONFIG_FILE_NAME).stem
+        if smash_config_file not in config_files:
             raise ValueError("smash_config.json not found in model directory")
 
         # Load the smash config
-        smash_config_data = config_files.pop("smash_config")
+        smash_config_data = config_files.pop(smash_config_file)
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
