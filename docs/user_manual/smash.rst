@@ -1,5 +1,5 @@
-Optimize your first model
-=========================
+Smash your first model
+======================
 
 This guide provides a quick introduction to optimizing AI models with |pruna|.
 
@@ -16,7 +16,7 @@ Basic Optimization Workflow
 
    graph LR
       A[Load Model] --> B[Define SmashConfig]
-      B --> C[Optimize Model]
+      B --> C[Smash Model]
       C --> D[Evaluate Model]
       D --> E[Run Inference]
       style A fill:#bbf,stroke:#333,stroke-width:2px
@@ -42,7 +42,7 @@ Let's see what that looks like in code.
     smash_config = SmashConfig()
     smash_config["cacher"] = "deepcache"
 
-    # Optimize the model
+    # Smash the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Evaluate the model
@@ -52,9 +52,14 @@ Let's see what that looks like in code.
     eval_agent.evaluate(optimized_model)
 
     # Run inference
+    optimized_model.set_progress_bar_config(disable=True)
+    optimized_model.inference_handler.model_args.update(
+        {"num_inference_steps": 1, "guidance_scale": 0.0}
+    )
     optimized_model("A serene landscape with mountains").images[0]
 
-Step-by-Step Optimization Workflow
+
+Step-by-Step Optimisation Workflow
 ----------------------------------
 
 Step 1: Load a pretrained model
@@ -127,6 +132,10 @@ To run inference with the optimized model, we can use the same interface as the 
 
 .. code-block:: python
 
+    optimized_model.set_progress_bar_config(disable=True)
+    optimized_model.inference_handler.model_args.update(
+        {"num_inference_steps": 1, "guidance_scale": 0.0}
+    )
     optimized_model("A serene landscape with mountains").images[0]
 
 Example use cases

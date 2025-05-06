@@ -54,8 +54,10 @@ Let's see what that looks like in code.
     smash_config['ifw_weight_bits'] = 16
     smash_config['ifw_group_size'] = 4
 
-    # Add a tokenizer
-    smash_config.add_tokenizer('bert-base-uncased')
+    # Add a tokenizer and processor
+    model_id = 'openai/whisper-large-v3'
+    smash_config.add_tokenizer(model_id)
+    smash_config.add_processor(model_id)
 
 Configure Algorithms
 --------------------
@@ -72,22 +74,22 @@ The table underneath provides a general overview of the impact of each algorithm
      - Description
      - Speed
      - Memory
-     - Accuracy
+     - Quality
    * - ``batcher``
      - Groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing processing time.
      - ✅
      - ❌
-     - ～
+     - -
    * - ``cacher``
      - Stores intermediate results of computations to speed up subsequent operations.
      - ✅
-     - ～
-     - ～
+     - -
+     - -
    * - ``compiler``
      - Optimises the model with instructions for specific hardware.
      - ✅
      - ➖
-     - ～
+     - -
    * - ``distiller``
      - Trains a smaller, simpler model to mimic a larger, more complex model.
      - ✅
@@ -105,11 +107,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - ❌
    * - ``recoverer``
      - Restores the performance of a model after compression.
-     - ～
-     - ～
+     - -
+     - -
      - ✅
 
-✅(improves), ➖(stays the same), ～(could worsen), ❌(worsens)
+✅(improves), ➖(stays the same), -(Approx. the same), ❌(worsens)
 
 .. tip::
 
@@ -278,7 +280,7 @@ Additionallly, you can create a fully custom ``PrunaDataModule`` use it in your 
           # Add a built-in dataset using a string identifier
           smash_config.add_dataset('WikiText')
 
-   .. tab:: Custom Collate Function
+   .. tab:: Custom Dataset
 
       Use a custom collate function to use a custom dataset as ``(train, val, test)`` tuples.
 
@@ -306,8 +308,8 @@ Additionallly, you can create a fully custom ``PrunaDataModule`` use it in your 
 
    .. tab:: PrunaDataModule
 
-      You can also create a fully custom ``PrunaDataModule`` use it in your workflow.
-      This process is more flexible but also more complex. It allows for more control over the dataset and the data loading process.
+      You can also create a ``PrunaDataModule`` use it in your workflow.
+      This process is more flexible but also more complex and need to adhere to certain configuration limitations.
       The process for defining a ``PrunaDataModule`` is highlighted in the :doc:`Evaluation </docs_pruna/user_manual/evaluate>` page but a basic example of adding it to the ``SmashConfig`` is shown below.
 
       .. code-block:: python
