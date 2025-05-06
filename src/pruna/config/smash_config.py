@@ -161,6 +161,12 @@ class SmashConfig:
                 if name in config_dict:
                     del config_dict[name]
                 continue
+
+            # backwards compatibility for old batch size argument
+            if name == "batch_size" and "batch_size" not in config_dict:
+                setattr(self, name, config_dict.pop("max_batch_size"))
+                continue
+
             setattr(self, name, config_dict.pop(name))
 
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
