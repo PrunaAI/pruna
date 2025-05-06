@@ -114,6 +114,7 @@ class IFWBatcher(PrunaBatcher):
 
         # ignore mypy warnings here because we ensure beforehand that processor is not None
         pruna_logger.info(f"Preparing model for inference with batch size {smash_config.batch_size}")
+        smash_config.lock_batch_size()
         pipe = pipeline(
             "automatic-speech-recognition",
             model=model,

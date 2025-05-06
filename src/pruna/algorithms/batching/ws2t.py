@@ -171,6 +171,7 @@ class WS2TBatcher(PrunaBatcher):
         if "max_text_token_len" in locals():
             model.max_text_token_len = max_text_token_len
         pruna_logger.info(f"Preparing model for inference with batch size {smash_config.batch_size}...")
+        smash_config.lock_batch_size()
         return WhisperS2TWrapper(model, smash_config.batch_size)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

@@ -128,6 +128,7 @@ class EvaluationAgent:
             "batch_size" in self.task.datamodule.dataloader_args
             and self.task.datamodule.dataloader_args["batch_size"] != model.smash_config.batch_size
             and not is_base
+            and model.smash_config.is_batch_size_locked()
         ):
             pruna_logger.warning(
                 "Batch size mismatch between evaluation datamodule and smashed model's smash config. "

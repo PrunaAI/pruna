@@ -105,6 +105,9 @@ class SmashConfig:
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
         self._prepare_saving = True
 
+        # internal variable to indicated that a model has been smashed for a specific batch size
+        self.__locked_batch_size = False
+
         # ensure the cache directory is deleted on program exit
         atexit.register(self.cleanup_cache_dir)
 
@@ -442,6 +445,14 @@ class SmashConfig:
         else:
             return self.tokenizer.name_or_path
 
+    def lock_batch_size(self) -> None:
+        """Lock the batch size in the SmashConfig."""
+        self.__locked_batch_size = True
+
+    def is_batch_size_locked(self) -> bool:
+        """Check if the batch size is locked in the SmashConfig."""
+        return self.__locked_batch_size
+
     def __getitem__(self, name: str) -> Any:
         """
         Get a configuration value from the configuration.
@@ -663,6 +674,10 @@ class SmashConfigPrefixWrapper:
             The value from the config.
         """
         return getattr(self._base_config, attr)
+
+    def lock_batch_size(self) -> None:
+        """Lock the batch size in the SmashConfig."""
+        self._base_config.lock_batch_size()
 
 
 def convert_numpy_types(input_value: Any) -> Any:
