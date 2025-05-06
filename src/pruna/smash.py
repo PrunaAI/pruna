@@ -110,6 +110,8 @@ def check_argument_compatibility(smash_config: SmashConfig, algorithm_name: str)
 
     Parameters
     ----------
+    smash_config : SmashConfig
+        The SmashConfig to check the argument consistency with.
     algorithm_name : str
         The algorithm name that is about to be activated.
     """
