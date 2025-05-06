@@ -31,6 +31,7 @@ from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
+from pruna.config.utils import validate_device
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
 from pruna.logging.logger import pruna_logger
 
@@ -67,7 +68,7 @@ class SmashConfig:
     def __init__(
         self,
         max_batch_size: int = 1,
-        device: str = "cuda",
+        device: str | None = None,
         cache_dir_prefix: str = os.path.join(os.path.expanduser("~"), ".cache", "pruna"),
         configuration: Configuration | None = None,
     ) -> None:
@@ -77,7 +78,7 @@ class SmashConfig:
         )
         self.config_space: ConfigurationSpace = self._configuration.config_space
         self.max_batch_size = max_batch_size
-        self.device = device
+        self.device = validate_device(device)
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
