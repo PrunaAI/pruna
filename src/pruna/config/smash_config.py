@@ -31,7 +31,6 @@ from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
-from pruna.config.utils import validate_device
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
 from pruna.logging.logger import pruna_logger
 
@@ -78,7 +77,7 @@ class SmashConfig:
         )
         self.config_space: ConfigurationSpace = self._configuration.config_space
         self.max_batch_size = max_batch_size
-        self.device = validate_device(device)
+        self.device = self.check_device_compatibility(device)
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
@@ -406,6 +405,47 @@ class SmashConfig:
             )
         if algorithm_requirements["dataset_required"] and self._data is None:
             raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
+
+    @staticmethod
+    def check_device_compatibility(device: str | None) -> str:
+        """
+        Validate if the specified device is available on the current system.
+        Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
+        If device is None, the best available device will be returned.
+
+        Parameters
+        ----------
+        device : str | None, optional
+            The device to validate (e.g. 'cuda', 'mps', 'cpu')
+
+        Returns
+        -------
+        str
+            The best available device.
+        """  # noqa: D205
+        if device is None:
+            if torch.cuda.is_available():
+                pruna_logger.warning("No device specified. Using best available device: CUDA.")
+                return "cuda"
+            elif torch.backends.mps.is_available():
+                pruna_logger.warning("No device specified. Using best available device: MPS.")
+                return "mps"
+            else:
+                pruna_logger.warning("No device specified. Using best available device: CPU.")
+                return "cpu"
+        elif device == "cuda":
+            if not torch.cuda.is_available():
+                pruna_logger.warning("CUDA requested but not available. Falling back to CPU.")
+                return "cpu"
+        elif device == "mps":
+            if not torch.backends.mps.is_available():
+                pruna_logger.warning("MPS requested but not available. Falling back to CPU.")
+                return "cpu"
+        elif device != "cpu":
+            pruna_logger.warning(f"Unknown device '{device}' requested. Falling back to CPU.")
+            return "cpu"
+
+        return device
 
     def get_tokenizer_name(self) -> str | None:
         """
