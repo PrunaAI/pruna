@@ -57,7 +57,7 @@ diffusers = ">=0.21.4"
 platformdirs = "*"
 torch_pruning = "*"
 python-dotenv = "*"
-ConfigSpace = "*"
+ConfigSpace = ">=1.2.1"
 cython = "*"  # Consider removing if Cython is only needed for building
 lago-python-client = "*"
 sentencepiece = "*"
