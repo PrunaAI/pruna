@@ -16,7 +16,7 @@ from typing import Any
 
 from pruna import PrunaModel, SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
-from pruna.config.smash_space import ALGORITHM_GROUPS
+from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
 from pruna.logging.logger import PrunaLoggerContext, pruna_logger
 from pruna.telemetry import track_usage
 
@@ -96,12 +96,30 @@ def check_model_compatibility(
         algorithm = smash_config[current_group]
         if algorithm is not None:
             check_algorithm_availability(algorithm, current_group, algorithm_dict)
-
+            check_argument_compatibility(smash_config, algorithm)
             # check for model-algorithm compatibility with the model_check_fn
             if not algorithm_dict[current_group][algorithm].model_check_fn(model):
                 raise ValueError(
                     f"Model is not compatible with {algorithm_dict[current_group][algorithm].algorithm_name}"
                 )
+
+
+def check_argument_compatibility(smash_config: SmashConfig, algorithm_name: str) -> None:
+    """
+    Check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for an algorithm.
+
+    Parameters
+    ----------
+    algorithm_name : str
+        The algorithm name that is about to be activated.
+    """
+    algorithm_requirements = SMASH_SPACE.model_requirements[algorithm_name]
+    if algorithm_requirements["tokenizer_required"] and smash_config.tokenizer is None:
+        raise ValueError(f"{algorithm_name} requires a tokenizer. Please provide it with smash_config.add_tokenizer().")
+    if algorithm_requirements["processor_required"] and smash_config.processor is None:
+        raise ValueError(f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor().")
+    if algorithm_requirements["dataset_required"] and smash_config.data is None:
+        raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
 
 
 def check_algorithm_availability(algorithm: str, algorithm_group: str, algorithm_dict: dict[str, Any]) -> None:
