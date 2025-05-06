@@ -431,21 +431,21 @@ class SmashConfig:
 
     @staticmethod
     def check_device_compatibility(device: str | None) -> str:
-        """
-        Validate if the specified device is available on the current system.
+        """Validate if the specified device is available on the current system.
+
         Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
         If device is None, the best available device will be returned.
 
         Parameters
         ----------
         device : str | None, optional
-            The device to validate (e.g. 'cuda', 'mps', 'cpu')
+            The device to validate (e.g. 'cuda', 'mps', 'cpu').
 
         Returns
         -------
         str
             The best available device.
-        """  # noqa: D205
+        """
         if device is None:
             if torch.cuda.is_available():
                 pruna_logger.warning("No device specified. Using best available device: CUDA.")
