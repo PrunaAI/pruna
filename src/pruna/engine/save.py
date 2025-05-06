@@ -138,21 +138,27 @@ def save_pruna_model_to_hub(
         save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
         model_path_pathlib = Path(model_path)
 
-        # Open and load the model configuration and smash configuration data from their respective files
-        model_config_path = model_path_pathlib / "config.json"
-        smash_config_path = model_path_pathlib / "smash_config.json"
-        with model_config_path.open() as config_file, smash_config_path.open() as smash_config_file:
-            model_config = json.load(config_file)
-            smash_config_data = json.load(smash_config_file)
+        # Load all JSON files in the model directory
+        config_files = {}
+        for json_file in model_path_pathlib.glob("*.json"):
+            with json_file.open() as f:
+                config_files[json_file.stem] = json.load(f)
+
+        # Ensure smash_config is loaded
+        if "smash_config" not in config_files:
+            raise ValueError("smash_config.json not found in model directory")
+
+        # Load the smash config
+        smash_config_data = config_files.pop("smash_config")
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
         content = template.format(
             repo_id=repo_id,
-            model_config=json.dumps(model_config, indent=4),
+            model_config=json.dumps(config_files, indent=4),
             smash_config=json.dumps(smash_config_data, indent=4),
-            library_name=smash_config_data["load_fn"],
+            library_name=smash_config_data.get("load_fn") or smash_config_data.get("load_fns").pop(),
         )
 
         # Define the path for the README file and write the formatted content to it
