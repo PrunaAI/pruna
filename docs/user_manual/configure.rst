@@ -79,17 +79,17 @@ The table underneath provides a general overview of the impact of each algorithm
      - Groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing processing time.
      - ✅
      - ❌
-     - -
+     - ➖
    * - ``cacher``
      - Stores intermediate results of computations to speed up subsequent operations.
      - ✅
-     - -
-     - -
+     - ➖
+     - ➖
    * - ``compiler``
      - Optimises the model with instructions for specific hardware.
      - ✅
      - ➖
-     - -
+     - ➖
    * - ``distiller``
      - Trains a smaller, simpler model to mimic a larger, more complex model.
      - ✅
@@ -107,11 +107,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - ❌
    * - ``recoverer``
      - Restores the performance of a model after compression.
-     - -
-     - -
+     - ➖
+     - ➖
      - ✅
 
-✅(improves), ➖(stays the same), -(Approx. the same), ❌(worsens)
+✅(improves), ➖(Approx. the same), ❌(worsens)
 
 .. tip::
 
