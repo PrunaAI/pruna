@@ -47,7 +47,7 @@ requests = ">=2.31.0"
 transformers = "*"
 pillow = ">=9.5.0"
 pytorch-lightning = "*"
-huggingface-hub = ">=0.27.0"
+huggingface-hub = { version = ">=0.30.0", extras = ["hf-xet"] }
 datasets = ">=0.34"
 jsonschema = "*"
 numpy = ">=1.24.4"
