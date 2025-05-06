@@ -12,16 +12,14 @@ TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
 @pytest.mark.parametrize(
     "rst_name",
     [
-        pytest.param("user_manual/smash_config", marks=pytest.mark.cuda),
-        pytest.param("user_manual/smash", marks=pytest.mark.cuda),
-        pytest.param("user_manual/dataset", marks=(pytest.mark.cpu, pytest.mark.high)),
-        pytest.param("user_manual/telemetry", marks=pytest.mark.cpu),
-        pytest.param("user_manual/save_load", marks=pytest.mark.cuda),
-        pytest.param("contributions/adding_dataset", marks=pytest.mark.cuda),
-        pytest.param("contributions/adding_algorithm", marks=pytest.mark.cuda),
-        pytest.param("contributions/adding_metric", marks=pytest.mark.cuda),
-        pytest.param("user_manual/evaluation", marks=pytest.mark.cuda),
-    ],
+        pytest.param(path.stem, marks=pytest.mark.cuda)
+        for path in TUTORIAL_PATH.glob("user_manual/*.rst")
+        if path.stem not in ["dataset"]
+    ]
+    + [
+        pytest.param(path.stem, marks=pytest.mark.cuda)
+        for path in TUTORIAL_PATH.glob("contributions/*.rst")
+    ]
 )
 def test_codeblocks_cuda(rst_name: str) -> None:
     """Test to ensure the notebook runs without errors."""
