@@ -158,6 +158,7 @@ def save_pruna_model_to_hub(
             repo_id=repo_id,
             model_config=json.dumps(config_files, indent=4),
             smash_config=json.dumps(smash_config_data, indent=4),
+            # backwards compatibility check for load_fn or load_fns and use the first one
             library_name=smash_config_data.get("load_fn") or smash_config_data.get("load_fns").pop(),
         )
 
