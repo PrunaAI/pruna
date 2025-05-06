@@ -1,4 +1,4 @@
-How to Contribute 💜
+How to Contribute ? 💜
 ====================
 
 Since you landed on this part of the documentation, we want to first of all say thank you! 💜
@@ -113,9 +113,3 @@ If you want to run only the tests with a specific marker, e.g. fast CPU tests, y
 Once you have made your changes and tested them, you can create a Pull Request.
 We will then review your Pull Request and get back to you as soon as possible.
 If there are any questions along the way, please do not hesitate to reach out on `Discord <https://discord.gg/Tun8YgzxZ9>`_.
-
-
-
-
-
-

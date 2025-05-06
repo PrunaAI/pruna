@@ -5,21 +5,21 @@ Customize components
 
 .. grid:: 1 3 3 3
 
-   .. grid-item-card:: Add an algorithm
+   .. grid-item-card:: Customize an algorithm
       :text-align: center
-      :link: ./adding_algorithm.rst
+      :link: ./customize_algorithm.rst
 
       Steps to integrate a new compression algorithm, making it available in the ``SmashConfig``.
 
-   .. grid-item-card:: Add a dataset
+   .. grid-item-card:: Customize a dataset
       :text-align: center
-      :link: ./adding_dataset.rst
+      :link: ./customize_dataset.rst
 
       Steps to integrate a new dataset, making it available in the ``SmashConfig``.
 
-   .. grid-item-card:: Add a metric
+   .. grid-item-card:: Customize a metric
       :text-align: center
-      :link: ./adding_metric.rst
+      :link: ./customize_metric.rst
 
       Steps to integrate a new metric, making it available in the ``SmashConfig``.
 
@@ -34,6 +34,6 @@ Customize components
    :caption: Customize components
    :hidden:
 
-   adding_algorithm
-   adding_dataset
-   adding_metric
+   customize_algorithm
+   customize_dataset
+   customize_metric

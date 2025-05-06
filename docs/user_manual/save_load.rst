@@ -27,10 +27,10 @@ Basic Save and Load Workflow
 
         subgraph Model["Model Files"]
             direction TB
-            E1["Model Weights"]
-            E2["Architecture"]
-            E3["Smash Config"]
-            E4["Tokenizer/Processor (if present)"]
+            E1["Model Weights (.safetensors)"]
+            E2["Architecture (.json)"]
+            E3["Smash Config (.json)"]
+            E4["Tokenizer/Processor (original directory)"]
         end
 
         subgraph SaveFlow["Save Flow"]

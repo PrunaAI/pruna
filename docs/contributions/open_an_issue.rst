@@ -1,11 +1,10 @@
-Opening an Issue
-===============================
-
+Open an Issue
+=============
 
 .. _documentation-improvement:
 
 Documentation Improvement
-------------------------
+-------------------------
 
 All bits help! We appreciate your interest in improving |pruna|’s documentation.
 
@@ -54,6 +53,7 @@ When opening a bug report on GitHub, you will encounter the following template t
 
 Feature Request
 ---------------
+
 We appreciate your interest in improving |pruna|! Feature requests help shape the project, and we welcome ideas that align with our mission.
 
 Before submitting your feature request, consider the following points to ensure your request is clear and actionable:

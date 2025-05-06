@@ -1,7 +1,7 @@
-Evaluate optimizations with the Evaluation Agent
+Evaluate quality with the Evaluation Agent
 ================================================
 
-This guide provides an introduction to evaluating model optimizations with |pruna|.
+This guide provides an introduction to evaluating models with |pruna|.
 
 Evaluation helps you understand how compression affects your models across different dimensions - from output quality to resource requirements.
 This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs.
@@ -19,19 +19,26 @@ Basic Evaluation Workflow
    graph LR
     User -->|creates| Task
     User -->|creates| EvaluationAgent
-    Task -->|uses| PrunaDataModule
+    Task -->|defines| PrunaDataModule
     Task -->|defines| Metrics
+    Task -->|uses| PrunaModel
     Metrics -->|includes| StatefulMetric
     Metrics -->|includes| StatelessMetric
-    PrunaDataModule -->|provides data| EvaluationAgent
     PrunaModel -->|provides predictions| EvaluationAgent
     EvaluationAgent -->|evaluates| PrunaModel
-    EvaluationAgent -->|returns| Evaluation_Results
+    EvaluationAgent -->|returns| C["Evaluation Results"]
     User -->|configures| EvaluationAgent
 
     subgraph Metric_Types
-        StatefulMetric
-        StatelessMetric
+    StatefulMetric
+    StatelessMetric
+    end
+
+    subgraph Task_Definition
+    Task
+    PrunaDataModule
+    Metrics
+    Metric_Types
     end
 
     style User fill:#bbf,stroke:#333,stroke-width:2px
@@ -39,7 +46,7 @@ Basic Evaluation Workflow
     style EvaluationAgent fill:#bbf,stroke:#333,stroke-width:2px
     style PrunaDataModule fill:#bbf,stroke:#333,stroke-width:2px
     style PrunaModel fill:#bbf,stroke:#333,stroke-width:2px
-    style Evaluation_Results fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#bbf,stroke:#333,stroke-width:2px
     style Metrics fill:#bbf,stroke:#333,stroke-width:2px
 
 Let's see what that looks like in code.
@@ -82,7 +89,7 @@ Metrics
 
 Metrics are the core components that calculate specific performance indicators. There are two main types of metrics:
 
-- **Stateful Metrics**: These metrics compute values directly from inputs without maintaining state across batches.
+- **Base Metrics**: These metrics compute values directly from inputs without maintaining state across batches.
 - **Stateless Metrics**: Metrics that maintain internal state and accumulate information across multiple batches. These are typically used for quality assessment.
 
 The ``Task`` accepts ``Metrics`` in three ways:
@@ -121,7 +128,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
 
     .. tab:: List of Metric Instances
 
-        As a list of metric (e.g., ``CMMD()``), which provides more flexibility in configuring the metrics.
+        As a list of metric instances (e.g., ``CMMD()``), which provides more flexibility in configuring the metrics.
 
         .. code-block:: python
 
@@ -130,7 +137,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.evaluation.metrics import CMMD, TorchMetricWrapper
 
             task = Task(
-                metrics=[CMMD(), TorchMetricWrapper(metric_name="accuracy")],
+                metrics=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="accuracy")],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -138,6 +145,69 @@ The ``Task`` accepts ``Metrics`` in three ways:
 .. note::
 
     You can find the full list of available metrics in the :ref:`Metric Overview <metrics>` section.
+
+Metric Call Types
+^^^^^^^^^^^^^^^^
+
+|pruna| metrics can operate in both single-model and pairwise modes.
+
+- **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated.
+- **Pairwise mode**: Metrics compare a subsequent model against the first model evaluated by the agent and produce a single comparison score.
+
+Underneath the hood, the ``StatefulMetric`` class uses the ``call_type`` parameter to determine the order of the inputs.
+
+The following table shows the different call types supported by |pruna| metrics and the metrics that support each call type.
+
+.. list-table::
+   :widths: 10 60 10
+   :header-rows: 1
+
+   * - Call Type
+     - Description
+     - Example Metrics
+
+   * - ``y_gt``
+     - Model's output first, then ground truth
+     - ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
+
+   * - ``gt_y``
+     - Ground truth first, then model's output
+     - ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
+
+   * - ``x_gt``
+     - Input data first, then ground truth
+     - ``clip_score``
+
+   * - ``gt_x``
+     - Ground truth first, then input data
+     - ``clip_score``
+
+   * - ``pairwise_y_gt``
+     - Base model's output first, then subsequent model's output
+     -  ``psnr``, ``ssim``, ``lpips``, ``cmmd``
+
+   * - ``pairwise_gt_y``
+     - Subsequent model's output first, then base model's output
+     - ``psnr``, ``ssim``, ``lpips``, ``cmmd``
+
+Each metric has a default ``call_type`` but you can switch the mode of the metric despite your default ``call_type``.
+
+.. tabs::
+
+    .. tab:: Single-Model mode
+
+        .. code-block:: python
+
+            from pruna.evaluation.metrics import CMMD
+
+            metric = CMMD() # or ["cmmd"]
+
+    .. tab:: Pairwise mode
+
+        .. code-block:: python
+
+            from pruna.evaluation.metrics import CMMD
+            metric = CMMD(call_type="pairwise")
 
 PrunaDataModule
 ~~~~~~~~~~~~~~~
@@ -227,47 +297,84 @@ Then, initialize an ``EvaluationAgent`` with that task and call the ``evaluate()
 
 We can then chose to evaluate a single model or a pair of models.
 
-- **Single-Model Evaluation**: each model is evaluated independently, producing metrics that only pertain to that model's performance. The metrics are computed from the model's outputs without reference to any other model.
-- **Pairwise Evaluation**: metrics compare the outputs of the current model against the first model evaluated by the agent. The first model's outputs are cached by the EvaluationAgent and used as a reference for subsequent evaluations.
+- **Single-Model mode**: each model is evaluated independently, producing metrics that only pertain to that model's performance. The metrics are computed from the model's outputs without reference to any other model.
+- **Pairwise mode**: metrics compare the outputs of the current model against the first model evaluated by the agent. The first model's outputs are cached by the EvaluationAgent and used as a reference for subsequent evaluations.
 
 Let's see how this works in code.
 
-.. code-block:: python
+.. tabs::
 
-    import copy
+    .. tab:: Single-Model Evaluation
 
-    from diffusers import StableDiffusionPipeline
+        .. code-block:: python
 
-    from pruna import smash, SmashConfig
-    from pruna.data.pruna_datamodule import PrunaDataModule
-    from pruna.evaluation.evaluation_agent import EvaluationAgent
-    from pruna.evaluation.task import Task
+            import copy
 
-    # Load data and set up smash config
-    smash_config = SmashConfig()
-    smash_config['cacher'] = 'deepcache'
+            from diffusers import StableDiffusionPipeline
 
-    # Load the base model
-    model_path = "CompVis/stable-diffusion-v1-4"
-    pipe = StableDiffusionPipeline.from_pretrained(model_path)
+            from pruna import smash, SmashConfig
+            from pruna.data.pruna_datamodule import PrunaDataModule
+            from pruna.evaluation.evaluation_agent import EvaluationAgent
+            from pruna.evaluation.task import Task
+            from pruna.evaluation.metrics import CMMD
+            # Load data and set up smash config
+            smash_config = SmashConfig()
+            smash_config['cacher'] = 'deepcache'
 
-    # Smash the model
-    copy_pipe = copy.deepcopy(pipe)
-    smashed_pipe = smash(copy_pipe, smash_config)
+            # Load the base model
+            model_path = "CompVis/stable-diffusion-v1-4"
+            pipe = StableDiffusionPipeline.from_pretrained(model_path)
 
-    # Define the task and the evaluation agent
-    metrics = ['clip_score', 'psnr']
-    task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
-    eval_agent = EvaluationAgent(task)
+            # Smash the model
+            copy_pipe = copy.deepcopy(pipe)
+            smashed_pipe = smash(copy_pipe, smash_config)
 
-    # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
-    first_results = eval_agent.evaluate(pipe)
-    print(first_results)
+            # Define the task and the evaluation agent
+            metrics = [CMMD()]
+            task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+            eval_agent = EvaluationAgent(task)
 
-    # Evaluate smashed model
-    smashed_results = eval_agent.evaluate(smashed_pipe)
-    print(smashed_results)
+            # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
+            first_results = eval_agent.evaluate(pipe)
+            print(first_results)
 
+    .. tab:: Pairwise Evaluation
+
+        .. code-block:: python
+
+            import copy
+
+            from diffusers import StableDiffusionPipeline
+
+            from pruna import smash, SmashConfig
+            from pruna.data.pruna_datamodule import PrunaDataModule
+            from pruna.evaluation.evaluation_agent import EvaluationAgent
+            from pruna.evaluation.task import Task
+            from pruna.evaluation.metrics import CMMD
+            # Load data and set up smash config
+            smash_config = SmashConfig()
+            smash_config['cacher'] = 'deepcache'
+
+            # Load the base model
+            model_path = "CompVis/stable-diffusion-v1-4"
+            pipe = StableDiffusionPipeline.from_pretrained(model_path)
+
+            # Smash the model
+            copy_pipe = copy.deepcopy(pipe)
+            smashed_pipe = smash(copy_pipe, smash_config)
+
+            # Define the task and the evaluation agent
+            metrics = [CMMD(call_type="pairwise")]
+            task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+            eval_agent = EvaluationAgent(task)
+
+            # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
+            first_results = eval_agent.evaluate(pipe)
+            print(first_results)
+
+            # Evaluate smashed model
+            smashed_results = eval_agent.evaluate(smashed_pipe)
+            print(smashed_results)
 
 Best Practices
 --------------
