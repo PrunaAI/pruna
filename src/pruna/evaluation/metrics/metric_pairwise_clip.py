@@ -46,7 +46,6 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
 
     higher_is_better: bool = True
     metric_name: str = "pairwise_clip_score"
-    benchmark_metric: bool = True
 
     def __init__(self, **kwargs: Any) -> None:
         if "call_type" in kwargs:

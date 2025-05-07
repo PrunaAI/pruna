@@ -34,7 +34,6 @@ class StatefulMetric(BaseMetric):
     aggregated values over time.
     """
 
-    benchmark_metric: bool = True  # We always want to track the quality metrics by default.
     metric_name: str
     call_type: str
 

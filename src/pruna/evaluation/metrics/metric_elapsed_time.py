@@ -159,7 +159,6 @@ class LatencyMetric(InferenceTimeStats):
     higher_is_better: bool = False
     metric_name: str = LATENCY
     metric_units: str = "ms/num_iterations"
-    benchmark_metric: bool = True
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -201,7 +200,6 @@ class ThroughputMetric(InferenceTimeStats):
 
     higher_is_better: bool = True
     metric_units: str = "num_iterations/ms"
-    benchmark_metric: bool = False
     metric_name: str = THROUGHPUT
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
@@ -244,7 +242,6 @@ class TotalTimeMetric(InferenceTimeStats):
 
     higher_is_better: bool = False
     metric_units: str = "ms"
-    benchmark_metric: bool = False
     metric_name: str = TOTAL_TIME
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:

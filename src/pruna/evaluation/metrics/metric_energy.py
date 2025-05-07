@@ -155,7 +155,6 @@ class EnergyConsumedMetric(EnvironmentalImpactStats):
 
     higher_is_better: bool = False
     metric_name: str = ENERGY_CONSUMED
-    benchmark_metric: bool = False
     metric_units: str = "kWh"
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
@@ -196,7 +195,6 @@ class CO2EmissionsMetric(EnvironmentalImpactStats):
 
     higher_is_better: bool = False
     metric_name: str = CO2_EMISSIONS
-    benchmark_metric: bool = True
     metric_units: str = "kgCO2e"
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:

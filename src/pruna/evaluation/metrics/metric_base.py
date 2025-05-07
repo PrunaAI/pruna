@@ -19,7 +19,6 @@ from typing import Any
 class BaseMetric(ABC):
     """The base class for all Pruna metrics."""
 
-    benchmark_metric: bool = False
     metric_name: str = ""
 
     def __init__(self) -> None:

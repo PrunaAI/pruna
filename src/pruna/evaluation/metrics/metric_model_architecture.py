@@ -194,7 +194,6 @@ class TotalMACsMetric(ModelArchitectureStats):
     metric_name: str = TOTAL_MACS
     metric_units: str = "MACs"
     higher_is_better: bool = False
-    benchmark_metric: bool = True
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -230,7 +229,6 @@ class TotalParamsMetric(ModelArchitectureStats):
     metric_name: str = TOTAL_PARAMS
     metric_units: str = "params"
     higher_is_better: bool = False
-    benchmark_metric: bool = True
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
