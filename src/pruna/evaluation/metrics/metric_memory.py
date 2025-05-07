@@ -365,7 +365,6 @@ class DiskMemoryMetric(BaseMetric):
     metric_name: str = DISK_MEMORY
     metric_units: str = "MB"
     higher_is_better: bool = False
-    benchmark_metric: bool = True
 
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the DiskMemoryMetric."""
@@ -404,7 +403,6 @@ class InferenceMemoryMetric(BaseMetric):
     metric_name: str = INFERENCE_MEMORY
     metric_units: str = "MB"
     higher_is_better: bool = False
-    benchmark_metric: bool = False
 
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the InferenceMemoryMetric."""
@@ -443,7 +441,6 @@ class TrainingMemoryMetric(BaseMetric):
     metric_name: str = TRAINING_MEMORY
     metric_units: str = "MB"
     higher_is_better: bool = False
-    benchmark_metric: bool = False
 
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the TrainingMemoryMetric."""

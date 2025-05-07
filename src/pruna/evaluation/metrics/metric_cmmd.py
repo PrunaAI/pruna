@@ -27,8 +27,10 @@ from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
+METRIC_CMMD = "cmmd"
 
-@MetricRegistry.register("cmmd")
+
+@MetricRegistry.register(METRIC_CMMD)
 class CMMD(StatefulMetric):
     """
     Calculates the CMMD metric, which is the Maximum Mean Discrepancy between CLIP embeddings of two sets of images.
@@ -52,8 +54,8 @@ class CMMD(StatefulMetric):
     ground_truth_embeddings: List[torch.Tensor]
     output_embeddings: List[torch.Tensor]
     default_call_type: str = "gt_y"
-    benchmark_metric: bool = True
     higher_is_better: bool = False
+    metric_name: str = METRIC_CMMD
 
     def __init__(
         self,
@@ -75,7 +77,6 @@ class CMMD(StatefulMetric):
         self.clip_processor = CLIPImageProcessor.from_pretrained(clip_model_name)
         self.sigma = 10  # Sigma parameter from the paper
         self.scale = 1000  # Scale parameter from the paper
-        self.metric_name = "cmmd"
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
         self.add_state("ground_truth_embeddings", [])

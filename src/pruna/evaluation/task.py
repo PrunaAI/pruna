@@ -105,17 +105,6 @@ class Task:
         """
         return [metric for metric in self.metrics if not isinstance(metric, StatefulMetric)]
 
-    def get_benchmark_metrics(self) -> List[Any]:
-        """
-        Get benchmark metrics.
-
-        Returns
-        -------
-        List[Any]
-            The benchmark metrics.
-        """
-        return [metric for metric in self.metrics if metric.benchmark_metric]
-
     def is_pairwise_evaluation(self) -> bool:
         """
         Check if the evaluation task is pairwise.
