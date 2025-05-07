@@ -21,7 +21,6 @@ import shutil
 import tempfile
 from functools import singledispatchmethod
 from typing import Any, Union
-from warnings import warn
 
 import numpy as np
 import torch
@@ -474,79 +473,13 @@ class SmashConfig:
         >>> config["quantizer"]
         "awq"
         """
-        deprecated = False
-        deprecated_algorithm_groups = [
-            "quantizers",
-            "pruners",
-            "distillers",
-            "cachers",
-            "recoverers",
-            "compilers",
-            "batchers",
-        ]
         if name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
-        elif name in ALGORITHM_GROUPS + deprecated_algorithm_groups:
-            # deprecation logic for assignment of plural algorithm groups, e.g. quantizers
-            if name in deprecated_algorithm_groups:
-                new_algorithm_group = name[:-1]
-                warn(f"The algorithm group {name} is deprecated.", DeprecationWarning, stacklevel=2)
-                name = new_algorithm_group
-                deprecated = True
-            # deprecation logic for assignment of algorithms as lists
-            if isinstance(value, list):
-                value = None if len(value) == 0 else value[0]
-                deprecated = True
-                warn("Assigning algorithms as lists is deprecated...", DeprecationWarning, stacklevel=2)
-            # deprecating old method names
-            deprecated_algorithm_names = {
-                "llm_lora": "text_to_text_perp",
-                "llm-lora": "text_to_text_perp",
-                "text_to_text_lora": "text_to_text_perp",
-                "text_to_image_lora": "text_to_image_perp",
-                "torch-structured": "torch_structured",
-                "torch-unstructured": "torch_unstructured",
-                "llm-int8": "llm_int8",
-                "diffusers2": "stable_fast",
-                "x-fast": "x_fast",
-                "cgenerate": "c_generate",
-                "ctranslate": "c_translate",
-                "cwhisper": "c_whisper",
-                "ws2t": "whisper_s2t",
-                "step_caching": "deepcache",
-            }
-            if value in list(deprecated_algorithm_names.keys()):
-                warn(
-                    f"The {value} method has been renamed to {deprecated_algorithm_names[value]}.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                value = deprecated_algorithm_names[value]
-                deprecated = True
-            ###
-            # end of deprecation logic for assignment of algorithms as lists
+        elif name in ALGORITHM_GROUPS:
             if value is not None:
                 self.check_argument_compatibility(value)
-            if deprecated:
-                warn(f"Continuing with setting smash_config['{name}'] = '{value}'.", DeprecationWarning, stacklevel=2)
             self._configuration.__setitem__(name, value)
         else:
-            # isolating prefix behavior here for easy removal later
-            deprecated_prefixes = ["quant_", "prune_", "comp_", "recov_", "distill_", "cache_", "batch_"]
-
-            def remove_starting_prefix(s: str) -> str:
-                for prefix in deprecated_prefixes:
-                    if s.startswith(prefix):
-                        warn(
-                            f"The {prefix} prefix is deprecated. Please use the {s[len(prefix) :]} instead.",
-                            DeprecationWarning,
-                            stacklevel=2,
-                        )
-                        return s[len(prefix) :]
-                return s
-
-            name = remove_starting_prefix(name)
-            # deprecation logic over
             return self._configuration.__setitem__(name, value)
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
