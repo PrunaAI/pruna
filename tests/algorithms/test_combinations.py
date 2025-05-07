@@ -43,6 +43,10 @@ class CombinationsTester(AlgorithmTesterBase):
         ("stable_diffusion_v1_4", dict(quantizer="diffusers_int8", compiler="torch_compile", torch_compile_fullgraph=False), False),
         ("llama_3_2_1b", dict(quantizer="gptq", compiler="torch_compile"), True),
         ("llama_3_2_1b", dict(quantizer="llm_int8", compiler="torch_compile", torch_compile_fullgraph=False), True),
+        ("flux_tiny_random", dict(cacher="fora", quantizer="hqq_diffusers"), False),
+        ("flux_tiny_random", dict(cacher="fora", quantizer="diffusers_int8"), False),
+        ("flux_tiny_random", dict(cacher="fora", compiler="torch_compile"), False),
+        ("flux_tiny_random", dict(cacher="fora", compiler="stable_fast"), False),
     ],
     indirect=["model_fixture"],
 )
