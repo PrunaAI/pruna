@@ -54,6 +54,12 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
+    # save old smash config (includes tokenizer and processor)
+    save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    smash_config.save_to_json(save_dir)
+
     if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
         save_torch_artifacts(model, model_path, smash_config)
         smash_config.save_fns.remove(SAVE_FUNCTIONS.torch_artifacts.name)
@@ -81,6 +87,7 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
         pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
         save_fn = SAVE_FUNCTIONS.pickled
         smash_config.load_fns = [LOAD_FUNCTIONS.pickled.name]
+
     # execute selected save function
     save_fn(model, model_path, smash_config)
 
@@ -138,21 +145,29 @@ def save_pruna_model_to_hub(
         save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
         model_path_pathlib = Path(model_path)
 
-        # Open and load the model configuration and smash configuration data from their respective files
-        model_config_path = model_path_pathlib / "config.json"
-        smash_config_path = model_path_pathlib / "smash_config.json"
-        with model_config_path.open() as config_file, smash_config_path.open() as smash_config_file:
-            model_config = json.load(config_file)
-            smash_config_data = json.load(smash_config_file)
+        # Load all JSON files in the model directory
+        config_files = {}
+        for json_file in model_path_pathlib.glob("*.json"):
+            with json_file.open() as f:
+                config_files[json_file.stem] = json.load(f)
+
+        # Ensure smash_config is loaded
+        smash_config_file = Path(SMASH_CONFIG_FILE_NAME).stem
+        if smash_config_file not in config_files:
+            raise ValueError("smash_config.json not found in model directory")
+
+        # Load the smash config
+        smash_config_data = config_files.pop(smash_config_file)
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
         content = template.format(
             repo_id=repo_id,
-            model_config=json.dumps(model_config, indent=4),
+            model_config=json.dumps(config_files, indent=4),
             smash_config=json.dumps(smash_config_data, indent=4),
-            library_name=smash_config_data["load_fn"],
+            # backwards compatibility check for load_fn or load_fns and use the first one
+            library_name=smash_config_data.get("load_fn") or smash_config_data.get("load_fns").pop(),
         )
 
         # Define the path for the README file and write the formatted content to it
@@ -188,8 +203,10 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
         The SmashConfig object containing the save and load functions.
     """
     # catch any huggingface diffuser or transformer model and record which load function to use
+    model = model.model if hasattr(model, "model") else model
     if "diffusers" in model.__module__:
-        smash_config.load_fns.append(LOAD_FUNCTIONS.diffusers.name)
+        if LOAD_FUNCTIONS.diffusers.name not in smash_config.load_fns:
+            smash_config.load_fns.append(LOAD_FUNCTIONS.diffusers.name)
         model.save_pretrained(model_path)
         # save dtype of the model as diffusers does not provide this at the moment
         dtype = determine_dtype(model)
@@ -198,7 +215,8 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
             json.dump({"dtype": str(dtype).split(".")[-1]}, f)
 
     elif "transformers" in model.__module__:
-        smash_config.load_fns.append(LOAD_FUNCTIONS.transformers.name)
+        if LOAD_FUNCTIONS.transformers.name not in smash_config.load_fns:
+            smash_config.load_fns.append(LOAD_FUNCTIONS.transformers.name)
         model.save_pretrained(model_path)
 
         # if the model is a transformers pipeline, we additionally save the pipeline info
