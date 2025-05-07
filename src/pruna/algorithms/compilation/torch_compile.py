@@ -118,6 +118,20 @@ class TorchCompileCompiler(PrunaCompiler):
                     ),
                 ),
             ),
+            OrdinalHyperparameter(
+                "target",
+                default_value="model",
+                sequence=["model", "module_list"],
+                meta=dict(
+                    desc=(
+                        "Whether to compile the model itself or the module list. "
+                        "Compiling the model itself has a longer warmup and could fail "
+                        "incase of graphbreaks but could lead to slightly faster compilation. "
+                        "Whereas compiling the module list has a shorter warmup and is more "
+                        "robust to graphbreaks but could be slightly slower."
+                    )
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -248,13 +262,28 @@ def compile_callable(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     if smash_config["device"] == "cpu" or str(get_model_device(model)) == "cpu":
         pruna_logger.info("Compiling for CPU")
         backend = "openvino"
-    return torch.compile(
-        model,
-        dynamic=smash_config["dynamic"],
-        fullgraph=smash_config["fullgraph"],
-        mode=smash_config["mode"],
-        backend=backend,
-    )
+    if smash_config["target"] == "module_list":
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.ModuleList):
+                for i, submodule in enumerate(module):
+                    if isinstance(submodule, torch.nn.Module):
+                        submodule = torch.compile(
+                            submodule,
+                            dynamic=smash_config["dynamic"],
+                            fullgraph=smash_config["fullgraph"],
+                            mode=smash_config["mode"],
+                            backend=backend,
+                        )
+                    module[i] = submodule
+        return model
+    elif smash_config["target"] == "model":
+        return torch.compile(
+            model,
+            dynamic=smash_config["dynamic"],
+            fullgraph=smash_config["fullgraph"],
+            mode=smash_config["mode"],
+            backend=backend,
+        )
 
 
 def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
@@ -300,11 +329,20 @@ def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixW
         The compiled model.
     """
     if hasattr(model, "transformer"):
-        model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
+        if smash_config["target"] == "module_list":
+            model.transformer = compile_callable(model.transformer, smash_config)
+        elif smash_config["target"] == "model":
+            model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
     elif hasattr(model, "unet"):
-        model.unet.forward = compile_callable(model.unet.forward, smash_config)
+        if smash_config["target"] == "module_list":
+            model.unet = compile_callable(model.unet, smash_config)
+        elif smash_config["target"] == "model":
+            model.unet.forward = compile_callable(model.unet.forward, smash_config)
     else:
-        model.forward = compile_callable(model.forward, smash_config)
+        if smash_config["target"] == "module_list":
+            model = compile_callable(model, smash_config)
+        elif smash_config["target"] == "model":
+            model.forward = compile_callable(model.forward, smash_config)
     return model
 
 
