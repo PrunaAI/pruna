@@ -19,6 +19,8 @@ from typing import Any
 class BaseMetric(ABC):
     """The base class for all Pruna metrics."""
 
+    metric_name: str = ""
+
     def __init__(self) -> None:
         """Initialize the BaseMetric class."""
         pass

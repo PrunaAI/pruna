@@ -34,12 +34,12 @@ class StatefulMetric(BaseMetric):
     aggregated values over time.
     """
 
+    metric_name: str
+    call_type: str
+
     def __init__(self) -> None:
         """Initialize the StatefulMetric class."""
         super().__init__()
-        self.metric_config: Dict[str, Any] = {}
-        self.metric_name: str = ""
-        self.call_type: str = ""
         self._defaults: Dict[str, List | Tensor] = {}
 
     def add_state(self, name: str, default: List | Tensor) -> None:
