@@ -82,13 +82,6 @@ class TorchStructuredPruner(PrunaPruner):
                 default_value="MagnitudeImportance",
                 meta=dict(desc="Importance criterion for pruning."),
             ),
-            UniformIntegerHyperparameter(
-                name="calibration_samples",
-                lower=1,
-                upper=256,
-                default_value=64,
-                meta=dict(desc="Number of calibration samples for importance computation."),
-            ),
             Boolean("prune_head_dims", meta=dict(desc="Whether to prune head dimensions.")),
             Boolean("prune_num_heads", meta=dict(desc="Whether to prune number of heads.")),
             Boolean("global_pruning", meta=dict(desc="Whether to perform global pruning.")),
@@ -202,7 +195,7 @@ class TorchStructuredPruner(PrunaPruner):
                     smash_config.train_dataloader(),  # type: ignore[arg-type]
                     device=device,
                     smash_config=smash_config,
-                    calibration_data_size=smash_config["calibration_samples"],
+                    calibration_data_size=smash_config.calibration_samples,
                 )
             pruner.step()
 

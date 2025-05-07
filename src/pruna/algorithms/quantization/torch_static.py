@@ -15,7 +15,7 @@
 from typing import Any, Dict
 
 import torch
-from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
+from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -81,11 +81,6 @@ class TorchStaticQuantizer(PrunaQuantizer):
                 default_value="MinMaxObserver",
                 meta=dict(desc="Observer to use for quantization."),
             ),
-            Constant(
-                name="calibration_samples",
-                value=16,
-                meta=dict(desc="Number of samples to use for calibration."),
-            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -134,7 +129,7 @@ class TorchStaticQuantizer(PrunaQuantizer):
 
         # dataloader has been ensured to be set in the config
         for i, batch in enumerate(smash_config.train_dataloader()):  # type: ignore[arg-type]
-            if i >= smash_config["calibration_samples"]:
+            if i >= smash_config.calibration_samples:
                 break
             wrap_batch_for_model_call(batch, quantized_model, device="cpu")
 
