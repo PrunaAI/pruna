@@ -58,7 +58,7 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
     smash_config = SmashConfig()
     smash_config.load_from_json(model_path)
     # since the model was just loaded from a file, we do not need to prepare saving anymore
-    smash_config._prepare_saving = False
+    smash_config.saveable_model = False
 
     resmash_fn = kwargs.pop("resmash_fn", resmash)
 

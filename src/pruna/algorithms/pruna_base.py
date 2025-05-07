@@ -175,7 +175,7 @@ class PrunaAlgorithmBase(ABC):
         Any
             The model after the algorithm has been applied.
         """
-        if self.save_fn == SAVE_FUNCTIONS.save_before_apply and smash_config._prepare_saving:
+        if self.save_fn == SAVE_FUNCTIONS.save_before_apply and smash_config.saveable_model:
             save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
             save_pruna_model(model, save_dir, smash_config)
 

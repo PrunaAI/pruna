@@ -16,7 +16,7 @@ import os
 from typing import Any, Callable, Dict
 
 import torch
-from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
+from ConfigSpace import CategoricalHyperparameter
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.algorithms.compilation.utils import TransformersGenerator
@@ -86,22 +86,6 @@ class TorchCompileCompiler(PrunaCompiler):
                 choices=[None, True, False],
                 default_value=None,
                 meta=dict(desc="Whether to use dynamic shape tracing or not."),
-            ),
-            OrdinalHyperparameter(
-                "max_kv_cache_size",
-                sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
-                default_value=400,
-                meta=dict(desc="The maximum number of new tokens to generate, for LLMs."),
-            ),
-            OrdinalHyperparameter(
-                "seqlen_manual_cuda_graph",
-                sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
-                default_value=100,
-                meta=dict(
-                    desc="The sequence length to use for manual CUDA graph capture, for LLMs. "
-                    "We recommend to use a smaller value than max_kv_cache_size to avoid "
-                    "CUDA graph capture overhead."
-                ),
             ),
             Boolean(
                 "make_portable",
@@ -188,9 +172,11 @@ class TorchCompileCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
-        cacher_type = smash_config["cacher"]
-        if cacher_type in compilation_map:
-            return compilation_map[cacher_type](model, smash_config)
+        if smash_config["quantizer"] in compilation_map:
+            return compilation_map[smash_config["quantizer"]](model, smash_config)
+
+        if smash_config["cacher"] in compilation_map:
+            return compilation_map[smash_config["cacher"]](model, smash_config)
 
         if (
             hasattr(model, "transformer")
@@ -201,6 +187,7 @@ class TorchCompileCompiler(PrunaCompiler):
 
         if is_causal_lm(model):
             return causal_lm_logic(model, smash_config)
+
         return compile_callable(model, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

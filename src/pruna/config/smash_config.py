@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 import atexit
+import inspect
 import json
 import os
 import shutil
 import tempfile
+from copy import deepcopy
 from functools import singledispatchmethod
 from typing import Any, Union
 from warnings import warn
@@ -35,8 +37,6 @@ from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
 from pruna.logging.logger import pruna_logger
 
 ADDITIONAL_ARGS = [
-    "batch_size",
-    "device",
     "cache_dir",
     "save_fns",
     "load_fns",
@@ -79,16 +79,14 @@ class SmashConfig:
             SMASH_SPACE.get_default_configuration() if configuration is None else configuration
         )
         self.config_space: ConfigurationSpace = self._configuration.config_space
+
         if max_batch_size is not None:
             warn(
                 "max_batch_size is deprecated. Please use batch_size instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            self.batch_size = max_batch_size
-        else:
-            self.batch_size = batch_size
-        self.device = device
+            batch_size = max_batch_size
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
@@ -102,14 +100,11 @@ class SmashConfig:
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
 
-        # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
-        self._prepare_saving = True
-
-        # internal variable to indicated that a model has been smashed for a specific batch size
-        self.__locked_batch_size = False
-
         # ensure the cache directory is deleted on program exit
         atexit.register(self.cleanup_cache_dir)
+
+        # register defaults of environment configuration
+        self.configure_environment(batch_size=batch_size, device=device)
 
     def __del__(self) -> None:
         """Delete the SmashConfig object."""
@@ -120,15 +115,11 @@ class SmashConfig:
         if not isinstance(other, self.__class__):
             return False
 
-        return (
-            self._configuration == other._configuration
-            and self.batch_size == other.batch_size
-            and self.device == other.device
-            and self.cache_dir_prefix == other.cache_dir_prefix
-            and self.save_fns == other.save_fns
-            and self.load_fns == other.load_fns
-            and self.reapply_after_load == other.reapply_after_load
-        )
+        smash_config_args = deepcopy(ADDITIONAL_ARGS)
+        smash_config_args.remove("cache_dir")
+
+        args_equal = all(getattr(self, arg) == getattr(other, arg) for arg in smash_config_args)
+        return args_equal and self._configuration == other._configuration
 
     def cleanup_cache_dir(self) -> None:
         """Clean up the cache directory."""
@@ -408,21 +399,84 @@ class SmashConfig:
         else:
             self.processor = processor
 
-    def get_tokenizer_name(self) -> str | None:
+    def configure_environment(
+        self,
+        device: str = "cuda",
+        batch_size: int = 1,
+        saveable_model: bool = True,
+        calibration_samples: int = 16,
+        call_function_name: str = "__call__",
+        max_seq_len: int = 512,
+        diffusion_steps_arg_name: str = "num_inference_steps",
+        diffusion_backbone_attr_name: str = "model",
+        diffusion_backbone_call_method: str = "__call__",
+        enable_cpu_offload: bool = False,
+        external_logging: str = "none",
+    ) -> None:
         """
-        Get a tokenizer object from a tokenizer name.
+        Configure the environment for the SmashConfig.
 
-        Returns
-        -------
-        str | None
-            The name of the tokenizer to use.
+        Parameters
+        ----------
+        device : str, default="cuda"
+            The device for which the model is optimized. Options are "cuda" and "cpu".
+        batch_size : int, default=1
+            The inference batch size to optimize the model for. Attention: some algorithms optimize the model for exactly
+            this batch size and changing this at inference time might lead to less performance gains.
+        saveable_model : bool, default=True
+            Whether the model needs to be saveable after optimization, e.g. with ``smashed_model.save_pretrained()``.
+            Setting this to false can lead to faster smashing.
+        calibration_samples : int, default=16
+            The number of calibration samples to be used for algorithms that perform calibration.
+        call_function_name : str, default="__call__"
+            The name of the "call" function of a given base model.
+        max_seq_len : int, default=512
+            The maximum sequence length for text generation models.
+        diffusion_steps_arg_name : str, default="num_inference_steps"
+            The name of the argument that specifies the number of diffusion steps for diffusion models.
+        diffusion_backbone_attr_name : str, default="model"
+            The name of the attribute that points to the backbone of a diffusion model.
+        diffusion_backbone_call_method : str, default="__call__"
+            The name of the method that calls the backbone of a diffusion model.
+        enable_cpu_offload : bool, default=False
+            Whether the CPU offload can be enabled if required by the algorithm.
+        external_logging : str, default="none"
+            Whether external logging is set up. Options are "none", "wandb", "tensorboard".
         """
-        if self.tokenizer is None:
-            return None
-        if hasattr(self.tokenizer, "tokenizer"):
-            return self.tokenizer.tokenizer.name_or_path
+        if device in ["cuda", "cpu"]:
+            self.device = device
         else:
-            return self.tokenizer.name_or_path
+            pruna_logger.error("device must be 'cuda' or 'cpu'.")
+
+        # aggregate checks for boolean arguments
+        for arg in ["saveable_model", "enable_cpu_offload"]:
+            if isinstance(locals()[arg], bool):
+                setattr(self, arg, locals()[arg])
+            else:
+                pruna_logger.error(f"{arg} must be a boolean.")
+
+        # aggregate checks for positive integer arguments
+        for arg in ["batch_size", "calibration_samples"]:
+            if isinstance(locals()[arg], int) and locals()[arg] > 0:
+                setattr(self, arg, locals()[arg])
+            else:
+                pruna_logger.error(f"{arg} must be a positive integer.")
+                # internal variable to indicated that a model has been smashed for a specific batch size
+                # set this on the first initialization of these attributes
+                if arg == "batch_size" and not hasattr(self, "__locked_batch_size"):
+                    self.__locked_batch_size = False
+
+        # aggregate checks for string arguments
+        for arg in ["call_function_name", "diffusion_steps_arg_name", "diffusion_backbone_attr_name"]:
+            if isinstance(locals()[arg], str):
+                setattr(self, arg, locals()[arg])
+            else:
+                pruna_logger.error(f"{arg} must be a string.")
+
+        if isinstance(external_logging, str) and external_logging in ["none", "wandb", "tensorboard"]:
+            self.external_logging = external_logging
+        else:
+            pruna_logger.error("external_logging must be a string from ['none', 'wandb', 'tensorboard'].")
 
     def lock_batch_size(self) -> None:
         """Lock the batch size in the SmashConfig."""
@@ -491,26 +545,24 @@ class SmashConfig:
         >>> config["quantizer"]
         "awq"
         """
-        deprecated_hyperparameters = [
-            "whisper_s2t_batch_size",
-            "ifw_batch_size",
-            "higgs_example_batch_size",
-            "diffusers_higgs_example_batch_size",
-            "torch_compile_batch_size",
-        ]
-        if name in deprecated_hyperparameters:
-            warn(
-                f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.batch_size = value
-            return None
-
         if name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
         else:
-            return self._configuration.__setitem__(name, value)
+            name, value = self.check_deprecation(name, value)
+            if name is not None:
+                return self._configuration.__setitem__(name, value)
+
+    def __setattr__(self, name: str, value: Any) -> None:  # noqa: D105
+        if name == "_prepare_saving":
+            warn(
+                "The _prepare_saving attribute is deprecated. Please configure this setting by calling "
+                "smash_config.configure_environment(saveable_model=True/False).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.saveable_model = value
+        else:
+            super().__setattr__(name, value)
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
         if attr == "_data":
@@ -536,6 +588,79 @@ class SmashConfig:
 
     def __repr__(self) -> str:  # noqa: D105
         return self.__str__()
+
+    def check_deprecation(self, name: str, value: Any) -> tuple[str | None, Any]:
+        """
+        Check for deprecation of the given name and value before setting an attribute or item.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute or item to set.
+        value : Any
+            The value to set for the attribute or item.
+
+        Returns
+        -------
+        tuple[str | None, Any]
+            The updated name and value of the attribute or item, returns None if the item no longer needs to be set.
+        """
+        if name in [
+            "whisper_s2t_batch_size",
+            "ifw_batch_size",
+            "higgs_example_batch_size",
+            "diffusers_higgs_example_batch_size",
+            "torch_compile_batch_size",
+        ]:
+            warn(
+                f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.batch_size = value
+            name = None
+
+        if name in ["diffusers_int8_enable_fp32_cpu_offload", "llm_int8_enable_fp32_cpu_offload"]:
+            warn(
+                f"{name} is deprecated. Use smash_config.configure_environment(enable_cpu_offload={value}).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.enable_cpu_offload = value
+            name = None
+
+        elif name == "torch_structured_calibration_samples":
+            warn(
+                f"torch_structured_calibration_samples is deprecated. Use smash_config.configure_environment(calibration_samples={value}).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.calibration_samples = value
+            name = None
+
+        elif name in ["torch_compile_max_kv_cache_size", "torch_compile_seqlen_manual_cuda_graph"]:
+            warn(
+                f"The {name} attribute is deprecated and no longer needed, as they will be determined automatically.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            name = None
+
+        elif name == "_prepare_saving":
+            warn(
+                "The _prepare_saving attribute is deprecated. Please configure this setting by calling "
+                "smash_config.configure_environment(saveable_model=True/False).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.saveable_model = value
+            name = None
+
+        return name, value
+
+
+ENV_ARGUMENTS = inspect.signature(SmashConfig.configure_environment).parameters
+ADDITIONAL_ARGS.extend(ENV_ARGUMENTS)
 
 
 class SmashConfigPrefixWrapper:
