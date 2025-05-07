@@ -81,7 +81,7 @@ class SmashConfig:
         self.config_space: ConfigurationSpace = self._configuration.config_space
         if max_batch_size is not None:
             warn(
-                "max_batch_size is soon to be deprecated. Please use batch_size instead.",
+                "max_batch_size is deprecated. Please use batch_size instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
