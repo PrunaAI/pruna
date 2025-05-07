@@ -431,7 +431,8 @@ class SmashConfig:
 
     @staticmethod
     def check_device_compatibility(device: str | None) -> str:
-        """Validate if the specified device is available on the current system.
+        """
+        Validate if the specified device is available on the current system.
 
         Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
         If device is None, the best available device will be returned.
