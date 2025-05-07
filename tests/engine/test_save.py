@@ -1,12 +1,6 @@
 import os
-import shutil
-
 import pytest
-
 from pruna.engine.pruna_model import PrunaModel
-from transformers import AutoModelForCausalLM
-
-import os
 
 @pytest.mark.skipif("HF_TOKEN" not in os.environ, reason="HF_TOKEN environment variable is not set, skipping tests.")
 @pytest.mark.slow
@@ -14,8 +8,8 @@ import os
 @pytest.mark.parametrize(
     "repo_id",
     [
-        "PrunaAI/tiny-random-llama4-smashed",
-        "PrunaAI/tiny-stable-diffusion-pipe-smashed",
+        ("PrunaAI/tiny-random-llama4-smashed"),
+        ("PrunaAI/tiny-stable-diffusion-pipe-smashed"),
     ],
 )
 def test_save_to_hub(repo_id: str) -> None:
