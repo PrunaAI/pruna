@@ -29,16 +29,11 @@
 [![Huggingface](https://img.shields.io/badge/Huggingface-models-yellow?style=flat-square)][huggingface]
 [![Replicate](https://img.shields.io/badge/replicate-black?style=flat-square)][replicate]
 
-
-
-
-
 <br>
 
 <img src="./docs/assets/images/triple_line.png" alt="Pruna AI Logo" width=600, height=30></img>
 
 </div>
-
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Introduction
 
@@ -68,7 +63,7 @@ Before installing, ensure you have:
 
 #### Option 1: Install Pruna using pip
 
-Pruna is available on PyPI, so you can [install it using pip](https://docs.pruna.ai/en/stable/setup/pip.html):
+Pruna is available on PyPI, so you can [install it using pip](https://docs.pruna.ai/en/stable/setup/install.html):
 
 ```bash
 pip install pruna
@@ -96,7 +91,7 @@ from diffusers import StableDiffusionPipeline
 base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
 ```
 
-Then, use Pruna's `smash` function to optimize your model. Pruna provides a variety of different compression and optimization algorithms, allowing you to combine different algorithms to get the best possible results. You can customize the optimization process using `SmashConfig`:
+Then, use Pruna's `smash` function to optimize your model. Pruna provides a variety of different optimization algorithms, allowing you to combine different algorithms to get the best possible results. You can customize the optimization process using `SmashConfig`:
 
 ```python
 from pruna import smash, SmashConfig
@@ -130,7 +125,6 @@ eval_agent.evaluate(smashed_model)
 
 This was the minimal example, but you are looking for the maximal example? You can check out our [documentation][documentation] for an overview of all supported [algorithms][docs-algorithms] as well as our tutorials for more use-cases and examples.
 
-
 ## <img src="./docs/assets/images/pruna_heart.png" alt="Pruna Heart" width=20></img> Pruna Pro
 
 Pruna has everything you need to get started on optimizing your own models. To push the efficiency of your models even further, we offer Pruna Pro. To give you a glimpse of what is possible with Pruna Pro, let us consider three of the most widely used diffusers pipelines and see how much smaller and faster we can make them. In addition to popular open-source algorithms, we use our proprietary Auto Caching algorithm. We compare the fidelity of the compressed models. Fidelity measures the similarity between the images of the compressed models and the images of the original model.
@@ -155,20 +149,19 @@ For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
 
-Since Pruna offers a broad range of compression algorithms, the following table provides a high-level overview of all methods available in Pruna. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/stable/).
+Since Pruna offers a broad range of optimization algorithms, the following table provides a high-level overview of all methods available in Pruna. For a detailed description of each algorithm, have a look at our [documentation](https://docs.pruna.ai/en/stable/).
 
+| Technique    | Description                                                                                   | Speed | Memory | Quality |
+|--------------|-----------------------------------------------------------------------------------------------|:-----:|:------:|:-------:|
+| `batcher`    | Groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing processing time. | ✅    | ❌     | ➖      |
+| `cacher`     | Stores intermediate results of computations to speed up subsequent operations.               | ✅    | ➖     | ➖      |
+| `compiler`   | Optimises the model with instructions for specific hardware.                                 | ✅    | ➖     | ➖      |
+| `distiller`  | Trains a smaller, simpler model to mimic a larger, more complex model.                       | ✅    | ✅     | ❌      |
+| `quantizer`  | Reduces the precision of weights and activations, lowering memory requirements.              | ✅    | ✅     | ❌      |
+| `pruner`     | Removes less important or redundant connections and neurons, resulting in a sparser, more efficient network. | ✅    | ✅     | ❌      |
+| `recoverer`  | Restores the performance of a model after compression.                                       | ➖    | ➖     | ✅      |
 
-| Technique | Description | Speed | Memory | Accuracy |
-| --- | --- | --- | --- | --- |
-| Batching | Groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing overall processing time. | ✅ | ❌ | 〰️ |
-| Caching | Stores intermediate results of computations to speed up subsequent operations, reducing inference time by reusing previously computed results. | ✅ | 〰️ | 〰️ |
-| Compilation | Compilation optimises the model with instructions for specific hardware. | ✅ | ➖ | 〰️ |
-| Distillation | Trains a smaller, simpler model to mimic a larger, more complex model. | ✅ | ✅ | ❌ |
-| Quantization | Reduces the precision of weights and activations, lowering memory requirements. | ✅ | ✅ | ❌ |
-| Pruning | Removes less important or redundant connections and neurons, resulting in a sparser, more efficient network. | ✅ | ✅ | ❌ |
-| Recovering | Restores the performance of a model after compression. | 〰️ | 〰️ | ✅ |
-
-✅(improves), ➖(stays the same), 〰️(could worsen), ❌(worsens)
+✅ (improves), ➖ (approx. the same), ❌ (worsens)
 
 <br><br>
 
@@ -207,7 +200,6 @@ If you use Pruna in your research, feel free to cite the project! 💜
 <br>
 
 <p align="center"><img src="./docs/assets/images/triple_line.png" alt="Pruna AI Logo" width=600, height=30></img></p>
-
 
 [discord]: https://discord.gg/Tun8YgzxZ9
 [reddit]: https://www.reddit.com/r/PrunaAI/
