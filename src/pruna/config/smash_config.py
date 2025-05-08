@@ -450,13 +450,13 @@ class SmashConfig:
         """
         if device is None:
             if torch.cuda.is_available():
-                pruna_logger.warning("No device specified. Using best available device: CUDA.")
+                pruna_logger.info("No device specified. Using best available device: CUDA.")
                 return "cuda"
             elif torch.backends.mps.is_available():
-                pruna_logger.warning("No device specified. Using best available device: MPS.")
+                pruna_logger.info("No device specified. Using best available device: MPS.")
                 return "mps"
             else:
-                pruna_logger.warning("No device specified. Using best available device: CPU.")
+                pruna_logger.info("No device specified. Using best available device: CPU.")
                 return "cpu"
         elif device == "cuda":
             if not torch.cuda.is_available():
