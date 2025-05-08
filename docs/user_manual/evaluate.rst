@@ -21,7 +21,7 @@ Basic Evaluation Workflow
     User -->|creates| EvaluationAgent
     Task -->|defines| PrunaDataModule
     Task -->|defines| Metrics
-    Task -->|uses| PrunaModel
+    Task -->|uses| EvaluationAgent
     Metrics -->|includes| StatefulMetric
     Metrics -->|includes| StatelessMetric
     PrunaModel -->|provides predictions| EvaluationAgent
