@@ -56,8 +56,9 @@ class SmashConfig:
     ----------
     max_batch_size : int, optional
         The maximum number of batches to process at once. Default is 1.
-    device : str, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is 'cuda'.
+    device : str | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     cache_dir_prefix : str, optional
         The prefix for the cache directory. If None, a default cache directory will be created.
     configuration : Configuration, optional
