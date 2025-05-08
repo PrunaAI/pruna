@@ -90,7 +90,7 @@ Metrics
 Metrics are the core components that calculate specific performance indicators. There are two main types of metrics:
 
 - **Base Metrics**: These metrics compute values directly from inputs without maintaining state across batches.
-- **Stateless Metrics**: Metrics that maintain internal state and accumulate information across multiple batches. These are typically used for quality assessment.
+- **Stateful Metrics**: Metrics that maintain internal state and accumulate information across multiple batches. These are typically used for quality assessment.
 
 The ``Task`` accepts ``Metrics`` in three ways:
 
