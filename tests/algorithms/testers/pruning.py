@@ -11,7 +11,7 @@ from .utils import get_model_sparsity
 class TestTorchUnstructured(AlgorithmTesterBase):
     """Test the torch unstructured pruner."""
 
-    models = ["vit_b_16"]
+    models = ["shufflenet"]
     reject_models = []
     hyperparameters = {"torch_unstructured_sparsity": 0.5}
     allow_pickle_files = True

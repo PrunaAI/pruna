@@ -13,8 +13,8 @@ from .base_tester import AlgorithmTesterBase
 class TestWhisperS2T(AlgorithmTesterBase):
     """Test the WhisperS2T batcher."""
 
-    models = ["whisper_tiny"]
-    reject_models = ["opt_125m"]
+    models = ["whisper_tiny_random"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = WS2TBatcher
 
@@ -26,8 +26,8 @@ class TestWhisperS2T(AlgorithmTesterBase):
 class TestIFW(AlgorithmTesterBase):
     """Test the IFW batcher."""
 
-    models = ["whisper_tiny"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["whisper_tiny_random"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = IFWBatcher
 
