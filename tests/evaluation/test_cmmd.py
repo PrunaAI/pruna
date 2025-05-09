@@ -13,8 +13,8 @@ from pruna.evaluation.task import Task
 @pytest.mark.parametrize(
     "model_fixture, device, clip_model",
     [
-        pytest.param("stable_diffusion_v1_4", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
-        pytest.param("ddpm-cifar10", "cpu", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cpu),
+        pytest.param("sd_tiny_random", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cpu", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
 )
@@ -47,7 +47,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
 @pytest.mark.parametrize(
     "model_fixture, device, clip_model",
     [
-        pytest.param("stable_diffusion_v1_4", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
+        pytest.param("sd_tiny_random", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
     ],
     indirect=["model_fixture"],
 )

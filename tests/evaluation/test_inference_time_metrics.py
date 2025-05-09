@@ -10,8 +10,8 @@ from pruna.evaluation.metrics.metric_elapsed_time import ElapsedTimeMetric
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("stable_diffusion_v1_4", "cuda", marks=pytest.mark.cuda),
-        pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
+        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("shufflenet", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
 )
