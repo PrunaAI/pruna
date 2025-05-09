@@ -10,6 +10,7 @@ from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
 
 from pruna import SmashConfig
+from pruna.engine.utils import safe_memory_cleanup
 
 
 def device_parametrized(cls: Any) -> Any:
@@ -70,6 +71,12 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         model = algorithm_tester.cast_to_device(model, device=smash_config["device"])
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
+        if hasattr(model, "to"):
+            model.to("cpu")
+        if hasattr(model, "destroy"):
+            model.destroy()
+        del smashed_model, model
+        safe_memory_cleanup()
         algorithm_tester.execute_load(load_kwargs)
     finally:
         algorithm_tester.final_teardown(smash_config)
