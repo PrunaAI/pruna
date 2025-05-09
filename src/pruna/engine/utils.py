@@ -23,6 +23,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
+from diffusers.models.modeling_utils import ModelMixin
 
 from pruna.logging.logger import pruna_logger
 
@@ -241,3 +242,70 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
 
     pruna_logger.warning("Could not determine dtype of model, defaulting to torch.float32.")
     return torch.float32
+
+
+class ModelContext:
+    """
+    Context manager for handling the model.
+
+    Parameters
+    ----------
+    model : ModelMixin
+        The model to handle. Can be a transformer model, UNet, or other ModelMixin.
+    """
+
+    def __init__(self, model: "ModelMixin") -> None:
+        """
+        Context manager for handling the model.
+
+        Parameters
+        ----------
+        model : ModelMixin
+            The model to handle. Can be a transformer model, UNet, or other pipeline.
+        """
+        self.pipeline = model
+
+    def __enter__(self) -> tuple[ModelMixin, Any, str | None]:
+        """
+        Enter the context manager.
+
+        Returns
+        -------
+        ModelMixin
+            The working model.
+        Any
+            The denoiser type.
+        str | None
+            The denoiser type.
+        """
+        if hasattr(self.pipeline, "transformer"):
+            self.working_model = self.pipeline.transformer
+            self.denoiser_type = "transformer"
+        elif hasattr(self.pipeline, "unet"):
+            self.working_model = self.pipeline.unet
+            self.denoiser_type = "unet"
+        else:
+            self.working_model = self.pipeline
+            self.denoiser_type = None  # type: ignore [assignment]
+        return self.pipeline, self.working_model, self.denoiser_type
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        """
+        Exit the context manager.
+
+        Parameters
+        ----------
+        exc_type : Exception
+            The exception type.
+        exc_value : Exception
+            The exception value.
+        traceback : Exception
+            The traceback.
+        """
+        if hasattr(self.pipeline, "transformer"):
+            self.pipeline.transformer = self.working_model
+        elif hasattr(self.pipeline, "unet"):
+            self.pipeline.unet = self.working_model
+        else:
+            self.pipeline = self.working_model
+        del self.working_model
