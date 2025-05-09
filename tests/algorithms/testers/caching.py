@@ -10,8 +10,8 @@ from .base_tester import AlgorithmTesterBase
 class TestDeepCache(AlgorithmTesterBase):
     """Test the deepcache algorithm."""
 
-    models = ["stable_diffusion_v1_4"]
-    reject_models = ["opt_125m"]
+    models = ["sd_tiny_random"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = DeepCacheCacher
 

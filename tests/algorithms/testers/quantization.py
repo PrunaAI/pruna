@@ -29,7 +29,7 @@ class TestTorchStatic(AlgorithmTesterBase):
 class TestTorchDynamic(AlgorithmTesterBase):
     """Test the torch dynamic quantizer."""
 
-    models = ["mobilenet_v2"]
+    models = ["shufflenet"]
     reject_models = []
     allow_pickle_files = False
     algorithm_class = TorchDynamicQuantizer
@@ -38,7 +38,7 @@ class TestTorchDynamic(AlgorithmTesterBase):
 class TestQuanto(AlgorithmTesterBase):
     """Test the Quanto quantizer."""
 
-    models = ["opt_125m"]
+    models = ["opt_tiny_random"]
     reject_models = ["dummy_lambda"]
     allow_pickle_files = False
     algorithm_class = QuantoQuantizer
@@ -47,8 +47,8 @@ class TestQuanto(AlgorithmTesterBase):
 class TestLLMint8(AlgorithmTesterBase):
     """Test the LLMint8 quantizer."""
 
-    models = ["opt_125m"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["opt_tiny_random"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMInt8Quantizer
 
@@ -56,8 +56,8 @@ class TestLLMint8(AlgorithmTesterBase):
 class TestDiffusersInt8(AlgorithmTesterBase):
     """Test the DiffusersInt8 quantizer."""
 
-    models = ["sana"]
-    reject_models = ["opt_125m"]
+    models = ["sana_tiny_random"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = DiffusersInt8Quantizer
 
@@ -65,8 +65,8 @@ class TestDiffusersInt8(AlgorithmTesterBase):
 class TestHQQ(AlgorithmTesterBase):
     """Test the HQQ quantizer."""
 
-    models = ["llama_3_2_1b"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["llama_3_tiny_random"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HQQQuantizer
 
@@ -74,8 +74,8 @@ class TestHQQ(AlgorithmTesterBase):
 class TestHQQDiffusers(AlgorithmTesterBase):
     """Test the HQQ quantizer."""
 
-    models = ["sana"]
-    reject_models = ["opt_125m"]
+    models = ["flux_tiny_random"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HQQDiffusersQuantizer
 
@@ -83,8 +83,8 @@ class TestHQQDiffusers(AlgorithmTesterBase):
 class TestHalf(AlgorithmTesterBase):
     """Test the half quantizer."""
 
-    models = ["opt_125m"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["opt_tiny_random"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HalfQuantizer
 
@@ -94,9 +94,13 @@ class TestGPTQ(AlgorithmTesterBase):
     """Test the GPTQ quantizer."""
 
     models = ["opt_125m"]
-    reject_models = ["stable_diffusion_v1_4"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = GPTQQuantizer
+    hyperparameters = {
+        "gptq_weight_bits": 4,
+        "gptq_group_size": 128,
+    }
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -108,6 +112,6 @@ class TestAWQ(AlgorithmTesterBase):
     """Test the AWQ quantizer."""
 
     models = ["opt_125m"]
-    reject_models = ["stable_diffusion_v1_4"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = AWQQuantizer
