@@ -13,6 +13,7 @@ from pruna.algorithms.quantization.huggingface_llm_int8 import LLMInt8Quantizer
 from pruna.algorithms.quantization.quanto import QuantoQuantizer
 from pruna.algorithms.quantization.torch_dynamic import TorchDynamicQuantizer
 from pruna.algorithms.quantization.torch_static import TorchStaticQuantizer
+from pruna.algorithms.quantization.torchao import TorchaoQuantizer
 
 from .base_tester import AlgorithmTesterBase
 
@@ -87,6 +88,15 @@ class TestHalf(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HalfQuantizer
+
+
+class TestTorchao(AlgorithmTesterBase):
+    """Test the torchao quantizer."""
+
+    models = ["flux_tiny_random"]
+    reject_models = ["opt_125m"]
+    allow_pickle_files = False
+    algorithm_class = TorchaoQuantizer
 
 
 @pytest.mark.slow
