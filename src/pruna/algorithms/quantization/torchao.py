@@ -53,7 +53,7 @@ class TorchaoQuantizer(PrunaQuantizer):
         return [
             CategoricalHyperparameter(
                 "quant_type",
-                choices=["int8dq", "int8wo", "fp8wo", "fp8dq", "fp8dqrow"],
+                choices=["int4dq", "int4wo", "int8dq", "int8wo", "fp8wo", "fp8dq", "fp8dqrow"],
                 default_value="int8dq",
                 meta=dict(desc="Quantization type to use."),
             ),
@@ -113,6 +113,8 @@ class TorchaoQuantizer(PrunaQuantizer):
         from torchao.quantization import (
             float8_dynamic_activation_float8_weight,
             float8_weight_only,
+            int4_weight_only,
+            int8_dynamic_activation_int4_weight,
             int8_dynamic_activation_int8_weight,
             int8_weight_only,
             quantize_,
@@ -120,6 +122,8 @@ class TorchaoQuantizer(PrunaQuantizer):
         from torchao.quantization.quant_api import PerRow
 
         return dict(quantize=quantize_,
+                    int4dq=int8_dynamic_activation_int4_weight(),
+                    int4wo=int4_weight_only(),
                     int8dq=int8_dynamic_activation_int8_weight(),
                     int8wo=int8_weight_only(),
                     fp8wo=float8_weight_only(),
