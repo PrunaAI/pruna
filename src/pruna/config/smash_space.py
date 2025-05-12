@@ -33,10 +33,10 @@ PRUNER = "pruner"
 COMPILER = "compiler"
 CACHER = "cacher"
 BATCHER = "batcher"
-FUSER = "fuser"
+FACTORIZER = "factorizer"
 
 # this ordering determins the order of smashing, modify carefully
-ALGORITHM_GROUPS = [FUSER, PRUNER, QUANTIZER, CACHER, COMPILER, BATCHER]
+ALGORITHM_GROUPS = [FACTORIZER, PRUNER, QUANTIZER, CACHER, COMPILER, BATCHER]
 
 
 class Boolean(CategoricalHyperparameter):
