@@ -342,9 +342,9 @@ class ModelContext:
             The traceback.
         """
         if hasattr(self.pipeline, "transformer"):
-            self.pipeline.transformer = self.working_model
+            self.pipeline.transformer = self.pipeline.working_model
         elif hasattr(self.pipeline, "unet"):
-            self.pipeline.unet = self.working_model
+            self.pipeline.unet = self.pipeline.working_model
         else:
-            self.pipeline = self.working_model
-        del self.working_model
+            self.pipeline = self.pipeline.working_model
+        del self.pipeline.working_model
