@@ -64,7 +64,7 @@ class FORACacher(PrunaCacher):
             OrdinalHyperparameter(
                 "start_step",
                 sequence=range(11),
-                default_value=0,
+                default_value=2,
                 meta=dict(desc="How many steps to wait before starting to cache."),
             ),
         ]
