@@ -182,6 +182,10 @@ The following table shows the different call types supported by |pruna| metrics 
      - Ground truth first, then input data
      - ``clip_score``
 
+   * - ``pairwise``
+     - Pairwise mode to default to ``pairwise_y_gt`` or ``pairwise_gt_y``
+     - ``psnr``, ``ssim``, ``lpips``, ``cmmd``
+
    * - ``pairwise_y_gt``
      - Base model's output first, then subsequent model's output
      -  ``psnr``, ``ssim``, ``lpips``, ``cmmd``

@@ -1,4 +1,4 @@
-Adding a Metric
+Customize a Metric
 ===============================
 
 This guide will walk you through the process of adding a new metric to Pruna's evaluation system.
