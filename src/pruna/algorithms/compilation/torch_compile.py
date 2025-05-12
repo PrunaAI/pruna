@@ -293,9 +293,9 @@ def fora_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     Any
         The compiled model.
     """
-    for idx, function in enumerate(model.cache_helper.double_stream_blocks_forward):
+    for idx, function in model.cache_helper.double_stream_blocks_forward.items():
         model.cache_helper.double_stream_blocks_forward[idx] = compile_callable(function, smash_config)
-    for idx, function in enumerate(model.cache_helper.single_stream_blocks_forward):
+    for idx, function in model.cache_helper.single_stream_blocks_forward.items():
         model.cache_helper.single_stream_blocks_forward[idx] = compile_callable(function, smash_config)
     model.text_encoder = compile_callable(model.text_encoder, smash_config)
     model.text_encoder_2 = compile_callable(model.text_encoder_2, smash_config)

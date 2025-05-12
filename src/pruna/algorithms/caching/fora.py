@@ -145,8 +145,8 @@ class CacheHelper:
         # Store original methods to be able to restore them later
         self.transformer_forward: Optional[Callable] = None
         self.pipe_call: Optional[Callable] = None
-        self.double_stream_blocks_forward: List[Callable] = []
-        self.single_stream_blocks_forward: List[Callable] = []
+        self.double_stream_blocks_forward: Dict[int, Callable] = {}
+        self.single_stream_blocks_forward: Dict[int, Callable] = {}
 
         # Use seperate caches for the two different transformer block types
         self.double_stream_blocks_cache: Dict[int, Tuple[Any, Any]] = {}
@@ -274,7 +274,7 @@ class CacheHelper:
             The layer of the double stream transformer block.
         """
         block_forward = block.forward
-        self.double_stream_blocks_forward.append(block_forward)
+        self.double_stream_blocks_forward[layer] = block_forward
 
         @functools.wraps(block_forward)
         def wrapped_forward(*args, **kwargs):  # noqa: ANN201
@@ -299,7 +299,7 @@ class CacheHelper:
             The layer of the single stream transformer block.
         """
         block_forward = block.forward
-        self.single_stream_blocks_forward.append(block_forward)
+        self.single_stream_blocks_forward[layer] = block_forward
 
         @functools.wraps(block_forward)
         def wrapped_forward(*args, **kwargs):  # noqa: ANN201
