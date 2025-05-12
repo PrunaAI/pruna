@@ -36,7 +36,8 @@ class PABCacher(PrunaCacher):
     Implement PAB.
 
     Pyramid Attention Broadcast (PAB) is a method that speeds up inference in diffusion models by systematically skipping
-    attention computations between successive inference steps and reusing cached attention states.
+    attention computations between successive inference steps and reusing cached attention states. This implementation
+    reduces the number of tunable parameters by setting pipeline specific parameters according to https://github.com/huggingface/diffusers/pull/9562.
     """
 
     algorithm_name = "pab"
@@ -60,10 +61,10 @@ class PABCacher(PrunaCacher):
         return [
             OrdinalHyperparameter(
                 "interval",
-                sequence=[2, 3, 4, 5],
+                sequence=[1, 2, 3, 4, 5],
                 default_value=2,
                 meta=dict(
-                    desc="Interval at which to cache spatial attention blocks."
+                    desc="Interval at which to cache spatial attention blocks - 1 disables caching."
                     "Higher is faster but might degrade quality."
                 ),
             )
@@ -110,7 +111,7 @@ class PABCacher(PrunaCacher):
             The smashed model.
         """
         imported_modules = self.import_algorithm_packages()
-        # set default values
+        # set default values according to https://huggingface.co/docs/diffusers/en/api/cache
         temporal_attention_block_skip_range: Optional[int] = None
         cross_attention_block_skip_range: Optional[int] = None
         spatial_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
