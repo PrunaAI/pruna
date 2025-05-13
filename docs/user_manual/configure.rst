@@ -111,7 +111,7 @@ The table underneath provides a general overview of the impact of each algorithm
      - ➖
      - ✅
 
-✅(improves), ➖(Approx. the same), ❌(worsens)
+✅(improves), ➖(approx. the same), ❌(worsens)
 
 .. tip::
 

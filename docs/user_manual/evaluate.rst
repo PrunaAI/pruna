@@ -21,24 +21,24 @@ Basic Evaluation Workflow
     User -->|creates| EvaluationAgent
     Task -->|defines| PrunaDataModule
     Task -->|defines| Metrics
-    Task -->|uses| EvaluationAgent
-    Metrics -->|includes| StatefulMetric
-    Metrics -->|includes| StatelessMetric
+    Task -->|is used by| EvaluationAgent
+    Metrics -->|includes| B["Base Metrics"]
+    Metrics -->|includes| C["Stateless Metric"]
     PrunaModel -->|provides predictions| EvaluationAgent
     EvaluationAgent -->|evaluates| PrunaModel
-    EvaluationAgent -->|returns| C["Evaluation Results"]
+    EvaluationAgent -->|returns| D["Evaluation Results"]
     User -->|configures| EvaluationAgent
 
-    subgraph Metric_Types
-    StatefulMetric
-    StatelessMetric
+    subgraph A["Metric Types"]
+        B
+        C
     end
 
-    subgraph Task_Definition
-    Task
-    PrunaDataModule
-    Metrics
-    Metric_Types
+    subgraph E["Task Definition"]
+        Task
+        PrunaDataModule
+        Metrics
+        A
     end
 
     style User fill:#bbf,stroke:#333,stroke-width:2px
@@ -46,7 +46,7 @@ Basic Evaluation Workflow
     style EvaluationAgent fill:#bbf,stroke:#333,stroke-width:2px
     style PrunaDataModule fill:#bbf,stroke:#333,stroke-width:2px
     style PrunaModel fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#bbf,stroke:#333,stroke-width:2px
+    style D fill:#bbf,stroke:#333,stroke-width:2px
     style Metrics fill:#bbf,stroke:#333,stroke-width:2px
 
 Let's see what that looks like in code.
