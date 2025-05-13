@@ -59,7 +59,7 @@ class SmashConfig:
         Deprecated. The number of batches to process at once. Default is 1.
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
-    device : str | None, optional
+    device : str | torch.device | None, optional
         The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     cache_dir_prefix : str, optional

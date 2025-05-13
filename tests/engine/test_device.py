@@ -12,33 +12,36 @@ def test_device_default() -> None:
 
 
 @pytest.mark.cpu
-def test_device_cpu() -> None:
+@pytest.mark.parametrize("device", ["cpu", torch.device("cpu")])
+def test_device_cpu(device: str | torch.device) -> None:
     """Test that setting device to 'cpu' works."""
-    smash_config = SmashConfig(device="cpu")
+    smash_config = SmashConfig(device=device)
     assert smash_config.device == "cpu"
 
 
 @pytest.mark.cpu
 def test_device_none() -> None:
-    """Test that setting device to None defaults to 'cuda'."""
+    """Test that setting device to None defaults to best available device."""
     smash_config = SmashConfig(device=None)
     assert smash_config.device == DEVICE
+
 
 @pytest.mark.cuda
 @pytest.mark.parametrize(
     "device,expected",
     [
         ("mps", "cpu") if torch.cuda.is_available() else ("cuda", "cpu"),
+        (torch.device("mps"), "cpu") if torch.cuda.is_available() else (torch.device("cuda"), "cpu"),
     ],
 )
-def test_device_available(device: str, expected: str) -> None:
+def test_device_available(device: str | torch.device, expected: str) -> None:
     """Test that setting device to an unavailable device falls back to CPU."""
     smash_config = SmashConfig(device=device)
     assert smash_config.device == expected
 
+
 @pytest.mark.cpu
 def test_device_invalid() -> None:
-    """Test that setting an invalid device raises a ValueError."""
+    """Test that setting an invalid device falls back to CPU."""
     smash_config = SmashConfig(device="invalid_device")
     assert smash_config.device == "cpu"
-
