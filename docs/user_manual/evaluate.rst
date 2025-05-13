@@ -48,6 +48,8 @@ Basic Evaluation Workflow
     style PrunaModel fill:#bbf,stroke:#333,stroke-width:2px
     style D fill:#bbf,stroke:#333,stroke-width:2px
     style Metrics fill:#bbf,stroke:#333,stroke-width:2px
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#f9f,stroke:#333,stroke-width:2px
 
 Let's see what that looks like in code.
 
