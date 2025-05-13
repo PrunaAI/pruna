@@ -15,7 +15,7 @@ from typing import Any, Dict
 
 from pruna.algorithms.factorizing import PrunaFactorizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.model_checks import has_fused_attention_processor
+from pruna.engine.model_checks import has_fused_attention_processor, is_diffusers_model
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext
 
@@ -59,7 +59,7 @@ class QKVFactorizer(PrunaFactorizer):
 
     def model_check_fn(self, model: Any) -> bool:
         """
-        Check if the model has a fused attention processor.
+        Check if the model is a pipeline with unet/transformer denoiser compatible with a fused attention processor.
 
         Parameters
         ----------
@@ -71,7 +71,9 @@ class QKVFactorizer(PrunaFactorizer):
         bool
             True if the model has a fused attention processor, False otherwise.
         """
-        return has_fused_attention_processor(model)
+        if is_diffusers_model(model):
+            return has_fused_attention_processor(model)
+        return False
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
