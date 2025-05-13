@@ -11,10 +11,7 @@ on:
 
 jobs:
   test:
-    if: >
-      github.event.pull_request.author_association != 'OWNER' &&
-      github.event.pull_request.author_association != 'MEMBER' &&
-      github.event.pull_request.author_association != 'COLLABORATOR'
+    if: ${{ github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR' }}
     runs-on: pruna-cpu
 
     strategy:
