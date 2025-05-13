@@ -548,8 +548,6 @@ def has_fused_attention_processor(pipeline: Any) -> bool:
     bool
         True if the pipeline can use a Fused attention processor, False otherwise.
     """
-    if not is_unet_pipeline(pipeline) and not is_transformer_pipeline(pipeline):
-        return False
     return (hasattr(pipeline, "unet") and check_fused_attention_processor(pipeline.unet)) or (
         hasattr(pipeline, "transformer") and check_fused_attention_processor(pipeline.transformer)
     )
