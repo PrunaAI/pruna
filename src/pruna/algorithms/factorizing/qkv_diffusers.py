@@ -20,7 +20,7 @@ from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext
 
 
-class QKVFactorizer(PrunaFactorizer):
+class QKVDiffusers(PrunaFactorizer):
     """
     Implement QKV factorizing for diffusers models.
 
@@ -29,7 +29,7 @@ class QKVFactorizer(PrunaFactorizer):
     all at once: the matrix multiplication involve a larger matrix but we compute one operation instead of three.
     """
 
-    algorithm_name = "qkv_factorizing"
+    algorithm_name = "qkv_diffusers"
     references = {
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",
