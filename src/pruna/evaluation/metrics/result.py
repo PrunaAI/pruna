@@ -36,6 +36,17 @@ class MetricResult:
     params: Dict[str, Any]
     result: float | int
 
+    def __str__(self) -> str:
+        """
+        Return a string representation of the MetricResult, including the name and the result.
+
+        Returns
+        -------
+        str
+            A string representation of the MetricResult.
+        """
+        return f"{self.name}: {self.result}"
+
     @classmethod
     def from_results_dict(
         cls,

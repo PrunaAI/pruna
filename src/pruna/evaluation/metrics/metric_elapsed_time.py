@@ -67,7 +67,6 @@ class InferenceTimeStats(BaseMetric):
         device: str | torch.device = "cuda",
         timing_type: str = "sync",
     ) -> None:
-        super().__init__()
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
         self.device = device
@@ -210,6 +209,8 @@ class LatencyMetric(InferenceTimeStats):
         MetricResult
             The latency for model inference.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across time metrics.
         raw_results = super().compute(model, dataloader)
         result = cast(Dict[str, Any], raw_results)[self.metric_name]
         return MetricResult(self.metric_name, self.__dict__.copy(), result)
@@ -252,6 +253,8 @@ class ThroughputMetric(InferenceTimeStats):
         MetricResult
             The throughput for model inference.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across time metrics.
         raw_results = super().compute(model, dataloader)
         result = cast(Dict[str, Any], raw_results)[self.metric_name]
         return MetricResult(self.metric_name, self.__dict__.copy(), result)
@@ -294,6 +297,8 @@ class TotalTimeMetric(InferenceTimeStats):
         MetricResult
             The total time for model inference.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across time metrics.
         raw_results = super().compute(model, dataloader)
         result = cast(Dict[str, Any], raw_results)[self.metric_name]
         return MetricResult(self.metric_name, self.__dict__.copy(), result)
@@ -314,7 +319,7 @@ class ElapsedTimeMetric:
     def __new__(cls, *args, **kwargs):
         """Forwards to InferenceTimeStats."""
         warn(
-            "Class ElapsedTimeMetric is deprecated and will be removed in a future release. \n"
+            "Class ElapsedTimeMetric is deprecated and will be removed in 'v0.2.8' release. \n"
             "It has been replaced by InferenceTimeStats, \n"
             "which is a shared parent class for 'LatencyMetric', 'ThroughputMetric' and 'TotalTimeMetric'. \n"
             "In the future please use 'LatencyMetric', 'ThroughputMetric' or 'TotalTimeMetric' instead.",

@@ -26,7 +26,6 @@ from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TO
 from pruna.evaluation.metrics.metric_energy import CO2_EMISSIONS, ENERGY_CONSUMED
 from pruna.evaluation.metrics.metric_memory import DISK_MEMORY
 from pruna.evaluation.metrics.metric_model_architecture import TOTAL_MACS, TOTAL_PARAMS
-from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -53,7 +52,7 @@ class Task:
 
     Parameters
     ----------
-    request : str | List[str | BaseMetric]
+    request : str | List[str | BaseMetric | StatefulMetric]
         The user request.
     datamodule : PrunaDataModule
         The dataloader to use for the evaluation.
@@ -63,7 +62,7 @@ class Task:
 
     def __init__(
         self,
-        request: str | List[str | BaseMetric],
+        request: str | List[str | BaseMetric | StatefulMetric],
         datamodule: PrunaDataModule,
         device: str | torch.device = "cuda",
     ) -> None:
@@ -117,7 +116,7 @@ class Task:
         return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
 
 
-def get_metrics(request: str | List[str | BaseMetric]) -> List[BaseMetric]:
+def get_metrics(request: str | List[str | BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
     """
     Convert user requests into a list of metrics.
 
@@ -128,7 +127,7 @@ def get_metrics(request: str | List[str | BaseMetric]) -> List[BaseMetric]:
 
     Returns
     -------
-    List[BaseMetric]
+    List[BaseMetric | StatefulMetric]
         The list of metrics for the task.
 
     Raises
@@ -139,47 +138,58 @@ def get_metrics(request: str | List[str | BaseMetric]) -> List[BaseMetric]:
         _description_
     """
     if isinstance(request, List):
-        if all(isinstance(item, BaseMetric) for item in request):
-            pruna_logger.info("Using provided list of metric instances.")
-            new_request_metrics: List[BaseMetric] = []
-            for metric in request:
-                if metric.__class__.__name__ in PARENT_METRICS:
-                    # We want the new separated metrics rather than the old parent class.
-                    for child in metric.__class__.__subclasses__():
-                        child = cast(type[BaseMetric], child)
-                        hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
-                        new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
-                else:
-                    new_request_metrics.append(cast(BaseMetric, metric))
-            return new_request_metrics
+        if all(isinstance(item, BaseMetric | StatefulMetric) for item in request):
+            return _process_metric_instances(cast(List[BaseMetric | StatefulMetric], request))
         elif all(isinstance(item, str) for item in request):
-            pruna_logger.info(f"Creating metrics from names: {request}")
-            new_requests: List[str] = []
-            for metric_name in request:
-                metric_name = cast(str, metric_name)
-                if metric_name in DEPRECATION_TO_NEW_MAP:
-                    warn(
-                        f"Metric {metric_name} is deprecated and will be removed in a future release. "
-                        f"Use {DEPRECATION_TO_NEW_MAP[metric_name]} instead.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                    for new_metric in DEPRECATION_TO_NEW_MAP[metric_name]:
-                        new_requests.append(cast(str, new_metric))
-                else:
-                    new_requests.append(cast(str, metric_name))
-            return MetricRegistry.get_metrics(new_requests)
+            return _process_metric_names(cast(List[str], request))
         else:
-            pruna_logger.error("List must contain either all strings or all BaseMetric instances.")
-            raise ValueError("List must contain either all strings or all BaseMetric instances.")
+            pruna_logger.error("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
+            raise ValueError("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
     else:
-        if request == "image_generation_quality":
-            pruna_logger.info("An evaluation task for image generation quality is being created.")
-            return [
-                TorchMetricWrapper("clip_score"),
-                PairwiseClipScore(),
-                CMMD(),
-            ]
+        return _process_single_request(request)
+
+
+def _process_metric_instances(request: List[BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
+    pruna_logger.info("Using provided list of metric instances.")
+    new_request_metrics: List[BaseMetric | StatefulMetric] = []
+    for metric in request:
+        if metric.__class__.__name__ in PARENT_METRICS:
+            for child in metric.__class__.__subclasses__():
+                child = cast(type[BaseMetric], child)
+                hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
+                new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
         else:
-            pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
-            raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
+            new_request_metrics.append(cast(BaseMetric | StatefulMetric, metric))
+    return new_request_metrics
+
+
+def _process_metric_names(request: List[str]) -> List[BaseMetric | StatefulMetric]:
+    pruna_logger.info(f"Creating metrics from names: {request}")
+    new_requests: List[str] = []
+    for metric_name in request:
+        metric_name = cast(str, metric_name)
+        if metric_name in DEPRECATION_TO_NEW_MAP:
+            warn(
+                f"Metric {metric_name} is deprecated and will be removed in 'v0.2.8' release. "
+                f"Use {DEPRECATION_TO_NEW_MAP[metric_name]} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            for new_metric in DEPRECATION_TO_NEW_MAP[metric_name]:
+                new_requests.append(cast(str, new_metric))
+        else:
+            new_requests.append(cast(str, metric_name))
+    return MetricRegistry.get_metrics(new_requests)
+
+
+def _process_single_request(request: str) -> List[BaseMetric | StatefulMetric]:
+    if request == "image_generation_quality":
+        pruna_logger.info("An evaluation task for image generation quality is being created.")
+        return [
+            TorchMetricWrapper("clip_score"),
+            TorchMetricWrapper("clip_score", call_type="pairwise"),
+            CMMD(),
+        ]
+    else:
+        pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
+        raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")

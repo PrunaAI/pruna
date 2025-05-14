@@ -175,6 +175,7 @@ Each metric has a default ``call_type`` but you can switch the mode of the metri
         .. code-block:: python
 
             from pruna.evaluation.metrics import CMMD
+
             metric = CMMD(call_type="pairwise")
 
 These high-level modes abstract away the underlying input ordering. Internally, each metric uses a more specific call_type to determine the exact order of inputs passed to the metric function.
@@ -234,16 +235,17 @@ The ``MetricResult`` class stores the metric's name, any associated parameters, 
 .. container:: hidden_code
 
     .. code-block:: python
-      from pruna.evaluation.metrics.result import MetricResult
+
+        from pruna.evaluation.metrics.result import MetricResult
 
 .. code-block:: python
 
   # Example output
-  MetricResult(
-    name="clip_score",
-    params={"param1": "value1", "param2": "value2"},
-    result=28.0828
-  )
+    MetricResult(
+        name="clip_score",
+        params={"param1": "value1", "param2": "value2"},
+        result=28.0828
+    )
 
 PrunaDataModule
 ~~~~~~~~~~~~~~~
@@ -423,4 +425,4 @@ When first setting up evaluation, limit the dataset size with ``datamodule.limit
 Use pairwise metrics for comparison
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores... _evaluation:
+When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores.

@@ -55,7 +55,6 @@ class ModelArchitectureStats(BaseMetric):
     """
 
     def __init__(self, device: str | torch.device = "cuda") -> None:
-        super().__init__()
         self.device = device
         self.module_macs: Dict[str, Any] = {}
         self.module_params: Dict[str, Any] = {}
@@ -219,6 +218,8 @@ class TotalMACsMetric(ModelArchitectureStats):
         MetricResult
             The total MACs of the model.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across model architecture metrics.
         results = super().compute(model, dataloader)
         return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
 
@@ -254,6 +255,8 @@ class TotalParamsMetric(ModelArchitectureStats):
         MetricResult
             The total parameters of the model.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across model architecture metrics.
         results = super().compute(model, dataloader)
         return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
 
@@ -273,7 +276,7 @@ class ModelArchitectureMetric:
     def __new__(cls, *args, **kwargs):
         """Forwards to ModelArchitectureStats."""
         warn(
-            "ModelArchitectureMetric is deprecated and will be removed in a future release. \n"
+            "ModelArchitectureMetric is deprecated and will be removed in 'v0.2.8' release. \n"
             "It has been replaced by ModelArchitectureStats, \n"
             "which is a shared parent class for 'TotalMACsMetric' and 'TotalParamsMetric'. \n"
             "In the future, please use 'TotalMACsMetric' or 'TotalParamsMetric' instead.",

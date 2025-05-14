@@ -60,7 +60,6 @@ class EnvironmentalImpactStats(BaseMetric):
     def __init__(
         self, n_iterations: int = 100, n_warmup_iterations: int = 10, device: str | torch.device = "cuda"
     ) -> None:
-        super().__init__()
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
         self.device = device
@@ -180,6 +179,8 @@ class EnergyConsumedMetric(EnvironmentalImpactStats):
         MetricResult
             The energy consumed by the model.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across environmental impact metrics.
         raw_results = super().compute(model, dataloader)
         return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], raw_results))
 
@@ -220,6 +221,8 @@ class CO2EmissionsMetric(EnvironmentalImpactStats):
         MetricResult
             The CO2 emissions of the model.
         """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across environmental impact metrics.
         raw_results = super().compute(model, dataloader)
         return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], raw_results))
 
@@ -239,7 +242,7 @@ class EnergyMetric:
     def __new__(cls, *args, **kwargs):
         """Forwards to EnvironmentalImpactStats."""
         warn(
-            "Class EnergyMetric is deprecated and will be removed in a future release. \n"
+            "Class EnergyMetric is deprecated and will be removed in 'v0.2.8' release. \n"
             "It has been replaced by EnvironmentalImpactStats, \n"
             "which is a shared parent class for 'EnergyConsumedMetric' and 'CO2EmissionsMetric'. \n"
             "In the future please use 'EnergyConsumedMetric' or 'CO2EmissionsMetric' instead.",
