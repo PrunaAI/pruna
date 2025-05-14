@@ -126,7 +126,7 @@ class TorchCompileCompiler(PrunaCompiler):
                     desc=(
                         "Whether to compile the model itself or the module list. "
                         "Compiling the model itself has a longer warmup and could fail "
-                        "incase of graphbreaks but could lead to slightly faster compilation. "
+                        "in case of graphbreaks but could lead to slightly faster compilation. "
                         "Whereas compiling the module list has a shorter warmup and is more "
                         "robust to graphbreaks but could be slightly slower."
                     )
@@ -263,8 +263,10 @@ def compile_callable(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         pruna_logger.info("Compiling for CPU")
         backend = "openvino"
     if smash_config["target"] == "module_list":
+        found_module_list = False
         for name, module in model.named_modules():
             if isinstance(module, torch.nn.ModuleList):
+                found_module_list = True
                 for i, submodule in enumerate(module):
                     if isinstance(submodule, torch.nn.Module):
                         submodule = torch.compile(
@@ -275,6 +277,13 @@ def compile_callable(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
                             backend=backend,
                         )
                     module[i] = submodule
+
+        if not found_module_list:
+            pruna_logger.warning(
+                "No ModuleList found in the model for compilation. "
+                "Torch compile will not have any effect, please switch to target=model."
+            )
+
         return model
     elif smash_config["target"] == "model":
         return torch.compile(
