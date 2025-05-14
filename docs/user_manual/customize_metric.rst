@@ -36,6 +36,8 @@ Implementing a ``BaseMetric``
 
 Create a new class that inherits from ``BaseMetric`` and implements the ``compute()`` method.
 
+Your metric should have a ``metric_name`` attribute and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
+
 ``compute()`` takes two parameters: ``model`` and ``dataloader``.
 
 Inside ``compute()``, you are responsible for running inference manually. 
@@ -51,7 +53,8 @@ Your method should return a ``MetricResult`` object with the metric name, result
         '''Your metric description'''
 
         metric_name = "your_metric_name"
-        
+        higher_is_better = True # or False
+
         def __init__(self):
             super().__init__()
             # Initialize any parameters your metric needs
@@ -68,6 +71,8 @@ Implementing a ``StatefulMetric``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To implement a ``StatefulMetric``, create a class that inherits from ``StatefulMetric``. These metrics are designed to accumulate state across multiple batches and can share inference with other metrics.
+
+Your metric should have a ``metric_name`` attribute and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
 
 Use ``add_state()`` method to define internal state variables that will accumulate data across batches. For example, you might track totals and counts to compute an average.
 
@@ -93,6 +98,7 @@ Here's a complete example implementing a ``StatefulMetric`` with a single ``call
 
         default_call_type = "y_gt"
         metric_name = "your_metric_name"
+        higher_is_better = True # or False
 
         def __init__(self, param1='default1', param2='default2', call_type=SINGLE): # Since we picked a single call_type for default, we can use it as a default value
             super().__init__()
@@ -231,7 +237,7 @@ Thanks to this registry system, everyone using |pruna| can now refer to your met
     # Now you can create a task with your metric from the metric name.
     task = Task(request=metrics, data_module=pruna.data.pruna_datamodule.PrunaDataModule.from_string('LAION256'))  
 
-    
+
 One important thing: the registration happens when your module is imported. To ensure your metric is always available, we suggest importing it in ``pruna/evaluation/metrics/__init__.py`` file.
 
 4. Add tests and update the documentation

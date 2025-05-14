@@ -149,7 +149,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
     You can find the full list of available metrics in the :ref:`Metric Overview <metrics>` section.
 
 Metric Call Types
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~
 
 |pruna| metrics can operate in both single-model and pairwise modes.
 
@@ -158,7 +158,33 @@ Metric Call Types
 
 Underneath the hood, the ``StatefulMetric`` class uses the ``call_type`` parameter to determine the order of the inputs.
 
-The following table shows the different call types supported by |pruna| metrics and the metrics that support each call type.
+Each metric has a default ``call_type`` but you can switch the mode of the metric despite your default ``call_type``.
+
+.. tabs::
+
+    .. tab:: Single-Model mode
+
+        .. code-block:: python
+
+            from pruna.evaluation.metrics import CMMD
+
+            metric = CMMD(call_type="single") # or [CMMD() since single is the default call type]
+
+    .. tab:: Pairwise mode
+
+        .. code-block:: python
+
+            from pruna.evaluation.metrics import CMMD
+            metric = CMMD(call_type="pairwise")
+
+These high-level modes abstract away the underlying input ordering. Internally, each metric uses a more specific call_type to determine the exact order of inputs passed to the metric function.
+
+Internal Call Types
+~~~~~~~~~~~~~~~~~~~~
+
+The following table lists the supported internal call types and examples of metrics using them. 
+
+This is what's happening under the hood when you pass ``call_type="single"`` or ``call_type="pairwise"`` to a metric.
 
 .. list-table::
    :widths: 10 60 10
@@ -196,24 +222,28 @@ The following table shows the different call types supported by |pruna| metrics 
      - Subsequent model's output first, then base model's output
      - ``psnr``, ``ssim``, ``lpips``, ``cmmd``
 
-Each metric has a default ``call_type`` but you can switch the mode of the metric despite your default ``call_type``.
+Metric Results
+~~~~~~~~~~~~~~~
 
-.. tabs::
+The ``MetricResult`` is a class that contains the result of a metric evaluation.
 
-    .. tab:: Single-Model mode
+Each metric returns a ``MetricResult`` instance, which contains the outcome of a single evaluation.
 
-        .. code-block:: python
+The ``MetricResult`` class stores the metric's name, any associated parameters, and the computed result value:
 
-            from pruna.evaluation.metrics import CMMD
+.. container:: hidden_code
 
-            metric = CMMD() # or ["cmmd"]
+    .. code-block:: python
+      from pruna.evaluation.metrics.result import MetricResult
 
-    .. tab:: Pairwise mode
+.. code-block:: python
 
-        .. code-block:: python
-
-            from pruna.evaluation.metrics import CMMD
-            metric = CMMD(call_type="pairwise")
+  # Example output
+  MetricResult(
+    name="clip_score",
+    params={"param1": "value1", "param2": "value2"},
+    result=28.0828
+  )
 
 PrunaDataModule
 ~~~~~~~~~~~~~~~
@@ -393,4 +423,4 @@ When first setting up evaluation, limit the dataset size with ``datamodule.limit
 Use pairwise metrics for comparison
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores.
+When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores... _evaluation:

@@ -33,11 +33,18 @@ CO2_EMISSIONS = "co2_emissions"
 
 class EnvironmentalImpactStats(BaseMetric):
     """
-    Evaluate the energy metrics of a model.
+    Internal metric for evaluating energy usage during model inference.
 
-    Measures two key energy performance metrics:
-    1. CO2 Emissions: Total carbon emissions produced during inference, measured in kilograms (kg).
-    2. Energy Consumption: Total energy consumed during inference, measured in kilowatt-hours (kWh).
+    This metric is not intended for direct use by end users. It serves as a shared computation
+    utility for evaluating environmental impact across energy-related child metrics.
+
+    It estimates two key performance indicators related to sustainability:
+    1. CO₂ Emissions: Estimated carbon emissions generated during inference, measured in kilograms (kg).
+    2. Energy Consumption: Estimated total energy used by the hardware during inference,
+    measured in kilowatt-hours (kWh).
+
+    These values are typically derived from GPU power draw and runtime statistics, and are returned
+    as raw results to be used by child metric classes that wrap them into standardized `MetricResult` objects.
 
     Parameters
     ----------

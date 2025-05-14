@@ -19,7 +19,9 @@ from typing import Any
 class BaseMetric(ABC):
     """The base class for all Pruna metrics."""
 
-    metric_name: str = ""
+    metric_name: str
+    metric_units: str
+    higher_is_better: bool
 
     def __init__(self) -> None:
         """Initialize the BaseMetric class."""

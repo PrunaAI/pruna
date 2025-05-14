@@ -34,12 +34,19 @@ TOTAL_TIME = "total_time"
 
 class InferenceTimeStats(BaseMetric):
     """
-    Time measurements for inference.
+    Internal metric for shared inference time computation.
 
-    Measures three key inference performance metrics:
-    1. Elapsed Time: Total execution time in milliseconds
-    2. Latency: Average processing time per batch in milliseconds
-    3. Throughput: Number of batches processed per millisecond
+    This class is not intended for direct use by end users. Instead, it serves as a shared internal utility
+    to compute timing-related statistics (latency, throughput, and total inference time) used by its
+    specialized child metrics: `LatencyMetric`, `ThroughputMetric`, and `TotalTimeMetric`.
+
+    The metric performs warmup and timed inference iterations to calculate:
+    1. Total Time: Total execution time across all timed iterations (in milliseconds)
+    2. Latency: Average processing time per batch (in milliseconds)
+    3. Throughput: Number of samples processed per millisecond
+
+    These values are returned as raw results for consumption by child metrics, which expose them through
+    a standardized `MetricResult` interface.
 
     Parameters
     ----------
@@ -66,10 +73,66 @@ class InferenceTimeStats(BaseMetric):
         self.device = device
         self.timing_type = timing_type
 
+    def _measure(self, model: PrunaModel, dataloader: DataLoader, iterations: int, measure_fn) -> None:
+        """Perform iterations and apply the measure function.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+        iterations : int
+            The number of iterations to run inference.
+        measure_fn : Callable
+            The function to apply to each batch.
+        """
+        c = 0
+        while c < iterations:
+            for batch in dataloader:
+                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
+                x = model.inference_handler.prepare_inputs(batch)
+                measure_fn(model, x)
+                c += 1
+                if c >= iterations:
+                    break
+
+    def _time_inference(self, model: PrunaModel, x: Any) -> float:
+        """
+        Time a single inference and return the elapsed time in milliseconds.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        x : Any
+            The input to the model.
+
+        Returns
+        -------
+        float
+            The elapsed time in milliseconds.
+        """
+        if self.timing_type == "async" or self.device == "cpu":
+            startevent_time = time.time()
+            _ = model(x, **model.inference_handler.model_args)
+            endevent_time = time.time()
+            return (endevent_time - startevent_time) * 1000  # in ms
+        elif self.timing_type == "sync":
+            startevent = torch.cuda.Event(enable_timing=True)
+            endevent = torch.cuda.Event(enable_timing=True)
+            startevent.record()
+            _ = model(x, **model.inference_handler.model_args)
+            endevent.record()
+            torch.cuda.synchronize()
+            return startevent.elapsed_time(endevent)  # in ms
+        else:
+            raise ValueError(f"Timing type {self.timing_type} not supported.")
+
     @torch.no_grad()
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any] | MetricResult:
         """
-        Compute the elapsed time, latency, and throughput for model inference.
+        Compute the inference time for model inference.
 
         Parameters
         ----------
@@ -80,8 +143,8 @@ class InferenceTimeStats(BaseMetric):
 
         Returns
         -------
-        dict
-            The elapsed time, latency, and throughput for model inference.
+        Dict[str, Any] | MetricResult
+            The inference time for model inference.
         """
         if self.timing_type == "async" and self.device == "cpu":
             pruna_logger.warning("Async timing is not supported on CPU. Using sync timing instead.")
@@ -90,42 +153,13 @@ class InferenceTimeStats(BaseMetric):
         model.move_to_device(self.device)
 
         # Warmup
-        c = 0
-        while c < self.n_warmup_iterations:
-            for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
-                x = model.inference_handler.prepare_inputs(batch)
-                model(x, **model.inference_handler.model_args)
-                c += 1
-                if c >= self.n_warmup_iterations:
-                    break
+        self._measure(model, dataloader, self.n_warmup_iterations, lambda m, x: m(x, **m.inference_handler.model_args))
 
         # Measurement
         list_elapsed_times = []
-        c = 0
-        while c < self.n_iterations:
-            for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
-                x = model.inference_handler.prepare_inputs(batch)
-                if self.timing_type == "async" or self.device == "cpu":
-                    startevent_time = time.time()
-                    _ = model(x, **model.inference_handler.model_args)
-                    endevent_time = time.time()
-                    elapsed_time = (endevent_time - startevent_time) * 1000  # in ms
-                elif self.timing_type == "sync":
-                    startevent = torch.cuda.Event(enable_timing=True)
-                    endevent = torch.cuda.Event(enable_timing=True)
-                    startevent.record()
-                    _ = model(x, **model.inference_handler.model_args)
-                    endevent.record()
-                    torch.cuda.synchronize()
-                    elapsed_time = startevent.elapsed_time(endevent)  # in ms
-                else:
-                    raise ValueError(f"Timing type {self.timing_type} not supported.")
-                list_elapsed_times.append(elapsed_time)
-                c += 1
-                if c >= self.n_iterations:
-                    break
+        self._measure(
+            model, dataloader, self.n_iterations, lambda m, x: list_elapsed_times.append(self._time_inference(m, x))
+        )
 
         total_elapsed_time = sum(list_elapsed_times)
         self.batch_size = cast(int, dataloader.batch_size)

@@ -134,12 +134,13 @@ def get_hyperparameters(instance: Any, reference_function: Callable[..., Any]) -
     return {name: getattr(instance, name, None) for name in param_names}
 
 
-def get_direct_parents(list_of_instances: List[Any]) -> Tuple[Dict[Any, List[Any]], List[Any]]:
+def group_metrics_by_inheritance(list_of_instances: List[Any]) -> Tuple[Dict[Any, List[Any]], List[Any]]:
     """
-    Get the direct parents of a list of instances.
+    Split a list of metric instances based on their direct parent class and configuration.
 
-    Returns a dictionary where the keys are the direct parents and the values are the direct children.
-    Also returns a list of instances that directly inherit from BaseMetric.
+    Specifically, the function:
+    - Groups instances that share the same direct parent class and initialization hyperparameters.
+    - Separately collects instances that directly inherit from BaseMetric.
 
     Parameters
     ----------
