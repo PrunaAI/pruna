@@ -51,7 +51,7 @@ class TorchCompileCompiler(PrunaCompiler):
     dataset_required = False
     compatible_algorithms = dict(
         quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq"],
-        cacher=["deepcache"],
+        cacher=["deepcache", "fora"],
     )
 
     def get_hyperparameters(self) -> list:
@@ -277,6 +277,32 @@ def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     return model
 
 
+def fora_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+    """
+    Apply compilation logic for FORA models.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    smash_config : SmashConfigPrefixWrapper
+        The configuration for the compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    for idx, function in enumerate(model.cache_helper.double_stream_blocks_forward):
+        model.cache_helper.double_stream_blocks_forward[idx] = compile_callable(function, smash_config)
+    for idx, function in enumerate(model.cache_helper.single_stream_blocks_forward):
+        model.cache_helper.single_stream_blocks_forward[idx] = compile_callable(function, smash_config)
+    model.text_encoder = compile_callable(model.text_encoder, smash_config)
+    model.text_encoder_2 = compile_callable(model.text_encoder_2, smash_config)
+    model.vae = compile_callable(model.vae, smash_config)
+    return model
+
+
 def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     """
     Apply compilation logic for unet and transformer based diffusers pipelines.
@@ -348,4 +374,5 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
 
 compilation_map = {
     "deepcache": deepcache_logic,
+    "fora": fora_logic,
 }
