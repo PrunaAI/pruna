@@ -47,6 +47,10 @@ class CombinationsTester(AlgorithmTesterBase):
         ("flux_tiny_random", dict(cacher="pab", quantizer="diffusers_int8"), False),
         ("flux_tiny_random", dict(cacher="fastercache", quantizer="hqq_diffusers"), False),
         ("flux_tiny_random", dict(cacher="fastercache", quantizer="diffusers_int8"), False),
+        ("flux_tiny_random", dict(cacher="fora", quantizer="hqq_diffusers"), False),
+        ("flux_tiny_random", dict(cacher="fora", quantizer="diffusers_int8"), False),
+        ("flux_tiny_random", dict(cacher="fora", compiler="torch_compile"), False),
+        ("flux_tiny_random", dict(cacher="fora", compiler="stable_fast"), False),
     ],
     indirect=["model_fixture"],
 )
