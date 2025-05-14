@@ -62,7 +62,7 @@ EMBEDDING_MODULES: list[str] = [
 
 class TorchaoQuantizer(PrunaQuantizer):
     """
-     Implement quantization using TorchAO.
+    Implement quantization using torchao.
 
     This replaces each nn.Linear in-place with a low-precision Tensor subclass via
     torchao.quantization.quantize_. It uses per-channel uniform affine
