@@ -265,13 +265,13 @@ def fora_logic(
     )
 
     # compile transformer blocks
-    for layer, block_forward in enumerate(model.cache_helper.double_stream_blocks_forward):
+    for layer, block_forward in model.cache_helper.double_stream_blocks_forward.items():
         block_forward = lazy_trace_(block_forward)
         if config.enable_cuda_graph:
             model.cache_helper.double_stream_blocks_forward[layer] = imported_modules["make_dynamic_graphed_callable"](
                 block_forward
             )
-    for layer, block_forward in enumerate(model.cache_helper.single_stream_blocks_forward):
+    for layer, block_forward in model.cache_helper.single_stream_blocks_forward.items():
         block_forward = lazy_trace_(block_forward)
         if config.enable_cuda_graph:
             model.cache_helper.single_stream_blocks_forward[layer] = imported_modules["make_dynamic_graphed_callable"](
