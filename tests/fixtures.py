@@ -5,7 +5,6 @@ from typing import Any, Callable
 import pytest
 import torch
 from diffusers import (
-    DDIMPipeline,
     FluxPipeline,
     SanaPipeline,
     StableDiffusion3Pipeline,
@@ -22,7 +21,6 @@ HIGH_RESOURCE_FIXTURES = ["sana"]
 HIGH_RESOURCE_FIXTURES_CPU = HIGH_RESOURCE_FIXTURES + [
     "llama_3_1_8b",
     "llama_3_2_1b",
-    "whisper_tiny",
     "stable_diffusion_3_medium_diffusers",
 ]
 
@@ -68,9 +66,10 @@ def stable_diffusion_v1_4_model() -> tuple[Any, SmashConfig]:
     return model, smash_config
 
 
-def whisper_tiny_model() -> tuple[Any, SmashConfig]:
-    """Whisper tiny model for speech recognition."""
-    model_id = "openai/whisper-tiny"
+def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
+    """Whisper tiny random model for speech recognition."""
+    source_model_id = "openai/whisper-tiny"
+    model_id = "yujiepan/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
         model=model_id,
@@ -79,8 +78,8 @@ def whisper_tiny_model() -> tuple[Any, SmashConfig]:
         device="cpu",
     )
     smash_config = SmashConfig()
-    smash_config.add_tokenizer(model_id)
-    smash_config.add_processor(model_id)
+    smash_config.add_tokenizer(source_model_id)
+    smash_config.add_processor(source_model_id)
     return model, smash_config
 
 
@@ -111,10 +110,9 @@ def get_automodel_transformers(model_id: str) -> tuple[Any, SmashConfig]:
     if hasattr(smash_config.tokenizer, "pad_token"):
         smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
         dataset = PrunaDataModule.from_string(
-            "WikiText", collate_fn_args=dict(tokenizer=smash_config.tokenizer, max_seq_len=2048)
+            "WikiText", collate_fn_args=dict(tokenizer=smash_config.tokenizer, max_seq_len=64)
         )
-        # avoid too long calibration time, otherwise it kills the cpu
-        dataset.limit_datasets(256)
+        dataset.limit_datasets(16)
         smash_config.add_data(dataset)
 
     return model, smash_config
@@ -129,17 +127,25 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
 
 
 MODEL_FACTORY: dict[str, Callable] = {
-    "mobilenet_v2": partial(get_torchvision_model, "resnet18"),
+    # whisper models
+    "whisper_tiny_random": whisper_tiny_random_model,
+
+    # vision models
+    "shufflenet": partial(get_torchvision_model, "shufflenet_v2_x0_5"),
+    "mobilenet_v2": partial(get_torchvision_model, "mobilenet_v2"),
+    "resnet_18": partial(get_torchvision_model, "resnet18"),
+    "vit_b_16": partial(get_torchvision_model, "vit_b_16"),
+
+    # image generation models
     "stable_diffusion_v1_4": stable_diffusion_v1_4_model,
     "stable_diffusion_3_medium_diffusers": partial(
         get_diffusers_model, StableDiffusion3Pipeline, "stabilityai/stable-diffusion-3-medium-diffusers"
     ),
-    "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m"),
-    "whisper_tiny": whisper_tiny_model,
-    "llama_3_2_1b": partial(get_automodel_transformers, "NousResearch/Llama-3.2-1B"),
-    "resnet_18": partial(get_torchvision_model, "resnet18"),
-    "vit_b_16": partial(get_torchvision_model, "vit_b_16"),
-    "llama_3_1_8b": partial(get_automodel_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
+    "sd_tiny_random": partial(
+        get_diffusers_model,
+        StableDiffusionPipeline,
+        "dg845/tiny-random-stable-diffusion"
+    ),
     "sana": partial(
         get_diffusers_model,
         SanaPipeline,
@@ -147,8 +153,15 @@ MODEL_FACTORY: dict[str, Callable] = {
         variant="fp16",
         torch_dtype=torch.float16,
     ),
-    "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
-    "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
-    "dummy_lambda": dummy_model,
+    "sana_tiny_random": partial(get_diffusers_model, SanaPipeline, "katuni4ka/tiny-random-sana"),
     "flux_tiny_random": partial(get_diffusers_model, FluxPipeline, "katuni4ka/tiny-random-flux"),
+
+    # text generation models
+    "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m"),
+    "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
+    "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
+    "llama_3_2_1b": partial(get_automodel_transformers, "NousResearch/Llama-3.2-1B"),
+    "llama_3_1_8b": partial(get_automodel_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
+    "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
+    "dummy_lambda": dummy_model,
 }
