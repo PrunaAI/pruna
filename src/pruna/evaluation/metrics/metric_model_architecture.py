@@ -35,10 +35,18 @@ TOTAL_PARAMS = "total_params"
 
 class ModelArchitectureStats(BaseMetric):
     """
-    Evaluate the model architecture.
+    Internal metric for evaluating model architecture characteristics.
 
-    1. Evaluate the MACs of the model at inference.
-    2. Evaluate the number of parameters of the model.
+    This utility computes static properties of a model to provide insights into its computational
+    and memory complexity. It is primarily intended for use by child metrics that expose
+    architecture statistics to end users or logging pipelines.
+
+    Specifically, it calculates:
+    1. MACs (Multiply–Accumulate Operations): An estimate of the model’s computational cost during inference.
+    2. Parameter Count: Total number of learnable parameters in the model.
+
+    Results are returned as raw results,
+    to be used by child metric classes that wrap them into standardized `MetricResult` objects.
 
     Parameters
     ----------

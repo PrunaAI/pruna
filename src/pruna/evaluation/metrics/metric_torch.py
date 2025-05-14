@@ -218,7 +218,7 @@ class TorchMetricWrapper(StatefulMetric):
         # Special case for clip_score until new torchmetrics version.
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             return PairwiseClipScore(**kwargs)
-        return super().__new__(cls)
+        return super(TorchMetricWrapper, cls).__new__(cls)
 
     def __init__(self, metric_name: str, call_type: str = "", **kwargs) -> None:
         """
@@ -245,7 +245,7 @@ class TorchMetricWrapper(StatefulMetric):
 
         pruna_logger.info(f"Using call_type: {self.call_type} for metric {metric_name}")
         self.metric_name = metric_name
-        self.higher_is_better = self.metric.higher_is_better
+        self.higher_is_better = self.metric.higher_is_better if self.metric.higher_is_better is not None else True
 
     def update(self, x: List[Any] | Tensor, gt: List[Any] | Tensor, outputs: Any) -> None:
         """

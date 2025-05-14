@@ -34,11 +34,11 @@ from pruna.evaluation.metrics.utils import get_hyperparameters
 from pruna.logging.logger import pruna_logger
 
 AVAILABLE_REQUESTS = ("image_generation_quality",)
-PARENT_TO_CHILD_MAP = {
-    "ModelArchitectureStats": [TOTAL_MACS, TOTAL_PARAMS],
-    "InferenceTimeStats": [LATENCY, THROUGHPUT, TOTAL_TIME],
-    "EnvironmentalImpactStats": [ENERGY_CONSUMED, CO2_EMISSIONS],
-}
+PARENT_METRICS = (
+    "ModelArchitectureStats",
+    "InferenceTimeStats",
+    "EnvironmentalImpactStats",
+)
 DEPRECATION_TO_NEW_MAP = {
     "elapsed_time": [LATENCY, THROUGHPUT, TOTAL_TIME],
     "gpu_memory": [DISK_MEMORY],
@@ -143,11 +143,12 @@ def get_metrics(request: str | List[str | BaseMetric]) -> List[BaseMetric]:
             pruna_logger.info("Using provided list of metric instances.")
             new_request_metrics: List[BaseMetric] = []
             for metric in request:
-                if metric.__class__.__name__ in PARENT_TO_CHILD_MAP:
+                if metric.__class__.__name__ in PARENT_METRICS:
                     # We want the new separated metrics rather than the old parent class.
-                    for child in PARENT_TO_CHILD_MAP[metric.__class__.__name__]:
+                    for child in metric.__class__.__subclasses__():
+                        child = cast(type[BaseMetric], child)
                         hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
-                        new_request_metrics.append(MetricRegistry.get_metric(child, **hyperparameters))
+                        new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
                 else:
                     new_request_metrics.append(cast(BaseMetric, metric))
             return new_request_metrics

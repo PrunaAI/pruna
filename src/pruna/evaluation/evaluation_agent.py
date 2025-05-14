@@ -22,7 +22,7 @@ from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import safe_memory_cleanup
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import get_direct_parents
+from pruna.evaluation.metrics.utils import group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -225,8 +225,9 @@ class EvaluationAgent:
             The results of the stateless metrics.
         """
         results = []
-        parent_to_children, children_of_base = get_direct_parents(stateless_metrics)
-        for (parent, config), children in parent_to_children.items():
+        parent_to_children, children_of_base = group_metrics_by_inheritance(stateless_metrics)
+        for (parent, _), children in parent_to_children.items():
+            # Get the metrics that share a common parent to share inference computation by calling the parent metric.
             raw_results = parent.compute(children[0], model, self.task.dataloader)
             for child in children:
                 results.append(
