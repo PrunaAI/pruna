@@ -5,6 +5,7 @@ from typing import Any, Callable
 import pytest
 import torch
 from diffusers import (
+    DDIMPipeline,
     FluxPipeline,
     SanaPipeline,
     StableDiffusion3Pipeline,
@@ -141,6 +142,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     "stable_diffusion_3_medium_diffusers": partial(
         get_diffusers_model, StableDiffusion3Pipeline, "stabilityai/stable-diffusion-3-medium-diffusers"
     ),
+    "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
     "sd_tiny_random": partial(
         get_diffusers_model,
         StableDiffusionPipeline,
