@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 from typing import Any, Dict
 
 import torch
@@ -19,16 +20,56 @@ import torch
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
-from pruna.engine.model_checks import get_diffusers_transformer_models
+from pruna.engine.model_checks import get_diffusers_transformer_models, is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
+
+# Based on common diffusers transformer architectures
+NORM_MODULES: list[str] = [
+    "adaln_single",
+    "caption_norm",
+    "norm",
+    "norm1",
+    "norm1_context",
+    "norm2",
+    "norm2_context",
+    "norm3",
+    "norm_k",
+    "norm_q",
+    "norm_v",
+    "norm_final",
+    "norm_out",
+    "skip_norm",
+]
+EMBEDDING_MODULES: list[str] = [
+    "caption_projection",
+    "condition_embedder",
+    "context_embedder",
+    "guidance_condition_pro",
+    "guidance_embedder",
+    "ofs_embedding",
+    "ofs_proj",
+    "patch_embed",
+    "pos_embed",
+    "rope",
+    "time_embedding",
+    "time_proj",
+    "time_text_embed",
+    "timestep_embedder",
+    "text_embedder",
+    "x_embedder",
+]
 
 
 class TorchaoQuantizer(PrunaQuantizer):
     """
-    Implement quantization using the torchao library.
+     Implement quantization using TorchAO.
 
-    This algorithm quantizes the weights and activations of linear layers in a model.
-    Combined with torch compile, it can give speedups compared to the base model.
+    This replaces each nn.Linear in-place with a low-precision Tensor subclass via
+    torchao.quantization.quantize_. It uses per-channel uniform affine
+    (“linear”) quantization for weights (e.g. symmetric int8 or int4) and dynamic
+    per-tensor affine quantization for activations (8-bit at runtime). When combined
+    with torch.compile, this can yield substantial inference speedups over
+    full-precision model.
     """
 
     algorithm_name = "torchao"
@@ -53,9 +94,35 @@ class TorchaoQuantizer(PrunaQuantizer):
         return [
             CategoricalHyperparameter(
                 "quant_type",
-                choices=["int4dq", "int4wo", "int8dq", "int8wo", "fp8wo", "fp8dq", "fp8dqrow"],
+                choices=[
+                    "int4dq",
+                    "int4wo",
+                    "int8dq",
+                    "int8wo",
+                    "fp8wo",
+                    "fp8dq",
+                    "fp8dqrow",
+                ],
                 default_value="int8dq",
-                meta=dict(desc="Quantization type to use."),
+                meta=dict(
+                    desc=(
+                        "Quantization type: prefix selects data format (int4/int8/fp8); "
+                        "`wo` quantizes only the weights (activations remain in full precision); "
+                        "`dq` fully quantizes and dequantizes both weights and activations; "
+                        "`dqrow` also does full quantize-dequantize but computes a separate scale for each row"
+                    )
+                ),
+            ),
+            CategoricalHyperparameter(
+                "excluded_modules",
+                choices=[
+                    "none",
+                    "norm",
+                    "embedding",
+                    "norm+embedding",
+                ],
+                default_value="none",
+                meta=dict(desc="Which types of modules to omit when applying quantization."),
             ),
         ]
 
@@ -78,6 +145,8 @@ class TorchaoQuantizer(PrunaQuantizer):
             return True
         if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_models)):
             return True
+        if is_causal_lm(model):
+            return True
         return isinstance(model, torch.nn.Module)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
@@ -97,8 +166,22 @@ class TorchaoQuantizer(PrunaQuantizer):
             The quantized model.
         """
         working_model = model.transformer if hasattr(model, "transformer") else model
+
+        excluded_modules = []
+        if "norm" in smash_config["excluded_modules"]:
+            excluded_modules.extend(NORM_MODULES)
+        if "embedding" in smash_config["excluded_modules"]:
+            excluded_modules.extend(EMBEDDING_MODULES)
+
         imported_modules = self.import_algorithm_packages()
-        imported_modules["quantize"](working_model, imported_modules[smash_config["quant_type"]])
+        is_linear = imported_modules["_is_linear"]
+
+        def filter_fn(module: torch.nn.Module, fqn: str) -> bool:
+            if not is_linear(module, fqn):
+                return False
+            return all(name not in excluded_modules for name in fqn.split("."))
+
+        imported_modules["quantize"](working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -120,13 +203,15 @@ class TorchaoQuantizer(PrunaQuantizer):
             quantize_,
         )
         from torchao.quantization.quant_api import PerRow
-
-        return dict(quantize=quantize_,
-                    int4dq=int8_dynamic_activation_int4_weight(),
-                    int4wo=int4_weight_only(),
-                    int8dq=int8_dynamic_activation_int8_weight(),
-                    int8wo=int8_weight_only(),
-                    fp8wo=float8_weight_only(),
-                    fp8dq=float8_dynamic_activation_float8_weight(),
-                    fp8dqrow=float8_dynamic_activation_float8_weight(PerRow()),
-                )
+        _is_linear = importlib.import_module("torchao.quantization.quant_api")._is_linear
+        return dict(
+            quantize=quantize_,
+            int4dq=int8_dynamic_activation_int4_weight(),
+            int4wo=int4_weight_only(),
+            int8dq=int8_dynamic_activation_int8_weight(),
+            int8wo=int8_weight_only(),
+            fp8wo=float8_weight_only(),
+            fp8dq=float8_dynamic_activation_float8_weight(),
+            fp8dqrow=float8_dynamic_activation_float8_weight(PerRow()),
+            _is_linear=_is_linear,
+        )
