@@ -44,7 +44,7 @@ class QuantoQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     compatible_algorithms = dict(
-        factorizer=["qkv_factorizing"],
+        factorizer=["qkv_diffusers"],
         cacher=["deepcache"],
     )
 

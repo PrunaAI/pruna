@@ -47,7 +47,7 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(
-        factorizer=["qkv_factorizing"],
+        factorizer=["qkv_diffusers"],
         cacher=["deepcache", "fastercache", "fora", "pab"],
         compiler=["torch_compile"],
     )
