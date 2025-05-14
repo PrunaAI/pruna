@@ -251,7 +251,8 @@ def get_call_type_for_pairwise_metric(call_type_requested: str, default_call_typ
     else:
         if call_type_requested == default_call_type or call_type_requested == get_single_pairing(default_call_type):
             warn(
-                f"Calling metric with its call type is deprecated. Use {SINGLE} or {PAIRWISE} instead.\n"
+                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
+                f"Use {SINGLE} or {PAIRWISE} instead. \n"
                 f"Using default call type {default_call_type}.",
                 DeprecationWarning,
                 stacklevel=2,
@@ -285,7 +286,8 @@ def get_call_type_for_single_metric(call_type_requested: str, default_call_type:
     else:
         if call_type_requested == default_call_type or call_type_requested == get_pairwise_pairing(default_call_type):
             warn(
-                f"Calling metric with its call type is deprecated. Use {SINGLE} or {PAIRWISE} instead.\n"
+                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
+                f"Use {SINGLE} or {PAIRWISE} instead. \n"
                 f"Using default call type {default_call_type}.",
                 DeprecationWarning,
                 stacklevel=2,

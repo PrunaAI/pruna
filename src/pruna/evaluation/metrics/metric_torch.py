@@ -33,7 +33,6 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
 
-from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -217,8 +216,10 @@ class TorchMetricWrapper(StatefulMetric):
         """
         # Special case for clip_score until new torchmetrics version.
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
+            from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
+
             return PairwiseClipScore(**kwargs)
-        return super(TorchMetricWrapper, cls).__new__(cls)
+        return super().__new__(cls)
 
     def __init__(self, metric_name: str, call_type: str = "", **kwargs) -> None:
         """
@@ -362,7 +363,8 @@ def get_call_type(call_type: str, metric_name: str) -> str:
             TorchMetrics[metric_name].call_type
         ):
             warn(
-                f"Calling with call type {call_type} is deprecated. Use {SINGLE} or {PAIRWISE} instead.\n"
+                f"Calling with call type {call_type} is deprecated and will be removed in 'v0.2.8' release. \n"
+                f"Use {SINGLE} or {PAIRWISE} instead. \n"
                 f"Using default call type {TorchMetrics[metric_name].call_type}.",
                 DeprecationWarning,
                 stacklevel=2,

@@ -35,6 +35,7 @@ TRAINING_MEMORY = "training_memory"
 VALID_MODES = (DISK_MEMORY, INFERENCE_MEMORY, TRAINING_MEMORY)
 DEPRECATED_MODES = ("disk", "inference", "training")
 DEPRECATED_MODES_MAP = {"disk": DISK_MEMORY, "inference": INFERENCE_MEMORY, "training": TRAINING_MEMORY}
+MEMORY_UNITS = "MB"
 
 
 class GPUManager:
@@ -115,7 +116,6 @@ class GPUMemoryStats(BaseMetric):
         ValueError
             If the provided mode is invalid.
         """
-        super().__init__()
         if mode not in VALID_MODES:
             if mode in DEPRECATED_MODES:
                 warn(
@@ -125,7 +125,7 @@ class GPUMemoryStats(BaseMetric):
                     stacklevel=2,
                 )
                 warn(
-                    f"Mode '{mode}' is deprecated and will be removed in a future release. "
+                    f"Mode '{mode}' is deprecated and will be removed in 'v0.2.8' release. "
                     f"Please use '{DEPRECATED_MODES_MAP[mode]}' instead.",
                     DeprecationWarning,
                     stacklevel=2,
@@ -363,7 +363,7 @@ class DiskMemoryMetric(BaseMetric):
     """
 
     metric_name: str = DISK_MEMORY
-    metric_units: str = "MB"
+    metric_units: str = MEMORY_UNITS
     higher_is_better: bool = False
 
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
@@ -401,7 +401,7 @@ class InferenceMemoryMetric(BaseMetric):
     """
 
     metric_name: str = INFERENCE_MEMORY
-    metric_units: str = "MB"
+    metric_units: str = MEMORY_UNITS
     higher_is_better: bool = False
 
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
@@ -439,7 +439,7 @@ class TrainingMemoryMetric(BaseMetric):
     """
 
     metric_name: str = TRAINING_MEMORY
-    metric_units: str = "MB"
+    metric_units: str = MEMORY_UNITS
     higher_is_better: bool = False
 
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
@@ -480,7 +480,7 @@ class GPUMemoryMetric:
     def __new__(cls, *args, **kwargs):
         """Forwards to GPUMemoryStats."""
         warn(
-            "GPUMemoryMetric is deprecated and will be removed in a future release. \n "
+            "GPUMemoryMetric is deprecated and will be removed in 'v0.2.8' release. \n "
             "It has been replaced by GPUMemoryStats, "
             "which is a shared parent class for 'DiskMemoryMetric', 'InferenceMemoryMetric' and 'TrainingMemoryMetric'. \n"  # noqa: E501
             "In the future, please use 'DiskMemoryMetric', 'InferenceMemoryMetric' or 'TrainingMemoryMetric' instead.\n",
