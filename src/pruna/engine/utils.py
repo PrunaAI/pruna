@@ -245,47 +245,35 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
 
 
 def check_device_compatibility(device: str | torch.device | None) -> str:
-    """
-    Validate if the specified device is available on the current system.
-
-    Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
-    If device is None, the best available device will be returned.
+    """Validate device availability and return best available device.
 
     Parameters
     ----------
     device : str | torch.device | None
-        The device to validate (e.g. 'cuda', 'mps', 'cpu').
+        Device to validate ('cuda', 'mps', 'cpu' etc)
 
     Returns
     -------
     str
-        The best available device.
+        Best available device name
     """
     if isinstance(device, torch.device):
         device = str(device)
 
     if device is None:
-        if torch.cuda.is_available():
-            pruna_logger.info("No device specified. Using best available device: CUDA.")
-            return "cuda"
-        elif torch.backends.mps.is_available():
-            pruna_logger.info("No device specified. Using best available device: MPS.")
-            return "mps"
-        else:
-            pruna_logger.info("No device specified. Using best available device: CPU.")
-            return "cpu"
-    elif device == "cuda":
-        if not torch.cuda.is_available():
-            warnings.warn("CUDA requested but not available. Falling back to CPU.")
-            return "cpu"
-    elif device == "mps":
-        if not torch.backends.mps.is_available():
-            warnings.warn("MPS requested but not available. Falling back to CPU.")
-            return "cpu"
-    elif device == "cpu":
+        device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+        pruna_logger.info(f"No device specified. Using best available device: '{device}'")
+        return device
+
+    if device == "cpu":
         return "cpu"
-    else:
-        warnings.warn(f"Unknown device '{device}' requested. Falling back to CPU.")
+
+    if device == "cuda" and not torch.cuda.is_available():
+        warnings.warn("'cuda' requested but not available. Falling back to 'cpu'")
+        return "cpu"
+
+    if device == "mps" and not torch.backends.mps.is_available():
+        warnings.warn("'mps' requested but not available. Falling back to 'cpu'")
         return "cpu"
 
     return device

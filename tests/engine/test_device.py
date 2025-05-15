@@ -39,9 +39,3 @@ def test_device_available(device: str | torch.device, expected: str) -> None:
     smash_config = SmashConfig(device=device)
     assert smash_config.device == expected
 
-
-@pytest.mark.cpu
-def test_device_invalid() -> None:
-    """Test that setting an invalid device falls back to CPU."""
-    smash_config = SmashConfig(device="invalid_device")
-    assert smash_config.device == "cpu"
