@@ -172,26 +172,28 @@ class SmashConfig:
 
             setattr(self, name, config_dict.pop(name))
 
-        # ensure all algorithm groups are present and remove extra ones
-        extra_groups = set(config_dict.keys()) - set(ALGORITHM_GROUPS)
-        if extra_groups:
-            for group in extra_groups:
-                if config_dict[group] is not None:
-                    pruna_logger.warning(
-                        f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
-                        "This is likely due to a version difference between the saved model and the current library.\n"
-                        "You can use an older version of Pruna to load the model or reconfigure the model."
-                    )
-                del config_dict[group]
+        # Normalize algorithm groups in config dict
+        current_groups = set(config_dict.keys())
+        expected_groups = set(ALGORITHM_GROUPS)
 
-        for group in ALGORITHM_GROUPS:
-            if group not in config_dict:
-                pruna_logger.info(
-                    f"Adding missing algorithm group: {group}\n"
+        # Remove extra groups with warning if they have values
+        for group in current_groups - expected_groups:
+            if config_dict[group] is not None:
+                pruna_logger.warning(
+                    f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
                     "This is likely due to a version difference between the saved model and the current library.\n"
-                    "This is not an error, but it is recommended to update the model."
+                    "You can use an older version of Pruna to load the model or reconfigure the model."
                 )
-                config_dict[group] = None
+            del config_dict[group]
+
+        # Add missing groups with info message
+        for group in expected_groups - current_groups:
+            pruna_logger.info(
+                f"Adding missing algorithm group: {group}\n"
+                "This is likely due to a version difference between the saved model and the current library.\n"
+                "This is not an error, but it is recommended to update the model."
+            )
+            config_dict[group] = None
 
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
 
