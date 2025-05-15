@@ -18,8 +18,6 @@ def test_pruna_model_from_hub(model_name: str, expected_output: str, should_rais
             PrunaModel.from_hub(model_name)
     else:
         model = PrunaModel.from_hub(model_name)
-        import pdb
 
-        pdb.set_trace()
         assert model.__class__.__name__ == expected_output
 

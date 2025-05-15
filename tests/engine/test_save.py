@@ -16,7 +16,7 @@ def test_save_llm_to_hub() -> None:
     download_repo_id = "hf-internal-testing/tiny-random-llama4"
     upload_repo_id = "PrunaAI/test-tiny-random-llama4-smashed"
     model = AutoModelForCausalLM.from_pretrained(download_repo_id)
-    smash_config = SmashConfig()
+    smash_config = SmashConfig(device="cpu")
     smash(
         model=model,
         smash_config=smash_config,
@@ -31,7 +31,7 @@ def test_save_diffusers_to_hub() -> None:
     upload_repo_id = "PrunaAI/test-tiny-stable-diffusion-pipe-smashed"
 
     model = DiffusionPipeline.from_pretrained(download_repo_id)
-    smash_config = SmashConfig()
+    smash_config = SmashConfig(device="cpu")
     smash(
         model=model,
         smash_config=smash_config,
