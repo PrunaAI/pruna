@@ -155,6 +155,10 @@ class SmashConfig:
             json_string = f.read()
             config_dict = json.loads(json_string)
 
+        # check device compatibility
+        if "device" in config_dict:
+            config_dict["device"] = check_device_compatibility(config_dict["device"])
+
         # support deprecated load_fn
         if "load_fn" in config_dict:
             value = config_dict.pop("load_fn")
