@@ -244,17 +244,21 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
 
 
 def check_device_compatibility(device: str | torch.device | None) -> str:
-    """Validate device availability and return best available device.
+    """
+    Validate if the specified device is available on the current system.
+
+    Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
+    If device is None, the best available device will be returned.
 
     Parameters
     ----------
     device : str | torch.device | None
-        Device to validate ('cuda', 'mps', 'cpu' etc)
+        Device to validate (e.g. 'cuda', 'mps', 'cpu').
 
     Returns
     -------
     str
-        Best available device name
+        Best available device name.
     """
     if isinstance(device, torch.device):
         device = str(device)
