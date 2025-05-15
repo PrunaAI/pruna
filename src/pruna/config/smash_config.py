@@ -85,7 +85,7 @@ class SmashConfig:
 
         if max_batch_size is not None:
             warn(
-                "max_batch_size is deprecated. Please use batch_size instead.",
+                "max_batch_size is deprecated and will be removed in v0.2.8. Please use batch_size instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -234,7 +234,7 @@ class SmashConfig:
         # otherwise fine-grained hyperparameters will not be active yet and we can not set them
         # lambda returns False for keys in ALGORITHM_GROUPS (and False sorts before True)
         for k, v in sorted(filtered_config_dict.items(), key=lambda item: item[0] not in ALGORITHM_GROUPS):
-            self[k] = v
+            self.__setitem__(k, v)
 
     def flush_configuration(self) -> None:
         """
@@ -570,8 +570,8 @@ class SmashConfig:
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: D105
         if name == "_prepare_saving":
             warn(
-                "The _prepare_saving attribute is deprecated. Please configure this setting by calling "
-                "smash_config.configure_environment(saveable_model=True/False).",
+                "The _prepare_saving attribute is deprecated and will be removed in v0.2.8. Please configure this "
+                "setting by calling smash_config.configure_environment(saveable_model=True/False).",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -630,7 +630,7 @@ class SmashConfig:
             "torch_compile_batch_size",
         ]:
             warn(
-                f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) instead.",
+                f"{name} is deprecated and will be removed in v0.2.8. Use SmashConfig(batch_size={value}) instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -639,7 +639,10 @@ class SmashConfig:
 
         if name in ["diffusers_int8_enable_fp32_cpu_offload", "llm_int8_enable_fp32_cpu_offload"]:
             warn(
-                f"{name} is deprecated. Use smash_config.configure_environment(enable_cpu_offload={value}).",
+                (
+                    f"{name} is deprecated and will be removed in v0.2.8. "
+                    f"Use smash_config.configure_environment(enable_cpu_offload={value})."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -648,7 +651,10 @@ class SmashConfig:
 
         elif name == "torch_structured_calibration_samples":
             warn(
-                f"torch_structured_calibration_samples is deprecated. Use smash_config.configure_environment(calibration_samples={value}).",
+                (
+                    f"{name} is deprecated and will be removed in v0.2.8. "
+                    "Use smash_config.configure_environment(calibration_samples={value})."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -657,7 +663,7 @@ class SmashConfig:
 
         elif name in ["torch_compile_max_kv_cache_size", "torch_compile_seqlen_manual_cuda_graph"]:
             warn(
-                f"The {name} attribute is deprecated and no longer needed, as they will be determined automatically.",
+                f"{name} is deprecated and will be removed in v0.2.8. They are now determined automatically.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -665,8 +671,8 @@ class SmashConfig:
 
         elif name == "_prepare_saving":
             warn(
-                "The _prepare_saving attribute is deprecated. Please configure this setting by calling "
-                "smash_config.configure_environment(saveable_model=True/False).",
+                "The _prepare_saving attribute is deprecated and will be removed in v0.2.8. Please configure this "
+                "setting by calling smash_config.configure_environment(saveable_model=True/False).",
                 DeprecationWarning,
                 stacklevel=2,
             )
