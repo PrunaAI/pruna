@@ -172,6 +172,27 @@ class SmashConfig:
 
             setattr(self, name, config_dict.pop(name))
 
+        # ensure all algorithm groups are present and remove extra ones
+        extra_groups = set(config_dict.keys()) - set(ALGORITHM_GROUPS)
+        if extra_groups:
+            for group in extra_groups:
+                if config_dict[group] is not None:
+                    pruna_logger.warning(
+                        f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
+                        "This is likely due to a version difference between the saved model and the current library.\n"
+                        "You can use an older version of Pruna to load the model or reconfigure the model."
+                    )
+                del config_dict[group]
+
+        for group in ALGORITHM_GROUPS:
+            if group not in config_dict:
+                pruna_logger.info(
+                    f"Adding missing algorithm group: {group}\n"
+                    "This is likely due to a version difference between the saved model and the current library.\n"
+                    "This is not an error, but it is recommended to update the model."
+                )
+                config_dict[group] = None
+
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
 
         if os.path.exists(os.path.join(path, TOKENIZER_SAVE_PATH)):
