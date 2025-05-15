@@ -22,6 +22,7 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
 from pruna.engine.model_checks import get_diffusers_transformer_models, is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.logging.logger import pruna_logger
 
 # Based on common diffusers transformer architectures
 NORM_MODULES: list[str] = [
@@ -80,7 +81,10 @@ class TorchaoQuantizer(PrunaQuantizer):
     run_on_cpu: bool = True
     run_on_cuda: bool = True
     dataset_required = False
-    compatible_algorithms = dict(compiler=["torch_compile"])
+    compatible_algorithms = dict(
+        cacher=["fora"],
+        compiler=["torch_compile"],
+    )
 
     def get_hyperparameters(self) -> list:
         """
@@ -180,6 +184,26 @@ class TorchaoQuantizer(PrunaQuantizer):
             if not is_linear(module, fqn):
                 return False
             return all(name not in excluded_modules for name in fqn.split("."))
+
+        if (smash_config["compiler"] == "torch_compile" and
+            smash_config._base_config["torch_compile_mode"] != "max-autotune-no-cudagraphs"):
+            pruna_logger.warning(
+                "You are using torchao with torch.compile. "
+                "Please set `smash_config['torch_compile_mode']='max-autotune-no-cudagraphs'` for best results; "
+                "otherwise you may encounter undesirable outcomes."
+            )
+
+        if ("fp8" in smash_config["quant_type"] and
+            not (torch.cuda.is_available() and torch.cuda.get_device_capability() >= (8, 9))):
+            pruna_logger.warning(
+                "Float8 quantization requires an NVIDIA GPU with compute capability ≥ 8.9. "
+                "Your device does not meet this requirement."
+            )
+
+        if smash_config["quant_type"] == "fp8dqrow":
+            pruna_logger.warning(
+                "Row wise float8 dynamic quantization is still experimental and might not work on your hardware."
+            )
 
         imported_modules["quantize"](working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn)
         return model

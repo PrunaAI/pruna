@@ -42,7 +42,7 @@ class FORACacher(PrunaCacher):
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(
         compiler=["stable_fast", "torch_compile"],
-        quantizer=["diffusers_int8", "hqq_diffusers"],
+        quantizer=["diffusers_int8", "hqq_diffusers", "torchao"],
     )
 
     def get_hyperparameters(self) -> list:
@@ -255,7 +255,6 @@ class CacheHelper:
             num_steps = len(self.pipe.scheduler.timesteps)
             if self.step == 0:
                 self.cache_schedule = self.get_cache_schedule(num_steps)
-
             result = transformer_forward(*args, **kwargs)
             self.step += 1
             return result
