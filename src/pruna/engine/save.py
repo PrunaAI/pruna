@@ -151,12 +151,8 @@ def save_pruna_model_to_hub(
             with json_file.open() as f:
                 config_files[json_file.stem] = json.load(f)
 
-        # Ensure smash_config is loaded
-        smash_config_file = Path(SMASH_CONFIG_FILE_NAME).stem
-        if smash_config_file not in config_files:
-            raise ValueError(f"{SMASH_CONFIG_FILE_NAME} not found in model directory")
-
         # Load the smash config
+        smash_config_file = Path(SMASH_CONFIG_FILE_NAME).stem
         smash_config_data = config_files.pop(smash_config_file)
 
         # Format the content for the README using the template and the loaded configuration data
@@ -203,7 +199,6 @@ def original_save_fn(model: Any, model_path: str, smash_config: SmashConfig) -> 
         The SmashConfig object containing the save and load functions.
     """
     # catch any huggingface diffuser or transformer model and record which load function to use
-    model = model.model if hasattr(model, "model") else model
     if "diffusers" in model.__module__:
         if LOAD_FUNCTIONS.diffusers.name not in smash_config.load_fns:
             smash_config.load_fns.append(LOAD_FUNCTIONS.diffusers.name)
