@@ -188,11 +188,6 @@ class SmashConfig:
 
         # Add missing groups with info message
         for group in expected_groups - current_groups:
-            pruna_logger.info(
-                f"Adding missing algorithm group: {group}\n"
-                "This is likely due to a version difference between the saved model and the current library.\n"
-                "This is not an error, but it is recommended to update the model."
-            )
             config_dict[group] = None
 
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
