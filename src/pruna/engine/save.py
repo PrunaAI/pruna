@@ -154,7 +154,7 @@ def save_pruna_model_to_hub(
         # Ensure smash_config is loaded
         smash_config_file = Path(SMASH_CONFIG_FILE_NAME).stem
         if smash_config_file not in config_files:
-            raise ValueError("smash_config.json not found in model directory")
+            raise ValueError(f"{SMASH_CONFIG_FILE_NAME} not found in model directory")
 
         # Load the smash config
         smash_config_data = config_files.pop(smash_config_file)
