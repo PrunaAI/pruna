@@ -19,6 +19,7 @@ import gc
 import inspect
 import json
 import os
+import warnings
 from typing import Any
 
 import torch
@@ -275,16 +276,16 @@ def check_device_compatibility(device: str | torch.device | None) -> str:
             return "cpu"
     elif device == "cuda":
         if not torch.cuda.is_available():
-            pruna_logger.warning("CUDA requested but not available. Falling back to CPU.")
+            warnings.warn("CUDA requested but not available. Falling back to CPU.")
             return "cpu"
     elif device == "mps":
         if not torch.backends.mps.is_available():
-            pruna_logger.warning("MPS requested but not available. Falling back to CPU.")
+            warnings.warn("MPS requested but not available. Falling back to CPU.")
             return "cpu"
     elif device == "cpu":
         return "cpu"
     else:
-        pruna_logger.warning(f"Unknown device '{device}' requested. Falling back to CPU.")
+        warnings.warn(f"Unknown device '{device}' requested. Falling back to CPU.")
         return "cpu"
 
     return device
