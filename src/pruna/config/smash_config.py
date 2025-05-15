@@ -410,27 +410,6 @@ class SmashConfig:
         else:
             self.processor = processor
 
-    def check_argument_compatibility(self, algorithm_name: str) -> None:
-        """
-        Check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for an algorithm.
-
-        Parameters
-        ----------
-        algorithm_name : str
-            The algorithm name that is about to be activated.
-        """
-        algorithm_requirements = SMASH_SPACE.model_requirements[algorithm_name]
-        if algorithm_requirements["tokenizer_required"] and self.tokenizer is None:
-            raise ValueError(
-                f"{algorithm_name} requires a tokenizer. Please provide it with smash_config.add_tokenizer()."
-            )
-        if algorithm_requirements["processor_required"] and self.processor is None:
-            raise ValueError(
-                f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor()."
-            )
-        if algorithm_requirements["dataset_required"] and self._data is None:
-            raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
-
     def get_tokenizer_name(self) -> str | None:
         """
         Get a tokenizer object from a tokenizer name.
