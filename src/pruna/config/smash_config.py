@@ -236,6 +236,10 @@ class SmashConfig:
          'deepcache_interval': 4,
         )
         """
+        # check device compatibility
+        if "device" in config_dict:
+            config_dict["device"] = check_device_compatibility(config_dict["device"])
+
         # since this function is only used for loading algorithm settings, we will ignore additional arguments
         filtered_config_dict = {k: v for k, v in config_dict.items() if k not in ADDITIONAL_ARGS}
         discarded_args = [k for k in config_dict if k in ADDITIONAL_ARGS]
