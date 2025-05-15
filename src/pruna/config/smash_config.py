@@ -178,9 +178,6 @@ class SmashConfig:
 
             setattr(self, name, config_dict.pop(name))
 
-        import pdb
-
-        pdb.set_trace()
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
 
         if os.path.exists(os.path.join(path, TOKENIZER_SAVE_PATH)):
