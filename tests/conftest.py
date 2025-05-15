@@ -13,6 +13,7 @@ def pytest_configure(config: Any) -> None:
     config.addinivalue_line("markers", "high_cpu: mark test to run only on large CPU systems")
     config.addinivalue_line("markers", "slow: mark test that run rather long")
     config.addinivalue_line("markers", "style: mark test that only check style")
+    config.addinivalue_line("markers", "integration: mark test that is an integration test")
 
 
 def pytest_collection_modifyitems(session: Any, config: Any, items: list) -> None:
