@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import ast
 import inspect
+import textwrap
+from copy import deepcopy
 from typing import Any
 
 from ConfigSpace import (
@@ -13,6 +16,7 @@ from ConfigSpace import (
 
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.config.smash_config import ENV_ARGUMENTS
 
 
 def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
@@ -37,6 +41,7 @@ def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> s
     compatible_devices_str = get_compatible_devices(obj)
     compatible_algorithms_str = get_compatible_algorithms(obj)
     required_install_str = get_required_install(obj)
+    related_env_info = get_related_env_info(obj)
 
     static_info = "\n".join(
         [
@@ -44,9 +49,8 @@ def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> s
             f"| **Can be applied on**: {compatible_devices_str}.",
             f"| **Required**: {required_inputs_str}.",
             f"| **Compatible with**: {compatible_algorithms_str}.",
-            f"| **Required install**: {required_install_str}."
-            if required_install_str
-            else "",
+            f"| **Related environment info**: {related_env_info}.",
+            f"| **Required install**: {required_install_str}." if required_install_str else "",
         ]
     )
 
@@ -82,20 +86,12 @@ def format_grid_table(rows: list[list[str]]) -> str:
     total_widths = [w + 2 for w in col_widths]
 
     horizontal_border = "+" + "+".join("-" * width for width in total_widths) + "+"
-    header_line = (
-        "|"
-        + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols))
-        + "|"
-    )
+    header_line = "|" + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
     header_separator = "+" + "+".join("=" * width for width in total_widths) + "+"
 
     data_lines = []
     for row in rows[1:]:
-        row_line = (
-            "|"
-            + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols))
-            + "|"
-        )
+        row_line = "|" + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
         data_lines.append(row_line)
         data_lines.append(horizontal_border)
 
@@ -207,6 +203,37 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
         rows.append([param_name, default, values, description])
         hyperparameter_counter += 1
     return rows, hyperparameter_counter
+
+
+def get_related_env_info(obj: PrunaAlgorithmBase) -> str:
+    """Get the related environment info of a Pruna algorithm."""
+    source = inspect.getsource(obj._apply)
+    dedented_source = textwrap.dedent(source)
+    tree = ast.parse(dedented_source)
+    visitor = ConfigAccessVisitor()
+    visitor.visit(tree)
+    attributes = [f"``{attr}``" for attr in visitor.attributes]
+    if len(attributes) > 0:
+        return ", ".join(attributes)
+    else:
+        return "None"
+
+
+class ConfigAccessVisitor(ast.NodeVisitor):
+    """A visitor that visits an AST and collects all attribute accesses of a given config name."""
+
+    def __init__(self, config_name="smash_config"):
+        self.config_name = config_name
+        self.attributes = set()
+
+    def visit_Attribute(self, node):  # noqa: N802
+        """Visit an attribute node."""
+        target_arguments = deepcopy(ENV_ARGUMENTS)
+        # device is widely used everywhere, we will not emphasize this in this part of the documentation
+        target_arguments.remove("device")
+        if isinstance(node.value, ast.Name) and node.value.id == self.config_name and node.attr in ENV_ARGUMENTS:
+            self.attributes.add(node.attr)
+        self.generic_visit(node)
 
 
 if __name__ == "__main__":

@@ -263,7 +263,7 @@ Underneath you can find the list of all the available datasets.
      - ``question: str``, ``answer: str``
 
 Similar to the tokenizers and processors, we can use string identifiers to use a built-in dataset or use a more custom approach, i.e. using a collate function.
-Additionallly, you can create a fully custom ``PrunaDataModule`` use it in your workflow.
+Additionally, you can create a fully custom ``PrunaDataModule`` use it in your workflow.
 
 .. tabs::
 
