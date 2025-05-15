@@ -152,6 +152,10 @@ class SmashConfig:
             value = config_dict.pop("load_fn")
             config_dict["load_fns"] = [value]
 
+        # support deprecated max batch size argument
+        if "max_batch_size" in config_dict:
+            config_dict["batch_size"] = config_dict.pop("max_batch_size")
+
         for name in ADDITIONAL_ARGS:
             if name not in config_dict:
                 pruna_logger.warning(f"Argument {name} not found in config file. Skipping...")
@@ -161,11 +165,6 @@ class SmashConfig:
             if name == "cache_dir":
                 if name in config_dict:
                     del config_dict[name]
-                continue
-
-            # backwards compatibility for old batch size argument
-            if name == "batch_size" and "batch_size" not in config_dict:
-                setattr(self, name, config_dict.pop("max_batch_size"))
                 continue
 
             setattr(self, name, config_dict.pop(name))
