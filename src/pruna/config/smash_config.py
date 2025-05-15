@@ -20,6 +20,7 @@ import json
 import os
 import shutil
 import tempfile
+import warnings
 from copy import deepcopy
 from functools import singledispatchmethod
 from typing import Any, Union
@@ -35,6 +36,8 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
 from pruna.logging.logger import pruna_logger
+
+warnings.filterwarnings("default", category=DeprecationWarning)
 
 ADDITIONAL_ARGS = [
     "cache_dir",
@@ -414,7 +417,7 @@ class SmashConfig:
         external_logging: str = "none",
     ) -> None:
         """
-        Configure the environment for the SmashConfig.
+        Provide additional information to adapt smashing to a custom pipelines or specific inference constraints.
 
         Parameters
         ----------
@@ -442,6 +445,15 @@ class SmashConfig:
             Whether the CPU offload can be enabled if required by the algorithm.
         external_logging : str, default="none"
             Whether external logging is set up. Options are "none", "wandb", "tensorboard".
+
+        Examples
+        --------
+        >>> from pruna import SmashConfig
+        >>> config = SmashConfig()
+        >>> config.configure_environment(saveable_model=True, calibration_samples=16)
+        >>> # or
+        >>> config["saveable_model"] = False
+        >>> config["calibration_samples"] = 64
         """
         if device in ["cuda", "cpu"]:
             self.device = device
@@ -545,7 +557,10 @@ class SmashConfig:
         >>> config["quantizer"]
         "awq"
         """
-        if name in ADDITIONAL_ARGS:
+        if name in ENV_ARGUMENTS:
+            current_settings = {arg: getattr(self, arg) for arg in ENV_ARGUMENTS if arg != name}
+            self.configure_environment(**{name: value, **current_settings})
+        elif name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
         else:
             name, value = self.check_deprecation(name, value)
@@ -565,9 +580,11 @@ class SmashConfig:
             super().__setattr__(name, value)
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
+        if attr in ADDITIONAL_ARGS:
+            return self.__dict__.get(attr)
         if attr == "_data":
             return self.__dict__.get("_data")
-        elif attr == "_configuration":
+        if attr == "_configuration":
             return self.__dict__.get("_configuration")
         return_value = getattr(self._configuration, attr)
         # config space internally holds numpy types
@@ -659,7 +676,8 @@ class SmashConfig:
         return name, value
 
 
-ENV_ARGUMENTS = inspect.signature(SmashConfig.configure_environment).parameters
+ENV_ARGUMENTS = list(inspect.signature(SmashConfig.configure_environment).parameters)
+ENV_ARGUMENTS.remove("self")
 ADDITIONAL_ARGS.extend(ENV_ARGUMENTS)
 
 

@@ -16,7 +16,7 @@ import os
 from typing import Any, Callable, Dict
 
 import torch
-from ConfigSpace import CategoricalHyperparameter
+from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.algorithms.compilation.utils import TransformersGenerator
