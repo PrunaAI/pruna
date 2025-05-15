@@ -47,7 +47,9 @@ def register_inference_handler(model: Any) -> InferenceHandler:
     if handler is not None:
         return handler
 
-    model = model.model if hasattr(model, "model") else model
+    import pdb
+
+    pdb.set_trace()
     if "diffusers" in model.__module__:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
     elif "transformers" in model.__module__:
