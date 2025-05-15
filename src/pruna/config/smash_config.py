@@ -153,6 +153,10 @@ class SmashConfig:
             config_dict["load_fns"] = [value]
 
         for name in ADDITIONAL_ARGS:
+            if name not in config_dict:
+                pruna_logger.warning(f"Argument {name} not found in config file. Skipping...")
+                continue
+
             # do not load the old cache directory
             if name == "cache_dir":
                 if name in config_dict:
@@ -557,15 +561,16 @@ class SmashConfig:
         >>> config["quantizer"]
         "awq"
         """
-        if name in ENV_ARGUMENTS:
-            current_settings = {arg: getattr(self, arg) for arg in ENV_ARGUMENTS if arg != name}
-            self.configure_environment(**{name: value, **current_settings})
-        elif name in ADDITIONAL_ARGS:
-            return setattr(self, name, value)
+        updated_name: str | None = name
+        if updated_name in ENV_ARGUMENTS:
+            current_settings = {arg: getattr(self, arg) for arg in ENV_ARGUMENTS if arg != updated_name}
+            self.configure_environment(**{updated_name: value, **current_settings})
+        elif updated_name in ADDITIONAL_ARGS:
+            return setattr(self, updated_name, value)
         else:
-            name, value = self.check_deprecation(name, value)
-            if name is not None:
-                return self._configuration.__setitem__(name, value)
+            updated_name, value = self.check_deprecation(updated_name, value)
+            if updated_name is not None:
+                return self._configuration.__setitem__(updated_name, value)
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: D105
         if name == "_prepare_saving":
@@ -606,7 +611,7 @@ class SmashConfig:
     def __repr__(self) -> str:  # noqa: D105
         return self.__str__()
 
-    def check_deprecation(self, name: str, value: Any) -> tuple[str | None, Any]:
+    def check_deprecation(self, name: str | None, value: Any) -> tuple[str | None, Any]:
         """
         Check for deprecation of the given name and value before setting an attribute or item.
 
