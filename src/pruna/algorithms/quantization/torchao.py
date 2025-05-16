@@ -84,6 +84,7 @@ class TorchaoQuantizer(PrunaQuantizer):
     compatible_algorithms = dict(
         cacher=["fora"],
         compiler=["torch_compile"],
+        factorizer=["qkv_diffusers"],
     )
 
     def get_hyperparameters(self) -> list:

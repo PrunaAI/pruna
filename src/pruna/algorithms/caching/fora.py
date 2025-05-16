@@ -43,6 +43,7 @@ class FORACacher(PrunaCacher):
     compatible_algorithms: dict[str, list[str]] = dict(
         compiler=["stable_fast", "torch_compile"],
         quantizer=["diffusers_int8", "hqq_diffusers", "torchao"],
+        factorizer=["qkv_diffusers"],
     )
 
     def get_hyperparameters(self) -> list:
