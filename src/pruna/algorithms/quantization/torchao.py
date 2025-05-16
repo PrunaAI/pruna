@@ -209,7 +209,8 @@ class TorchaoQuantizer(PrunaQuantizer):
             )
         # Only apply quantization on module list level if torch compile is also applied at that level
         if (
-            smash_config._base_config["torch_compile_target"] == "model"
+            smash_config["compiler"] == "torch_compile"
+            and smash_config._base_config["torch_compile_target"] == "model"
             or smash_config["compiler"] is None
             or smash_config["compiler"] != "torch_compile"
         ):
