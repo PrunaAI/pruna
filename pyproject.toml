@@ -48,6 +48,7 @@ wget = "*"
 torch = "2.7.0"
 torchvision = "0.22.0"
 torchmetrics = { version = "*", extras = ["image"] }
+accelerate = ">0.28.0"
 requests = ">=2.31.0"
 transformers = "*"
 pillow = ">=9.5.0"
