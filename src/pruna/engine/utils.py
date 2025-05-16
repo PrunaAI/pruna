@@ -83,7 +83,7 @@ def get_nn_modules(model: Any) -> dict[str | None, torch.nn.Module]:
         }
 
 
-def move_to_device(model: Any, device: str | torch.device, raise_error: bool = False) -> None:
+def move_to_device(model: Any, device: str, raise_error: bool = False, device_map: dict[str, str] | None = None) -> None:
     """
     Move the model to a specific device.
 
@@ -95,10 +95,32 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
         The device to move the model to.
     raise_error : bool
         Whether to raise an error when the device movement fails.
+    device_map : dict[str, str] | None
+        The device map to use if the target device is "accelerate".
     """
-    if hasattr(model, "device") and check_model_already_on_device(model, device):
+    # sanity check for expected device types
+    if not device in ["cpu", "cuda", "mps", "accelerate"]:
+        raise ValueError("Device must be a string in [cpu, cuda, mps, accelerate].")
+
+    # do not cast if the model is already on the correct device
+    if get_device(model) == device:
         return
-    if hasattr(model, "to"):
+
+    # logic for transformers pipelines, which have a device attribute but do not support casting directly
+    if hasattr(model, "task") and getattr(model, "task") == "automatic-speech-recognition":
+        target_model = model.model
+    else:
+        target_model = model
+
+    if device == "accelerate":
+        if device_map is None:
+            raise ValueError("Device map is required when moving to accelerate.")
+        cast_model_to_accelerate_device_map(target_model, device_map)
+
+    else:
+        if get_device(target_model) == "accelerate":
+            # remove distributed device state to be able to use ".to"
+            target_model.reset_device_map()
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
@@ -110,32 +132,73 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
                 raise ValueError(f"Could not move model to device: {str(e)}")
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
-    elif hasattr(model, "task") and getattr(model, "task") == "automatic-speech-recognition":
-        model.model.to(device)
-    else:
-        if raise_error:
-            raise ValueError("Model does not support device movement.")
-        else:
-            pruna_logger.warning("Model does not support device movement.")
 
 
-def check_model_already_on_device(model: Any, device: str | torch.device) -> bool:
+def cast_model_to_accelerate_device_map(model, device_map):
     """
-    Check if the model is already on the device.
+    Cast a Transformers or Diffusers model to devices according to a given device_map.
+
+    Assumes:
+    - device_map only contains CUDA device indices as integers (e.g., 0, 1, 2, ...)
+    - device_map is the one created by accelerate/diffusers/transformers during from_pretrained
+    - No disk or CPU devices in device_map (raises ValueError if encountered)
+
+    Args:
+        model: torch.nn.Module (Transformers or Diffusers model)
+        device_map: dict mapping module names (str) to CUDA device indices (int)
+
+    Raises:
+        ValueError: if any device in device_map is not an integer CUDA index
+    """
+    if any(not isinstance(dev, int) for dev in device_map.values()):
+        raise ValueError("All devices in device_map must be CUDA device indices (integers).")
+
+    def to_torch_device(dev_idx):
+        return torch.device(f"cuda:{dev_idx}")
+
+    for submodule_name, dev_idx in device_map.items():
+        device = to_torch_device(dev_idx)
+        submodule = getattr(model, submodule_name, None)
+        if submodule is None:
+            raise ValueError(f"Pipeline has no submodule named '{submodule_name}'")
+        submodule.to(device)
+
+    model.hf_device_map = device_map.copy()
+    return model
+
+
+def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, str]:
+    """
+    Get the device of the model.
 
     Parameters
     ----------
     model : Any
-        The model to check.
-    device : str | torch.device
-        The device to check.
+        The model to get the device from.
 
     Returns
     -------
-    bool
-        True if the model is already on the device, False otherwise.
+    str | dict[str, str]
+        The device or device map of the model.
     """
-    return model.device == device or model.device == torch.device(device)
+    if not hasattr(model, "device"):
+        try:
+            model_device = next(model.parameters()).device
+        except StopIteration:
+            raise ValueError("Could not determine device of model, model has no device attribute.")
+    else:
+        model_device = model.device
+
+    if isinstance(model_device, torch.device):
+        model_device = model_device.type
+
+    if hasattr(model, "hf_device_map") and model.hf_device_map is not None:
+        if return_device_map:
+            model_device = model.hf_device_map
+        else:
+            model_device = "accelerate"
+
+    return model_device
 
 
 def set_to_eval(model: Any) -> None:

@@ -38,6 +38,7 @@ from pruna.logging.logger import pruna_logger
 ADDITIONAL_ARGS = [
     "batch_size",
     "device",
+    "device_map",
     "cache_dir",
     "save_fns",
     "load_fns",
@@ -91,6 +92,7 @@ class SmashConfig:
         else:
             self.batch_size = batch_size
         self.device = check_device_compatibility(device)
+        self.device_map = None
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
