@@ -19,7 +19,6 @@ import gc
 import inspect
 import json
 import os
-import weakref
 from typing import Any
 
 import torch
@@ -40,11 +39,9 @@ def safe_memory_cleanup(objects_to_be_deleted: list[Any] | None = None) -> None:
     """
     if objects_to_be_deleted is not None:
         for obj in objects_to_be_deleted:
-            if not isinstance(obj, weakref.ProxyTypes):
-                if hasattr(obj, "to"):
-                    obj.to("cpu")
-                if hasattr(obj, "destroy"):
-                    obj.destroy()
+            move_to_device(obj, "cpu")
+            if hasattr(obj, "destroy"):
+                obj.destroy()
             del obj
     gc.collect()
     torch.cuda.empty_cache()
