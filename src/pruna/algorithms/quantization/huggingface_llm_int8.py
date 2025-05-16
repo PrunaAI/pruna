@@ -23,7 +23,7 @@ from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm
-from pruna.engine.utils import safe_memory_cleanup
+from pruna.engine.utils import move_to_device
 
 
 class LLMInt8Quantizer(PrunaQuantizer):
@@ -107,10 +107,9 @@ class LLMInt8Quantizer(PrunaQuantizer):
         """
         with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
             # cast original model to CPU to free memory for smashed model
-            if hasattr(model, "to"):
-                model.to("cpu")
-                safe_memory_cleanup()
+            move_to_device(model, "cpu")
             model.save_pretrained(temp_dir)
+
             bnb_config = BitsAndBytesConfig(
                 load_in_8bit=smash_config["weight_bits"] == 8,
                 load_in_4bit=smash_config["weight_bits"] == 4,
@@ -128,7 +127,9 @@ class LLMInt8Quantizer(PrunaQuantizer):
                 quantization_config=bnb_config,
                 trust_remote_code=True,
                 torch_dtype=smash_config["compute_dtype"],  # storage type of the non-int8 params
+                device_map=smash_config.device_map if smash_config.device == "accelerate" else "auto",
             )
+            move_to_device(smashed_model, smash_config.device)
 
         return smashed_model
 
