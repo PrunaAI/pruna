@@ -16,7 +16,9 @@ First things first, you need to install the pruna library:
 pip install pruna
 ```
 
-You can use the [{library_name}](https://huggingface.co/{repo_id}?library={library_name}) library to load the model or use the pruna library to load the model using the following code:
+You can [use the {library_name} library to load the model](https://huggingface.co/{repo_id}?library={library_name}) but this might not include all optimizations by default.
+
+To ensure that all optimizations are applied, use the pruna library to load the model using the following code:
 
 ```python
 from pruna import PrunaModel
