@@ -100,7 +100,7 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
         The device map to use if the target device is "accelerate".
     """
     # sanity check for expected device types
-    if not device in ["cpu", "cuda", "mps", "accelerate"]:
+    if device not in ["cpu", "cuda", "mps", "accelerate"]:
         raise ValueError("Device must be a string in [cpu, cuda, mps, accelerate].")
 
     # do not cast if the model is already on the correct device
@@ -147,12 +147,12 @@ def cast_model_to_accelerate_device_map(model, device_map):
     - device_map is the one created by accelerate/diffusers/transformers during from_pretrained
     - No disk or CPU devices in device_map (raises ValueError if encountered)
 
-    Args:
-        model: torch.nn.Module (Transformers or Diffusers model)
-        device_map: dict mapping module names (str) to CUDA device indices (int)
-
-    Raises:
-        ValueError: if any device in device_map is not an integer CUDA index
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to cast.
+    device_map : dict
+        A dictionary mapping module names (str) to CUDA device indices (int).
     """
     if any(not isinstance(dev, int) for dev in device_map.values()):
         raise ValueError("All devices in device_map must be CUDA device indices (integers).")
@@ -197,10 +197,7 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
         model_device = model_device.type
 
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None:
-        if return_device_map:
-            model_device = model.hf_device_map
-        else:
-            model_device = "accelerate"
+        model_device = model.hf_device_map if return_device_map else "accelerate"
 
     return model_device
 
