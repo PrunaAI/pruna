@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any, Dict, cast
+from warnings import warn
 
 import torch
 from torch.utils.data import DataLoader
@@ -23,18 +24,29 @@ from torch.utils.data import DataLoader
 from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
 
+LATENCY = "latency"
+THROUGHPUT = "throughput"
+TOTAL_TIME = "total_time"
 
-@MetricRegistry.register("elapsed_time")
-class ElapsedTimeMetric(BaseMetric):
+
+class InferenceTimeStats(BaseMetric):
     """
-    Time metrics for inference.
+    Internal metric for shared inference time computation.
 
-    Measures three key inference performance metrics:
-    1. Elapsed Time: Total execution time in milliseconds
-    2. Latency: Average processing time per batch in milliseconds
-    3. Throughput: Number of batches processed per millisecond
+    This class is not intended for direct use by end users. Instead, it serves as a shared internal utility
+    to compute timing-related statistics (latency, throughput, and total inference time) used by its
+    specialized child metrics: `LatencyMetric`, `ThroughputMetric`, and `TotalTimeMetric`.
+
+    The metric performs warmup and timed inference iterations to calculate:
+    1. Total Time: Total execution time across all timed iterations (in milliseconds)
+    2. Latency: Average processing time per batch (in milliseconds)
+    3. Throughput: Number of samples processed per millisecond
+
+    These values are returned as raw results for consumption by child metrics, which expose them through
+    a standardized `MetricResult` interface.
 
     Parameters
     ----------
@@ -55,16 +67,71 @@ class ElapsedTimeMetric(BaseMetric):
         device: str | torch.device = "cuda",
         timing_type: str = "sync",
     ) -> None:
-        super().__init__()
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
         self.device = device
         self.timing_type = timing_type
 
-    @torch.no_grad()
-    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any]:
+    def _measure(self, model: PrunaModel, dataloader: DataLoader, iterations: int, measure_fn) -> None:
+        """Perform iterations and apply the measure function.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+        iterations : int
+            The number of iterations to run inference.
+        measure_fn : Callable
+            The function to apply to each batch.
         """
-        Compute the elapsed time, latency, and throughput for model inference.
+        c = 0
+        while c < iterations:
+            for batch in dataloader:
+                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
+                x = model.inference_handler.prepare_inputs(batch)
+                measure_fn(model, x)
+                c += 1
+                if c >= iterations:
+                    break
+
+    def _time_inference(self, model: PrunaModel, x: Any) -> float:
+        """
+        Time a single inference and return the elapsed time in milliseconds.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        x : Any
+            The input to the model.
+
+        Returns
+        -------
+        float
+            The elapsed time in milliseconds.
+        """
+        if self.timing_type == "async" or self.device == "cpu":
+            startevent_time = time.time()
+            _ = model(x, **model.inference_handler.model_args)
+            endevent_time = time.time()
+            return (endevent_time - startevent_time) * 1000  # in ms
+        elif self.timing_type == "sync":
+            startevent = torch.cuda.Event(enable_timing=True)
+            endevent = torch.cuda.Event(enable_timing=True)
+            startevent.record()
+            _ = model(x, **model.inference_handler.model_args)
+            endevent.record()
+            torch.cuda.synchronize()
+            return startevent.elapsed_time(endevent)  # in ms
+        else:
+            raise ValueError(f"Timing type {self.timing_type} not supported.")
+
+    @torch.no_grad()
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any] | MetricResult:
+        """
+        Compute the inference time for model inference.
 
         Parameters
         ----------
@@ -75,8 +142,8 @@ class ElapsedTimeMetric(BaseMetric):
 
         Returns
         -------
-        dict
-            The elapsed time, latency, and throughput for model inference.
+        Dict[str, Any] | MetricResult
+            The inference time for model inference.
         """
         if self.timing_type == "async" and self.device == "cpu":
             pruna_logger.warning("Async timing is not supported on CPU. Using sync timing instead.")
@@ -85,48 +152,178 @@ class ElapsedTimeMetric(BaseMetric):
         model.move_to_device(self.device)
 
         # Warmup
-        c = 0
-        while c < self.n_warmup_iterations:
-            for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
-                x = model.inference_handler.prepare_inputs(batch)
-                model(x)
-                c += 1
-                if c >= self.n_warmup_iterations:
-                    break
+        self._measure(model, dataloader, self.n_warmup_iterations, lambda m, x: m(x, **m.inference_handler.model_args))
 
         # Measurement
         list_elapsed_times = []
-        c = 0
-        while c < self.n_iterations:
-            for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
-                x = model.inference_handler.prepare_inputs(batch)
-                if self.timing_type == "async" or self.device == "cpu":
-                    startevent_time = time.time()
-                    _ = model(x)
-                    endevent_time = time.time()
-                    elapsed_time = (endevent_time - startevent_time) * 1000  # in ms
-                elif self.timing_type == "sync":
-                    startevent = torch.cuda.Event(enable_timing=True)
-                    endevent = torch.cuda.Event(enable_timing=True)
-                    startevent.record()
-                    _ = model(x)
-                    endevent.record()
-                    torch.cuda.synchronize()
-                    elapsed_time = startevent.elapsed_time(endevent)  # in ms
-                else:
-                    raise ValueError(f"Timing type {self.timing_type} not supported.")
-                list_elapsed_times.append(elapsed_time)
-                c += 1
-                if c >= self.n_iterations:
-                    break
+        self._measure(
+            model, dataloader, self.n_iterations, lambda m, x: list_elapsed_times.append(self._time_inference(m, x))
+        )
 
         total_elapsed_time = sum(list_elapsed_times)
-        batch_size = dataloader.batch_size
+        self.batch_size = cast(int, dataloader.batch_size)
 
-        return {
-            f"inference_elapsed_time_ms_@{batch_size}": total_elapsed_time,
-            f"inference_latency_ms_@{batch_size}": total_elapsed_time / self.n_iterations,
-            f"inference_throughput_batches_per_ms_@{batch_size}": self.n_iterations / total_elapsed_time,
+        raw_results = {
+            TOTAL_TIME: total_elapsed_time,
+            LATENCY: total_elapsed_time / self.n_iterations,
+            THROUGHPUT: self.n_iterations * self.batch_size / total_elapsed_time,
         }
+
+        return cast(Dict[str, Any], raw_results)
+
+
+@MetricRegistry.register(LATENCY)
+class LatencyMetric(InferenceTimeStats):
+    """
+    View over InferenceTimeStats with latency as primary metric.
+
+    Parameters
+    ----------
+    n_iterations : int, default=100
+        The number of batches to evaluate the model.
+    n_warmup_iterations : int, default=10
+        The number of warmup batches to evaluate the model.
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    timing_type : str, default="sync"
+        The type of timing to use.
+    """
+
+    higher_is_better: bool = False
+    metric_name: str = LATENCY
+    metric_units: str = "ms/num_iterations"
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the latency for model inference.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The latency for model inference.
+        """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across time metrics.
+        raw_results = super().compute(model, dataloader)
+        result = cast(Dict[str, Any], raw_results)[self.metric_name]
+        return MetricResult(self.metric_name, self.__dict__.copy(), result)
+
+
+@MetricRegistry.register(THROUGHPUT)
+class ThroughputMetric(InferenceTimeStats):
+    """
+    View over InferenceTimeStats with throughput as primary metric.
+
+    Parameters
+    ----------
+    n_iterations : int, default=100
+        The number of batches to evaluate the model.
+    n_warmup_iterations : int, default=10
+        The number of warmup batches to evaluate the model.
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    timing_type : str, default="sync"
+        The type of timing to use.
+    """
+
+    higher_is_better: bool = True
+    metric_units: str = "num_iterations/ms"
+    metric_name: str = THROUGHPUT
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the throughput for model inference.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The throughput for model inference.
+        """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across time metrics.
+        raw_results = super().compute(model, dataloader)
+        result = cast(Dict[str, Any], raw_results)[self.metric_name]
+        return MetricResult(self.metric_name, self.__dict__.copy(), result)
+
+
+@MetricRegistry.register(TOTAL_TIME)
+class TotalTimeMetric(InferenceTimeStats):
+    """
+    View over InferenceTimeStats with elapsed time as primary metric.
+
+    Parameters
+    ----------
+    n_iterations : int, default=100
+        The number of batches to evaluate the model.
+    n_warmup_iterations : int, default=10
+        The number of warmup batches to evaluate the model.
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    timing_type : str, default="sync"
+        The type of timing to use.
+    """
+
+    higher_is_better: bool = False
+    metric_units: str = "ms"
+    metric_name: str = TOTAL_TIME
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the total time for model inference.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The total time for model inference.
+        """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across time metrics.
+        raw_results = super().compute(model, dataloader)
+        result = cast(Dict[str, Any], raw_results)[self.metric_name]
+        return MetricResult(self.metric_name, self.__dict__.copy(), result)
+
+
+class ElapsedTimeMetric:
+    """
+    Deprecated class.
+
+    Parameters
+    ----------
+    *args : Any
+        Arguments for InferenceTimeStats.
+    **kwargs : Any
+        Keyword arguments for InferenceTimeStats.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        """Forwards to InferenceTimeStats."""
+        warn(
+            "Class ElapsedTimeMetric is deprecated and will be removed in 'v0.2.8' release. \n"
+            "It has been replaced by InferenceTimeStats, \n"
+            "which is a shared parent class for 'LatencyMetric', 'ThroughputMetric' and 'TotalTimeMetric'. \n"
+            "In the future please use 'LatencyMetric', 'ThroughputMetric' or 'TotalTimeMetric' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return InferenceTimeStats(*args, **kwargs)

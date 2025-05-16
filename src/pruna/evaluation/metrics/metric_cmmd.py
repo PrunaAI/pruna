@@ -23,11 +23,14 @@ from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
-from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.result import MetricResult
+from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
+METRIC_CMMD = "cmmd"
 
-@MetricRegistry.register("cmmd")
+
+@MetricRegistry.register(METRIC_CMMD)
 class CMMD(StatefulMetric):
     """
     Calculates the CMMD metric, which is the Maximum Mean Discrepancy between CLIP embeddings of two sets of images.
@@ -51,13 +54,15 @@ class CMMD(StatefulMetric):
     ground_truth_embeddings: List[torch.Tensor]
     output_embeddings: List[torch.Tensor]
     default_call_type: str = "gt_y"
+    higher_is_better: bool = False
+    metric_name: str = METRIC_CMMD
 
     def __init__(
         self,
         *args,
         device: str | torch.device = "cuda",
         clip_model_name: str = "openai/clip-vit-large-patch14-336",
-        call_type: str = default_call_type,
+        call_type: str = SINGLE,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -72,11 +77,8 @@ class CMMD(StatefulMetric):
         self.clip_processor = CLIPImageProcessor.from_pretrained(clip_model_name)
         self.sigma = 10  # Sigma parameter from the paper
         self.scale = 1000  # Scale parameter from the paper
-        self.metric_name = "cmmd"
-        if call_type == "pairwise":
-            self.call_type = "pairwise_" + self.default_call_type
-        else:
-            self.call_type = call_type
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+
         self.add_state("ground_truth_embeddings", [])
         self.add_state("output_embeddings", [])
 
@@ -102,7 +104,7 @@ class CMMD(StatefulMetric):
         self.ground_truth_embeddings.append(gt_embeddings)
         self.output_embeddings.append(output_embeddings)
 
-    def compute(self) -> torch.Tensor:
+    def compute(self) -> MetricResult:
         """
         Compute the CMMD metric.
 
@@ -115,8 +117,10 @@ class CMMD(StatefulMetric):
         """
         x = torch.cat(self.ground_truth_embeddings, dim=0)
         y = torch.cat(self.output_embeddings, dim=0)
+        result = self._mmd(x, y)
+        result_f = result.item() if isinstance(result, torch.Tensor) else result
 
-        return self._mmd(x, y)
+        return MetricResult(self.metric_name, self.__dict__.copy(), result_f)
 
     def _get_embeddings(self, images: torch.Tensor) -> torch.Tensor:
         """

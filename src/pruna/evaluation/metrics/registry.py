@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from functools import partial
 from typing import Any, Callable, Dict, Iterable, List
 
 from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.logging.logger import pruna_logger
 
 
@@ -85,7 +88,7 @@ class MetricRegistry:
         return decorator
 
     @classmethod
-    def get_metric(cls, name: str, **kwargs) -> BaseMetric:
+    def get_metric(cls, name: str, **kwargs) -> BaseMetric | StatefulMetric:
         """
         Get a metric from the registry.
 
@@ -105,7 +108,7 @@ class MetricRegistry:
         return cls._registry[name](**kwargs)
 
     @classmethod
-    def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric]:
+    def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric | StatefulMetric]:
         """
         Get requested metrics from the registry.
 

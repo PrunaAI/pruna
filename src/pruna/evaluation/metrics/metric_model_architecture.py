@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
+from warnings import warn
 
 import thop
 import torch
@@ -25,16 +26,27 @@ from pruna.engine.call_sequence_tracker import CallSequenceTracker
 from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
 
+TOTAL_MACS = "total_macs"
+TOTAL_PARAMS = "total_params"
 
-@MetricRegistry.register("model_architecture")
-class ModelArchitectureMetric(BaseMetric):
+
+class ModelArchitectureStats(BaseMetric):
     """
-    Evaluate the model architecture.
+    Internal metric for evaluating model architecture characteristics.
 
-    1. Evaluate the MACs of the model at inference.
-    2. Evaluate the number of parameters of the model.
+    This utility computes static properties of a model to provide insights into its computational
+    and memory complexity. It is primarily intended for use by child metrics that expose
+    architecture statistics to end users or logging pipelines.
+
+    Specifically, it calculates:
+    1. MACs (Multiply–Accumulate Operations): An estimate of the model’s computational cost during inference.
+    2. Parameter Count: Total number of learnable parameters in the model.
+
+    Results are returned as raw results,
+    to be used by child metric classes that wrap them into standardized `MetricResult` objects.
 
     Parameters
     ----------
@@ -43,13 +55,12 @@ class ModelArchitectureMetric(BaseMetric):
     """
 
     def __init__(self, device: str | torch.device = "cuda") -> None:
-        super().__init__()
         self.device = device
         self.module_macs: Dict[str, Any] = {}
         self.module_params: Dict[str, Any] = {}
         self.call_tracker = CallSequenceTracker()
 
-    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any]:
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any] | MetricResult:
         """
         Compute the MACs and number of parameters of the model during inference.
 
@@ -76,7 +87,7 @@ class ModelArchitectureMetric(BaseMetric):
         batch = model.inference_handler.move_inputs_to_device(batch, self.device)
         inputs = model.inference_handler.prepare_inputs(batch)
 
-        model(inputs)
+        model(inputs, **model.inference_handler.model_args)
 
         total_macs = 0
         self.module_macs = {}
@@ -104,7 +115,7 @@ class ModelArchitectureMetric(BaseMetric):
             except Exception as e:
                 pruna_logger.error(f"Could not calculate MACs for {module.__class__.__name__}: {e}")
 
-        return {"total_macs": total_macs, "total_params": total_params}
+        return {TOTAL_MACS: total_macs, TOTAL_PARAMS: total_params}
 
     def generate_dummy_inputs(
         self, input_info: List[Dict[str, Any]], kwargs_info: Dict[str, Any], sig: inspect.Signature
@@ -174,3 +185,102 @@ class ModelArchitectureMetric(BaseMetric):
                     ordered_args.append(v)
                 break
         return tuple(ordered_args)
+
+
+@MetricRegistry.register(TOTAL_MACS)
+class TotalMACsMetric(ModelArchitectureStats):
+    """
+    View over ModelArchitectureStats with total MACs as primary metric.
+
+    Parameters
+    ----------
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    """
+
+    metric_name: str = TOTAL_MACS
+    metric_units: str = "MACs"
+    higher_is_better: bool = False
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the total MACs of the model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The total MACs of the model.
+        """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across model architecture metrics.
+        results = super().compute(model, dataloader)
+        return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
+
+
+@MetricRegistry.register(TOTAL_PARAMS)
+class TotalParamsMetric(ModelArchitectureStats):
+    """
+    View over ModelArchitectureStats with total parameters as primary metric.
+
+    Parameters
+    ----------
+    device : str | torch.device, default="cuda"
+        The device to evaluate the model on.
+    """
+
+    metric_name: str = TOTAL_PARAMS
+    metric_units: str = "params"
+    higher_is_better: bool = False
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the total parameters of the model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to evaluate the model on.
+
+        Returns
+        -------
+        MetricResult
+            The total parameters of the model.
+        """
+        # Note: This runs separate inference if called directly.
+        # Use EvaluationAgent to share computation across model architecture metrics.
+        results = super().compute(model, dataloader)
+        return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
+
+
+class ModelArchitectureMetric:
+    """
+    Deprecated class.
+
+    Parameters
+    ----------
+    *args : Any
+        Arguments for ModelArchitectureStats.
+    **kwargs : Any
+        Keyword arguments for ModelArchitectureStats.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        """Forwards to ModelArchitectureStats."""
+        warn(
+            "ModelArchitectureMetric is deprecated and will be removed in 'v0.2.8' release. \n"
+            "It has been replaced by ModelArchitectureStats, \n"
+            "which is a shared parent class for 'TotalMACsMetric' and 'TotalParamsMetric'. \n"
+            "In the future, please use 'TotalMACsMetric' or 'TotalParamsMetric' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return ModelArchitectureStats(*args, **kwargs)
