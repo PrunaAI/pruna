@@ -133,13 +133,13 @@ class PrunaModel:
         """Set the model to evaluation mode."""
         set_to_eval(self.model)
 
-    def move_to_device(self, device: str | torch.device) -> None:
+    def move_to_device(self, device: str) -> None:
         """
         Move the model to a specific device.
 
         Parameters
         ----------
-        device : str | torch.device
+        device : str
             The device to move the model to.
         """
         move_to_device(self.model, device)

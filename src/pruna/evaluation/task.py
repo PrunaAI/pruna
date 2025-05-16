@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from typing import Any, List, cast
 
-import torch
-
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
@@ -40,7 +38,7 @@ class Task:
         The user request.
     datamodule : PrunaDataModule
         The dataloader to use for the evaluation.
-    device : str | torch.device
+    device : str
         The device to use for the evaluation.
     """
 
@@ -48,11 +46,13 @@ class Task:
         self,
         request: str | List[str | BaseMetric],
         datamodule: PrunaDataModule,
-        device: str | torch.device = "cuda",
+        device: str = "cuda",
     ) -> None:
         self.metrics = get_metrics(request)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
+        if device not in ["cuda", "cpu", "mps"]:
+            raise ValueError(f"Unsupported device: {device}. Must be one of: cuda, cpu, mps.")
         self.device = device
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
