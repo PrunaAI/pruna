@@ -29,7 +29,14 @@ from pruna.logging.logger import pruna_logger
 
 
 def safe_memory_cleanup(objects_to_be_deleted: list[Any] | None = None) -> None:
-    """Perform safe memory cleanup by collecting garbage and clearing CUDA cache."""
+    """
+    Perform safe memory cleanup by collecting garbage and clearing CUDA cache, after deleting the given objects.
+
+    Parameters
+    ----------
+    objects_to_be_deleted : list[Any] | None
+        The objects to be deleted.
+    """
     if objects_to_be_deleted is not None:
         for obj in objects_to_be_deleted:
             if hasattr(obj, "to"):
