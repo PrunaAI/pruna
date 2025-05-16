@@ -185,16 +185,19 @@ class TorchaoQuantizer(PrunaQuantizer):
                 return False
             return all(name not in excluded_modules for name in fqn.split("."))
 
-        if (smash_config["compiler"] == "torch_compile" and
-            smash_config._base_config["torch_compile_mode"] != "max-autotune-no-cudagraphs"):
+        if (
+            smash_config["compiler"] == "torch_compile"
+            and smash_config._base_config["torch_compile_mode"] != "max-autotune-no-cudagraphs"
+        ):
             pruna_logger.warning(
                 "You are using torchao with torch.compile. "
                 "Please set `smash_config['torch_compile_mode']='max-autotune-no-cudagraphs'` for best results; "
                 "otherwise you may encounter undesirable outcomes."
             )
 
-        if ("fp8" in smash_config["quant_type"] and
-            not (torch.cuda.is_available() and torch.cuda.get_device_capability() >= (8, 9))):
+        if "fp8" in smash_config["quant_type"] and not (
+            torch.cuda.is_available() and torch.cuda.get_device_capability() >= (8, 9)
+        ):
             pruna_logger.warning(
                 "Float8 quantization requires an NVIDIA GPU with compute capability ≥ 8.9. "
                 "Your device does not meet this requirement."
@@ -204,8 +207,25 @@ class TorchaoQuantizer(PrunaQuantizer):
             pruna_logger.warning(
                 "Row wise float8 dynamic quantization is still experimental and might not work on your hardware."
             )
-
-        imported_modules["quantize"](working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn)
+        # Only apply quantization on module list level if torch compile is also applied at that level
+        if (
+            smash_config._base_config["torch_compile_target"] == "model"
+            or smash_config["compiler"] is None
+            or smash_config["compiler"] != "torch_compile"
+        ):
+            # Apply quantization to the entire model
+            imported_modules["quantize"](
+                working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
+            )
+        else:
+            # Apply quantization to individual submodules in ModuleLists
+            for name, module in working_model.named_modules():
+                if isinstance(module, torch.nn.ModuleList):
+                    for i, submodule in enumerate(module):
+                        if isinstance(submodule, torch.nn.Module):
+                            imported_modules["quantize"](
+                                submodule, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
+                            )
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -227,6 +247,7 @@ class TorchaoQuantizer(PrunaQuantizer):
             quantize_,
         )
         from torchao.quantization.quant_api import PerRow
+
         _is_linear = importlib.import_module("torchao.quantization.quant_api")._is_linear
         return dict(
             quantize=quantize_,
