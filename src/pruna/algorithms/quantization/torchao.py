@@ -150,6 +150,8 @@ class TorchaoQuantizer(PrunaQuantizer):
             return True
         if isinstance(model, tuple(unet_models)):
             return True
+        if hasattr(model, "unet") and isinstance(model.unet, tuple(unet_models)):
+            return True
         if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_models)):
             return True
         if is_causal_lm(model):
@@ -172,7 +174,12 @@ class TorchaoQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
-        working_model = model.transformer if hasattr(model, "transformer") else model
+        if hasattr(model, "unet"):
+            working_model = model.unet
+        elif hasattr(model, "transformer"):
+            working_model = model.transformer
+        else:
+            working_model = model
 
         excluded_modules = []
         if "norm" in smash_config["excluded_modules"]:
