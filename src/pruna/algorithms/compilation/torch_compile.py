@@ -51,7 +51,7 @@ class TorchCompileCompiler(PrunaCompiler):
     dataset_required = False
     compatible_algorithms = dict(
         factorizer=["qkv_diffusers"],
-        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq"],
+        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq", "torchao"],
         cacher=["deepcache", "fora"],
     )
 
