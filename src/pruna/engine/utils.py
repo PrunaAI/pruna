@@ -197,13 +197,10 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
         model_device = model_device.type
 
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None:
-        if list(model.hf_device_map.keys()) == [""]:
-            model_device = "cpu" if model.hf_device_map[""] == "cpu" else "cuda"
+        if return_device_map:
+            model_device = model.hf_device_map
         else:
-            if return_device_map:
-                model_device = model.hf_device_map
-            else:
-                model_device = "accelerate"
+            model_device = "accelerate"
 
     return model_device
 
