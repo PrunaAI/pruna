@@ -182,8 +182,17 @@ class SmashConfig:
         current_groups = set(config_dict.keys())
         expected_groups = set(ALGORITHM_GROUPS)
 
+        # Get all applied algorithms and their arguments from the expected groups
+        applied_algorithms = set()
+        for group in expected_groups:
+            if group in config_dict and config_dict[group] is not None:
+                applied_algorithms.add(config_dict[group])
+        applied_algorithm_args = {
+            key for key in config_dict if any(key.startswith(f"{alg}_") for alg in applied_algorithms)
+        }
+
         # Remove extra groups with warning if they have values
-        for group in current_groups - expected_groups:
+        for group in current_groups - expected_groups - applied_algorithm_args:
             if config_dict[group] is not None:
                 pruna_logger.warning(
                     f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
