@@ -141,29 +141,30 @@ def save_pruna_model_to_hub(
     with tempfile.TemporaryDirectory() as temp_dir:
         # If no model_path is provided, use the temporary directory
         model_path = model_path or temp_dir
-        # Save the model and its configuration to the temporary directory
-        save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
         model_path_pathlib = Path(model_path)
 
-        # Load all JSON files in the model directory
-        config_files = {}
-        for json_file in model_path_pathlib.glob("*.json"):
-            with json_file.open() as f:
-                config_files[json_file.stem] = json.load(f)
+        # Save the model and its configuration to the temporary directory
+        save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
 
         # Load the smash config
-        smash_config_file = Path(SMASH_CONFIG_FILE_NAME).stem
-        smash_config_data = config_files.pop(smash_config_file)
+        with open(os.path.join(model_path, SMASH_CONFIG_FILE_NAME), "r") as f:
+            smash_config_data = json.load(f)
+
+        # Determine the library name from the smash config
+        if "diffusers" in model.__module__:
+            library_name = "diffusers"
+        elif "transformers" in model.__module__:
+            library_name = "transformers"
+        else:
+            library_name = None
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
         content = template.format(
             repo_id=repo_id,
-            model_config=json.dumps(config_files, indent=4),
             smash_config=json.dumps(smash_config_data, indent=4),
-            # backwards compatibility check for load_fn or load_fns and use the first one
-            library_name=smash_config_data.get("load_fn") or smash_config_data.get("load_fns").pop(),
+            library_name=library_name,
         )
 
         # Define the path for the README file and write the formatted content to it
