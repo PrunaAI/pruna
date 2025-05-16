@@ -11,7 +11,7 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :text-align: center
       :link: ./image_generation.ipynb
 
-      Optimize with ``hq_diffusers`` ``quantization`` and ``torch_compile`` ``compilation`` and evaluate with ``elapsed_time``, ``lpi``, ``ssim``, ``psnr``, ``clip_score`` and ``cmmd``.
+      Optimize with a ``hq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``elapsed_time``, ``lpi``, ``ssim``, ``psnr``, ``clip_score`` and ``cmmd``.
 
    .. grid-item-card:: Transcribe 2 hour of audio in 2 minutes with Whisper
       :text-align: center
