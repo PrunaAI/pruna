@@ -41,8 +41,8 @@ class QKVDiffusers(PrunaFactorizer):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(
-        quantizer=["diffusers_int8", "hqq_diffusers", "quanto"],
-        cacher=["deepcache"],
+        quantizer=["diffusers_int8", "hqq_diffusers", "quanto", "torchao"],
+        cacher=["deepcache", "fora"],
         compiler=["torch_compile"],
     )
 
