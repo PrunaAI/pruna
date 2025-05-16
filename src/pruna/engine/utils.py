@@ -23,6 +23,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
+from accelerate.hooks import remove_hook_from_module
 from diffusers.models.modeling_utils import ModelMixin
 
 from pruna.logging.logger import pruna_logger
@@ -119,8 +120,10 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
 
     else:
         if get_device(target_model) == "accelerate":
-            # remove distributed device state to be able to use ".to"
-            target_model.reset_device_map()
+            if hasattr(target_model, "reset_device_map"):
+                # remove distributed device state to be able to use ".to" for diffusers models
+                target_model.reset_device_map()
+            remove_hook_from_module(target_model, recurse=True)
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
@@ -132,6 +135,7 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
                 raise ValueError(f"Could not move model to device: {str(e)}")
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
+    safe_memory_cleanup()
 
 
 def cast_model_to_accelerate_device_map(model, device_map):
@@ -193,10 +197,13 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
         model_device = model_device.type
 
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None:
-        if return_device_map:
-            model_device = model.hf_device_map
+        if list(model.hf_device_map.keys()) == [""]:
+            model_device = "cpu" if model.hf_device_map[""] == "cpu" else "cuda"
         else:
-            model_device = "accelerate"
+            if return_device_map:
+                model_device = model.hf_device_map
+            else:
+                model_device = "accelerate"
 
     return model_device
 
