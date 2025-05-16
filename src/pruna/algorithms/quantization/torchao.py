@@ -20,7 +20,7 @@ import torch
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
-from pruna.engine.model_checks import get_diffusers_transformer_models, is_causal_lm
+from pruna.engine.model_checks import get_diffusers_transformer_models, get_diffusers_unet_models, is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
@@ -145,7 +145,10 @@ class TorchaoQuantizer(PrunaQuantizer):
             True if the model is suitable for torchao quantization, False otherwise.
         """
         transformer_models = get_diffusers_transformer_models()
+        unet_models = get_diffusers_unet_models()
         if isinstance(model, tuple(transformer_models)):
+            return True
+        if isinstance(model, tuple(unet_models)):
             return True
         if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_models)):
             return True
@@ -210,9 +213,7 @@ class TorchaoQuantizer(PrunaQuantizer):
         # Only apply quantization on module list level if torch compile is also applied at that level
         if (
             smash_config["compiler"] == "torch_compile"
-            and smash_config._base_config["torch_compile_target"] == "model"
-            or smash_config["compiler"] is None
-            or smash_config["compiler"] != "torch_compile"
+            and smash_config._base_config["torch_compile_target"] == "module_list"
         ):
             # Apply quantization to the entire model
             imported_modules["quantize"](
