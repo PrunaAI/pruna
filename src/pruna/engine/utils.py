@@ -39,10 +39,13 @@ def safe_memory_cleanup(objects_to_be_deleted: list[Any] | None = None) -> None:
     """
     if objects_to_be_deleted is not None:
         for obj in objects_to_be_deleted:
-            if hasattr(obj, "device") and obj.device != "cpu":
-                move_to_device(obj, "cpu")
-            if hasattr(obj, "destroy"):
-                obj.destroy()
+            try:
+                if hasattr(obj, "device") and obj.device != "cpu":
+                    move_to_device(obj, "cpu")
+                if hasattr(obj, "destroy"):
+                    obj.destroy()
+            except Exception as e:
+                pruna_logger.warning(f"Could not destroy object: {str(e)}")
             del obj
     gc.collect()
     torch.cuda.empty_cache()
