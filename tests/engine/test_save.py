@@ -1,7 +1,6 @@
 import os
 import pytest
-from pruna.engine.pruna_model import PrunaModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM
 from pruna.config.smash_config import SmashConfig
 from pruna import smash
 from diffusers import DiffusionPipeline
@@ -14,7 +13,7 @@ from diffusers import DiffusionPipeline
 def test_save_llm_to_hub() -> None:
     """Test saving an LLM model to the Hugging Face Hub."""
     download_repo_id = "hf-internal-testing/tiny-random-llama4"
-    upload_repo_id = "PrunaAI/test-tiny-random-llama4-smashed"
+    upload_repo_id = "PrunaAI/test-save-tiny-random-llama4-smashed"
     model = AutoModelForCausalLM.from_pretrained(download_repo_id)
     smash_config = SmashConfig(device="cpu")
     smash(
@@ -28,7 +27,7 @@ def test_save_llm_to_hub() -> None:
 def test_save_diffusers_to_hub() -> None:
     """Test saving a diffusers model to the Hugging Face Hub."""
     download_repo_id = "hf-internal-testing/tiny-stable-diffusion-pipe"
-    upload_repo_id = "PrunaAI/test-tiny-stable-diffusion-pipe-smashed"
+    upload_repo_id = "PrunaAI/test-save-tiny-stable-diffusion-pipe-smashed"
 
     model = DiffusionPipeline.from_pretrained(download_repo_id)
     smash_config = SmashConfig(device="cpu")

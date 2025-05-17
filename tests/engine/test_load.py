@@ -5,8 +5,8 @@ from pruna.engine.pruna_model import PrunaModel
 @pytest.mark.parametrize(
     "model_name, expected_output, should_raise",
     [
-        ("PrunaAI/test-tiny-random-llama4-smashed", "PrunaModel", False),
-        ("PrunaAI/test-tiny-stable-diffusion-pipe-smashed", "PrunaModel", False),
+        ("PrunaAI/test-load-tiny-random-llama4-smashed", "PrunaModel", False),
+        ("PrunaAI/test-load-tiny-stable-diffusion-pipe-smashed", "PrunaModel", False),
         ("NonExistentRepo/model", None, True),
     ],
 )

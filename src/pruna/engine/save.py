@@ -54,12 +54,6 @@ def save_pruna_model(model: Any, model_path: str, smash_config: SmashConfig) -> 
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
-    # save old smash config (includes tokenizer and processor)
-    save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    smash_config.save_to_json(save_dir)
-
     if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
         save_torch_artifacts(model, model_path, smash_config)
         smash_config.save_fns.remove(SAVE_FUNCTIONS.torch_artifacts.name)
@@ -147,7 +141,7 @@ def save_pruna_model_to_hub(
         save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
 
         # Load the smash config
-        with open(os.path.join(model_path, SMASH_CONFIG_FILE_NAME), "r") as f:
+        with (model_path_pathlib / SMASH_CONFIG_FILE_NAME).open() as f:
             smash_config_data = json.load(f)
 
         # Determine the library name from the smash config
