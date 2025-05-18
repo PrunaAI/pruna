@@ -110,6 +110,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - ➖
      - ➖
      - ✅
+   * - ``factorizer``
+     - Factorization batches several small matrix multiplications into one large fused operation.
+     - (✅)
+     - ➖
+     - ➖
 
 ✅(improves), ➖(approx. the same), ❌(worsens)
 
