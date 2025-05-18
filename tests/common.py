@@ -71,7 +71,7 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         model = algorithm_tester.cast_to_device(model, device=smash_config["device"])
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
-        safe_memory_cleanup(objects_to_be_deleted=[smashed_model, model])
+        safe_memory_cleanup()
         algorithm_tester.execute_load(load_kwargs)
     finally:
         algorithm_tester.final_teardown(smash_config)

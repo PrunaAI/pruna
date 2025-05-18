@@ -28,22 +28,8 @@ from diffusers.models.modeling_utils import ModelMixin
 from pruna.logging.logger import pruna_logger
 
 
-def safe_memory_cleanup(objects_to_be_deleted: list[Any] | None = None) -> None:
-    """
-    Perform safe memory cleanup by collecting garbage and clearing CUDA cache, after deleting the given objects.
-
-    Parameters
-    ----------
-    objects_to_be_deleted : list[Any] | None
-        The objects to be deleted.
-    """
-    if objects_to_be_deleted is not None:
-        for obj in objects_to_be_deleted:
-            if hasattr(obj, "device") and obj.device != "cpu":
-                move_to_device(obj, "cpu")
-            if hasattr(obj, "destroy"):
-                obj.destroy()
-            del obj
+def safe_memory_cleanup() -> None:
+    """Perform safe memory cleanup by collecting garbage and clearing CUDA cache."""
     gc.collect()
     torch.cuda.empty_cache()
 

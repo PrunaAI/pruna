@@ -8,7 +8,7 @@ from diffusers import SanaPipeline
 
 from pruna import PrunaModel, SmashConfig, smash
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
-from pruna.engine.utils import safe_memory_cleanup
+from pruna.engine.utils import move_to_device, safe_memory_cleanup
 
 
 class AlgorithmTesterBase:
@@ -78,6 +78,7 @@ class AlgorithmTesterBase:
         assert len(os.listdir(cls.saving_path)) > 0
         if cls.allow_pickle_files:
             cls.assert_no_pickle_files()
+        move_to_device(smashed_model, "cpu")
 
     @classmethod
     def assert_no_pickle_files(cls) -> None:
