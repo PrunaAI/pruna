@@ -101,6 +101,11 @@ def check_model_compatibility(
                 raise ValueError(
                     f"Model is not compatible with {algorithm_dict[current_group][algorithm].algorithm_name}"
                 )
+            if get_device(model) not in algorithm_dict[current_group][algorithm].runs_on:
+                raise ValueError(
+                    f"{algorithm} is not compatible with device {get_device(model)}, "
+                    f"compatible devices are {algorithm_dict[current_group][algorithm].runs_on}"
+                )
 
 
 def check_argument_compatibility(smash_config: SmashConfig, algorithm_name: str) -> None:
