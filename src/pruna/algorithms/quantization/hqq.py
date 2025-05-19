@@ -14,7 +14,7 @@
 
 import shutil
 import tempfile
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
@@ -37,15 +37,17 @@ class HQQQuantizer(PrunaQuantizer):
     eliminating the need for calibration data.
     """
 
-    algorithm_name = "hqq"
-    references = {"GitHub": "https://github.com/mobiusml/hqq", "Article": "https://mobiusml.github.io/hqq_blog/"}
-    save_fn = SAVE_FUNCTIONS.hqq
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(compiler=["torch_compile"])
+    algorithm_name: str = "hqq"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/mobiusml/hqq",
+        "Article": "https://mobiusml.github.io/hqq_blog/",
+    }
+    save_fn: Callable = SAVE_FUNCTIONS.hqq
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """

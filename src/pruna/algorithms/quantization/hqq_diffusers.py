@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, Type
+from typing import Any, Callable, Dict, Type
 
 import torch
 from ConfigSpace import OrdinalHyperparameter
@@ -38,18 +38,18 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
     adapted for diffusers models.
     """
 
-    algorithm_name = "hqq_diffusers"
-    references = {"GitHub": "https://github.com/mobiusml/hqq", "Article": "https://mobiusml.github.io/hqq_blog/"}
-    save_fn = SAVE_FUNCTIONS.hqq_diffusers
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(
-        factorizer=["qkv_diffusers"],
-        cacher=["deepcache", "fastercache", "fora", "pab"],
-        compiler=["torch_compile"],
+    algorithm_name: str = "hqq_diffusers"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/mobiusml/hqq",
+        "Article": "https://mobiusml.github.io/hqq_blog/",
+    }
+    save_fn: Callable = SAVE_FUNCTIONS.hqq_diffusers
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(
+        factorizer=["qkv_diffusers"], cacher=["deepcache", "fastercache", "fora", "pab"], compiler=["torch_compile"]
     )
 
     def get_hyperparameters(self) -> list:

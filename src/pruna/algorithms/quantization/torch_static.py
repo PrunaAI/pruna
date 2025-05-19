@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
@@ -32,15 +32,14 @@ class TorchStaticQuantizer(PrunaQuantizer):
     requires additional steps during model preparation.
     """
 
-    algorithm_name = "torch_static"
-    references = {"GitHub": "https://github.com/pytorch/pytorch"}
-    save_fn = SAVE_FUNCTIONS.pickled
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = True
-    compatible_algorithms = dict()
+    algorithm_name: str = "torch_static"
+    references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
+    save_fn: Callable = SAVE_FUNCTIONS.pickled
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda", "mps"]
+    dataset_required: bool = True
+    compatible_algorithms: dict[str, list[str]] = dict()
 
     def get_hyperparameters(self) -> list:
         """
