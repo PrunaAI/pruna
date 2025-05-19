@@ -10,7 +10,7 @@ from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
 
 from pruna import SmashConfig
-from pruna.engine.utils import safe_memory_cleanup
+from pruna.engine.utils import get_device, safe_memory_cleanup
 
 
 def device_parametrized(cls: Any) -> Any:
@@ -19,6 +19,7 @@ def device_parametrized(cls: Any) -> Any:
         "device",
         [
             pytest.param("cuda", marks=pytest.mark.cuda),
+            pytest.param("accelerate", marks=pytest.mark.cuda),
             pytest.param("cpu", marks=pytest.mark.cpu),
         ],
     )(cls)
@@ -67,12 +68,12 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         if device not in algorithm_tester.compatible_devices():
             pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
         algorithm_tester.prepare_smash_config(smash_config, device)
-        load_kwargs = algorithm_tester.check_loading_dtype(model)
-        model = algorithm_tester.cast_to_device(model, device=smash_config["device"])
+        algorithm_tester.cast_to_device(model, device=smash_config["device"])
+        assert device == get_device(model)
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
-        algorithm_tester.execute_load(load_kwargs)
+        algorithm_tester.execute_load()
     finally:
         algorithm_tester.final_teardown(smash_config)
 
