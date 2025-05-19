@@ -3,12 +3,9 @@ import shutil
 from abc import abstractmethod
 from typing import Any
 
-import torch
-from diffusers import SanaPipeline
-
 from pruna import PrunaModel, SmashConfig, smash
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
-from pruna.engine.utils import move_to_device, safe_memory_cleanup
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
 
 
 class AlgorithmTesterBase:
@@ -43,11 +40,7 @@ class AlgorithmTesterBase:
     @classmethod
     def cast_to_device(cls, model: Any, device: str = "cpu") -> Any:
         """Cast the model to the given device."""
-        if hasattr(model, "to"):
-            model.to(device)
-        elif hasattr(model, "model"):
-            model.model.to(device)
-        return model
+        move_to_device(model, device)
 
     @classmethod
     def final_teardown(cls, smash_config: SmashConfig) -> None:
@@ -62,14 +55,6 @@ class AlgorithmTesterBase:
 
         # clean up the leftovers
         safe_memory_cleanup()
-
-    @classmethod
-    def check_loading_dtype(cls, model: Any) -> dict[str, Any]:
-        """Check the loading dtype for the model."""
-        load_kwargs = {}
-        if isinstance(model, SanaPipeline) and not cls.allow_pickle_files:
-            load_kwargs["torch_dtype"] = torch.float16
-        return load_kwargs
 
     @classmethod
     def execute_save(cls, smashed_model: PrunaModel) -> None:
@@ -109,9 +94,9 @@ class AlgorithmTesterBase:
         """Fast hook to get information about the base model before smashing (if required)."""
         pass
 
-    def execute_load(self, load_kwargs: dict[str, Any]) -> PrunaModel:
+    def execute_load(self) -> PrunaModel:
         """Load the smashed model."""
-        model = PrunaModel.from_pretrained(self.saving_path, **load_kwargs)
+        model = PrunaModel.from_pretrained(self.saving_path)
         assert isinstance(model, PrunaModel)
         self.post_smash_hook(model)
 
@@ -121,6 +106,7 @@ class AlgorithmTesterBase:
         smashed_model = smash(model, smash_config=smash_config)
         assert isinstance(smashed_model, PrunaModel)
         self.post_smash_hook(smashed_model)
+        assert get_device(smashed_model) == smash_config["device"]
         return smashed_model
 
     def prepare_smash_config(self, smash_config: SmashConfig, device: str) -> None:
