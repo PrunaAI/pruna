@@ -42,16 +42,15 @@ class TorchCompileCompiler(PrunaCompiler):
     Optimizes given model or function using various backends and is compatible with any model containing PyTorch modules.
     """
 
-    algorithm_name = "torch_compile"
-    references = {"GitHub": "https://github.com/pytorch/pytorch"}
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(
+    algorithm_name: str = "torch_compile"
+    references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda", "mps"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(
         factorizer=["qkv_diffusers"],
-        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq", "torchao"],
+        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq"],
         cacher=["deepcache", "fora"],
     )
 
