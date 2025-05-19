@@ -93,8 +93,8 @@ class TestHalf(AlgorithmTesterBase):
 class TestTorchao(AlgorithmTesterBase):
     """Test the torchao quantizer."""
 
-    models = ["flux_tiny_random"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["flux_tiny_random", "stable_diffusion_v1_4"]
+    reject_models = ["dummy_lambda"]
     allow_pickle_files = False
     algorithm_class = TorchaoQuantizer
 
