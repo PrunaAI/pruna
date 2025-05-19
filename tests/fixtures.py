@@ -93,7 +93,8 @@ def dummy_model() -> tuple[Any, SmashConfig]:
 
 def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get a diffusers model for image generation."""
-    model = cls.from_pretrained(model_id, device_map="balanced", **kwargs)
+    # load in distributed mode, if not intended by test this will be cast down to CPU/CUDA
+    model = cls.from_pretrained(model_id, **kwargs, device_map="balanced")
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
     return model, smash_config
