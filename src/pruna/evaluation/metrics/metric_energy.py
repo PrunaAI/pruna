@@ -42,13 +42,11 @@ class EnergyMetric(BaseMetric):
         are not averaged and will therefore increase with this argument.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
+    device : str, default="cuda"
         The device to evaluate the model on.
     """
 
-    def __init__(
-        self, n_iterations: int = 100, n_warmup_iterations: int = 10, device: str | torch.device = "cuda"
-    ) -> None:
+    def __init__(self, n_iterations: int = 100, n_warmup_iterations: int = 10, device: str = "cuda") -> None:
         super().__init__()
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
