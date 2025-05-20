@@ -25,6 +25,7 @@ import torch
 import torch.nn as nn
 from accelerate.hooks import remove_hook_from_module
 from diffusers.models.modeling_utils import ModelMixin
+from transformers.pipelines import SUPPORTED_TASKS
 
 from pruna.logging.logger import pruna_logger
 
@@ -108,10 +109,7 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
         return
 
     # logic for transformers pipelines, which have a device attribute but do not support casting directly
-    if hasattr(model, "task") and getattr(model, "task") == "automatic-speech-recognition":
-        target_model = model.model
-    else:
-        target_model = model
+    target_model = model.model if hasattr(model, "task") and getattr(model, "task") in SUPPORTED_TASKS else model
 
     if device == "accelerate":
         if device_map is None:
@@ -123,7 +121,7 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
             if hasattr(target_model, "reset_device_map"):
                 # remove distributed device state to be able to use ".to" for diffusers models
                 target_model.reset_device_map()
-            remove_hook_from_module(target_model, recurse=True)
+            remove_hook_from_module(target_model, recurse=hasattr(target_model, "children"))
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
@@ -197,7 +195,18 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
         model_device = model_device.type
 
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None:
-        model_device = model.hf_device_map if return_device_map else "accelerate"
+        # an device map that points the whole model to the same device is not considered distributed
+        if list(model.hf_device_map.keys()) == [""]:
+            if isinstance(model.hf_device_map[""], torch.device):
+                model_device = model.hf_device_map[""].type
+            elif isinstance(model.hf_device_map[""], int):
+                model_device = "cuda"
+            elif model.hf_device_map[""] == "cpu":
+                model_device = "cpu"
+            else:
+                raise ValueError("Invalid device map found in model.hf_device_map.")
+        else:
+            model_device = model.hf_device_map if return_device_map else "accelerate"
 
     return model_device
 
