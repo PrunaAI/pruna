@@ -166,7 +166,6 @@ def cast_model_to_accelerate_device_map(model, device_map):
         submodule.to(device)
 
     model.hf_device_map = device_map.copy()
-    return model
 
 
 def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, str]:
@@ -177,6 +176,8 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
     ----------
     model : Any
         The model to get the device from.
+    return_device_map : bool
+        Whether to return the device map.
 
     Returns
     -------
