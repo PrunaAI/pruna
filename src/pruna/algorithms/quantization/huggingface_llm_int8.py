@@ -127,9 +127,8 @@ class LLMInt8Quantizer(PrunaQuantizer):
                 quantization_config=bnb_config,
                 trust_remote_code=True,
                 torch_dtype=smash_config["compute_dtype"],  # storage type of the non-int8 params
-                device_map=smash_config.device_map if smash_config.device == "accelerate" else "auto",
+                device_map=smash_config.device_map if smash_config.device == "accelerate" else smash_config.device,
             )
-            move_to_device(smashed_model, smash_config.device)
 
         return smashed_model
 
