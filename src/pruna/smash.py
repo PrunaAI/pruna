@@ -94,18 +94,19 @@ def ensure_device_consistency(model, smash_config):
         if model_device == smash_config.device:
             pruna_logger.debug("Device consistency check passed.")
         else:
-            if model_device != smash_config.device and model_device != "accelerate":
+            if model_device != "accelerate":
                 pruna_logger.warning(
                     (
                         f"Model and SmashConfig have different devices. Model: {model_device}, "
                         f"SmashConfig: {smash_config.device}. Casting model to {smash_config.device}."
+                        f"If this is not desired, please use SmashConfig(device='{model_device}')."
                     )
                 )
             else:
                 # in this case, the model_device is a device map and the model is on multiple GPUs
                 pruna_logger.warning(
                     (
-                        f"SmashConfig specifies {smash_config.device} but model is distributed."
+                        f"SmashConfig specifies {smash_config.device} but model is distributed. "
                         f"Casting model to {smash_config.device}. If this is not desired, please use "
                         f"SmashConfig(device='accelerate') to continue with distributed model."
                     )
