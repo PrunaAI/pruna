@@ -631,29 +631,29 @@ class JanusGenerator:
     @torch.inference_mode()
     def generate(
         self,
-        inputs: torch.Tensor = None,
+        inputs: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.LongTensor] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> torch.Tensor | GenerateDecoderOnlyOutput:
         """
-        Generate tokens using the model.
+        Generate latent tokens using the model.
 
         Parameters
         ----------
-        *args : tuple
-            Variable length argument list (not used directly).
+        inputs : torch.Tensor | None
+            The input token ids that serve as the prompt.
+        attention_mask : torch.LongTensor | None
+            The attention mask for the input tokens.
+        logits_processor : LogitsProcessorList | None
+            The logits processor for the input tokens.
         **kwargs : dict
-            Keyword arguments dictionary that must contain:
-            - input_ids : torch.Tensor
-                The input token ids that serve as the prompt.
-            - max_new_tokens : int
-                The maximum number of new tokens to generate.
+            Keyword arguments dictionary
 
         Returns
         -------
-        torch.Tensor
-            The generated tokens, including the input prompt and potentially an EOS token.
+        torch.Tensor | GenerateDecoderOnlyOutput
+            The generated latent tokens.
         """
         # Extract parameters from kwargs with defaults from instance variables
         self.temperature = kwargs.pop("temperature", self.temperature)
@@ -744,7 +744,7 @@ class JanusGenerator:
 
         input_tokens = input_ids.repeat(2, 1)  # Double batch size for conditional/unconditional logits
         attention_mask = model_kwargs.pop("attention_mask", None)
-        attention_mask = attention_mask.repeat(2, 1)
+        attention_mask = attention_mask.repeat(2, 1)  # type: ignore
         model_kwargs["attention_mask"] = attention_mask
 
         # Mask all the tokens that are neither BOS nor BOI with pad token in the unconditional logits.
@@ -822,7 +822,7 @@ class JanusGenerator:
 
             # Generate scores using the generation head (Not using above defined LM Head)
             scores = self.model.model.generation_head(hidden_state)
-            next_token_scores = logits_processor(input_ids, scores)
+            next_token_scores = logits_processor(input_ids, scores) if logits_processor is not None else scores
 
             # Sample next token.
             if generation_config.do_sample:
@@ -863,11 +863,11 @@ class JanusGenerator:
 
         if return_dict_in_generate:
             return GenerateDecoderOnlyOutput(
-                sequences=generated_tokens,
-                scores=scores,
-                logits=raw_logits,
-                attentions=decoder_attentions,
-                hidden_states=decoder_hidden_states,
+                sequences=generated_tokens,  # type: ignore
+                scores=scores,  # type: ignore
+                logits=raw_logits,  # type: ignore
+                attentions=decoder_attentions,  # type: ignore
+                hidden_states=decoder_hidden_states,  # type: ignore
                 past_key_values=outputs.past_key_values,
             )
         else:
