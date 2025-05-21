@@ -114,5 +114,3 @@ class TestGPTQ(AlgorithmTesterBase):
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
         assert "GPTQ" in model.model.__class__.__name__
-
-

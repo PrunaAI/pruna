@@ -352,7 +352,6 @@ def load_hqq(model_path: str, **kwargs) -> Any:
     return model
 
 
-
 def load_torch_artifacts(model_path: str, **kwargs) -> None:
     """
     Load a torch artifacts from the given model path.
