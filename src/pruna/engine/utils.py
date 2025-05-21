@@ -326,6 +326,10 @@ class ModelContext:
         else:
             self.working_model = self.pipeline
             self.denoiser_type = None  # type: ignore [assignment]
+        # Store the working model on the pipeline so that algorithms can
+        # replace it if needed inside the context block. This also ensures
+        # ``__exit__`` can always access the updated reference.
+        setattr(self.pipeline, "working_model", self.working_model)
         return self.pipeline, self.working_model, self.denoiser_type
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
@@ -347,4 +351,7 @@ class ModelContext:
             self.pipeline.unet = self.pipeline.working_model
         else:
             self.pipeline = self.pipeline.working_model
-        del self.pipeline.working_model
+
+        # Clean up the temporary attribute if it exists
+        if hasattr(self.pipeline, "working_model"):
+            delattr(self.pipeline, "working_model")
