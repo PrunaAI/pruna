@@ -12,14 +12,7 @@ from ..common import (
 from . import testers
 
 
-@pytest.mark.parametrize(
-    "device",
-    [
-        pytest.param("cuda", marks=pytest.mark.cuda),
-            pytest.param("accelerate", marks=pytest.mark.cuda),
-            pytest.param("cpu", marks=pytest.mark.cpu),
-        ],
-    )
+@device_parametrized
 @pytest.mark.parametrize(
     "algorithm_tester, model_fixture",
     get_instances_from_module(testers),
