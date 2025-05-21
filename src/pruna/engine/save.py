@@ -34,7 +34,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers
-from pruna.engine.utils import determine_dtype
+from pruna.engine.utils import ModelContext, determine_dtype
 from pruna.logging.logger import pruna_logger
 
 
@@ -327,24 +327,18 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
 
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
-    if hasattr(model, "transformer"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
-        transformer_backup = model.transformer
-        model.transformer = None
-        # save the rest of the pipeline
-        model.save_pretrained(model_path)
-        model.transformer = transformer_backup
-    elif hasattr(model, "unet"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
-        unet_backup = model.unet
-        model.unet = None
-        # save the rest of the pipeline
-        model.save_pretrained(model_path)
-        model.unet = unet_backup
-    else:
-        auto_hqq_hf_diffusers_model.save_quantized(model, model_path)
+
+    with ModelContext(model) as ctx:
+        if ctx.denoiser_type is not None:
+            # save the backbone
+            auto_hqq_hf_diffusers_model.save_quantized(
+                ctx.working_model, os.path.join(model_path, "backbone_quantized")
+            )
+            setattr(ctx.pipeline, ctx.denoiser_type, None)
+            # save the rest of the pipeline
+            ctx.pipeline.save_pretrained(model_path)
+        else:
+            auto_hqq_hf_diffusers_model.save_quantized(ctx.pipeline, model_path)
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 

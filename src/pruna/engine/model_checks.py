@@ -26,6 +26,8 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING,
 )
 
+from .utils import ModelContext
+
 
 def is_causal_lm(model: Any) -> bool:
     """
@@ -548,9 +550,8 @@ def has_fused_attention_processor(pipeline: Any) -> bool:
     bool
         True if the pipeline can use a Fused attention processor, False otherwise.
     """
-    return (hasattr(pipeline, "unet") and check_fused_attention_processor(pipeline.unet)) or (
-        hasattr(pipeline, "transformer") and check_fused_attention_processor(pipeline.transformer)
-    )
+    with ModelContext(pipeline) as ctx:
+        return check_fused_attention_processor(ctx.working_model)
 
 
 def is_opt_model(model: Any) -> bool:

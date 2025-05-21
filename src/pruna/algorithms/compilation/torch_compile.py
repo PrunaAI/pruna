@@ -29,6 +29,7 @@ from pruna.engine.model_checks import (
     is_opt_model,
 )
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.utils import ModelContext
 from pruna.logging.logger import pruna_logger
 
 # This allows for torch compile to use more cache memory to compile the model
@@ -193,16 +194,19 @@ class TorchCompileCompiler(PrunaCompiler):
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)
 
-        if (
-            hasattr(model, "transformer")
-            and isinstance(model.transformer, tuple(get_diffusers_transformer_models()))
-            or (hasattr(model, "unet") and isinstance(model.unet, tuple(get_diffusers_unet_models())))
-        ):
-            return unet_transformer_pipeline_logic(model, smash_config)
-
-        if is_causal_lm(model):
-            return causal_lm_logic(model, smash_config)
-        return compile_callable(model, smash_config)
+        with ModelContext(model) as ctx:
+            working_model = ctx.working_model
+            if (
+                ctx.denoiser_type == "transformer"
+                and isinstance(working_model, tuple(get_diffusers_transformer_models()))
+            ) or (
+                ctx.denoiser_type == "unet"
+                and isinstance(working_model, tuple(get_diffusers_unet_models()))
+            ):
+                return unet_transformer_pipeline_logic(ctx.pipeline, smash_config)
+            if is_causal_lm(ctx.pipeline):
+                return causal_lm_logic(ctx.pipeline, smash_config)
+            return compile_callable(ctx.pipeline, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
@@ -358,22 +362,20 @@ def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixW
     Any
         The compiled model.
     """
-    if hasattr(model, "transformer"):
-        if smash_config["target"] == "module_list":
-            model.transformer = compile_callable(model.transformer, smash_config)
-        elif smash_config["target"] == "model":
-            model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
-    elif hasattr(model, "unet"):
-        if smash_config["target"] == "module_list":
-            model.unet = compile_callable(model.unet, smash_config)
-        elif smash_config["target"] == "model":
-            model.unet.forward = compile_callable(model.unet.forward, smash_config)
-    else:
-        if smash_config["target"] == "module_list":
-            model = compile_callable(model, smash_config)
-        elif smash_config["target"] == "model":
-            model.forward = compile_callable(model.forward, smash_config)
-    return model
+    with ModelContext(model) as ctx:
+        working_model = ctx.working_model
+
+        if ctx.denoiser_type == "transformer" or ctx.denoiser_type == "unet":
+            if smash_config["target"] == "module_list":
+                ctx.pipeline.working_model = compile_callable(working_model, smash_config)
+            elif smash_config["target"] == "model":
+                working_model.forward = compile_callable(working_model.forward, smash_config)
+        else:
+            if smash_config["target"] == "module_list":
+                ctx.pipeline.working_model = compile_callable(working_model, smash_config)
+            elif smash_config["target"] == "model":
+                working_model.forward = compile_callable(working_model.forward, smash_config)
+        return ctx.pipeline
 
 
 def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:

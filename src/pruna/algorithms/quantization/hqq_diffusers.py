@@ -24,7 +24,7 @@ from pruna.engine.model_checks import (
     get_diffusers_unet_models,
 )
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.utils import load_json_config
+from pruna.engine.utils import ModelContext, load_json_config
 from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
@@ -124,70 +124,67 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         """
         imported_modules = self.import_algorithm_packages()
 
-        if hasattr(model, "transformer"):
-            # Collect all linear layers recursively
-            linear_layers = find_module_layers_type(model.transformer, imported_modules["nn"].Linear)
-            # put them in the transformer.layers for HQQ
-            model.transformer.layers = linear_layers
-            working_model = model.transformer
-        elif hasattr(model, "unet"):
-            linear_layers = find_module_layers_type(model.unet, imported_modules["nn"].Linear)
-            model.unet.layers = linear_layers
-            working_model = model.unet
-        else:
-            linear_layers = find_module_layers_type(model, imported_modules["nn"].Linear)
-            model.layers = linear_layers
-            working_model = model
+        with ModelContext(model) as ctx:
+            working_model = ctx.working_model
 
-        if working_model._class_name == "SD3Transformer2DModel":
-            pruna_logger.info(
-                "Your are using SD3Transformer2DModel, please be aware that this transformer is not savable for now."
+            # Collect all linear layers recursively
+            linear_layers = find_module_layers_type(working_model, imported_modules["nn"].Linear)
+            # put them in the layers attribute for HQQ
+            working_model.layers = linear_layers
+
+            if working_model._class_name == "SD3Transformer2DModel":
+                pruna_logger.info(
+                    "Your are using SD3Transformer2DModel, please be aware that this transformer is not savable for now."
+                )
+
+            config = imported_modules["HqqConfig"](
+                nbits=smash_config["weight_bits"],
+                group_size=smash_config["group_size"],
             )
 
-        config = imported_modules["HqqConfig"](nbits=smash_config["weight_bits"], group_size=smash_config["group_size"])
+            auto_hqq_hf_diffusers_model = construct_base_class(imported_modules)
 
-        auto_hqq_hf_diffusers_model = construct_base_class(imported_modules)
+            auto_hqq_hf_diffusers_model.quantize_model(
+                working_model,
+                quant_config=config,
+                compute_dtype=next(iter(working_model.parameters())).dtype,
+                device=smash_config["device"],
+            )
 
-        auto_hqq_hf_diffusers_model.quantize_model(
-            working_model,
-            quant_config=config,
-            compute_dtype=next(iter(working_model.parameters())).dtype,
-            device=smash_config["device"],
-        )
+            # Prepare the model for fast inference based on the backend, we use the conditions from the hqq documentation
+            if (
+                smash_config["backend"] == "torchao_int4"
+                and smash_config["weight_bits"] == 4
+                and next(iter(working_model.parameters())).dtype == torch.bfloat16
+            ):
+                imported_modules["prepare_for_inference"](working_model, backend="torchao_int4")
+            elif (
+                smash_config["backend"] == "gemlite"
+                and smash_config["weight_bits"] in [4, 2, 1]
+                and next(iter(working_model.parameters())).dtype == torch.float16
+            ):
+                imported_modules["prepare_for_inference"](working_model, backend="gemlite")
+            elif (
+                smash_config["backend"] == "bitblas"
+                and smash_config["weight_bits"] in [4, 2]
+                and next(iter(working_model.parameters())).dtype == torch.float16
+            ):
+                imported_modules["prepare_for_inference"](working_model, backend="bitblas")
+            else:
+                # We default to the torch backend if the input backend is not applicable
+                imported_modules["prepare_for_inference"](working_model)
 
-        # Prepare the model for fast inference based on the backend, we use the conditions from the hqq documentation
-        if (
-            smash_config["backend"] == "torchao_int4"
-            and smash_config["weight_bits"] == 4
-            and next(iter(working_model.parameters())).dtype == torch.bfloat16
-        ):
-            imported_modules["prepare_for_inference"](working_model, backend="torchao_int4")
-        elif (
-            smash_config["backend"] == "gemlite"
-            and smash_config["weight_bits"] in [4, 2, 1]
-            and next(iter(working_model.parameters())).dtype == torch.float16
-        ):
-            imported_modules["prepare_for_inference"](working_model, backend="gemlite")
-        elif (
-            smash_config["backend"] == "bitblas"
-            and smash_config["weight_bits"] in [4, 2]
-            and next(iter(working_model.parameters())).dtype == torch.float16
-        ):
-            imported_modules["prepare_for_inference"](working_model, backend="bitblas")
-        else:
-            # We default to the torch backend if the input backend is not applicable
-            imported_modules["prepare_for_inference"](working_model)
+            if ctx.denoiser_type == "transformer":
+                ctx.pipeline.working_model = working_model
+            elif ctx.denoiser_type == "unet":
+                ctx.pipeline.working_model = working_model
+                for layer in working_model.up_blocks:
+                    if layer.upsamplers is not None:
+                        layer.upsamplers[0].name = "conv"
+            else:
+                ctx.pipeline.working_model = working_model
 
-        if hasattr(model, "transformer"):
-            model.transformer = working_model
-        elif hasattr(model, "unet"):
-            model.unet = working_model
-            for layer in model.unet.up_blocks:
-                if layer.upsamplers is not None:
-                    layer.upsamplers[0].name = "conv"
-        else:
-            model = working_model
-        return model
+            return ctx.pipeline
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

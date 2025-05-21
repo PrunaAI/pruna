@@ -26,7 +26,7 @@ from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
 )
-from pruna.engine.utils import safe_memory_cleanup
+from pruna.engine.utils import ModelContext, safe_memory_cleanup
 
 
 class DiffusersInt8Quantizer(PrunaQuantizer):
@@ -128,50 +128,40 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 model.to("cpu")
                 safe_memory_cleanup()
 
-            # save the latent model (to be quantized) in a temp directory
-            if hasattr(model, "transformer"):
-                model.transformer.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(model.transformer).__name__)
-                compute_dtype = next(iter(model.transformer.parameters())).dtype
-            elif hasattr(model, "unet"):
-                model.unet.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(model.unet).__name__)
-                compute_dtype = next(iter(model.unet.parameters())).dtype
-            else:
-                model.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(model).__name__)
-                compute_dtype = next(iter(model.parameters())).dtype
+            with ModelContext(model) as ctx:
+                working_model = ctx.working_model
 
-            bnb_config = DiffusersBitsAndBytesConfig(
-                load_in_8bit=smash_config["weight_bits"] == 8,
-                load_in_4bit=smash_config["weight_bits"] == 4,
-                llm_int8_threshold=float(smash_config["threshold"]),
-                llm_int8_skip_modules=["lm_head"],
-                llm_int8_enable_fp32_cpu_offload=smash_config["enable_fp32_cpu_offload"],
-                llm_int8_has_fp16_weight=smash_config["has_fp16_weight"],
-                bnb_4bit_compute_dtype=compute_dtype,
-                bnb_4bit_quant_type=smash_config["quant_type"],
-                bnb_4bit_use_double_quant=smash_config["double_quant"],
-            )
+                # save the latent model (to be quantized) in a temp directory
+                working_model.save_pretrained(temp_dir)
+                latent_class = getattr(diffusers, type(working_model).__name__)
+                compute_dtype = next(iter(working_model.parameters())).dtype
 
-            # re-load the latent model (with the quantization config)
-            smashed_latent = latent_class.from_pretrained(
-                temp_dir,
-                quantization_config=bnb_config,
-                torch_dtype=compute_dtype,
-            )
-            # replace the latent model in the pipeline
-            if hasattr(model, "transformer"):
-                model.transformer = smashed_latent
-            elif hasattr(model, "unet"):
-                model.unet = smashed_latent
-            else:
-                model = smashed_latent
+                bnb_config = DiffusersBitsAndBytesConfig(
+                    load_in_8bit=smash_config["weight_bits"] == 8,
+                    load_in_4bit=smash_config["weight_bits"] == 4,
+                    llm_int8_threshold=float(smash_config["threshold"]),
+                    llm_int8_skip_modules=["lm_head"],
+                    llm_int8_enable_fp32_cpu_offload=smash_config["enable_fp32_cpu_offload"],
+                    llm_int8_has_fp16_weight=smash_config["has_fp16_weight"],
+                    bnb_4bit_compute_dtype=compute_dtype,
+                    bnb_4bit_quant_type=smash_config["quant_type"],
+                    bnb_4bit_use_double_quant=smash_config["double_quant"],
+                )
+
+                # re-load the latent model (with the quantization config)
+                smashed_latent = latent_class.from_pretrained(
+                    temp_dir,
+                    quantization_config=bnb_config,
+                    torch_dtype=compute_dtype,
+                )
+
+                ctx.pipeline.working_model = smashed_latent
+                final_model = ctx.pipeline
 
             # move the model back to the original device
-            if hasattr(model, "to"):
-                model.to(input_device)
-            return model
+            if hasattr(final_model, "to"):
+                final_model.to(input_device)
+            return final_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

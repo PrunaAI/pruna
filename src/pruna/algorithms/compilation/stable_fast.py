@@ -17,6 +17,7 @@ from typing import Any, Dict
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_comfy_model, is_diffusers_pipeline, is_flux_pipeline
+from pruna.engine.utils import ModelContext
 from pruna.logging.logger import pruna_logger
 
 
@@ -179,15 +180,16 @@ def compile_stable_fast(model: Any, smash_config: SmashConfigPrefixWrapper, impo
         The compiled model.
     """
     # Freeze UNET parameters during compilation
-    if hasattr(model, "unet"):
-        for param in model.unet.parameters():
-            param.requires_grad = False
+    with ModelContext(model) as ctx:
+        if ctx.denoiser_type == "unet":
+            for param in ctx.working_model.parameters():
+                param.requires_grad = False
 
-    config = create_config(model, imported_modules)
+        config = create_config(ctx.pipeline, imported_modules)
 
-    # Compile the model with the given configuration
-    model = imported_modules["compile"](model, config)
-    return model
+        # Compile the model with the given configuration
+        compiled = imported_modules["compile"](ctx.pipeline, config)
+    return compiled
 
 
 def deepcache_logic(

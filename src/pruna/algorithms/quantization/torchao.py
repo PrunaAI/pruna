@@ -22,6 +22,7 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
 from pruna.engine.model_checks import get_diffusers_transformer_models, get_diffusers_unet_models, is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.utils import ModelContext
 from pruna.logging.logger import pruna_logger
 
 # Based on common diffusers transformer architectures
@@ -175,68 +176,64 @@ class TorchaoQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
-        if hasattr(model, "unet"):
-            working_model = model.unet
-        elif hasattr(model, "transformer"):
-            working_model = model.transformer
-        else:
-            working_model = model
+        with ModelContext(model) as ctx:
+            working_model = ctx.working_model
 
-        excluded_modules = []
-        if "norm" in smash_config["excluded_modules"]:
-            excluded_modules.extend(NORM_MODULES)
-        if "embedding" in smash_config["excluded_modules"]:
-            excluded_modules.extend(EMBEDDING_MODULES)
+            excluded_modules = []
+            if "norm" in smash_config["excluded_modules"]:
+                excluded_modules.extend(NORM_MODULES)
+            if "embedding" in smash_config["excluded_modules"]:
+                excluded_modules.extend(EMBEDDING_MODULES)
 
-        imported_modules = self.import_algorithm_packages()
-        is_linear = imported_modules["_is_linear"]
+            imported_modules = self.import_algorithm_packages()
+            is_linear = imported_modules["_is_linear"]
 
-        def filter_fn(module: torch.nn.Module, fqn: str) -> bool:
-            if not is_linear(module, fqn):
-                return False
-            return all(name not in excluded_modules for name in fqn.split("."))
+            def filter_fn(module: torch.nn.Module, fqn: str) -> bool:
+                if not is_linear(module, fqn):
+                    return False
+                return all(name not in excluded_modules for name in fqn.split("."))
 
-        if (
-            smash_config["compiler"] == "torch_compile"
-            and smash_config._base_config["torch_compile_mode"] != "max-autotune-no-cudagraphs"
-        ):
-            pruna_logger.warning(
-                "You are using torchao with torch.compile. "
-                "Please set `smash_config['torch_compile_mode']='max-autotune-no-cudagraphs'` for best results; "
-                "otherwise you may encounter undesirable outcomes."
-            )
+            if (
+                smash_config["compiler"] == "torch_compile"
+                and smash_config._base_config["torch_compile_mode"] != "max-autotune-no-cudagraphs"
+            ):
+                pruna_logger.warning(
+                    "You are using torchao with torch.compile. "
+                    "Please set `smash_config['torch_compile_mode']='max-autotune-no-cudagraphs'` for best results; "
+                    "otherwise you may encounter undesirable outcomes."
+                )
 
-        if "fp8" in smash_config["quant_type"] and not (
-            torch.cuda.is_available() and torch.cuda.get_device_capability() >= (8, 9)
-        ):
-            pruna_logger.warning(
-                "Float8 quantization requires an NVIDIA GPU with compute capability ≥ 8.9. "
-                "Your device does not meet this requirement."
-            )
+            if "fp8" in smash_config["quant_type"] and not (
+                torch.cuda.is_available() and torch.cuda.get_device_capability() >= (8, 9)
+            ):
+                pruna_logger.warning(
+                    "Float8 quantization requires an NVIDIA GPU with compute capability ≥ 8.9. "
+                    "Your device does not meet this requirement."
+                )
 
-        if smash_config["quant_type"] == "fp8dqrow":
-            pruna_logger.warning(
-                "Row wise float8 dynamic quantization is still experimental and might not work on your hardware."
-            )
-        # Only apply quantization on module list level if torch compile is also applied at that level
-        if (
-            smash_config["compiler"] == "torch_compile"
-            and smash_config._base_config["torch_compile_target"] == "module_list"
-        ):
-            # Apply quantization to the entire model
-            imported_modules["quantize"](
-                working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
-            )
-        else:
-            # Apply quantization to individual submodules in ModuleLists
-            for name, module in working_model.named_modules():
-                if isinstance(module, torch.nn.ModuleList):
-                    for i, submodule in enumerate(module):
-                        if isinstance(submodule, torch.nn.Module):
-                            imported_modules["quantize"](
-                                submodule, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
-                            )
-        return model
+            if smash_config["quant_type"] == "fp8dqrow":
+                pruna_logger.warning(
+                    "Row wise float8 dynamic quantization is still experimental and might not work on your hardware."
+                )
+            # Only apply quantization on module list level if torch compile is also applied at that level
+            if (
+                smash_config["compiler"] == "torch_compile"
+                and smash_config._base_config["torch_compile_target"] == "module_list"
+            ):
+                # Apply quantization to the entire model
+                imported_modules["quantize"](
+                    working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
+                )
+            else:
+                # Apply quantization to individual submodules in ModuleLists
+                for name, module in working_model.named_modules():
+                    if isinstance(module, torch.nn.ModuleList):
+                        for i, submodule in enumerate(module):
+                            if isinstance(submodule, torch.nn.Module):
+                                imported_modules["quantize"](
+                                    submodule, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
+                                )
+            return ctx.pipeline
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

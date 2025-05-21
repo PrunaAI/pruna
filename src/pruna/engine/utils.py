@@ -285,15 +285,19 @@ def check_device_compatibility(device: str | torch.device | None) -> str:
 
 class ModelContext:
     """
-    Context manager for handling the model.
+    Context manager for handling model components such as ``transformer`` or ``unet``.
 
     Parameters
     ----------
     model : ModelMixin
-        The model to handle. Can be a transformer model, UNet, or other ModelMixin.
+        The model to handle. Can be a transformer model, UNet, or other pipeline.
+    attrs : tuple[str, ...], optional
+        The model attributes to consider when selecting a working model. The
+        attributes are checked in order and the first one found will be used as
+        the ``working_model``. Defaults to ``("transformer", "unet")``.
     """
 
-    def __init__(self, model: "ModelMixin") -> None:
+    def __init__(self, model: "ModelMixin", attrs: tuple[str, ...] | None = None) -> None:
         """
         Context manager for handling the model.
 
@@ -303,30 +307,35 @@ class ModelContext:
             The model to handle. Can be a transformer model, UNet, or other pipeline.
         """
         self.pipeline = model
+        self.attrs = attrs or ("transformer", "unet")
 
-    def __enter__(self) -> tuple[ModelMixin, Any, str | None]:
+    def __enter__(self) -> tuple["ModelContext", Any, str | None]:
         """
         Enter the context manager.
 
         Returns
         -------
-        ModelMixin
-            The working model.
+        ModelContext
+            The context manager itself.
         Any
-            The denoiser type.
+            The working model selected from the pipeline.
         str | None
-            The denoiser type.
+            The attribute name used as denoiser, ``None`` if the pipeline itself
+            is the working model.
         """
-        if hasattr(self.pipeline, "transformer"):
-            self.working_model = self.pipeline.transformer
-            self.denoiser_type = "transformer"
-        elif hasattr(self.pipeline, "unet"):
-            self.working_model = self.pipeline.unet
-            self.denoiser_type = "unet"
+        for attr in self.attrs:
+            if hasattr(self.pipeline, attr):
+                self.working_model = getattr(self.pipeline, attr)
+                self.denoiser_type = attr
+                break
         else:
             self.working_model = self.pipeline
-            self.denoiser_type = None  # type: ignore [assignment]
-        return self.pipeline, self.working_model, self.denoiser_type
+            self.denoiser_type = None  # type: ignore[assignment]
+        # Store the working model on the pipeline so that algorithms can
+        # replace it if needed inside the context block. This also ensures
+        # ``__exit__`` can always access the updated reference.
+        setattr(self.pipeline, "working_model", self.working_model)
+        return self, self.working_model, self.denoiser_type
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """
@@ -341,10 +350,11 @@ class ModelContext:
         traceback : Exception
             The traceback.
         """
-        if hasattr(self.pipeline, "transformer"):
-            self.pipeline.transformer = self.pipeline.working_model
-        elif hasattr(self.pipeline, "unet"):
-            self.pipeline.unet = self.pipeline.working_model
+        if self.denoiser_type is not None:
+            setattr(self.pipeline, self.denoiser_type, self.pipeline.working_model)
         else:
             self.pipeline = self.pipeline.working_model
-        del self.pipeline.working_model
+
+        # Clean up the temporary attribute if it exists
+        if hasattr(self.pipeline, "working_model"):
+            delattr(self.pipeline, "working_model")

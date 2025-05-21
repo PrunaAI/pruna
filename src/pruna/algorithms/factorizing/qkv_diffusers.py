@@ -92,14 +92,11 @@ class QKVDiffusers(PrunaFactorizer):
             The fused model.
         """
         # Use context manager to handle the model vs working_model.
-        with ModelContext(model) as (pipeline, working_model, denoiser_type):
+        with ModelContext(model) as ctx:
             # only this line thanks to https://github.com/huggingface/diffusers/pull/9185
-            working_model.fuse_qkv_projections()
-            # redefining the working_model breaks links with context manager
-            # so we need to re-define the working_model as an attribute of the model.
-            pipeline.working_model = working_model
+            ctx.working_model.fuse_qkv_projections()
 
-        return model
+        return ctx.pipeline
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
