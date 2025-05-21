@@ -45,7 +45,7 @@ class GPTQQuantizer(PrunaQuantizer):
     compatible_algorithms = dict(compiler=["torch_compile"])
     required_install = (
         "You must first install the base package with ``pip install pruna`` "
-        "before installing the GPTQ extension with ``pip install pruna[gptq]``"
+        "before installing the GPTQ extension with ``pip install pruna[gptq] --extra-index-url https://prunaai.pythonanywhere.com/``"
     )
 
     def get_hyperparameters(self) -> list:

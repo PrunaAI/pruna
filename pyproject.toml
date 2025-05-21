@@ -104,7 +104,7 @@ stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 's
 numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 types-PyYAML = { version = "*", optional = true }
-gptqmodel = { version = "*", optional = true }
+gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true }
 
 
 [tool.poetry.extras]
