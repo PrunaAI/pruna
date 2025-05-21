@@ -23,7 +23,7 @@ from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
 
 HANDLER_EXCEPTIONS: dict[type[InferenceHandler], list[str]] = {
-    TransformerHandler: ["AWQForCausalLM", "AutoHQQHFModel", "TranslatorWrapper", "GeneratorWrapper", "GPTQ"],
+    TransformerHandler: ["AutoHQQHFModel", "TranslatorWrapper", "GeneratorWrapper", "GPTQ"],
     DiffuserHandler: ["AutoHQQHFDiffusersModel"],
 }
 

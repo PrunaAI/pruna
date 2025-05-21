@@ -348,23 +348,6 @@ def save_model_hqq_diffusers(model: Any, model_path: str, smash_config: SmashCon
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
-def save_quantized(model: Any, model_path: str, smash_config: SmashConfig) -> None:
-    """
-    Save the model by saving the quantized model.
-
-    Parameters
-    ----------
-    model : Any
-        The model to save.
-    model_path : str
-        The directory to save the model to.
-    smash_config : SmashConfig
-        The SmashConfig object containing the save and load functions.
-    """
-    model.save_quantized(model_path)
-    smash_config.load_fns.append(LOAD_FUNCTIONS.awq_quantized.name)
-
-
 def save_torch_artifacts(model: Any, model_path: str, smash_config: SmashConfig) -> None:
     """
     Save the model by saving the torch artifacts.
@@ -416,8 +399,8 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     Enumeration of save functions for different model types.
 
     This enum provides callable functions for saving different types of models,
-    including pickled models, IPEX LLM models, HQQ models, AWQ quantized models,
-    and models that need to be saved before applying transformations.
+    including pickled models, IPEX LLM models, HQQ models, and models that need
+    to be saved before applying transformations.
 
     Parameters
     ----------
@@ -443,7 +426,6 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     pickled = partial(save_pickled)
     hqq = partial(save_model_hqq)
     hqq_diffusers = partial(save_model_hqq_diffusers)
-    awq_quantized = partial(save_quantized)
     save_before_apply = partial(save_before_apply)
     reapply = partial(reapply)
     torch_artifacts = partial(save_torch_artifacts)

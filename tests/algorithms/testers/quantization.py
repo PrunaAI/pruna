@@ -5,7 +5,6 @@ from pruna.algorithms.quantization.gptq_model import GPTQQuantizer
 from pruna.algorithms.quantization.half import HalfQuantizer
 from pruna.algorithms.quantization.hqq import HQQQuantizer
 from pruna.algorithms.quantization.hqq_diffusers import HQQDiffusersQuantizer
-from pruna.algorithms.quantization.huggingface_awq import AWQQuantizer
 from pruna.algorithms.quantization.huggingface_diffusers_int8 import (
     DiffusersInt8Quantizer,
 )
@@ -117,11 +116,3 @@ class TestGPTQ(AlgorithmTesterBase):
         assert "GPTQ" in model.model.__class__.__name__
 
 
-@pytest.mark.slow
-class TestAWQ(AlgorithmTesterBase):
-    """Test the AWQ quantizer."""
-
-    models = ["opt_125m"]
-    reject_models = ["sd_tiny_random"]
-    allow_pickle_files = False
-    algorithm_class = AWQQuantizer

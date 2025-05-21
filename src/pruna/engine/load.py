@@ -352,48 +352,6 @@ def load_hqq(model_path: str, **kwargs) -> Any:
     return model
 
 
-def load_quantized(model_path: str, **kwargs) -> Any:
-    """
-    Load an AWQ quantized model from the given model path.
-
-    Parameters
-    ----------
-    model_path : str
-        The path to the model directory.
-    **kwargs : Any
-        Additional keyword arguments to pass to the model loading function.
-
-    Returns
-    -------
-    Any
-        The loaded model.
-    """
-    try:
-        from awq import AutoAWQForCausalLM
-    except ImportError:
-        pruna_logger.error(
-            "AWQ is not installed. Please install the full version of pruna with `pip install pruna[full] "
-            " --extra-index-url https://prunaai.pythonanywhere.com/`."
-        )
-        raise
-
-    model = AutoAWQForCausalLM.from_quantized(
-        model_path, **filter_load_kwargs(AutoAWQForCausalLM.from_quantized, kwargs)
-    )
-
-    # fused rotational embeddings introduce complex tensors that can not be saved afterwards
-    if any(param.dtype.is_complex for param in model.parameters()):
-        # free memory from previously loaded model
-        del model
-
-        # in case of complex tensors, do not fuse loaded model
-        kwargs["fuse_layers"] = False
-        model = AutoAWQForCausalLM.from_quantized(
-            model_path, **filter_load_kwargs(AutoAWQForCausalLM.from_quantized, kwargs)
-        )
-
-    return model
-
 
 def load_torch_artifacts(model_path: str, **kwargs) -> None:
     """
@@ -467,8 +425,7 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     Enumeration of load functions for different model types.
 
     This enum provides callable functions for loading different types of models,
-    including transformers, diffusers, pickled models, IPEX LLM models, HQQ models,
-    and AWQ quantized models.
+    including transformers, diffusers, pickled models, IPEX LLM models, and HQQ models.
 
     Parameters
     ----------
@@ -496,7 +453,6 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     pickled = partial(load_pickled)
     hqq = partial(load_hqq)
     hqq_diffusers = partial(load_hqq_diffusers)
-    awq_quantized = partial(load_quantized)
     torch_artifacts = partial(load_torch_artifacts)
 
     def __call__(self, *args, **kwargs) -> Any:
