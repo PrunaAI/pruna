@@ -12,19 +12,9 @@ from pruna.algorithms.quantization.huggingface_diffusers_int8 import (
 from pruna.algorithms.quantization.huggingface_llm_int8 import LLMInt8Quantizer
 from pruna.algorithms.quantization.quanto import QuantoQuantizer
 from pruna.algorithms.quantization.torch_dynamic import TorchDynamicQuantizer
-from pruna.algorithms.quantization.torch_static import TorchStaticQuantizer
 from pruna.algorithms.quantization.torchao import TorchaoQuantizer
 
 from .base_tester import AlgorithmTesterBase
-
-
-class TestTorchStatic(AlgorithmTesterBase):
-    """Test the torch static quantizer."""
-
-    models = ["noref_mobilenet_v2"]
-    reject_models = []
-    allow_pickle_files = False
-    algorithm_class = TorchStaticQuantizer
 
 
 class TestTorchDynamic(AlgorithmTesterBase):
