@@ -566,8 +566,6 @@ class JanusGenerator:
     ----------
     model : transformers.PreTrainedModel
         The Hugging Face model to use for text generation.
-    max_kv_cache_size : int
-        The maximum size of the key-value cache used during generation.
     temperature : float, default=0.6
         The sampling temperature to use for text generation. Higher values increase randomness.
     top_k : int, default=5
@@ -576,8 +574,6 @@ class JanusGenerator:
         The compilation mode to use with torch.compile(). Options include 'reduce-overhead', 'max-autotune', etc.
     compile_fullgraph : bool, default=True
         Whether to compile the full computation graph or use partial graph compilation.
-    batch_size : int, default=1
-        The batch size to use for text generation.
     device : str, default='cuda'
         The device to use for text generation.
     """
@@ -648,7 +644,7 @@ class JanusGenerator:
         logits_processor : LogitsProcessorList | None
             The logits processor for the input tokens.
         **kwargs : dict
-            Keyword arguments dictionary
+            Keyword arguments dictionary.
 
         Returns
         -------
