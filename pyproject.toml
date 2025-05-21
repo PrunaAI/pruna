@@ -37,6 +37,11 @@ exclude = [
     "docs*",
 ]
 
+[[tool.poetry.source]]
+name = "pruna"
+url = "https://prunaai.pythonanywhere.com/"
+secondary = true  # Makes it a secondary source
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 wget = "*"

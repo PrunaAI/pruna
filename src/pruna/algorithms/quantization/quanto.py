@@ -22,7 +22,6 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.utils import ModelContext
 from pruna.logging.logger import pruna_logger
 
 
@@ -108,45 +107,48 @@ class QuantoQuantizer(PrunaQuantizer):
         """
         imported_modules = self.import_algorithm_packages()
 
-        with ModelContext(model) as ctx:
-            working_model = ctx.working_model
+        if hasattr(model, "unet"):
+            working_model = model.unet
+        elif hasattr(model, "transformer"):
+            working_model = model.transformer
+        else:
+            working_model = model
 
-            weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
-            if smash_config["act_bits"] is not None:
-                activations = getattr(imported_modules["optimum"].quanto, smash_config["act_bits"])
+        weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
+        if smash_config["act_bits"] is not None:
+            activations = getattr(imported_modules["optimum"].quanto, smash_config["act_bits"])
+        else:
+            activations = None
+
+        try:
+            imported_modules["quantize"](working_model, weights=weights, activations=activations)
+        except Exception as e:
+            pruna_logger.error("Error during quantization: %s", e)
+            raise
+
+        if smash_config["calibrate"]:
+            if smash_config.tokenizer is not None and smash_config.data is not None:
+                try:
+                    with imported_modules["Calibration"](streamline=True, debug=False):
+                        calibrate(
+                            working_model,
+                            smash_config.val_dataloader(),
+                            smash_config["device"],
+                            batch_size=smash_config.batch_size,
+                            samples=smash_config["calibration_samples"],
+                        )
+                except Exception as e:
+                    pruna_logger.error("Error during calibration: %s", e)
+                    raise
             else:
-                activations = None
+                pruna_logger.error("Calibration requires a tokenizer and dataloader. Skipping calibration.")
 
-            try:
-                imported_modules["quantize"](working_model, weights=weights, activations=activations)
-            except Exception as e:
-                pruna_logger.error("Error during quantization: %s", e)
-                raise
-
-            if smash_config["calibrate"]:
-                if smash_config.tokenizer is not None and smash_config.data is not None:
-                    try:
-                        with imported_modules["Calibration"](streamline=True, debug=False):
-                            calibrate(
-                                working_model,
-                                smash_config.val_dataloader(),
-                                smash_config["device"],
-                                batch_size=smash_config.batch_size,
-                                samples=smash_config["calibration_samples"],
-                            )
-                    except Exception as e:
-                        pruna_logger.error("Error during calibration: %s", e)
-                        raise
-                else:
-                    pruna_logger.error("Calibration requires a tokenizer and dataloader. Skipping calibration.")
-
-            try:
-                imported_modules["freeze"](working_model)
-            except Exception as e:
-                pruna_logger.error("Error while freezing the model: %s", e)
-                raise
-
-            return ctx.pipeline
+        try:
+            imported_modules["freeze"](working_model)
+        except Exception as e:
+            pruna_logger.error("Error while freezing the model: %s", e)
+            raise
+        return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

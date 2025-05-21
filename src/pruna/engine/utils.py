@@ -335,7 +335,7 @@ class ModelContext:
         # replace it if needed inside the context block. This also ensures
         # ``__exit__`` can always access the updated reference.
         setattr(self.pipeline, "working_model", self.working_model)
-        return self, self.working_model, self.denoiser_type
+        return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """
