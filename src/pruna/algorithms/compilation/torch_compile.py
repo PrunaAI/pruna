@@ -20,13 +20,14 @@ import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
 from pruna.algorithms.compilation import PrunaCompiler
-from pruna.algorithms.compilation.utils import TransformersGenerator
+from pruna.algorithms.compilation.utils import CausalLMGenerator, JanusGenerator
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
     is_causal_lm,
+    is_janus_llamagen_ar,
     is_opt_model,
 )
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -207,6 +208,10 @@ class TorchCompileCompiler(PrunaCompiler):
 
         if is_causal_lm(model):
             return causal_lm_logic(model, smash_config)
+
+        if is_janus_llamagen_ar(model):
+            return compile_janus_logic(model, smash_config)
+
         return compile_callable(model, smash_config)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -408,7 +413,7 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         temperature = 1.0
 
     # We use a generator as in https://github.com/mobiusml/hqq/blob/1f052eb5a0aab0572d380d48b708ae1c74936d23/hqq/utils/generation_hf.py
-    gen = TransformersGenerator(
+    gen = CausalLMGenerator(
         model,
         max_kv_cache_size=smash_config["max_kv_cache_size"],
         temperature=temperature,
@@ -417,6 +422,48 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         compile_fullgraph=smash_config["fullgraph"],
         batch_size=smash_config.batch_size,
         device=smash_config.device,
+    )
+    # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
+    if smash_config["mode"] == "max-autotune-no-cudagraphs":
+        pruna_logger.error("max-autotune-no-cudagraphs is not supported for causal language models.")
+    model.generate = gen.generate
+    return model
+
+
+def compile_janus_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+    """
+    Apply compilation to Janus LlamaGen AR models.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    smash_config : SmashConfigPrefixWrapper
+        The configuration for the compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        top_k = model.generation_config.top_k if hasattr(model.generation_config, "top_k") else 50
+        temperature = model.generation_config.temperature if hasattr(model.generation_config, "temperature") else 1.0
+    else:
+        pruna_logger.warning("No generation config found, using default values for top_k and temperature.")
+        # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.top_k
+        top_k = 50
+        # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.temperature
+        temperature = 1.0
+
+    # We use a generator as in https://github.com/mobiusml/hqq/blob/1f052eb5a0aab0572d380d48b708ae1c74936d23/hqq/utils/generation_hf.py
+    gen = JanusGenerator(
+        model,
+        temperature=temperature,
+        top_k=top_k,
+        compile_mode=smash_config["mode"],
+        compile_fullgraph=smash_config["fullgraph"],
+        device=smash_config["device"],
     )
     # If we are using max-autotune-no-cudagraphs, we need to handle the cudagraphs manually.
     if smash_config["mode"] == "max-autotune-no-cudagraphs":
