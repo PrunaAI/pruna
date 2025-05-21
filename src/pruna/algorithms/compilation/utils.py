@@ -14,15 +14,19 @@
 from __future__ import annotations
 
 import contextlib
+import copy
+from typing import Optional
 
 import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers.cache_utils import StaticCache
+from transformers.generation import ClassifierFreeGuidanceLogitsProcessor, GenerationMode, LogitsProcessorList
+from transformers.generation.utils import GenerateDecoderOnlyOutput
 
 from pruna.logging.logger import pruna_logger
 
 
-class TransformersGenerator:
+class CausalLMGenerator:
     """
     A class for generating text using a Hugging Face model, and using torch.compile.
 
@@ -61,7 +65,7 @@ class TransformersGenerator:
         device: str = "cuda",
     ):
         """
-        Initialize the TransformersGenerator.
+        Initialize the CausalLMGenerator.
 
         Parameters
         ----------
@@ -550,3 +554,321 @@ class TransformersGenerator:
             max_new_tokens=kwargs["max_new_tokens"] if "max_new_tokens" in kwargs else args[1],
         )
         return self.next_token_iterator(self.prefill(), kwargs["max_new_tokens"])
+
+
+class JanusGenerator:
+    """
+    A class for generating images using a Janus model, and using torch.compile.
+
+    The code is adapted from # https://github.com/huggingface/transformers/blob/4542086db764080c4333beef7b9f4327b4f8ff64/src/transformers/models/janus/modular_janus.py#L1147.
+
+    Parameters
+    ----------
+    model : transformers.PreTrainedModel
+        The Hugging Face model to use for text generation.
+    max_kv_cache_size : int
+        The maximum size of the key-value cache used during generation.
+    temperature : float, default=0.6
+        The sampling temperature to use for text generation. Higher values increase randomness.
+    top_k : int, default=5
+        The number of highest probability vocabulary tokens to keep for top-k filtering.
+    compile_mode : str, default='reduce-overhead'
+        The compilation mode to use with torch.compile(). Options include 'reduce-overhead', 'max-autotune', etc.
+    compile_fullgraph : bool, default=True
+        Whether to compile the full computation graph or use partial graph compilation.
+    batch_size : int, default=1
+        The batch size to use for text generation.
+    device : str, default='cuda'
+        The device to use for text generation.
+    """
+
+    def __init__(
+        self,
+        model,
+        temperature: float = 0.6,
+        top_k: int = 5,
+        compile_mode: str = "reduce-overhead",
+        compile_fullgraph: bool = True,
+        device: str = "cuda",
+    ):
+        """
+        Initialize the JanusGenerator.
+
+        Parameters
+        ----------
+        model : transformers.PreTrainedModel
+            The Hugging Face model to use for image generation.
+        temperature : float
+            The sampling temperature to use for image generation. Higher values increase randomness.
+        top_k : int
+            The number of highest probability vocabulary tokens to keep for top-k filtering.
+        compile_mode : str
+            The compilation mode to use with torch.compile(). Options include 'reduce-overhead', 'max-autotune', etc.
+        compile_fullgraph : bool
+            Whether to compile the full computation graph or use partial graph compilation.
+
+        Returns
+        -------
+        None
+        """
+        super().__init__()
+
+        self.model = model
+        self.device = device
+        self.temperature = temperature
+        self.top_k = top_k
+        self.compile_mode = compile_mode
+        self.compile_fullgraph = compile_fullgraph
+
+        self.compiled_language_model = torch.compile(
+            self.model.model.language_model,
+            mode=self.compile_mode,
+            fullgraph=self.compile_fullgraph
+        )
+
+        self.model.eval()
+
+    @torch.inference_mode()
+    def generate(
+        self,
+        inputs: torch.Tensor = None,
+        attention_mask: Optional[torch.LongTensor] = None,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        """
+        Generate tokens using the model.
+
+        Parameters
+        ----------
+        *args : tuple
+            Variable length argument list (not used directly).
+        **kwargs : dict
+            Keyword arguments dictionary that must contain:
+            - input_ids : torch.Tensor
+                The input token ids that serve as the prompt.
+            - max_new_tokens : int
+                The maximum number of new tokens to generate.
+
+        Returns
+        -------
+        torch.Tensor
+            The generated tokens, including the input prompt and potentially an EOS token.
+        """
+        # Extract parameters from kwargs with defaults from instance variables
+        self.temperature = kwargs.pop("temperature", self.temperature)
+        self.top_k = kwargs.pop("top_k", self.top_k)
+
+        # 1. Handle generation config and model kwargs
+        generation_config = kwargs.pop("generation_config", self.model.generation_config)
+        generation_config = copy.deepcopy(generation_config)
+
+        # Default to "text" generation if mode isn't provided
+        generation_mode = kwargs.pop("generation_mode", "text")
+        if generation_mode == "text":
+            # Set guidance_scale=None to prevent running UnbatchedCFG processor.
+            return self.model.generate(
+                inputs=inputs,
+                attention_mask=attention_mask,
+                generation_config=generation_config,
+                guidance_scale=None,
+                **kwargs,
+            )
+
+        model_kwargs = generation_config.update(**kwargs)  # All unused kwargs must be model kwargs
+
+        # Validate generation mode
+        if generation_config.get_generation_mode() not in (GenerationMode.SAMPLE, GenerationMode.GREEDY_SEARCH):
+            raise ValueError(
+                "Got incompatible mode for Image Generation, should be one of greedy or sampling. "
+                "Ensure that beam search is de-activated by setting `num_beams=1` and `num_beam_groups=1`."
+            )
+
+        # Validate the configuration and model kwargs
+        generation_config.validate()
+        self.model._validate_model_kwargs(model_kwargs.copy())
+
+        # 2. Initialize logit processors
+        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
+
+        # Set `use_cache=True` as we will be using input embeds for generation.
+        model_kwargs["use_cache"] = True
+
+        if generation_config.guidance_scale is None:
+            pruna_logger.warning("`guidance_scale` is required for CFG but not provided. Setting to default value of 5.")
+            generation_config.guidance_scale = 5
+        model_kwargs["guidance_scale"] = generation_config.guidance_scale
+
+        # 3. Prepare model inputs
+        input_ids, model_input_name, model_kwargs = self.model._prepare_model_inputs(
+            inputs, generation_config.bos_token_id, model_kwargs
+        )
+        dtype, device = input_ids.dtype, input_ids.device
+
+        if len(input_ids.shape) != 2:
+            raise ValueError(
+                f"Expected input ids of shape (batch_size, seq_len), but got {input_ids.shape}"
+                "Passing `inputs embeds` is not supported currently."
+            )
+
+        # Prepare special tokens which will be used generate internally.
+        kwargs_has_attention_mask = attention_mask is not None
+        self.model._prepare_special_tokens(generation_config, kwargs_has_attention_mask, device=input_ids.device)
+
+        # 4. Add CFG processor along with user passed logit processor.
+        if generation_config.guidance_scale and generation_config.guidance_scale > 1:
+            logits_processor.append(ClassifierFreeGuidanceLogitsProcessor(generation_config.guidance_scale))
+            generation_config.guidance_scale = None  # Reset to prevent processor duplication.
+
+        # 5. Prepare logits processor
+        logits_processor = self.model._get_logits_processor(
+            generation_config=generation_config,
+            input_ids_seq_length=input_ids.shape[1],
+            encoder_input_ids=input_ids,
+            prefix_allowed_tokens_fn=None,
+            logits_processor=logits_processor,
+            device=device,
+        )
+
+        # 6. Expand inputs for multiple image generations per prompt.
+        input_ids, model_kwargs = self.model._expand_inputs_for_generation(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            expand_size=generation_config.num_return_sequences,
+            **model_kwargs,
+        )
+
+        # 7. Prepare input and model caches
+        num_image_tokens = self.model.model.vision_model.config.num_image_tokens
+        batch_size, seq_len = input_ids.shape
+
+        input_tokens = input_ids.repeat(2, 1)  # Double batch size for conditional/unconditional logits
+        attention_mask = model_kwargs.pop("attention_mask", None)
+        attention_mask = attention_mask.repeat(2, 1)
+        model_kwargs["attention_mask"] = attention_mask
+
+        # Mask all the tokens that are neither BOS nor BOI with pad token in the unconditional logits.
+        mask = (input_tokens[batch_size:, :] != generation_config.bos_token_id) & (
+            input_tokens[batch_size:, :] != generation_config.generation_kwargs["boi_token_id"]
+        )
+        input_tokens[batch_size:, :].masked_fill_(mask, generation_config.pad_token_id)
+
+        inputs_embeds = self.model.get_input_embeddings()(input_tokens)
+
+        model_kwargs = self.model._get_initial_cache_position(input_ids, model_kwargs)
+
+        if model_kwargs.get("past_key_values", None) is None:
+            # Prepare cache if not provided.
+            model_kwargs["past_key_values"] = self.model._get_cache(
+                cache_implementation=generation_config.cache_implementation or "static",
+                # batch_size should account for both conditional/unconditional input; hence multiplied by 2.
+                batch_size=batch_size * 2,
+                # we should have at least a cache len of seq_len + num_image_tokens.
+                max_cache_len=max(generation_config.max_length, num_image_tokens + seq_len),
+                device=device,
+                model_kwargs=model_kwargs,
+            )
+
+        # Placeholder for generated tokens.
+        generated_tokens = torch.zeros((batch_size, num_image_tokens), dtype=dtype, device=device)
+
+        # 8. init attention / hidden states / scores tuples
+        output_attentions = generation_config.output_attentions
+        output_hidden_states = generation_config.output_hidden_states
+        output_scores = generation_config.output_scores
+        output_logits = generation_config.output_logits
+        return_dict_in_generate = generation_config.return_dict_in_generate
+
+        raw_scores = () if (return_dict_in_generate and output_scores) else None
+        raw_logits = () if (return_dict_in_generate and output_logits) else None
+        decoder_hidden_states = () if (return_dict_in_generate and output_hidden_states) else None
+        decoder_attentions = () if (return_dict_in_generate and output_attentions) else None
+
+        for i in range(num_image_tokens):
+            model_inputs = self.model.prepare_inputs_for_generation(
+                inputs_embeds=inputs_embeds, input_ids=input_tokens, **model_kwargs
+            )
+
+            model_inputs["attention_mask"] = model_inputs["attention_mask"].to(inputs_embeds.device)
+            model_inputs["cache_position"] = model_inputs["cache_position"].to(inputs_embeds.device)
+
+            # Pad attention mask to max length to avoid dynamic shapes error during compilation.
+            max_length = model_inputs["past_key_values"].get_max_cache_shape()
+            current_length = model_inputs["attention_mask"].shape[1]
+            if current_length < max_length:
+                padding = torch.zeros((model_inputs["attention_mask"].shape[0], max_length - current_length),
+                                   dtype=model_inputs["attention_mask"].dtype,
+                                   device=model_inputs["attention_mask"].device)
+                model_inputs["attention_mask"] = torch.cat([model_inputs["attention_mask"], padding], dim=1)
+
+            # no compilation for the prefill.
+            if i == 0:
+                outputs = self.model.model.language_model(
+                    **model_inputs,
+                    output_attentions=output_attentions,
+                    output_hidden_states=output_hidden_states,
+                )
+            # compilation for the decoding phase (one token at a time).
+            else:
+                outputs = self.compiled_language_model(
+                    **model_inputs,
+                    output_attentions=output_attentions,
+                    output_hidden_states=output_hidden_states,
+                )
+
+            # Update model_kwargs like cache_position for next generation.
+            model_kwargs = self.model._update_model_kwargs_for_generation(outputs, model_kwargs)
+            hidden_state = outputs.last_hidden_state[:, -1, :].clone()
+
+            # Generate scores using the generation head (Not using above defined LM Head)
+            scores = self.model.model.generation_head(hidden_state)
+            next_token_scores = logits_processor(input_ids, scores)
+
+            # Sample next token.
+            if generation_config.do_sample:
+                probs = torch.softmax(next_token_scores, dim=-1)
+                next_token = torch.multinomial(probs, num_samples=1).squeeze(-1)
+            else:
+                next_token = torch.argmax(next_token_scores, dim=-1)
+
+            generated_tokens[:, i] = next_token
+
+            # Prepare embeddings for the next step.
+            next_token = torch.cat([next_token, next_token])
+            next_token = next_token.unsqueeze(-1)
+
+            inputs_embeds = self.model.prepare_embeddings_for_image_generation(next_token)
+
+        if return_dict_in_generate:
+            if output_scores:
+                raw_scores = tuple(raw_scores) + (scores,) if raw_scores is not None else (scores,)
+            if output_logits:
+                raw_logits = (
+                    tuple(raw_logits) + (hidden_state.float(),)
+                    if raw_logits is not None
+                    else (hidden_state.float(),)
+                )
+            if output_attentions:
+                decoder_attentions = (
+                    tuple(decoder_attentions) + (outputs.attentions,)
+                    if decoder_attentions is not None
+                    else (outputs.attentions,)
+                )
+            if output_hidden_states:
+                decoder_hidden_states = (
+                    tuple(decoder_hidden_states) + (outputs.hidden_states,)
+                    if decoder_hidden_states is not None
+                    else (outputs.hidden_states,)
+                )
+
+        if return_dict_in_generate:
+            return GenerateDecoderOnlyOutput(
+                sequences=generated_tokens,
+                scores=scores,
+                logits=raw_logits,
+                attentions=decoder_attentions,
+                hidden_states=decoder_hidden_states,
+                past_key_values=outputs.past_key_values,
+            )
+        else:
+            return generated_tokens

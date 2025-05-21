@@ -22,9 +22,9 @@ from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.model_checks import is_causal_lm
+from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.utils import move_to_device, safe_memory_cleanup
+from pruna.engine.utils import ModelContext, move_to_device, safe_memory_cleanup
 from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
@@ -94,7 +94,7 @@ class HQQQuantizer(PrunaQuantizer):
         bool
             True if the model is a causal language model, False otherwise.
         """
-        return is_causal_lm(model)
+        return is_causal_lm(model) or is_janus_llamagen_ar(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -121,39 +121,45 @@ class HQQQuantizer(PrunaQuantizer):
         quant_config_hf = imported_modules["HqqConfig"](nbits=weight_quantization_bits, group_size=group_size)
         move_to_device(model, "cpu")
         safe_memory_cleanup()
-        try:  # Try to quantize the model using HQQ
-            model = imported_modules["AutoHQQHFModel"].quantize_model(
-                model,
-                quant_config=quant_config_hqq,
-                device=smash_config["device"],
-                compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
-            )
-        except Exception:  # Default to generic HF quantization if it fails
-            pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
-            # Create a temporary directory in a specific location
-            base_temp_dir = smash_config["cache_dir"]
-            temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
-            model.save_pretrained(temp_dir)
+        with ModelContext(model) as (pipeline, working_model, denoiser_type):
+            try:  # Try to quantize the model using HQQ
+                working_model = imported_modules["AutoHQQHFModel"].quantize_model(
+                    working_model,
+                    quant_config=quant_config_hqq,
+                    device=smash_config["device"],
+                    compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
+                )
+            except Exception:  # Default to generic HF quantization if it fails
+                pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
+                # Create a temporary directory in a specific location
+                base_temp_dir = smash_config["cache_dir"]
+                temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
+                working_model.save_pretrained(temp_dir)
 
-            model = AutoModelForCausalLM.from_pretrained(
-                temp_dir,
-                quantization_config=quant_config_hf,
-                trust_remote_code=True,
-                device_map="auto",
-                torch_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
-            )
+                working_model = AutoModelForCausalLM.from_pretrained(
+                    temp_dir,
+                    quantization_config=quant_config_hf,
+                    trust_remote_code=True,
+                    device_map="auto",
+                    torch_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
+                )
 
-            # Delete the temporary directory and its contents
-            shutil.rmtree(temp_dir)
+                # Delete the temporary directory and its contents
+                shutil.rmtree(temp_dir)
 
-        # Prepare the model for fast inference
-        try:
-            if weight_quantization_bits == 4:
-                imported_modules["prepare_for_inference"](model, backend=smash_config["backend"])
-        except Exception as e:
-            pruna_logger.error(f"Error: {e}")
-            pass
-        return model
+            # Prepare the model for fast inference
+            try:
+                if weight_quantization_bits == 4:
+                    imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
+            except Exception as e:
+                pruna_logger.error(f"Error: {e}")
+                pass
+            # redefining the working_model breaks links with context manager
+            # so we need to re-define the working_model as an attribute of the model.
+            pipeline.working_model = working_model
+            # as we have moved the model to cpu for cleaning, but only one of its attribute was put back on cuda.
+            move_to_device(model, smash_config["device"])
+            return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

@@ -489,6 +489,9 @@ class ModelContext:
         elif hasattr(self.pipeline, "unet"):
             self.working_model = self.pipeline.unet
             self.denoiser_type = "unet"
+        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
+            self.working_model = self.pipeline.model.language_model
+            self.denoiser_type = "language_model"
         else:
             self.working_model = self.pipeline
             self.denoiser_type = None  # type: ignore [assignment]
@@ -511,6 +514,8 @@ class ModelContext:
             self.pipeline.transformer = self.pipeline.working_model
         elif hasattr(self.pipeline, "unet"):
             self.pipeline.unet = self.pipeline.working_model
+        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
+            self.pipeline.model.language_model = self.pipeline.working_model
         else:
             self.pipeline = self.pipeline.working_model
         del self.pipeline.working_model

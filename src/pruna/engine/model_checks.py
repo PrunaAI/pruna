@@ -22,6 +22,7 @@ from transformers.configuration_utils import PretrainedConfig
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING,
+    MODEL_FOR_IMAGE_TEXT_TO_TEXT_MAPPING,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING,
     MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING,
 )
@@ -570,3 +571,37 @@ def is_opt_model(model: Any) -> bool:
     """
     opt_mapping = {k: v for k, v in MODEL_FOR_CAUSAL_LM_MAPPING.items() if "opt" in str(k).lower()}
     return isinstance(model, tuple(opt_mapping.values()))
+
+
+def is_image_text_to_text_model(model: Any) -> bool:
+    """
+    Check if the model is an image text to text model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is an image text to text model, False otherwise.
+    """
+    return isinstance(model, tuple(MODEL_FOR_IMAGE_TEXT_TO_TEXT_MAPPING.values()))
+
+
+def is_janus_llamagen_ar(model: Any) -> bool:
+    """
+    Check if the model is a Janus LlamaGen AR model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a Janus LlamaGen AR model, False otherwise.
+    """
+    return is_image_text_to_text_model(model) and model.__class__.__name__ == "JanusForConditionalGeneration"
