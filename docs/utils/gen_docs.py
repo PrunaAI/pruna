@@ -127,14 +127,16 @@ def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible devices of a Pruna algorithm."""
     compatible_devices = []
     for device in obj.compatible_devices():
-        if device == "cpu":
-            compatible_devices.append("CPU")
-        elif device == "cuda":
-            compatible_devices.append("CUDA")
-        elif device == "mps":
-            compatible_devices.append("MPS")
-        elif device == "accelerate":
-            compatible_devices.append("Accelerate distributed")
+        name_map = {
+            "cpu": "CPU",
+            "cuda": "CUDA",
+            "mps": "MPS",
+            "accelerate": "Accelerate distributed",
+        }
+        if device in name_map:
+            compatible_devices.append(name_map[device])
+        else:
+            compatible_devices.append(device)
     return ", ".join(compatible_devices) if compatible_devices else "None"
 
 
