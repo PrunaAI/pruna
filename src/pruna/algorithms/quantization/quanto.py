@@ -129,7 +129,7 @@ class QuantoQuantizer(PrunaQuantizer):
                         calibrate(
                             working_model,
                             smash_config.val_dataloader(),
-                            smash_config["device"],
+                            model.device,  # only e.g. CUDA here is not enough, we need also the correct device index
                             batch_size=smash_config.batch_size,
                             samples=smash_config["calibration_samples"],
                         )
