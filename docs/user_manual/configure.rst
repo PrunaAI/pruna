@@ -54,7 +54,7 @@ Let's see what that looks like in code.
     smash_config['ifw_weight_bits'] = 16
 
     # Add a tokenizer and processor
-    model_id = 'openai/whisper-large-v3'
+    model_id = 'openai/whisper-tiny'
     smash_config.add_tokenizer(model_id)
     smash_config.add_processor(model_id)
 
@@ -212,7 +212,7 @@ This means, we can use the same tokenizers and processors as the ones used in th
 
           # Add a built-in dataset using a string identifier
           smash_config.add_tokenizer('facebook/opt-125m')
-          smash_config.add_processor('openai/whisper-large-v3')
+          smash_config.add_processor('openai/whisper-tiny')
 
    .. tab:: Loading Directly
 
@@ -227,11 +227,11 @@ This means, we can use the same tokenizers and processors as the ones used in th
           smash_config = SmashConfig()
 
           # Load a tokenizer directly from the Hugging Face Hub
-          tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
+          tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
           smash_config.add_tokenizer(tokenizer)
 
           # Load a processor directly from the Hugging Face Hub
-          processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
+          processor = AutoProcessor.from_pretrained("openai/whisper-tiny")
           smash_config.add_processor(processor)
 
 Now we've set up the tokenizer and processor, we can use them to process our data.
