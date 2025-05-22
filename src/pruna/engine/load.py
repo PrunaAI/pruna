@@ -352,22 +352,33 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     from pruna.algorithms.quantization.hqq import HQQQuantizer
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
+    if os.path.exists(os.path.join(model_path, "hqq_language_model")):
+        q_path = os.path.join(model_path, "hqq_language_model")
+    else:
+        q_path = model_path
 
     try:  # Try to use pipeline for HF specific HQQ quantization
-        model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
-            model_path,
+        qmodel = algorithm_packages["HQQModelForCausalLM"].from_quantized(
+            q_path,
             device=smash_config.device,
             **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
         )
     except Exception:  # Default to generic HQQ pipeline if it fails
         pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
-        model = algorithm_packages["AutoHQQHFModel"].from_quantized(
-            model_path,
+        qmodel = algorithm_packages["AutoHQQHFModel"].from_quantized(
+            q_path,
             device=smash_config.device,
             **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
         )
 
-    return model
+    original_config = load_json_config(model_path, "config.json")
+    if original_config["architectures"][0] == "JanusForConditionalGeneration":
+        cls = getattr(transformers, "JanusForConditionalGeneration")
+        model = cls.from_pretrained(model_path, **kwargs)
+        model.model.language_model = qmodel
+        return model
+    else:
+        return qmodel
 
 
 def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:

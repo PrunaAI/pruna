@@ -318,19 +318,35 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
+    # we need to create a separate path for the quantized model
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        q_path = os.path.join(model_path, "hqq_language_model")
+    else:
+        q_path = model_path
+
+    # save the quantized model only.
     with ModelContext(model) as (pipeline, working_model, denoiser_type):
         if isinstance(working_model, algorithm_packages["HQQModelForCausalLM"]):
-            working_model.save_quantized(model_path)
+            working_model.save_quantized(q_path)
         else:
-            algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(model_path))
+            algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(q_path))
         # redefining the working_model breaks links with context manager
         # so we need to re-define the working_model as an attribute of the model.
         pipeline.working_model = working_model
-    # up to this point only the llama inside the model is saved if the model is janus like
-    # we need to save the rest of the model
+
+    # save the rest of the model, if it is a janus like model,
+    # and add a config file to the quantized model path.
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        transformer_backup = model.model.language_model
         model.model.language_model = None
-    model.save_pretrained(model_path)
+        model.save_pretrained(model_path)
+        hqq_config = model.config.text_config
+        hqq_config.architectures = ["LlamaForCausalLM"]
+        os.makedirs(q_path, exist_ok=True)
+        with open(os.path.join(q_path, "config.json"), "w") as f:
+            json.dump(hqq_config.to_dict(), f, indent=2)
+        model.model.language_model = transformer_backup
+
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
 
