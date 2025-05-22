@@ -17,6 +17,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Any, Callable, Dict, Iterable, List
 
+from pruna.engine.load import filter_load_kwargs
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.logging.logger import pruna_logger
@@ -123,4 +124,4 @@ class MetricRegistry:
         -------
             A list of metric instances.
         """
-        return [cls.get_metric(name, **kwargs) for name in names]
+        return [cls.get_metric(name, **filter_load_kwargs(cls.get_metric, **kwargs)) for name in names]
