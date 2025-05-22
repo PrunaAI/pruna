@@ -21,7 +21,7 @@ from huggingface_hub import model_info
 from huggingface_hub.utils import EntryNotFoundError
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
-from pruna.engine.utils import check_device_compatibility
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -68,7 +68,7 @@ class CMMD(StatefulMetric):
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self.device = check_device_compatibility(device)
+        self.device = set_to_best_available_device(device)
         try:
             model_info(clip_model_name)
         except EntryNotFoundError:

@@ -24,7 +24,7 @@ from torch.utils.data import DataLoader
 
 from pruna.engine.call_sequence_tracker import CallSequenceTracker
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import check_device_compatibility
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -57,7 +57,7 @@ class ModelArchitectureStats(BaseMetric):
     """
 
     def __init__(self, device: str | torch.device | None = None) -> None:
-        self.device = check_device_compatibility(device)
+        self.device = set_to_best_available_device(device)
         self.module_macs: Dict[str, Any] = {}
         self.module_params: Dict[str, Any] = {}
         self.call_tracker = CallSequenceTracker()

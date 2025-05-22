@@ -22,7 +22,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import check_device_compatibility
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -71,7 +71,7 @@ class InferenceTimeStats(BaseMetric):
     ) -> None:
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
-        self.device = check_device_compatibility(device)
+        self.device = set_to_best_available_device(device)
         self.timing_type = timing_type
 
     def _measure(self, model: PrunaModel, dataloader: DataLoader, iterations: int, measure_fn) -> None:
