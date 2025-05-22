@@ -23,7 +23,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import safe_memory_cleanup, set_to_train
+from pruna.engine.utils import check_device_compatibility, safe_memory_cleanup, set_to_train
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -328,7 +328,7 @@ class GPUMemoryStats(BaseMetric):
         model = model_cls.from_pretrained(
             model_path,
         )
-        model.move_to_device("cuda")
+        model.move_to_device(check_device_compatibility(None))
         if self.mode in {DISK_MEMORY, INFERENCE_MEMORY}:
             model.set_to_eval()
         elif self.mode == TRAINING_MEMORY:

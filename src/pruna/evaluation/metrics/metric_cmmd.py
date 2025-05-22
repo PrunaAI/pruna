@@ -21,6 +21,7 @@ from huggingface_hub import model_info
 from huggingface_hub.utils import EntryNotFoundError
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
+from pruna.engine.utils import check_device_compatibility
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -41,8 +42,9 @@ class CMMD(StatefulMetric):
     ----------
     *args : Any
         Additional arguments to pass to the StatefulMetric constructor.
-    device : str | torch.device
-        The device to run the CLIP model on to calculate the embeddings for the metric.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     clip_model_name : str
         The name of the CLIP model to use.
     call_type : str
@@ -60,13 +62,13 @@ class CMMD(StatefulMetric):
     def __init__(
         self,
         *args,
-        device: str | torch.device = "cuda",
+        device: str | torch.device | None = None,
         clip_model_name: str = "openai/clip-vit-large-patch14-336",
         call_type: str = SINGLE,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self.device = device
+        self.device = check_device_compatibility(device)
         try:
             model_info(clip_model_name)
         except EntryNotFoundError:
