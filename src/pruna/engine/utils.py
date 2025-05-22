@@ -272,6 +272,9 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
     if device == "cpu":
         return "cpu"
 
+    if device == "accelerate" and torch.cuda.is_available():
+        return "accelerate"
+
     if device == "cuda" and not torch.cuda.is_available():
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
@@ -280,7 +283,7 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         pruna_logger.warning("'mps' requested but not available.")
         return set_to_best_available_device(device=None)
 
-    return device
+    raise ValueError(f"Device not supported: '{device}'")
 
 
 class ModelContext:

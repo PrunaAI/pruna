@@ -72,7 +72,7 @@ class Task:
         self.metrics = get_metrics(request, device)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
-        self.device = set_to_best_available_device(device)
+        self.device = device
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
         """
@@ -129,6 +129,9 @@ def get_metrics(
     ----------
     request : str | List[str]
         The user request. Right now, it only supports image generation quality.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
 
     Returns
     -------
@@ -144,14 +147,14 @@ def get_metrics(
     """
     if isinstance(request, List):
         if all(isinstance(item, BaseMetric | StatefulMetric) for item in request):
-            return _process_metric_instances(cast(List[BaseMetric | StatefulMetric], request))
+            return _process_metric_instances(request=cast(List[BaseMetric | StatefulMetric], request))
         elif all(isinstance(item, str) for item in request):
-            return _process_metric_names(cast(List[str], request))
+            return _process_metric_names(request=cast(List[str], request), device=device)
         else:
             pruna_logger.error("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
             raise ValueError("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
     else:
-        return _process_single_request(request)
+        return _process_single_request(request, device)
 
 
 def _process_metric_instances(request: List[BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
@@ -168,7 +171,7 @@ def _process_metric_instances(request: List[BaseMetric | StatefulMetric]) -> Lis
     return new_request_metrics
 
 
-def _process_metric_names(request: List[str]) -> List[BaseMetric | StatefulMetric]:
+def _process_metric_names(request: List[str], device: str | torch.device | None) -> List[BaseMetric | StatefulMetric]:
     pruna_logger.info(f"Creating metrics from names: {request}")
     new_requests: List[str] = []
     for metric_name in request:
@@ -184,16 +187,16 @@ def _process_metric_names(request: List[str]) -> List[BaseMetric | StatefulMetri
                 new_requests.append(cast(str, new_metric))
         else:
             new_requests.append(cast(str, metric_name))
-    return MetricRegistry.get_metrics(new_requests)
+    return MetricRegistry.get_metrics(names=new_requests, device=device)
 
 
-def _process_single_request(request: str) -> List[BaseMetric | StatefulMetric]:
+def _process_single_request(request: str, device: str | torch.device | None) -> List[BaseMetric | StatefulMetric]:
     if request == "image_generation_quality":
         pruna_logger.info("An evaluation task for image generation quality is being created.")
         return [
             TorchMetricWrapper("clip_score"),
             TorchMetricWrapper("clip_score", call_type="pairwise"),
-            CMMD(),
+            CMMD(device=device),
         ]
     else:
         pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
