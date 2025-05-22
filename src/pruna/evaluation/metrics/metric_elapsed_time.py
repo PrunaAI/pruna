@@ -42,7 +42,7 @@ class ElapsedTimeMetric(BaseMetric):
         The number of batches to evaluate the model.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
+    device : str, default="cuda"
         The device to evaluate the model on.
     timing_type : str, default="sync"
         The type of timing to use.
@@ -52,7 +52,7 @@ class ElapsedTimeMetric(BaseMetric):
         self,
         n_iterations: int = 100,
         n_warmup_iterations: int = 10,
-        device: str | torch.device = "cuda",
+        device: str = "cuda",
         timing_type: str = "sync",
     ) -> None:
         super().__init__()

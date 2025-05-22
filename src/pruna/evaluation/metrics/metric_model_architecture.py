@@ -38,11 +38,11 @@ class ModelArchitectureMetric(BaseMetric):
 
     Parameters
     ----------
-    device : str | torch.device, default="cuda"
+    device : str, default="cuda"
         The device to evaluate the model on.
     """
 
-    def __init__(self, device: str | torch.device = "cuda") -> None:
+    def __init__(self, device: str = "cuda") -> None:
         super().__init__()
         self.device = device
         self.module_macs: Dict[str, Any] = {}
