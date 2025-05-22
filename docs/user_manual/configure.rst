@@ -52,7 +52,6 @@ Let's see what that looks like in code.
 
     # Set IFW batching parameters
     smash_config['ifw_weight_bits'] = 16
-    smash_config['ifw_group_size'] = 4
 
     # Add a tokenizer and processor
     model_id = 'openai/whisper-large-v3'
@@ -164,7 +163,6 @@ Let's add the ``ifw_weight_bits`` and ``ifw_group_size`` hyperparameters for the
 
     # Set IFW batching parameters
     smash_config['ifw_weight_bits'] = 16
-    smash_config['ifw_group_size'] = 4
 
 Configure Components
 --------------------
@@ -222,8 +220,9 @@ This means, we can use the same tokenizers and processors as the ones used in th
 
       .. code-block:: python
 
+          from transformers import AutoProcessor, AutoTokenizer
+
           from pruna import SmashConfig
-          from transformers import AutoTokenizer
 
           smash_config = SmashConfig()
 
@@ -288,7 +287,7 @@ Additionallly, you can create a fully custom ``PrunaDataModule`` use it in your 
           smash_config = SmashConfig()
 
           # Add a built-in dataset using a string identifier
-          smash_config.add_dataset('WikiText')
+          smash_config.add_data('WikiText')
 
    .. tab:: Custom Dataset
 
@@ -300,21 +299,21 @@ Additionallly, you can create a fully custom ``PrunaDataModule`` use it in your 
 
       .. code-block:: python
 
-          from pruna import SmashConfig
-          from pruna.data.utils import split_train_into_train_val_test
-          from datasets import load_dataset
+        from pruna import SmashConfig
+        from pruna.data.utils import split_train_into_train_val_test
+        from datasets import load_dataset
 
-          # Load custom datasets
-          train_ds = load_dataset("SamuelYang/bookcorpus")["train"]
-          train_ds, val_ds, test_ds = split_train_into_train_val_test(train_ds, seed=42)
+        # Load custom datasets
+        train_ds = load_dataset("SamuelYang/bookcorpus")["train"]
+        train_ds, val_ds, test_ds = split_train_into_train_val_test(train_ds, seed=42)
 
-          # Add to SmashConfig
-          smash_config = SmashConfig()
-          smash_config.add_tokenizer("bert-base-uncased")
-          smash_config.add_data(
-              (train_ds, val_ds, test_ds),
-              collate_fn="text_generation_collate"
-          )
+        # Add to SmashConfig
+        smash_config = SmashConfig()
+        smash_config.add_tokenizer("bert-base-uncased")
+        smash_config.add_data(
+            (train_ds, val_ds, test_ds),
+            collate_fn="text_generation_collate"
+        )
 
    .. tab:: PrunaDataModule
 
@@ -324,10 +323,24 @@ Additionallly, you can create a fully custom ``PrunaDataModule`` use it in your 
 
       .. code-block:: python
 
-          from pruna import SmashConfig, PrunaDataModule
+          from datasets import load_dataset
+
+          from pruna import SmashConfig
+          from pruna.data.pruna_datamodule import PrunaDataModule
+          from pruna.data.utils import split_train_into_train_val_test
+
+          # Load custom datasets
+          train_ds = load_dataset("SamuelYang/bookcorpus")["train"]
+          train_ds, val_ds, test_ds = split_train_into_train_val_test(dataset=train_ds, seed=42)
 
           # Load PrunaDataModule
-          data = PrunaDataModule(...)
+          data = PrunaDataModule(
+              train_ds=train_ds,
+              val_ds=val_ds,
+              test_ds=test_ds,
+              collate_fn="text_generation_collate",
+              dataloader_args={"num_workers": 1},
+          )
 
           # Add to SmashConfig
           smash_config = SmashConfig()
