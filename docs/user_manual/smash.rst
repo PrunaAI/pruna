@@ -158,7 +158,8 @@ To run inference with the optimized model, we can use the same interface as the 
     optimized_model.inference_handler.model_args.update(
         {"num_inference_steps": 1, "guidance_scale": 0.0}
     )
-    optimized_model("A serene landscape with mountains").images[0]
+    prompt = "A serene landscape with mountains"
+    optimized_model(prompt).images[0].save("output.png")
 
 Example use cases
 -----------------
@@ -171,59 +172,64 @@ Example 1: Diffusion Model Optimization
 .. code-block:: python
 
     from diffusers import StableDiffusionPipeline
-    from pruna import smash, SmashConfig
+
+    from pruna import SmashConfig, smash
 
     # Load the model
-    model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
-    smash_config["compiler"] = "stable_fast"
+    smash_config["compiler"] = "torch_compile"
+    smash_config["quantizer"] = "hqq_diffusers"
 
     # Optimize the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Generate an image
-    optimized_model("A serene landscape with mountains").images[0]
+    prompt = "A serene landscape with mountains"
+    optimized_model(prompt).images[0].save("cat.png")
+
 
 Example 2: Large Language Model Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-    from transformers import AutoModelForCausalLM
-    from pruna import smash, SmashConfig
+    from transformers import pipeline
+
+    from pruna import SmashConfig, smash
 
     # Load the model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m")
+    model_id = "meta-llama/Llama-3.2-1b-Instruct"
+    pipe = pipeline("text-generation", model=model_id)
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["quantizer"] = "gptq"  # Apply GPTQ quantization
+    smash_config["compiler"] = "torch_compile"
+    smash_config["quantizer"] = "hqq"
 
     # Optimize the model
-    optimized_model = smash(model=model, smash_config=smash_config)
+    optimized_model = smash(model=pipe.model, smash_config=smash_config)
+    pipe.model = optimized_model
 
     # Use the model for generation
-    input_text = "The best way to learn programming is"
-    optimized_model(input_text)
-
+    pipe("The best way to learn programming is", max_new_tokens=100)
 
 Example 3: Speech Recognition Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-    from transformers import AutoModelForSpeechSeq2Seq
-    from pruna import smash, SmashConfig
+    import requests
     import torch
+    from transformers import AutoModelForSpeechSeq2Seq
+
+    from pruna import SmashConfig, smash
 
     # Load the model
-    model_id = "openai/whisper-large-v3"
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True
-    ).to("cuda")
+    model_id = "openai/whisper-tiny"
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True).to("cuda")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
@@ -234,5 +240,17 @@ Example 3: Speech Recognition Optimization
     # Optimize the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
-    # Use the model for transcription
-    optimized_model("audio_file.wav")
+    # Download and transcribe audio sample
+    audio_url = "https://huggingface.co/datasets/reach-vb/random-audios/resolve/main/sam_altman_lex_podcast_367.flac"
+    audio_file = "sam_altman_lex_podcast_367.flac"
+
+    # Download audio file
+    response = requests.get(audio_url)
+    response.raise_for_status()  # Raise exception for bad status codes
+
+    # Save audio file
+    with open(audio_file, "wb") as f:
+        f.write(response.content)
+
+    # Transcribe audio
+    transcription = optimized_model(audio_file)

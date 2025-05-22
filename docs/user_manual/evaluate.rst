@@ -61,7 +61,7 @@ Let's see what that looks like in code.
     from pruna.evaluation.task import Task
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/opt-125m-smashed")
+    optimized_model = PrunaModel.from_hub("PrunaAI/Llama-3.2-1b-Instruct-smashed")
 
     # Create and configure Task
     datamodule = PrunaDataModule.from_string(
@@ -272,7 +272,7 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             # Load the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
+            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
 
             # Create the data Module
             datamodule = PrunaDataModule.from_string(
@@ -295,7 +295,7 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
             from pruna.data.utils import split_train_into_train_val_test
 
             # Load the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
+            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
 
             # Load custom datasets
             train_ds = load_dataset("SamuelYang/bookcorpus")["train"]
@@ -323,7 +323,7 @@ Lastly, you can limit the number of samples in the dataset by using the ``PrunaD
     from pruna.data.pruna_datamodule import PrunaDataModule
 
     # Create the data module
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
     datamodule = PrunaDataModule.from_string("WikiText", tokenizer=tokenizer)
 
     # Limit all splits to 100 samples
