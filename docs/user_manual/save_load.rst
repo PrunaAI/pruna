@@ -69,8 +69,8 @@ Let's see what that looks like in code.
 
     # Create and smash your model
     smash_config = SmashConfig()
-    smash_config["quantizer"] = "hqq_diffusers"
     smash_config["compiler"] = "torch_compile"
+    smash_config["quantizer"] = "hqq_diffusers"
     smashed_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the model
@@ -78,8 +78,6 @@ Let's see what that looks like in code.
 
     # Load the model
     loaded_model = PrunaModel.from_pretrained("saved_model/")  # or from_hub
-
-
 
 Saving a ``PrunaModel``
 -----------------------
@@ -154,6 +152,8 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
         .. code-block:: python
             :class: noextract
 
+            from pruna import PrunaModel
+
             loaded_model = PrunaModel.from_hub("PrunaAI/segmind-tiny-sd-smashed")
 
 The load operation will:
@@ -174,7 +174,7 @@ So, when the base model was loaded with e.g. a specific precision:
     import torch
     from diffusers import StableDiffusionPipeline
 
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16)
+    base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd", torch_dtype=torch.float16)
 
 you should also load the smashed model as follows:
 
@@ -182,7 +182,7 @@ you should also load the smashed model as follows:
 
     from pruna import PrunaModel
 
-    loaded_model = PrunaModel.from_pretrained("saved_model/", torch_dtype=torch.float16)
+    loaded_model = PrunaModel.from_hub("PrunaAI/segmind-tiny-sd-smashed", torch_dtype=torch.float16)
 
 Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
 In that case, we discard and log a warning about unused keyword arguments.
