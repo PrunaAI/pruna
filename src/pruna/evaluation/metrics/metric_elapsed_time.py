@@ -120,12 +120,13 @@ class InferenceTimeStats(BaseMetric):
             endevent_time = time.time()
             return (endevent_time - startevent_time) * 1000  # in ms
         elif self.timing_type == "sync":
-            startevent = getattr(torch, self.device).Event(enable_timing=True)
-            endevent = getattr(torch, self.device).Event(enable_timing=True)
+            torch_device_attr = getattr(torch, self.device)
+            startevent = torch_device_attr.Event(enable_timing=True)
+            endevent = torch_device_attr.Event(enable_timing=True)
             startevent.record()
             _ = model(x, **model.inference_handler.model_args)
             endevent.record()
-            getattr(torch, self.device).synchronize()
+            torch_device_attr.synchronize()
             return startevent.elapsed_time(endevent)  # in ms
         else:
             raise ValueError(f"Timing type {self.timing_type} not supported.")
