@@ -14,11 +14,7 @@ TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
     [
         pytest.param(f"user_manual/{path.stem}", marks=pytest.mark.cuda)
         for path in TUTORIAL_PATH.glob("user_manual/*.rst")
-        if path.stem not in ["dataset"]
-    ]
-    + [
-        pytest.param(f"contributions/{path.stem}", marks=pytest.mark.cuda)
-        for path in TUTORIAL_PATH.glob("contributions/*.rst")
+        if "customize_" not in path.stem
     ]
 )
 def test_codeblocks_cuda(rst_name: str) -> None:

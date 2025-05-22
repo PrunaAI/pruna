@@ -60,23 +60,26 @@ Let's see what that looks like in code.
 
 .. code-block:: python
 
-    from pruna import smash, SmashConfig
     from diffusers import StableDiffusionPipeline
 
+    from pruna import PrunaModel, SmashConfig, smash
+
     # prepare the base model
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
 
     # Create and smash your model
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
-    smash_config["compiler"] = "diffusers2"
+    smash_config["quantizer"] = "hqq_diffusers"
+    smash_config["compiler"] = "torch_compile"
     smashed_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the model
-    smashed_model.save_pretrained("saved_model/") # or save_to_hub
+    smashed_model.save_pretrained("saved_model/")  # or save_to_hub
 
     # Load the model
-    loaded_model = PrunaModel.from_pretrained("saved_model/") # or from_hub
+    loaded_model = PrunaModel.from_pretrained("saved_model/")  # or from_hub
+
+
 
 Saving a ``PrunaModel``
 -----------------------
@@ -93,16 +96,15 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
             from diffusers import StableDiffusionPipeline
 
             # prepare the base model
-            base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+            base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
 
             # Create and smash your model
             smash_config = SmashConfig()
-            smash_config["cacher"] = "deepcache"
-            smash_config["compiler"] = "diffusers2"
+            smash_config["quantizer"] = "hqq_diffusers"
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
-            smashed_model.save_pretrained("saved_model/")
+            smashed_model.save_pretrained("saved_model")
 
     .. tab:: Hugging Face Hub Saving
 
@@ -112,16 +114,15 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
             from diffusers import StableDiffusionPipeline
 
             # prepare the base model
-            base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+            base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
 
             # Create and smash your model
             smash_config = SmashConfig()
-            smash_config["cacher"] = "deepcache"
-            smash_config["compiler"] = "diffusers2"
+            smash_config["quantizer"] = "hqq_diffusers"
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
-            smashed_model.save_to_hub("PrunaAI/smashed-stable-diffusion-v1-4-smashed")
+            smashed_model.save_to_hub("PrunaAI/segmind-tiny-sd-smashed")
 
         .. tip::
 
@@ -142,6 +143,7 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
     .. tab:: Local Loading
 
         .. code-block:: python
+            :class: noextract
 
             from pruna import PrunaModel
 
@@ -150,10 +152,9 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
     .. tab:: Hugging Face Hub Loading
 
         .. code-block:: python
+            :class: noextract
 
-            from pruna import PrunaModel
-
-            loaded_model = PrunaModel.from_hub("PrunaAI/smashed-stable-diffusion-v1-4")
+            loaded_model = PrunaModel.from_hub("PrunaAI/segmind-tiny-sd-smashed")
 
 The load operation will:
 

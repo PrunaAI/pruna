@@ -29,35 +29,33 @@ Let's see what that looks like in code.
 
 .. code-block:: python
 
-    from pruna import smash, SmashConfig
     from diffusers import StableDiffusionPipeline
+
+    from pruna import SmashConfig, smash
     from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
     from pruna.evaluation.task import Task
 
     # Load the model
-    model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    model = StableDiffusionPipeline.from_pretrained("Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
+    smash_config["quantizer"] = "hqq_diffusers"
 
     # Smash the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Evaluate the model
-    metrics = ['clip_score', 'psnr']
-    task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+    metrics = ["clip_score", "psnr"]
+    task = Task(metrics, datamodule=PrunaDataModule.from_string("LAION256"))
     eval_agent = EvaluationAgent(task)
     eval_agent.evaluate(optimized_model)
 
     # Run inference
     optimized_model.set_progress_bar_config(disable=True)
-    optimized_model.inference_handler.model_args.update(
-        {"num_inference_steps": 1, "guidance_scale": 0.0}
-    )
+    optimized_model.inference_handler.model_args.update({"num_inference_steps": 1, "guidance_scale": 0.0})
     optimized_model("A serene landscape with mountains").images[0]
-
 
 Step-by-Step Optimisation Workflow
 ----------------------------------
@@ -71,8 +69,7 @@ First, load any model using its original library, like ``transformers`` or ``dif
 
     from diffusers import StableDiffusionPipeline
 
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
-
+    base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
 
 Step 2: Define optimizations with a ``SmashConfig``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,14 +78,14 @@ After loading the model, we can define a ``SmashConfig`` to customize the optimi
 This ``SmashConfig`` is a dictionary-like object that configures which optimizations to apply to your model.
 You can specify multiple optimization algorithms from different categories like batching, caching and quantization.
 
-For now, let's just use a ``cacher`` to accelerate the model during inference.
+For now, let's just use a ``quantizer`` to accelerate the model during inference.
 
 .. code-block:: python
 
     from pruna import SmashConfig
 
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"  # Accelerate the model with caching
+    smash_config["quantizer"] = "hqq_diffusers"  # Accelerate the model with caching
 
 Pruna support a wide range of algorithms for specific optimizations, all with different trade-offs.
 To understand how to configure the right one for your scenario, see :doc:`Define a SmashConfig </docs_pruna/user_manual/configure>`.
@@ -101,10 +98,22 @@ Let's use the ``smash()`` function to apply the configured optimizations:
 
 .. code-block:: python
 
-    from pruna import smash
+    from pruna import SmashConfig, smash
 
+    from diffusers import StableDiffusionPipeline
+
+    # Load the model
+    base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
+
+    # Create and configure SmashConfig
+    smash_config = SmashConfig()
+    smash_config["quantizer"] = "hqq_diffusers"
+
+    # Smash the model
     optimized_model = smash(model=base_model, smash_config=smash_config)
 
+    # Save the optimized model
+    optimized_model.save_to_hub("PrunaAI/segmind-tiny-sd-smashed")
 
 The ``smash()`` function returns a ``PrunaModel`` - a wrapper that provides a standardized interface for the optimized model. So, we can still use the model as we would use the original one.
 
@@ -118,8 +127,16 @@ To evaluate the optimized model, we can use the same interface as the original m
     from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
 
+    # Load the optimized model
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/segmind-tiny-sd-smashed")
+
+    # Define metrics
     metrics = ['clip_score', 'psnr']
+
+    # Define task
     task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+
+    # Evaluate the model
     eval_agent = EvaluationAgent(task)
     eval_agent.evaluate(optimized_model)
 
@@ -131,6 +148,11 @@ Step 5: Run inference with the optimized model
 To run inference with the optimized model, we can use the same interface as the original model.
 
 .. code-block:: python
+
+    from pruna import PrunaModel
+
+    # Load the optimized model
+    optimized_model = PrunaModel.from_hub("PrunaAI/segmind-tiny-sd-smashed")
 
     optimized_model.set_progress_bar_config(disable=True)
     optimized_model.inference_handler.model_args.update(
