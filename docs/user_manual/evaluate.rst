@@ -68,13 +68,14 @@ Let's see what that looks like in code.
         dataset_name="WikiText",
         tokenizer=optimized_model.smash_config.tokenizer,
     )
+    datamodule.limit_datasets(10)
     task = Task(request=["perplexity"], datamodule=datamodule, device="cpu")
 
     # Create and configure EvaluationAgent
     eval_agent = EvaluationAgent(task)
 
     # Evaluate the model
-    eval_agent.evaluate(optimized_model)
+    results = eval_agent.evaluate(optimized_model)
 
 Evaluation Components
 ---------------------
@@ -124,7 +125,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             task = Task(
-                metrics=["clip_score", "psnr"],
+                request=["clip_score", "psnr"],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -140,7 +141,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.evaluation.metrics import CMMD, TorchMetricWrapper
 
             task = Task(
-                metrics=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="clip_score")],
+                request=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="clip_score")],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -281,16 +282,17 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
                 dataloader_args={"batch_size": 16, "num_workers": 4},
             )
 
-
     .. tab:: From Datasets
 
         As a list of datasets, which provides more flexibility in configuring the data module.
 
         .. code-block:: python
 
-            from pruna.data.pruna_datamodule import prunadatamodule
-            from transformers import AutoTokenizer
             from datasets import load_dataset
+            from transformers import AutoTokenizer
+
+            from pruna.data.pruna_datamodule import PrunaDataModule
+            from pruna.data.utils import split_train_into_train_val_test
 
             # Load the tokenizer
             tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
@@ -305,7 +307,7 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
                 collate_fn="text_generation_collate",
                 tokenizer=tokenizer,
                 collate_fn_args={"max_seq_len": 512},
-                dataloader_args={"batch_size": 16, "num_workers": 4}
+                dataloader_args={"batch_size": 16, "num_workers": 4},
             )
 
 .. tip::
@@ -375,13 +377,13 @@ Let's see how this works in code.
 
             # Define the task and the evaluation agent
             metrics = [CMMD()]
-            task = Task(metrics, datamodule=PrunaDataModule.from_string("LAION256"))
+            datamodule = PrunaDataModule.from_string("LAION256")
+            datamodule.limit_datasets(5)
+            task = Task(metrics, datamodule=datamodule)
             eval_agent = EvaluationAgent(task)
 
             # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
             first_results = eval_agent.evaluate(pipe)
-            print(first_results)
-
 
     .. tab:: Pairwise Evaluation
 
@@ -411,17 +413,16 @@ Let's see how this works in code.
 
             # Define the task and the evaluation agent
             metrics = [CMMD(call_type="pairwise")]
-            task = Task(metrics, datamodule=PrunaDataModule.from_string("LAION256"))
+            datamodule = PrunaDataModule.from_string("LAION256")
+            datamodule.limit_datasets(5)
+            task = Task(metrics, datamodule=datamodule)
             eval_agent = EvaluationAgent(task)
 
             # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
             first_results = eval_agent.evaluate(pipe)
-            print(first_results)
 
             # Evaluate smashed model
             smashed_results = eval_agent.evaluate(smashed_pipe)
-            print(smashed_results)
-
 
 Best Practices
 --------------
