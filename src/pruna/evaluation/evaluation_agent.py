@@ -19,7 +19,7 @@ from torch import Tensor
 
 from pruna.config.utils import is_empty_config
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import check_device_compatibility, safe_memory_cleanup
+from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import group_metrics_by_inheritance
@@ -41,7 +41,7 @@ class EvaluationAgent:
         self.task = task
         self.first_model_results: List[MetricResult] = []
         self.subsequent_model_results: List[MetricResult] = []
-        self.device = check_device_compatibility(self.task.device)
+        self.device = set_to_best_available_device(self.task.device)
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
 

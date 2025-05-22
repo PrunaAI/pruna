@@ -20,7 +20,7 @@ from warnings import warn
 import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.engine.utils import check_device_compatibility
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TOTAL_TIME
@@ -68,11 +68,11 @@ class Task:
         datamodule: PrunaDataModule,
         device: str | torch.device | None = None,
     ) -> None:
-        device = check_device_compatibility(device)
+        device = set_to_best_available_device(device)
         self.metrics = get_metrics(request, device)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
-        self.device = check_device_compatibility(device)
+        self.device = set_to_best_available_device(device)
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
         """

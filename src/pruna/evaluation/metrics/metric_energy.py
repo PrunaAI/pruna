@@ -22,7 +22,7 @@ from codecarbon import EmissionsTracker
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import check_device_compatibility
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -64,7 +64,7 @@ class EnvironmentalImpactStats(BaseMetric):
     ) -> None:
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
-        self.device = check_device_compatibility(device)
+        self.device = set_to_best_available_device(device)
 
     @torch.no_grad()
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any] | MetricResult:
