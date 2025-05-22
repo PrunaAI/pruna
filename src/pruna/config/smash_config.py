@@ -493,9 +493,9 @@ class SmashConfig:
         Examples
         --------
         >>> config = SmashConfig()
-        >>> config["quantizer"] = "awq"
+        >>> config["quantizer"] = "gptq"
         >>> config["quantizer"]
-        "awq"
+        "gptq"
         """
         if name in ADDITIONAL_ARGS:
             return getattr(self, name)
@@ -524,9 +524,9 @@ class SmashConfig:
         Examples
         --------
         >>> config = SmashConfig()
-        >>> config["quantizer"] = "awq"
+        >>> config["quantizer"] = "gptq"
         >>> config["quantizer"]
-        "awq"
+        "gptq"
         """
         deprecated_hyperparameters = [
             "whisper_s2t_batch_size",

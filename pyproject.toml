@@ -88,7 +88,6 @@ hqq = "*"
 torchao = "*"
 # Added Optional Dependencies from Extras
 ruff = { version = "*", optional = true }
-autoawq = { version = "*", optional = true }
 jupyterlab = { version = "*", optional = true }
 notebook = { version = "*", optional = true }
 pre-commit = { version = "*", optional = true }
@@ -116,11 +115,7 @@ stable-fast = [
 gptq = [
     "gptqmodel",
 ]
-autoawq = [
-    "autoawq",
-]
 full = [
-    "autoawq",
     "xformers",
     "stable-fast-pruna",
 ]
