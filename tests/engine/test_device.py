@@ -30,8 +30,8 @@ def test_device_none() -> None:
 @pytest.mark.parametrize(
     "device,expected",
     [
-        ("mps", "cpu") if torch.cuda.is_available() else ("cuda", "cpu"),
-        (torch.device("mps"), "cpu") if torch.cuda.is_available() else (torch.device("cuda"), "cpu"),
+        ("mps", "cuda") if torch.cuda.is_available() else ("cuda", "mps"),
+        (torch.device("mps"), "cuda") if torch.cuda.is_available() else (torch.device("cuda"), "mps"),
     ],
 )
 def test_device_available(device: str | torch.device, expected: str) -> None:

@@ -20,6 +20,7 @@ from warnings import warn
 import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.engine.utils import check_device_compatibility
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TOTAL_TIME
@@ -56,20 +57,22 @@ class Task:
         The user request.
     datamodule : PrunaDataModule
         The dataloader to use for the evaluation.
-    device : str | torch.device
-        The device to use for the evaluation.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
     def __init__(
         self,
         request: str | List[str | BaseMetric | StatefulMetric],
         datamodule: PrunaDataModule,
-        device: str | torch.device = "cuda",
+        device: str | torch.device | None = None,
     ) -> None:
-        self.metrics = get_metrics(request)
+        device = check_device_compatibility(device)
+        self.metrics = get_metrics(request, device)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
-        self.device = device
+        self.device = check_device_compatibility(device)
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
         """
@@ -116,7 +119,9 @@ class Task:
         return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
 
 
-def get_metrics(request: str | List[str | BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
+def get_metrics(
+    request: str | List[str | BaseMetric | StatefulMetric], device: str | torch.device | None = None
+) -> List[BaseMetric | StatefulMetric]:
     """
     Convert user requests into a list of metrics.
 

@@ -22,6 +22,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.utils import check_device_compatibility
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -54,8 +55,9 @@ class InferenceTimeStats(BaseMetric):
         The number of batches to evaluate the model.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     timing_type : str, default="sync"
         The type of timing to use.
     """
@@ -64,12 +66,12 @@ class InferenceTimeStats(BaseMetric):
         self,
         n_iterations: int = 100,
         n_warmup_iterations: int = 10,
-        device: str | torch.device = "cuda",
+        device: str | torch.device | None = None,
         timing_type: str = "sync",
     ) -> None:
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
-        self.device = device
+        self.device = check_device_compatibility(device)
         self.timing_type = timing_type
 
     def _measure(self, model: PrunaModel, dataloader: DataLoader, iterations: int, measure_fn) -> None:
@@ -118,12 +120,12 @@ class InferenceTimeStats(BaseMetric):
             endevent_time = time.time()
             return (endevent_time - startevent_time) * 1000  # in ms
         elif self.timing_type == "sync":
-            startevent = torch.cuda.Event(enable_timing=True)
-            endevent = torch.cuda.Event(enable_timing=True)
+            startevent = getattr(torch, self.device).Event(enable_timing=True)
+            endevent = getattr(torch, self.device).Event(enable_timing=True)
             startevent.record()
             _ = model(x, **model.inference_handler.model_args)
             endevent.record()
-            torch.cuda.synchronize()
+            getattr(torch, self.device).synchronize()
             return startevent.elapsed_time(endevent)  # in ms
         else:
             raise ValueError(f"Timing type {self.timing_type} not supported.")
@@ -183,8 +185,9 @@ class LatencyMetric(InferenceTimeStats):
         The number of batches to evaluate the model.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     timing_type : str, default="sync"
         The type of timing to use.
     """
@@ -227,8 +230,9 @@ class ThroughputMetric(InferenceTimeStats):
         The number of batches to evaluate the model.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     timing_type : str, default="sync"
         The type of timing to use.
     """
@@ -271,8 +275,9 @@ class TotalTimeMetric(InferenceTimeStats):
         The number of batches to evaluate the model.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     timing_type : str, default="sync"
         The type of timing to use.
     """

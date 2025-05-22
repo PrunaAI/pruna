@@ -33,6 +33,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
 
+from pruna.engine.utils import check_device_compatibility
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -233,7 +234,7 @@ class TorchMetricWrapper(StatefulMetric):
         super().__init__()
         try:
             if metric_name == "perplexity":
-                device = kwargs.pop("device", "cuda")
+                device = check_device_compatibility(device=kwargs.get("device"))
                 self.metric = TorchMetrics[metric_name](**kwargs).to(device)
             else:
                 self.metric = TorchMetrics[metric_name](**kwargs)

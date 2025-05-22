@@ -266,19 +266,19 @@ def check_device_compatibility(device: str | torch.device | None) -> str:
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-        pruna_logger.info(f"No device specified. Using best available device: '{device}'")
+        pruna_logger.info(f"Using best available device: '{device}'")
         return device
 
     if device == "cpu":
         return "cpu"
 
     if device == "cuda" and not torch.cuda.is_available():
-        pruna_logger.warning("'cuda' requested but not available. Falling back to 'cpu'")
-        return "cpu"
+        pruna_logger.warning("'cuda' requested but not available.")
+        return check_device_compatibility(device=None)
 
     if device == "mps" and not torch.backends.mps.is_available():
-        pruna_logger.warning("'mps' requested but not available. Falling back to 'cpu'")
-        return "cpu"
+        pruna_logger.warning("'mps' requested but not available.")
+        return check_device_compatibility(device=None)
 
     return device
 

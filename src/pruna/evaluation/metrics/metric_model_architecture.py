@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader
 
 from pruna.engine.call_sequence_tracker import CallSequenceTracker
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.utils import check_device_compatibility
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -50,12 +51,13 @@ class ModelArchitectureStats(BaseMetric):
 
     Parameters
     ----------
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
-    def __init__(self, device: str | torch.device = "cuda") -> None:
-        self.device = device
+    def __init__(self, device: str | torch.device | None = None) -> None:
+        self.device = check_device_compatibility(device)
         self.module_macs: Dict[str, Any] = {}
         self.module_params: Dict[str, Any] = {}
         self.call_tracker = CallSequenceTracker()
@@ -194,8 +196,9 @@ class TotalMACsMetric(ModelArchitectureStats):
 
     Parameters
     ----------
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
     metric_name: str = TOTAL_MACS
@@ -231,8 +234,9 @@ class TotalParamsMetric(ModelArchitectureStats):
 
     Parameters
     ----------
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
     metric_name: str = TOTAL_PARAMS
