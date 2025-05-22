@@ -34,7 +34,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers
-from pruna.engine.utils import determine_dtype
+from pruna.engine.utils import ModelContext, determine_dtype
 from pruna.logging.logger import pruna_logger
 
 
@@ -299,11 +299,19 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     from hqq.engine.hf import HQQModelForCausalLM
     from hqq.models.hf.base import AutoHQQHFModel
 
-    if isinstance(model, HQQModelForCausalLM):
-        model.save_quantized(model_path)
-    else:
-        AutoHQQHFModel.save_quantized(model, model_path)
-
+    with ModelContext(model) as (pipeline, working_model, denoiser_type):
+        if isinstance(working_model, HQQModelForCausalLM):
+            working_model.save_quantized(model_path)
+        else:
+            AutoHQQHFModel.save_quantized(working_model, model_path)
+        # redefining the working_model breaks links with context manager
+        # so we need to re-define the working_model as an attribute of the model.
+        pipeline.working_model = working_model
+    # up to this point only the llama inside the model is saved if the model is janus like
+    # we need to save the rest of the model
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        model.model.language_model = None
+    model.save_pretrained(model_path)
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
 
