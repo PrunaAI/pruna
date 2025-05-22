@@ -20,14 +20,13 @@ from ConfigSpace import Constant
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.data.utils import recover_text_from_dataloader
 from pruna.engine.model_checks import is_causal_lm
 
 
 class LLMCompressorQuantizer(PrunaQuantizer):
     """Quantize causal language models with `llmcompressor`."""
 
-    algorithm_name = "llm_compressor"
+    algorithm_name = "llm_compressor_awq"
     references = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
     tokenizer_required = True
     processor_required = False
@@ -58,11 +57,9 @@ class LLMCompressorQuantizer(PrunaQuantizer):
             )
         ]
 
-        dataloader = smash_config.val_dataloader()
-        tokenizer = smash_config.tokenizer
-        calib_data = recover_text_from_dataloader(dataloader, tokenizer)
+        dataset = smash_config.data.val_dataset
 
-        imported["oneshot"](model=model, recipe=recipe, calib_data=calib_data)
+        imported["oneshot"](model=model, recipe=recipe, dataset=dataset)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
