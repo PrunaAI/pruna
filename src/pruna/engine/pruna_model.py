@@ -121,6 +121,20 @@ class PrunaModel:
         else:
             return getattr(self.model, attr)
 
+    def __delattr__(self, attr: str) -> None:
+        """
+        Delete an attribute from the model.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute to delete.
+        """
+        if self.model is None:
+            raise ValueError("No more model available, this model is likely destroyed.")
+        else:
+            delattr(self.model, attr)
+
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """
         Get the nn.Module instances in the model.
