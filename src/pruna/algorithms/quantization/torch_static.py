@@ -37,7 +37,7 @@ class TorchStaticQuantizer(PrunaQuantizer):
     save_fn: Callable = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
     processor_required: bool = False
-    runs_on: list[str] = ["cpu", "cuda", "mps"]
+    runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = True
     compatible_algorithms: dict[str, list[str]] = dict()
 

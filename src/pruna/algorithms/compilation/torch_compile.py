@@ -46,7 +46,7 @@ class TorchCompileCompiler(PrunaCompiler):
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     tokenizer_required: bool = False
     processor_required: bool = False
-    runs_on: list[str] = ["cpu", "cuda", "mps"]
+    runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(
         factorizer=["qkv_diffusers"],
