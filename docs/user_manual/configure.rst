@@ -115,6 +115,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - (✅)
      - ➖
      - ➖
+   * - ``enhancer``
+     - Enhances the model output by applying post-processing algorithms such as denoising or upscaling.
+     - ❌
+     - ➖
+     - ✅
 
 ✅(improves), ➖(approx. the same), ❌(worsens)
 
