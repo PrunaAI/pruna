@@ -43,7 +43,7 @@ class CMMD(StatefulMetric):
     *args : Any
         Additional arguments to pass to the StatefulMetric constructor.
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     clip_model_name : str
         The name of the CLIP model to use.
