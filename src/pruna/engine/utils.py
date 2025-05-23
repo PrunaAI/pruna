@@ -165,10 +165,9 @@ def remove_all_accelerate_hooks(model: Any) -> None:
             else:
                 raise e
 
-    # avoid circular import
-    from pruna.engine.pruna_model import PrunaModel
-
-    if isinstance(model, (torch.nn.Module, PrunaModel)):
+    if isinstance(model, torch.nn.Module) or (
+        hasattr(model, "compare_model_isinstance") and model.compare_model_isinstance(torch.nn.Module)
+    ):
         # transformers models are all torch.nn.Module, which is what the hook removal expects
         remove_hook_from_module(model, recurse=True)
     elif hasattr(model, "components"):
