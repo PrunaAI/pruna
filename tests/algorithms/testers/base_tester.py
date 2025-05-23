@@ -94,6 +94,7 @@ class AlgorithmTesterBase:
         model = PrunaModel.from_pretrained(self.saving_path)
         assert isinstance(model, PrunaModel)
         self.post_smash_hook(model)
+        assert model.smash_config.device == get_device(model)
 
     def execute_smash(self, model: Any, smash_config: SmashConfig) -> PrunaModel:
         """Execute the smash operation."""
