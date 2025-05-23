@@ -340,16 +340,41 @@ def load_hqq(model_path: str, **kwargs) -> Any:
             " --extra-index-url https://prunaai.pythonanywhere.com/`."
         )
         raise
+    if os.path.exists(os.path.join(model_path, "hqq_language_model")):
+        q_path = os.path.join(model_path, "hqq_language_model")
+        # load the weight on cpu to rename attr -> model.attr,
+        # and also artifically add a lm_head to the weights.
+        weights = torch.load(os.path.join(q_path, "qmodel.pt"), map_location="cpu", weights_only=True)
+        weights = {f"model.{k}" if not k.startswith("model.") else k: v for k, v in weights.items()}
+        weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
+        # save the weights to the q_path under the format expected by hqq.
+        torch.save(weights, os.path.join(q_path, "qmodel.pt"))
+    else:
+        q_path = model_path
 
     try:  # Try to use pipeline for HF specific HQQ quantization
-        model = HQQModelForCausalLM.from_quantized(
-            model_path, **filter_load_kwargs(HQQModelForCausalLM.from_quantized, kwargs)
+        qmodel = HQQModelForCausalLM.from_quantized(
+            q_path, **filter_load_kwargs(HQQModelForCausalLM.from_quantized, kwargs)
         )
     except Exception as e:  # Default to generic HQQ pipeline if it fails
         pruna_logger.error(f"Error loading model using HQQ: {e}")
-        model = AutoHQQHFModel.from_quantized(model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs))
+        smash_config = SmashConfig()
+        smash_config.load_from_json(model_path)
+        compute_dtype = torch.float16 if smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
+        qmodel = AutoHQQHFModel.from_quantized(
+            q_path,
+            compute_dtype=compute_dtype,
+            **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs)
+        )
 
-    return model
+    original_config = load_json_config(model_path, "config.json")
+    if original_config["architectures"][0] == "JanusForConditionalGeneration":
+        cls = getattr(transformers, "JanusForConditionalGeneration")
+        model = cls.from_pretrained(model_path, **kwargs)
+        model.model.language_model = qmodel.model
+        return model
+    else:
+        return qmodel
 
 
 def load_quantized(model_path: str, **kwargs) -> Any:
