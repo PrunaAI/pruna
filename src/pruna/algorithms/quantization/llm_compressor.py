@@ -26,7 +26,7 @@ from pruna.engine.model_checks import is_causal_lm
 class LLMCompressorQuantizer(PrunaQuantizer):
     """Quantize causal language models with `llmcompressor`."""
 
-    algorithm_name = "llm_compressor_awq"
+    algorithm_name = "awq"
     references = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
     tokenizer_required = True
     processor_required = False
