@@ -23,9 +23,10 @@ from typing import Any
 
 import torch
 import torch.nn as nn
+from accelerate import dispatch_model
 from accelerate.hooks import remove_hook_from_module
 from diffusers.models.modeling_utils import ModelMixin
-from transformers.pipelines import SUPPORTED_TASKS
+from transformers import Pipeline
 
 from pruna.logging.logger import pruna_logger
 
@@ -100,6 +101,9 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
     device_map : dict[str, str] | None
         The device map to use if the target device is "accelerate".
     """
+    if isinstance(model, Pipeline):
+        return move_to_device(model.model, device, raise_error, device_map)
+
     # sanity check for expected device types
     if device not in ["cpu", "cuda", "mps", "accelerate"]:
         raise ValueError("Device must be a string in [cpu, cuda, mps, accelerate].")
@@ -108,20 +112,16 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
     if get_device(model) == device:
         return
 
-    # logic for transformers pipelines, which have a device attribute but do not support casting directly
-    target_model = model.model if hasattr(model, "task") and getattr(model, "task") in SUPPORTED_TASKS else model
-
     if device == "accelerate":
         if device_map is None:
             raise ValueError("Device map is required when moving to accelerate.")
-        cast_model_to_accelerate_device_map(target_model, device_map)
+        cast_model_to_accelerate_device_map(model, device_map)
 
     else:
-        if get_device(target_model) == "accelerate":
-            if hasattr(target_model, "reset_device_map"):
-                # remove distributed device state to be able to use ".to" for diffusers models
-                target_model.reset_device_map()
-            remove_hook_from_module(target_model, recurse=hasattr(target_model, "children"))
+        if get_device(model) == "accelerate":
+            remove_all_accelerate_hooks(model)
+            model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
+
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
@@ -134,6 +134,33 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
     safe_memory_cleanup()
+
+
+def remove_all_accelerate_hooks(model: Any) -> None:
+    """
+    Remove all hooks from the model.
+
+    This is a helper function to remove all hooks from the model.
+    It is used to avoid the RecursionError that occurs when the model is referencing itself.
+
+    Parameters
+    ----------
+    model : Any
+        The model to remove the hooks from.
+    """
+    if hasattr(model, "reset_device_map"):
+        # remove distributed device state to be able to use ".to" for diffusers models
+        model.reset_device_map()
+
+    if isinstance(model, torch.nn.Module):
+        # transformers models are all torch.nn.Module, which is what the hook removal expects
+        remove_hook_from_module(model, recurse=True)
+    else:
+        # diffusers pipelines e.g. are not torch modules, so we need to find all attributes that are modules
+        # we only do this at the first level, recurse will take care of the rest
+        for attr in model.components:
+            if isinstance(getattr(model, attr), torch.nn.Module):
+                remove_hook_from_module(getattr(model, attr), recurse=True)
 
 
 def cast_model_to_accelerate_device_map(model, device_map):
@@ -155,15 +182,11 @@ def cast_model_to_accelerate_device_map(model, device_map):
     if any(not isinstance(dev, int) for dev in device_map.values()):
         raise ValueError("All devices in device_map must be CUDA device indices (integers).")
 
-    def to_torch_device(dev_idx):
-        return torch.device(f"cuda:{dev_idx}")
-
-    for submodule_name, dev_idx in device_map.items():
-        device = to_torch_device(dev_idx)
-        submodule = getattr(model, submodule_name, None)
-        if submodule is None:
-            raise ValueError(f"Pipeline has no submodule named '{submodule_name}'")
-        submodule.to(device)
+    if not isinstance(model, torch.nn.Module):
+        for target, device in device_map.items():
+            dispatch_model(getattr(model, target), device_map={"": device}, force_hooks=True)
+    else:
+        dispatch_model(model, device_map=device_map, force_hooks=True)
 
     model.hf_device_map = device_map.copy()
 
@@ -184,6 +207,9 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
     str | dict[str, str]
         The device or device map of the model.
     """
+    if isinstance(model, Pipeline):
+        return get_device(model.model, return_device_map)
+
     if not hasattr(model, "device"):
         try:
             model_device = next(model.parameters()).device
@@ -195,19 +221,10 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
     if isinstance(model_device, torch.device):
         model_device = model_device.type
 
-    if hasattr(model, "hf_device_map") and model.hf_device_map is not None:
-        # an device map that points the whole model to the same device is not considered distributed
-        if list(model.hf_device_map.keys()) == [""]:
-            if isinstance(model.hf_device_map[""], torch.device):
-                model_device = model.hf_device_map[""].type
-            elif isinstance(model.hf_device_map[""], int):
-                model_device = "cuda"
-            elif model.hf_device_map[""] == "cpu":
-                model_device = "cpu"
-            else:
-                raise ValueError("Invalid device map found in model.hf_device_map.")
-        else:
-            model_device = model.hf_device_map if return_device_map else "accelerate"
+    # a device map that points the whole model to the same device (only key is "") is not considered distributed
+    # when casting a model like this with "to" the device map is not maintained, so we rely on the model.device attribute
+    if hasattr(model, "hf_device_map") and model.hf_device_map is not None and list(model.hf_device_map.keys()) != [""]:
+        model_device = model.hf_device_map if return_device_map else "accelerate"
 
     return model_device
 

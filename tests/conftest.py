@@ -9,6 +9,7 @@ def pytest_configure(config: Any) -> None:
     """Configure the pytest markers."""
     config.addinivalue_line("markers", "cpu: mark test to run on CPU")
     config.addinivalue_line("markers", "cuda: mark test to run only on GPU machines")
+    config.addinivalue_line("markers", "distributed: mark test to run only on multi-GPU machines")
     config.addinivalue_line("markers", "high: mark test to run only on large GPUs")
     config.addinivalue_line("markers", "high_cpu: mark test to run only on large CPU systems")
     config.addinivalue_line("markers", "slow: mark test that run rather long")

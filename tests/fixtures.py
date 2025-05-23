@@ -76,7 +76,7 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
         model=model_id,
         chunk_length_s=30,
         torch_dtype=torch.float16,
-        device="cpu",
+        device_map="balanced",
     )
     smash_config = SmashConfig()
     smash_config.add_tokenizer(source_model_id)
@@ -93,7 +93,7 @@ def dummy_model() -> tuple[Any, SmashConfig]:
 
 def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get a diffusers model for image generation."""
-    model = cls.from_pretrained(model_id, **kwargs)
+    model = cls.from_pretrained(model_id, device_map="balanced", **kwargs)
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
     return model, smash_config
@@ -101,7 +101,7 @@ def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any])
 
 def get_automodel_transformers(model_id: str) -> tuple[Any, SmashConfig]:
     """Get an AutoModelForCausalLM model for text generation."""
-    model = AutoModelForCausalLM.from_pretrained(model_id)
+    model = AutoModelForCausalLM.from_pretrained(model_id, device_map="balanced")
     smash_config = SmashConfig()
     try:
         smash_config.add_tokenizer(model_id)
@@ -130,24 +130,18 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
 MODEL_FACTORY: dict[str, Callable] = {
     # whisper models
     "whisper_tiny_random": whisper_tiny_random_model,
-
     # vision models
     "shufflenet": partial(get_torchvision_model, "shufflenet_v2_x0_5"),
     "mobilenet_v2": partial(get_torchvision_model, "mobilenet_v2"),
     "resnet_18": partial(get_torchvision_model, "resnet18"),
     "vit_b_16": partial(get_torchvision_model, "vit_b_16"),
-
     # image generation models
     "stable_diffusion_v1_4": stable_diffusion_v1_4_model,
     "stable_diffusion_3_medium_diffusers": partial(
         get_diffusers_model, StableDiffusion3Pipeline, "stabilityai/stable-diffusion-3-medium-diffusers"
     ),
     "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
-    "sd_tiny_random": partial(
-        get_diffusers_model,
-        StableDiffusionPipeline,
-        "dg845/tiny-random-stable-diffusion"
-    ),
+    "sd_tiny_random": partial(get_diffusers_model, StableDiffusionPipeline, "dg845/tiny-random-stable-diffusion"),
     "sana": partial(
         get_diffusers_model,
         SanaPipeline,
@@ -157,7 +151,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     ),
     "sana_tiny_random": partial(get_diffusers_model, SanaPipeline, "katuni4ka/tiny-random-sana"),
     "flux_tiny_random": partial(get_diffusers_model, FluxPipeline, "katuni4ka/tiny-random-flux"),
-
     # text generation models
     "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m"),
     "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
