@@ -102,6 +102,21 @@ class PrunaModel:
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
+    def compare_model_isinstance(self, instance_type: type) -> bool:
+        """
+        Compare the model to the given instance type.
+
+        Parameters
+        ----------
+        instance_type : type
+            The type to compare the model to.
+
+        Returns
+        -------
+        bool
+        """
+        return isinstance(self.model, instance_type)
+
     def __getattr__(self, attr: str) -> Any:
         """
         Forward attribute access to the underlying model.
