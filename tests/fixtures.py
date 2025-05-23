@@ -70,10 +70,9 @@ def stable_diffusion_v1_4_model() -> tuple[Any, SmashConfig]:
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
     source_model_id = "openai/whisper-tiny"
-    model_id = "yujiepan/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
-        model=model_id,
+        model=source_model_id,
         chunk_length_s=30,
         torch_dtype=torch.float16,
         device_map="balanced",
