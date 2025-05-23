@@ -160,6 +160,7 @@ Since Pruna offers a broad range of optimization algorithms, the following table
 | `quantizer`  | Reduces the precision of weights and activations, lowering memory requirements.              | ✅    | ✅     | ❌      |
 | `pruner`     | Removes less important or redundant connections and neurons, resulting in a sparser, more efficient network. | ✅    | ✅     | ❌      |
 | `recoverer`  | Restores the performance of a model after compression.                                       | ➖    | ➖     | ✅      |
+| `factorizer` | Factorization batches several small matrix multiplications into one large fused operation. | ✅ | ➖ | ➖ |
 | `enhancer`   | Enhances the model output by applying post-processing algorithms such as denoising or upscaling. | ❌ | - | ✅ |
 
 ✅ (improves), ➖ (approx. the same), ❌ (worsens)
