@@ -99,6 +99,21 @@ class PrunaModel:
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
+    def compare_model_isinstance(self, instance_type: type) -> bool:
+        """
+        Compare the model to the given instance type.
+
+        Parameters
+        ----------
+        instance_type : type
+            The type to compare the model to.
+
+        Returns
+        -------
+        bool
+        """
+        return isinstance(self.model, instance_type)
+
     def __getattr__(self, attr: str) -> Any:
         """
         Forward attribute access to the underlying model.
@@ -117,6 +132,20 @@ class PrunaModel:
             raise ValueError("No more model available, this model is likely destroyed.")
         else:
             return getattr(self.model, attr)
+
+    def __delattr__(self, attr: str) -> None:
+        """
+        Delete an attribute from the model.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute to delete.
+        """
+        if self.model is None:
+            raise ValueError("No more model available, this model is likely destroyed.")
+        else:
+            delattr(self.model, attr)
 
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """

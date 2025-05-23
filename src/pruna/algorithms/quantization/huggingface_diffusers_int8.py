@@ -39,17 +39,14 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
     This algorithm is specifically adapted for diffusers models.
     """
 
-    algorithm_name = "diffusers_int8"
-    references = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    compatible_algorithms = dict(
-        factorizer=["qkv_diffusers"],
-        cacher=["deepcache", "fastercache", "fora", "pab"],
-        compiler=["torch_compile"],
+    algorithm_name: str = "diffusers_int8"
+    references: dict[str, str] = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cuda", "accelerate"]
+    compatible_algorithms: dict[str, list[str]] = dict(
+        factorizer=["qkv_diffusers"], cacher=["deepcache", "fastercache", "fora", "pab"], compiler=["torch_compile"]
     )
 
     def get_hyperparameters(self) -> list:

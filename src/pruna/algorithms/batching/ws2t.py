@@ -43,14 +43,15 @@ class WS2TBatcher(PrunaBatcher):
     batch size to a value that corresponds to your inference requirements.
     """
 
-    algorithm_name = "whisper_s2t"
-    references = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
-    tokenizer_required = True
-    processor_required = True
-    dataset_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    compatible_algorithms = dict(compiler=["c_translate", "c_generate", "c_whisper"], quantizer=["half"])
+    algorithm_name: str = "whisper_s2t"
+    references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
+    tokenizer_required: bool = True
+    processor_required: bool = True
+    dataset_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    compatible_algorithms: dict[str, list[str]] = dict(
+        compiler=["c_translate", "c_generate", "c_whisper"], quantizer=["half"]
+    )
 
     def get_hyperparameters(self) -> list:
         """

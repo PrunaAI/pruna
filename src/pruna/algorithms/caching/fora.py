@@ -37,8 +37,7 @@ class FORACacher(PrunaCacher):
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False
     processor_required: bool = False
-    run_on_cpu: bool = True
-    run_on_cuda: bool = True
+    runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(
         compiler=["stable_fast", "torch_compile"],

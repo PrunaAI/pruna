@@ -76,7 +76,10 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
     model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, **kwargs)
 
     if "device_map" not in kwargs and "device" not in kwargs:
-        move_to_device(model, smash_config.device)
+        try:
+            move_to_device(model, smash_config.device, device_map=smash_config.device_map)
+        except Exception as e:
+            pruna_logger.error(f"Error moving model to device: {e}")
 
     # check if there are any algorithms to reapply
     if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):

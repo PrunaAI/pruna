@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import importlib
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import torch
 
@@ -73,15 +73,14 @@ class TorchaoQuantizer(PrunaQuantizer):
     full-precision model.
     """
 
-    algorithm_name = "torchao"
-    references = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
-    save_fn = SAVE_FUNCTIONS.save_before_apply
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu: bool = True
-    run_on_cuda: bool = True
-    dataset_required = False
-    compatible_algorithms = dict(
+    algorithm_name: str = "torchao"
+    references: dict[str, str] = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
+    save_fn: Callable = SAVE_FUNCTIONS.save_before_apply
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(
         cacher=["fora"],
         compiler=["torch_compile"],
         factorizer=["qkv_diffusers"],

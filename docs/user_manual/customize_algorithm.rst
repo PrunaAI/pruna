@@ -48,8 +48,7 @@ These attributes are used to provide information about the algorithm to the user
         tokenizer_required = False
         processor_required = False
         dataset_required = False
-        run_on_cpu = True
-        run_on_cuda = True
+        runs_on = ["cpu", "cuda"]
         compatible_algorithms = dict(quantizer=["quanto"])
 
 
@@ -60,7 +59,7 @@ Step 4. Add Algorithm Attributes
 - ``algorithm_name``: Identifier used to activate the algorithm, name should be in snake case.
 - ``references``: A dictionary of any references that can be provided for the algorithm, typically a link to the GitHub repository or a paper.
 - ``tokenizer_required``, ``processor_required``, ``dataset_required``: Indicate required components.
-- ``run_on_cpu``, ``run_on_cuda``: Define hardware compatibility.
+- ``runs_on``: Define which of the hardwares listed in ``SUPPORTED_DEVICES`` are compatible with the algorithm.
 - ``compatible_algorithms``: Lists compatible algorithms, i.e. any algorithm that can be applied on the same model together with the current algorithm. This compatibility should be specified both ways; if “quanto” is compatible with “superfast”, “superfast” must also list “quanto”.
 - Additionally, you might have to specify a saving function. We provide more details on this in the section below.
 
@@ -242,8 +241,7 @@ Here’s the complete ``superfast.py`` implementation:
         tokenizer_required = False
         processor_required = False
         dataset_required = False
-        run_on_cpu = True
-        run_on_cuda = True
+        runs_on = ["cpu", "cuda"]
         compatible_algorithms = dict(quantizer=["quanto"])
 
         def get_hyperparameters(self) -> list:

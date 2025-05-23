@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import tempfile
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 from ConfigSpace import Constant, OrdinalHyperparameter
 
@@ -34,16 +34,15 @@ class AWQQuantizer(PrunaQuantizer):
     allowing models to operate at 4-bit precision without significantly sacrificing accuracy.
     """
 
-    algorithm_name = "awq"
-    references = {"GitHub": "https://github.com/casper-hansen/AutoAWQ"}
-    save_fn = SAVE_FUNCTIONS.awq_quantized
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = True
-    compatible_algorithms = dict()
-    required_install = "``pip install pruna[autoawq]``"
+    algorithm_name: str = "awq"
+    references: dict[str, str] = {"GitHub": "https://github.com/casper-hansen/AutoAWQ"}
+    save_fn: Callable = SAVE_FUNCTIONS.awq_quantized
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = True
+    compatible_algorithms: dict[str, list[str]] = dict()
+    required_install: str = "``pip install pruna[autoawq]``"
 
     def get_hyperparameters(self) -> list:
         """

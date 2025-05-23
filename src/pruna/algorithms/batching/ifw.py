@@ -36,14 +36,13 @@ class IFWBatcher(PrunaBatcher):
     batch size to a value that corresponds to your inference requirements.
     """
 
-    algorithm_name = "ifw"
-    references = {"GitHub": "https://github.com/huggingface/transformers"}
-    tokenizer_required = True
-    processor_required = True
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(quantizer=["half"])
+    algorithm_name: str = "ifw"
+    references: dict[str, str] = {"GitHub": "https://github.com/huggingface/transformers"}
+    tokenizer_required: bool = True
+    processor_required: bool = True
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half"])
 
     def get_hyperparameters(self) -> list:
         """
