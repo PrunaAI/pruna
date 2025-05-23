@@ -52,7 +52,7 @@ class ModelArchitectureStats(BaseMetric):
     Parameters
     ----------
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     """
 
@@ -197,7 +197,7 @@ class TotalMACsMetric(ModelArchitectureStats):
     Parameters
     ----------
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     """
 
@@ -235,7 +235,7 @@ class TotalParamsMetric(ModelArchitectureStats):
     Parameters
     ----------
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     """
 

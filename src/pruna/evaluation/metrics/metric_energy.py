@@ -55,7 +55,7 @@ class EnvironmentalImpactStats(BaseMetric):
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     """
 
@@ -160,7 +160,7 @@ class EnergyConsumedMetric(EnvironmentalImpactStats):
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     """
 
@@ -203,7 +203,7 @@ class CO2EmissionsMetric(EnvironmentalImpactStats):
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
     device : str | torch.device | None, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     """
 
