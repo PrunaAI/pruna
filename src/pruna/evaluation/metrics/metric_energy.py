@@ -22,6 +22,7 @@ from codecarbon import EmissionsTracker
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -53,16 +54,17 @@ class EnvironmentalImpactStats(BaseMetric):
         are not averaged and will therefore increase with this argument.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
     def __init__(
-        self, n_iterations: int = 100, n_warmup_iterations: int = 10, device: str | torch.device = "cuda"
+        self, n_iterations: int = 100, n_warmup_iterations: int = 10, device: str | torch.device | None = None
     ) -> None:
         self.n_iterations = n_iterations
         self.n_warmup_iterations = n_warmup_iterations
-        self.device = device
+        self.device = set_to_best_available_device(device)
 
     @torch.no_grad()
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any] | MetricResult:
@@ -115,6 +117,8 @@ class EnvironmentalImpactStats(BaseMetric):
         # Make sure all the operations are finished before stopping the tracker
         if self.device == "cuda" or str(self.device).startswith("cuda"):
             torch.cuda.synchronize()
+        elif self.device == "mps":
+            torch.mps.synchronize()
         tracker.stop()
 
         emissions_data = self._collect_emissions_data(tracker)
@@ -155,8 +159,9 @@ class EnergyConsumedMetric(EnvironmentalImpactStats):
         are not averaged and will therefore increase with this argument.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
     higher_is_better: bool = False
@@ -197,8 +202,9 @@ class CO2EmissionsMetric(EnvironmentalImpactStats):
         are not averaged and will therefore increase with this argument.
     n_warmup_iterations : int, default=10
         The number of warmup batches to evaluate the model.
-    device : str | torch.device, default="cuda"
-        The device to evaluate the model on.
+    device : str | torch.device | None, optional
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
     higher_is_better: bool = False

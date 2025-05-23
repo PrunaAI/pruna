@@ -244,9 +244,9 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
     return torch.float32
 
 
-def check_device_compatibility(device: str | torch.device | None) -> str:
+def set_to_best_available_device(device: str | torch.device | None) -> str:
     """
-    Validate if the specified device is available on the current system.
+    Set the device to the best available device.
 
     Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
     If device is None, the best available device will be returned.
@@ -266,21 +266,24 @@ def check_device_compatibility(device: str | torch.device | None) -> str:
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-        pruna_logger.info(f"No device specified. Using best available device: '{device}'")
+        pruna_logger.info(f"Using best available device: '{device}'")
         return device
 
     if device == "cpu":
         return "cpu"
 
+    if device == "accelerate" and torch.cuda.is_available():
+        return "accelerate"
+
     if device == "cuda" and not torch.cuda.is_available():
-        pruna_logger.warning("'cuda' requested but not available. Falling back to 'cpu'")
-        return "cpu"
+        pruna_logger.warning("'cuda' requested but not available.")
+        return set_to_best_available_device(device=None)
 
     if device == "mps" and not torch.backends.mps.is_available():
-        pruna_logger.warning("'mps' requested but not available. Falling back to 'cpu'")
-        return "cpu"
+        pruna_logger.warning("'mps' requested but not available.")
+        return set_to_best_available_device(device=None)
 
-    return device
+    raise ValueError(f"Device not supported: '{device}'")
 
 
 class ModelContext:

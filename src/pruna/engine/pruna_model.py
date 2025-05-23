@@ -25,7 +25,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
 from pruna.engine.load import load_pruna_model, load_pruna_model_from_hub
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import get_nn_modules, move_to_device, set_to_eval
+from pruna.engine.utils import get_nn_modules, move_to_device, set_to_best_available_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -74,7 +74,9 @@ class PrunaModel:
             with torch.no_grad():
                 return self.model.__call__(*args, **kwargs)
 
-    def run_inference(self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str) -> Any:
+    def run_inference(
+        self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str | None = None
+    ) -> Any:
         """
         Run inference on the model.
 
@@ -82,14 +84,15 @@ class PrunaModel:
         ----------
         batch : Tuple[List[str] | torch.Tensor, ...]
             The batch to run inference on.
-        device : torch.device | str
-            The device to run inference on.
+        device : torch.device | str | None
+            The device to run inference on. If None, the best available device will be used.
 
         Returns
         -------
         Any
             The processed output.
         """
+        device = set_to_best_available_device(device)
         batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
         if prepared_inputs is not None:
