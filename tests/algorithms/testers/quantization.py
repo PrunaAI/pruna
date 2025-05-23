@@ -48,7 +48,7 @@ class TestQuanto(AlgorithmTesterBase):
 class TestLLMint8(AlgorithmTesterBase):
     """Test the LLMint8 quantizer."""
 
-    models = ["opt_tiny_random"]
+    models = ["opt_125m"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMInt8Quantizer

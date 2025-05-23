@@ -102,7 +102,12 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
         The device map to use if the target device is "accelerate".
     """
     if isinstance(model, Pipeline):
-        return move_to_device(model.model, device, raise_error, device_map)
+        move_to_device(model.model, device, raise_error, device_map)
+        # this is a workaround for a flaw in the transformers pipeline handling
+        # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
+        if device != "accelerate":
+            delattr(model.model, "hf_device_map")
+        return
 
     # sanity check for expected device types
     if device not in ["cpu", "cuda", "mps", "accelerate"]:
@@ -120,6 +125,7 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
     else:
         if get_device(model) == "accelerate":
             remove_all_accelerate_hooks(model)
+            # transformers model maintain single-device models with a None map, diffusers does not
             model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
 
         try:
@@ -159,7 +165,10 @@ def remove_all_accelerate_hooks(model: Any) -> None:
             else:
                 raise e
 
-    if isinstance(model, torch.nn.Module):
+    # avoid circular import
+    from pruna.engine.pruna_model import PrunaModel
+
+    if isinstance(model, (torch.nn.Module, PrunaModel)):
         # transformers models are all torch.nn.Module, which is what the hook removal expects
         remove_hook_from_module(model, recurse=True)
     else:
