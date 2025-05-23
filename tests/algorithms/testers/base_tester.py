@@ -38,11 +38,6 @@ class AlgorithmTesterBase:
         pass
 
     @classmethod
-    def cast_to_device(cls, model: Any, device: str = "cpu") -> Any:
-        """Cast the model to the given device."""
-        move_to_device(model, device)
-
-    @classmethod
     def final_teardown(cls, smash_config: SmashConfig) -> None:
         """Teardown the test, remove the saved model and clean up the files in any case."""
         # reset this smash config cache dir, this should not be shared across runs
