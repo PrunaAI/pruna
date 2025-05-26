@@ -13,7 +13,7 @@ TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
     "notebook_name",
     [
         pytest.param("asr_tutorial", marks=pytest.mark.cuda),
-        pytest.param("flux_small", marks=pytest.mark.cuda),
+        pytest.param("image_generation", marks=pytest.mark.cuda),
         pytest.param("asr_whisper", marks=pytest.mark.cuda),
         pytest.param("llms", marks=pytest.mark.cuda),
         pytest.param("cv_cpu", marks=pytest.mark.cpu),
