@@ -23,7 +23,7 @@ Basic Evaluation Workflow
     Task -->|defines| Metrics
     Task -->|is used by| EvaluationAgent
     Metrics -->|includes| B["Base Metrics"]
-    Metrics -->|includes| C["Stateless Metric"]
+    Metrics -->|includes| C["Stateful Metric"]
     PrunaModel -->|provides predictions| EvaluationAgent
     EvaluationAgent -->|evaluates| PrunaModel
     EvaluationAgent -->|returns| D["Evaluation Results"]
