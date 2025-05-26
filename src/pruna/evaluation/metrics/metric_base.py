@@ -12,28 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any
+
+from torch.utils.data import DataLoader
+
+from pruna.engine.pruna_model import PrunaModel
 
 
 class BaseMetric(ABC):
     """The base class for all Pruna metrics."""
 
-    def __init__(self) -> None:
-        """Initialize the BaseMetric class."""
-        pass
+    metric_name: str
+    metric_units: str
+    higher_is_better: bool
 
     @abstractmethod
-    def compute(self, *args, **kwargs) -> Any:
+    def compute(
+        self,
+        model: PrunaModel,
+        dataloader: DataLoader,
+    ) -> Any:
         """
         Compute the metric value.
 
         Parameters
         ----------
-        *args : Any
-            The arguments to pass to the metric.
-        **kwargs : Any
-            The keyword arguments to pass to the metric.
+        model : PrunaModel
+            The model to evaluate.
+        dataloader : DataLoader
+            The dataloader to use for the evaluation.
 
         Returns
         -------

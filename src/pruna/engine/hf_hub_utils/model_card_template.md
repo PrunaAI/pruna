@@ -16,30 +16,26 @@ First things first, you need to install the pruna library:
 pip install pruna
 ```
 
-You can then load this model using the following code:
+You can [use the {library_name} library to load the model](https://huggingface.co/{repo_id}?library={library_name}) but this might not include all optimizations by default.
+
+To ensure that all optimizations are applied, use the pruna library to load the model using the following code:
 
 ```python
 from pruna import PrunaModel
 
-loaded_model = PrunaModel.from_hub("{repo_id}")
+loaded_model = PrunaModel.from_hub(
+    "{repo_id}"
+)
 ```
 
-After loading the model, you can use the inference methods of the original model.
+After loading the model, you can use the inference methods of the original model. Take a look at the [documentation](https://pruna.readthedocs.io/en/latest/index.html) for more usage information.
 
 ## Smash Configuration
 
-The compression configuration of the model is stored in the `smash_config.json` file.
+The compression configuration of the model is stored in the `smash_config.json` file, which describes the optimization methods that were applied to the model.
 
 ```bash
 {smash_config}
-```
-
-## Model Configuration
-
-The configuration of the model is stored in the `config.json` file.
-
-```bash
-{model_config}
 ```
 
 ## 🌍 Join the Pruna AI community!

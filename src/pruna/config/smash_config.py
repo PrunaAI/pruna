@@ -32,6 +32,7 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
+from pruna.engine.utils import check_device_compatibility
 from pruna.logging.logger import pruna_logger
 
 ADDITIONAL_ARGS = [
@@ -58,8 +59,9 @@ class SmashConfig:
         Deprecated. The number of batches to process at once. Default is 1.
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
-    device : str, optional
-        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is 'cuda'.
+    device : str | torch.device | None, optional
+        The device to be used for smashing, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     cache_dir_prefix : str, optional
         The prefix for the cache directory. If None, a default cache directory will be created.
     configuration : Configuration, optional
@@ -70,7 +72,7 @@ class SmashConfig:
         self,
         max_batch_size: int | None = None,
         batch_size: int = 1,
-        device: str = "cuda",
+        device: str | torch.device | None = None,
         cache_dir_prefix: str = os.path.join(os.path.expanduser("~"), ".cache", "pruna"),
         configuration: Configuration | None = None,
     ) -> None:
@@ -88,7 +90,7 @@ class SmashConfig:
             self.batch_size = max_batch_size
         else:
             self.batch_size = batch_size
-        self.device = device
+        self.device = check_device_compatibility(device)
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
@@ -153,6 +155,10 @@ class SmashConfig:
             json_string = f.read()
             config_dict = json.loads(json_string)
 
+        # check device compatibility
+        if "device" in config_dict:
+            config_dict["device"] = check_device_compatibility(config_dict["device"])
+
         # support deprecated load_fn
         if "load_fn" in config_dict:
             value = config_dict.pop("load_fn")
@@ -171,6 +177,33 @@ class SmashConfig:
                 continue
 
             setattr(self, name, config_dict.pop(name))
+
+        # Normalize algorithm groups in config dict
+        current_groups = set(config_dict.keys())
+        expected_groups = set(ALGORITHM_GROUPS)
+
+        # Get all applied algorithms and their arguments from the expected groups
+        applied_algorithms = set()
+        for group in expected_groups:
+            if group in config_dict and config_dict[group] is not None:
+                applied_algorithms.add(config_dict[group])
+        applied_algorithm_args = {
+            key for key in config_dict if any(key.startswith(f"{alg}_") for alg in applied_algorithms)
+        }
+
+        # Remove extra groups with warning if they have values
+        for group in current_groups - expected_groups - applied_algorithm_args:
+            if config_dict[group] is not None:
+                pruna_logger.warning(
+                    f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
+                    "This is likely due to a version difference between the saved model and the current library.\n"
+                    "You can use an older version of Pruna to load the model or reconfigure the model."
+                )
+            del config_dict[group]
+
+        # Add missing groups with info message
+        for group in expected_groups - current_groups:
+            config_dict[group] = None
 
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
 
@@ -230,6 +263,10 @@ class SmashConfig:
          'deepcache_interval': 4,
         )
         """
+        # check device compatibility
+        if "device" in config_dict:
+            config_dict["device"] = check_device_compatibility(config_dict["device"])
+
         # since this function is only used for loading algorithm settings, we will ignore additional arguments
         filtered_config_dict = {k: v for k, v in config_dict.items() if k not in ADDITIONAL_ARGS}
         discarded_args = [k for k in config_dict if k in ADDITIONAL_ARGS]
@@ -491,96 +528,26 @@ class SmashConfig:
         >>> config["quantizer"]
         "awq"
         """
-        deprecated = False
-        deprecated_algorithm_groups = [
-            "quantizers",
-            "pruners",
-            "distillers",
-            "cachers",
-            "recoverers",
-            "compilers",
-            "batchers",
+        deprecated_hyperparameters = [
+            "whisper_s2t_batch_size",
+            "ifw_batch_size",
+            "higgs_example_batch_size",
+            "diffusers_higgs_example_batch_size",
+            "torch_compile_batch_size",
         ]
+        if name in deprecated_hyperparameters:
+            warn(
+                f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.batch_size = value
+            return None
+
         if name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
-        elif name in ALGORITHM_GROUPS + deprecated_algorithm_groups:
-            # deprecation logic for assignment of plural algorithm groups, e.g. quantizers
-            if name in deprecated_algorithm_groups:
-                new_algorithm_group = name[:-1]
-                warn(f"The algorithm group {name} is deprecated.", DeprecationWarning, stacklevel=2)
-                name = new_algorithm_group
-                deprecated = True
-            # deprecation logic for assignment of algorithms as lists
-            if isinstance(value, list):
-                value = None if len(value) == 0 else value[0]
-                deprecated = True
-                warn("Assigning algorithms as lists is deprecated...", DeprecationWarning, stacklevel=2)
-            # deprecating old method names
-            deprecated_algorithm_names = {
-                "llm_lora": "text_to_text_perp",
-                "llm-lora": "text_to_text_perp",
-                "text_to_text_lora": "text_to_text_perp",
-                "text_to_image_lora": "text_to_image_perp",
-                "torch-structured": "torch_structured",
-                "torch-unstructured": "torch_unstructured",
-                "llm-int8": "llm_int8",
-                "diffusers2": "stable_fast",
-                "x-fast": "x_fast",
-                "cgenerate": "c_generate",
-                "ctranslate": "c_translate",
-                "cwhisper": "c_whisper",
-                "ws2t": "whisper_s2t",
-                "step_caching": "deepcache",
-            }
-            if value in list(deprecated_algorithm_names.keys()):
-                warn(
-                    f"The {value} method has been renamed to {deprecated_algorithm_names[value]}.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                value = deprecated_algorithm_names[value]
-                deprecated = True
-            ###
-            # end of deprecation logic for assignment of algorithms as lists
-            if deprecated:
-                warn(f"Continuing with setting smash_config['{name}'] = '{value}'.", DeprecationWarning, stacklevel=2)
-            self._configuration.__setitem__(name, value)
         else:
-            # isolating prefix behavior here for easy removal later
-            deprecated_prefixes = ["quant_", "prune_", "comp_", "recov_", "distill_", "cache_", "batch_"]
-
-            def remove_starting_prefix(s: str) -> str:
-                for prefix in deprecated_prefixes:
-                    if s.startswith(prefix):
-                        warn(
-                            f"The {prefix} prefix is deprecated. Please use the {s[len(prefix) :]} instead.",
-                            DeprecationWarning,
-                            stacklevel=2,
-                        )
-                        return s[len(prefix) :]
-                return s
-
-            name = remove_starting_prefix(name)
-            # deprecation logic over
-            # start of deprecation logic for batch size as algorithm hyperparameter
-            deprecated_hyperparameters = [
-                "whisper_s2t_batch_size",
-                "ifw_batch_size",
-                "higgs_example_batch_size",
-                "diffusers_higgs_example_batch_size",
-                "torch_compile_batch_size",
-            ]
-            if name in deprecated_hyperparameters:
-                warn(
-                    f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) or "
-                    f"smash_config.batch_size={value} instead.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                self.batch_size = value
-            # end of deprecation logic for batch size as algorithm hyperparameter
-            else:
-                return self._configuration.__setitem__(name, value)
+            return self._configuration.__setitem__(name, value)
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
         if attr == "_data":

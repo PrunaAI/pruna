@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+from typing import Any, List
 
 import torch
 from torch import Tensor
@@ -21,6 +21,8 @@ from pruna.config.utils import is_empty_config
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import safe_memory_cleanup
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+from pruna.evaluation.metrics.result import MetricResult
+from pruna.evaluation.metrics.utils import group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -37,13 +39,13 @@ class EvaluationAgent:
 
     def __init__(self, task: Task) -> None:
         self.task = task
-        self.first_model_results: Dict[str, Any] = {}
-        self.subsequent_model_results: Dict[str, Any] = {}
+        self.first_model_results: List[MetricResult] = []
+        self.subsequent_model_results: List[MetricResult] = []
         self.device = self.task.device
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
 
-    def evaluate(self, model: Any) -> Dict[str, Any]:
+    def evaluate(self, model: Any) -> List[MetricResult]:
         """
         Evaluate models using different metric types.
 
@@ -54,11 +56,10 @@ class EvaluationAgent:
 
         Returns
         -------
-        Dict[str, Any]
+        List[MetricResult]
             The results of the model.
         """
-        results = {}
-
+        results = []
         model = self.prepare_model(model)
 
         # Separate metrics by execution strategy
@@ -70,11 +71,11 @@ class EvaluationAgent:
         pruna_logger.info("Evaluating stateful metrics.")
         with torch.no_grad():
             self.update_stateful_metrics(model, single_stateful_metrics, pairwise_metrics)
-        results.update(self.compute_stateful_metrics(single_stateful_metrics, pairwise_metrics))
+        results.extend(self.compute_stateful_metrics(single_stateful_metrics, pairwise_metrics))
 
         # Compute stateless metrics.
         pruna_logger.info("Evaluating isolated inference metrics.")
-        results.update(self.compute_stateless_metrics(model, stateless_metrics))
+        results.extend(self.compute_stateless_metrics(model, stateless_metrics))
 
         model.move_to_device("cpu")
         safe_memory_cleanup()
@@ -88,10 +89,6 @@ class EvaluationAgent:
                 )
         else:
             self.subsequent_model_results = results
-
-        for key, value in results.items():
-            if isinstance(value, torch.Tensor):
-                results[key] = value.item()
         return results
 
     def prepare_model(self, model: Any) -> PrunaModel:
@@ -184,7 +181,7 @@ class EvaluationAgent:
 
     def compute_stateful_metrics(
         self, single_stateful_metrics: List[StatefulMetric], pairwise_metrics: List[StatefulMetric]
-    ) -> Dict[str, Any]:
+    ) -> List[MetricResult]:
         """
         Compute stateful metrics.
 
@@ -197,21 +194,21 @@ class EvaluationAgent:
 
         Returns
         -------
-        Dict[str, Any]
+        List[MetricResult]
             The results of the stateful metrics.
         """
-        results = {}
+        results = []
         for stateful_metric in single_stateful_metrics:
-            results[f"{stateful_metric.metric_name}_{stateful_metric.call_type}"] = stateful_metric.compute()
+            results.append(stateful_metric.compute())
             stateful_metric.reset()
 
         if not self.evaluation_for_first_model and self.task.is_pairwise_evaluation():
             for pairwise_metric in pairwise_metrics:
-                results[f"{pairwise_metric.metric_name}_{pairwise_metric.call_type}"] = pairwise_metric.compute()
+                results.append(pairwise_metric.compute())
                 pairwise_metric.reset()
         return results
 
-    def compute_stateless_metrics(self, model: PrunaModel, stateless_metrics: List[Any]) -> Dict[str, Any]:
+    def compute_stateless_metrics(self, model: PrunaModel, stateless_metrics: List[Any]) -> List[MetricResult]:
         """
         Compute stateless metrics.
 
@@ -227,7 +224,15 @@ class EvaluationAgent:
         Dict[str, Any]
             The results of the stateless metrics.
         """
-        results = {}
-        for stateless_metric in stateless_metrics:
-            results.update(stateless_metric.compute(model, self.task.dataloader))
+        results = []
+        parent_to_children, children_of_base = group_metrics_by_inheritance(stateless_metrics)
+        for (parent, _), children in parent_to_children.items():
+            # Get the metrics that share a common parent to share inference computation by calling the parent metric.
+            raw_results = parent.compute(children[0], model, self.task.dataloader)
+            for child in children:
+                results.append(
+                    MetricResult.from_results_dict(child.metric_name, dict(children[0].__dict__), raw_results)
+                )
+        for metric in children_of_base:
+            results.append(metric.compute(model, self.task.dataloader))
         return results

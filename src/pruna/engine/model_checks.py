@@ -511,6 +511,48 @@ def get_diffusers_unet_models() -> list:
     return unet_models
 
 
+def check_fused_attention_processor(model: Any) -> bool:
+    """
+    Helper function to check attention processors in a model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model can use a Fused attention processor, False otherwise.
+    """
+    if not hasattr(model, "attn_processors"):
+        return False
+    fusing_possible_list = [
+        processor_name.replace("Fused", "") for processor_name in dir(diffusers.models.attention_processor)
+        if "Fused" in processor_name
+    ]
+    return any(processor.__class__.__name__ in fusing_possible_list for processor in model.attn_processors.values())
+
+
+def has_fused_attention_processor(pipeline: Any) -> bool:
+    """
+    Check if the pipeline's unet or transformer can use a Fused attention processor.
+
+    Parameters
+    ----------
+    pipeline : Any
+        The diffusers pipeline to check.
+
+    Returns
+    -------
+    bool
+        True if the pipeline can use a Fused attention processor, False otherwise.
+    """
+    return (hasattr(pipeline, "unet") and check_fused_attention_processor(pipeline.unet)) or (
+        hasattr(pipeline, "transformer") and check_fused_attention_processor(pipeline.transformer)
+    )
+
+
 def is_opt_model(model: Any) -> bool:
     """
     Check if the model is an OPT model.

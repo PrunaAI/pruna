@@ -14,17 +14,16 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any, Dict, List
 
 from torch import Tensor
 
-from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.logging.logger import pruna_logger
 
 
-class StatefulMetric(BaseMetric):
+class StatefulMetric(ABC):
     """
     Base class for all metrics that have state functionality.
 
@@ -34,12 +33,12 @@ class StatefulMetric(BaseMetric):
     aggregated values over time.
     """
 
+    metric_name: str
+    call_type: str
+
     def __init__(self) -> None:
         """Initialize the StatefulMetric class."""
         super().__init__()
-        self.metric_config: Dict[str, Any] = {}
-        self.metric_name: str = ""
-        self.call_type: str = ""
         self._defaults: Dict[str, List | Tensor] = {}
 
     def add_state(self, name: str, default: List | Tensor) -> None:

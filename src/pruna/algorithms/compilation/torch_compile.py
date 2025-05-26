@@ -50,8 +50,9 @@ class TorchCompileCompiler(PrunaCompiler):
     run_on_cuda = True
     dataset_required = False
     compatible_algorithms = dict(
-        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq"],
-        cacher=["deepcache"],
+        factorizer=["qkv_diffusers"],
+        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq", "torchao"],
+        cacher=["deepcache", "fora"],
     )
 
     def get_hyperparameters(self) -> list:
@@ -110,6 +111,20 @@ class TorchCompileCompiler(PrunaCompiler):
                         "Whether to make the model compiled model portable or not, "
                         "and significantly reduce the warmup time of the model on a different machine."
                     ),
+                ),
+            ),
+            OrdinalHyperparameter(
+                "target",
+                default_value="model",
+                sequence=["model", "module_list"],
+                meta=dict(
+                    desc=(
+                        "Whether to compile the model itself or the module list. "
+                        "Compiling the model itself has a longer warmup and could fail "
+                        "in case of graphbreaks but could lead to slightly faster compilation. "
+                        "Whereas compiling the module list has a shorter warmup and is more "
+                        "robust to graphbreaks but could be slightly slower."
+                    )
                 ),
             ),
         ]
@@ -242,13 +257,37 @@ def compile_callable(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     if smash_config["device"] == "cpu" or str(get_model_device(model)) == "cpu":
         pruna_logger.info("Compiling for CPU")
         backend = "openvino"
-    return torch.compile(
-        model,
-        dynamic=smash_config["dynamic"],
-        fullgraph=smash_config["fullgraph"],
-        mode=smash_config["mode"],
-        backend=backend,
-    )
+    if smash_config["target"] == "module_list":
+        found_module_list = False
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.ModuleList):
+                found_module_list = True
+                for i, submodule in enumerate(module):
+                    if isinstance(submodule, torch.nn.Module):
+                        submodule = torch.compile(
+                            submodule,
+                            dynamic=smash_config["dynamic"],
+                            fullgraph=smash_config["fullgraph"],
+                            mode=smash_config["mode"],
+                            backend=backend,
+                        )
+                    module[i] = submodule
+
+        if not found_module_list:
+            pruna_logger.warning(
+                "No ModuleList found in the model for compilation. "
+                "Torch compile will not have any effect, please switch to target=model."
+            )
+
+        return model
+    elif smash_config["target"] == "model":
+        return torch.compile(
+            model,
+            dynamic=smash_config["dynamic"],
+            fullgraph=smash_config["fullgraph"],
+            mode=smash_config["mode"],
+            backend=backend,
+        )
 
 
 def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
@@ -277,6 +316,32 @@ def deepcache_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     return model
 
 
+def fora_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+    """
+    Apply compilation logic for FORA models.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    smash_config : SmashConfigPrefixWrapper
+        The configuration for the compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    for idx, function in model.cache_helper.double_stream_blocks_forward.items():
+        model.cache_helper.double_stream_blocks_forward[idx] = compile_callable(function, smash_config)
+    for idx, function in model.cache_helper.single_stream_blocks_forward.items():
+        model.cache_helper.single_stream_blocks_forward[idx] = compile_callable(function, smash_config)
+    model.text_encoder = compile_callable(model.text_encoder, smash_config)
+    model.text_encoder_2 = compile_callable(model.text_encoder_2, smash_config)
+    model.vae = compile_callable(model.vae, smash_config)
+    return model
+
+
 def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     """
     Apply compilation logic for unet and transformer based diffusers pipelines.
@@ -294,11 +359,20 @@ def unet_transformer_pipeline_logic(model: Any, smash_config: SmashConfigPrefixW
         The compiled model.
     """
     if hasattr(model, "transformer"):
-        model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
+        if smash_config["target"] == "module_list":
+            model.transformer = compile_callable(model.transformer, smash_config)
+        elif smash_config["target"] == "model":
+            model.transformer.forward = compile_callable(model.transformer.forward, smash_config)
     elif hasattr(model, "unet"):
-        model.unet.forward = compile_callable(model.unet.forward, smash_config)
+        if smash_config["target"] == "module_list":
+            model.unet = compile_callable(model.unet, smash_config)
+        elif smash_config["target"] == "model":
+            model.unet.forward = compile_callable(model.unet.forward, smash_config)
     else:
-        model.forward = compile_callable(model.forward, smash_config)
+        if smash_config["target"] == "module_list":
+            model = compile_callable(model, smash_config)
+        elif smash_config["target"] == "model":
+            model.forward = compile_callable(model.forward, smash_config)
     return model
 
 
@@ -348,4 +422,5 @@ def causal_lm_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
 
 compilation_map = {
     "deepcache": deepcache_logic,
+    "fora": fora_logic,
 }

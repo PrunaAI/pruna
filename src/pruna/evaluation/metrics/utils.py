@@ -12,11 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from __future__ import annotations
 
-from typing import Any, List
+from collections import defaultdict
+from inspect import Signature, getmro, signature
+from typing import Any, Callable, Dict, List, Tuple, Type, cast
+from warnings import warn
 
 import torch
+
+from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.logging.logger import pruna_logger
+
+SINGLE = "single"
+PAIRWISE = "pairwise"
+CALL_TYPES = (SINGLE, PAIRWISE)
 
 
 def metric_data_processor(
@@ -77,3 +88,211 @@ def metric_data_processor(
         return [outputs, gt]
     else:
         raise ValueError(f"Invalid call type: {call_type}")
+
+
+def get_param_names_from_signature(sig: Signature) -> list[str]:
+    """
+    Extract the parameter names (excluding 'self') from a constructor signature.
+
+    Parameters
+    ----------
+    sig : Signature
+        The signature to extract the parameter names from.
+
+    Returns
+    -------
+    List[str]
+        A list of the parameter names.
+    """
+    return [
+        p.name
+        for p in sig.parameters.values()
+        if p.name != "self" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
+    ]
+
+
+def get_hyperparameters(instance: Any, reference_function: Callable[..., Any]) -> Dict[str, Any]:
+    """
+    Get hyperparameters from an instance.
+
+    This is the most basic and self-contained case.
+
+    Parameters
+    ----------
+    instance : Any
+        The instance to get the hyperparameters from.
+    reference_function : Callable[..., Any]
+        The reference function to get the hyperparameters from.
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary of the hyperparameters.
+    """
+    sig = signature(reference_function)
+    param_names = get_param_names_from_signature(sig)
+    return {name: getattr(instance, name, None) for name in param_names}
+
+
+def group_metrics_by_inheritance(list_of_instances: List[Any]) -> Tuple[Dict[Any, List[Any]], List[Any]]:
+    """
+    Split a list of metric instances based on their direct parent class and configuration.
+
+    Specifically, the function:
+    - Groups instances that share the same direct parent class and initialization hyperparameters.
+    - Separately collects instances that directly inherit from BaseMetric.
+
+    Parameters
+    ----------
+    list_of_instances : List[Any]
+        A list of instances.
+
+    Returns
+    -------
+    Tuple[Dict[Any, List[Any]], List[Any]]
+        A tuple of a dictionary where the keys are the direct parents and the values are the direct children,
+        and a list of instances that directly inherit from BaseMetric.
+    """
+    # Metrics with shared parents and configs are grouped together
+    parents_to_children = defaultdict(list)
+    # Metrics who directly inherit from BaseMetric should not be included
+    children_of_base = []
+
+    for instance in list_of_instances:
+        mro = getmro(instance.__class__)
+        parent = cast(Type, mro[1])
+        if parent == BaseMetric:
+            children_of_base.append(instance)
+            continue
+        # Only group metrics with shared inference hyper-parameters.
+        config = frozenset(get_hyperparameters(instance, parent.__init__).items())
+        key = (parent, config)
+        parents_to_children[key].append(instance)
+    return parents_to_children, children_of_base
+
+
+def get_pairwise_pairing(call_type: str) -> str:
+    """
+    Get the pairwise pairing for a call type.
+
+    Parameters
+    ----------
+    call_type : str
+        The call type to get the pairing for.
+
+    Returns
+    -------
+    str
+        The pairwise pairing for the call type.
+    """
+    if call_type.startswith("y_"):
+        return "pairwise_y_gt"
+    else:
+        return "pairwise_gt_y"
+
+
+def get_single_pairing(call_type: str) -> str:
+    """
+    Get the single pairing for a call type.
+
+    Parameters
+    ----------
+    call_type : str
+        The call type to get the pairing for.
+
+    Returns
+    -------
+    str
+        The single pairing for the call type.
+    """
+    return call_type.removeprefix(PAIRWISE + "_")
+
+
+def get_any_call_type_pairing(call_type: str) -> str:
+    """
+    Get the pairing for a call type.
+
+    Parameters
+    ----------
+    call_type : str
+        The call type to get the pairing for.
+
+    Returns
+    -------
+    str
+        The pairing for the call type.
+    """
+    if call_type.startswith(PAIRWISE):
+        return get_single_pairing(call_type)
+    else:
+        return get_pairwise_pairing(call_type)
+
+
+def get_call_type_for_pairwise_metric(call_type_requested: str, default_call_type: str) -> str:
+    """
+    Get the call type for a pairwise metric.
+
+    Parameters
+    ----------
+    call_type_requested : str
+        The call type to get the pairing for.
+    default_call_type : str
+        The default call type for the metric.
+
+    Returns
+    -------
+    str
+        The call type pairing for the metric.
+    """
+    if call_type_requested == PAIRWISE:
+        return default_call_type
+    elif call_type_requested == SINGLE:
+        return get_single_pairing(default_call_type)
+    else:
+        if call_type_requested == default_call_type or call_type_requested == get_single_pairing(default_call_type):
+            warn(
+                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
+                f"Use {SINGLE} or {PAIRWISE} instead. \n"
+                f"Using default call type {default_call_type}.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return default_call_type
+        else:
+            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+
+
+def get_call_type_for_single_metric(call_type_requested: str, default_call_type: str) -> str:
+    """
+    Get the call type for a single metric.
+
+    Parameters
+    ----------
+    call_type_requested : str
+        The call type to get the pairing for.
+    default_call_type : str
+        The default call type for the metric.
+
+    Returns
+    -------
+    str
+        The call type for the metric.
+    """
+    if call_type_requested == PAIRWISE:
+        return get_pairwise_pairing(default_call_type)
+    elif call_type_requested == SINGLE:
+        return default_call_type
+    else:
+        if call_type_requested == default_call_type or call_type_requested == get_pairwise_pairing(default_call_type):
+            warn(
+                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
+                f"Use {SINGLE} or {PAIRWISE} instead. \n"
+                f"Using default call type {default_call_type}.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return default_call_type
+        else:
+            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")

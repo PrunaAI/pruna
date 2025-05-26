@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional, Type
+from warnings import warn
 
 import pynvml
 import torch
@@ -25,9 +26,16 @@ from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import safe_memory_cleanup, set_to_train
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
 
-VALID_MODES = ("disk", "inference", "training")
+DISK_MEMORY = "disk_memory"
+INFERENCE_MEMORY = "inference_memory"
+TRAINING_MEMORY = "training_memory"
+VALID_MODES = (DISK_MEMORY, INFERENCE_MEMORY, TRAINING_MEMORY)
+DEPRECATED_MODES = ("disk", "inference", "training")
+DEPRECATED_MODES_MAP = {"disk": DISK_MEMORY, "inference": INFERENCE_MEMORY, "training": TRAINING_MEMORY}
+MEMORY_UNITS = "MB"
 
 
 class GPUManager:
@@ -49,7 +57,7 @@ class GPUManager:
     @contextmanager
     def manage_resources(self) -> Generator[None, None, None]:
         """
-        Context manager to ensure pynvml is initialized andshut down properly.
+        Context manager to ensure pynvml is initialized and shut down properly.
 
         Yields
         ------
@@ -87,8 +95,7 @@ class GPUManager:
         return memory_usages
 
 
-@MetricRegistry.register("gpu_memory")
-class GPUMemoryMetric(BaseMetric):
+class GPUMemoryStats(BaseMetric):
     """
     Evaluate the GPU memory usage of a model.
 
@@ -100,23 +107,37 @@ class GPUMemoryMetric(BaseMetric):
         List of GPU indices to monitor. If None, all GPUs are assumed.
     """
 
-    def __init__(self, mode: str = "disk", gpu_indices: Optional[List[int]] = None) -> None:
+    def __init__(self, mode: str = DISK_MEMORY, gpu_indices: Optional[List[int]] = None) -> None:
         """
-        Initialize the GPUMemoryMetric.
+        Initialize the GPUMemoryStats.
 
         Raises
         ------
         ValueError
             If the provided mode is invalid.
         """
-        super().__init__()
         if mode not in VALID_MODES:
-            raise ValueError(f"Mode must be one of {VALID_MODES}, got '{mode}'.")
+            if mode in DEPRECATED_MODES:
+                warn(
+                    "GPUMemoryStats is no longer the preferred interface for GPU memory evaluation. "
+                    "Please use 'DiskMemoryMetric', 'InferenceMemoryMetric' or 'TrainingMemoryMetric' instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                warn(
+                    f"Mode '{mode}' is deprecated and will be removed in 'v0.2.8' release. "
+                    f"Please use '{DEPRECATED_MODES_MAP[mode]}' instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                mode = DEPRECATED_MODES_MAP[mode]
+            else:
+                raise ValueError(f"Mode must be one of {VALID_MODES}, got '{mode}'.")
 
         self.mode = mode
         self.gpu_indices = gpu_indices
 
-    def compute(self, model: PrunaModel, dataloader: DataLoader) -> Dict[str, Any]:
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
         Compute the peak GPU memory usage of the model.
 
@@ -129,7 +150,7 @@ class GPUMemoryMetric(BaseMetric):
 
         Returns
         -------
-        Dict[str, Any]
+        MetricResult
             The peak GPU memory usage in MB.
         """
         save_path = model.smash_config.cache_dir + "/metrics_save"
@@ -147,7 +168,7 @@ class GPUMemoryMetric(BaseMetric):
 
             memory_after_load = gpu_manager.get_memory_usage()
 
-            utilized_gpus = self._detect_model_gpus(model) or gpu_manager.gpu_indices  # or [0]
+            utilized_gpus = self._detect_model_gpus(model) or gpu_manager.gpu_indices
             if not utilized_gpus:
                 pruna_logger.warning("No GPUs found.")
                 raise ValueError("No GPUs detected for the model.")
@@ -155,12 +176,10 @@ class GPUMemoryMetric(BaseMetric):
             pruna_logger.info(f"Utilized GPUs: {utilized_gpus}")
 
             # Perform forward pass if required by the mode
-            if self.mode in {"inference", "training"}:
+            if self.mode in {INFERENCE_MEMORY, TRAINING_MEMORY}:
                 self._perform_forward_pass(model, dataloader)
 
             memory_after_model_run = gpu_manager.get_memory_usage()
-            # Tracking possible peak memory spike with torch
-            memory_after_model_run_torch = torch.cuda.max_memory_allocated()
 
             pruna_logger.info(
                 "Calculating memory usage...\n"
@@ -170,11 +189,11 @@ class GPUMemoryMetric(BaseMetric):
             load_sum = sum(memory_after_load[idx] for idx in utilized_gpus)
             after_sum = sum(memory_after_model_run[idx] for idx in utilized_gpus)
 
-            peak_memory = (max(before_sum, load_sum, after_sum, memory_after_model_run_torch) - before_sum) / 1024**2
+            peak_memory = (max(before_sum, load_sum, after_sum) - before_sum) / 1024**2
 
             safe_memory_cleanup()
 
-            return {f"{self.mode}_memory": peak_memory}
+        return MetricResult(self.mode, self.__dict__.copy(), peak_memory)
 
     def _detect_model_gpus(self, model: PrunaModel) -> List[int]:
         """
@@ -221,7 +240,7 @@ class GPUMemoryMetric(BaseMetric):
         Returns
         -------
         Optional[List[int]]
-            The list of GPU indices the model is using, or None if no GPUs detected.
+            The list of GPU indices the model is using.
         """
         device_map = getattr(model, attr_name, None)
         if not isinstance(device_map, dict):
@@ -310,9 +329,9 @@ class GPUMemoryMetric(BaseMetric):
             model_path,
         )
         model.move_to_device("cuda")
-        if self.mode in {"disk", "inference"}:
+        if self.mode in {DISK_MEMORY, INFERENCE_MEMORY}:
             model.set_to_eval()
-        elif self.mode == "training":
+        elif self.mode == TRAINING_MEMORY:
             set_to_train(model)
         return model
 
@@ -327,9 +346,145 @@ class GPUMemoryMetric(BaseMetric):
         dataloader : DataLoader
             The DataLoader for model evaluation.
         """
-        with torch.no_grad() if self.mode == "inference" else torch.enable_grad():
+        with torch.no_grad() if self.mode == INFERENCE_MEMORY else torch.enable_grad():
             batch = next(iter(dataloader))
-            batch = model.inference_handler.move_inputs_to_device(batch, "cuda")
-            inputs = model.inference_handler.prepare_inputs(batch)
+            model.run_inference(batch, "cuda")
 
-            model(inputs)
+
+@MetricRegistry.register(DISK_MEMORY)
+class DiskMemoryMetric(BaseMetric):
+    """
+    Wrapper over GPUMemoryStats with disk memory as primary metric.
+
+    Parameters
+    ----------
+    gpu_indices : Optional[List[int]]
+        The GPU indices to monitor.
+    """
+
+    metric_name: str = DISK_MEMORY
+    metric_units: str = MEMORY_UNITS
+    higher_is_better: bool = False
+
+    def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
+        """Initialize the DiskMemoryMetric."""
+        self.metric = GPUMemoryStats(DISK_MEMORY, gpu_indices)
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the disk memory usage of the model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model instance.
+        dataloader : DataLoader
+            The DataLoader for model evaluation.
+
+        Returns
+        -------
+        MetricResult
+            The disk memory usage of the model.
+        """
+        return self.metric.compute(model, dataloader)
+
+
+@MetricRegistry.register(INFERENCE_MEMORY)
+class InferenceMemoryMetric(BaseMetric):
+    """
+    Wrapper over GPUMemoryStats with inference memory as primary metric.
+
+    Parameters
+    ----------
+    gpu_indices : Optional[List[int]]
+        The GPU indices to monitor.
+    """
+
+    metric_name: str = INFERENCE_MEMORY
+    metric_units: str = MEMORY_UNITS
+    higher_is_better: bool = False
+
+    def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
+        """Initialize the InferenceMemoryMetric."""
+        self.metric = GPUMemoryStats(INFERENCE_MEMORY, gpu_indices)
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the inference memory usage of the model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model instance.
+        dataloader : DataLoader
+            The DataLoader for model evaluation.
+
+        Returns
+        -------
+        MetricResult
+            The inference memory usage of the model.
+        """
+        return self.metric.compute(model, dataloader)
+
+
+@MetricRegistry.register(TRAINING_MEMORY)
+class TrainingMemoryMetric(BaseMetric):
+    """
+    Wrapper over GPUMemoryStats with training memory as primary metric.
+
+    Parameters
+    ----------
+    gpu_indices : Optional[List[int]]
+        The GPU indices to monitor.
+    """
+
+    metric_name: str = TRAINING_MEMORY
+    metric_units: str = MEMORY_UNITS
+    higher_is_better: bool = False
+
+    def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
+        """Initialize the TrainingMemoryMetric."""
+        self.metric = GPUMemoryStats(TRAINING_MEMORY, gpu_indices)
+
+    def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
+        """
+        Compute the training memory usage of the model.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model instance.
+        dataloader : DataLoader
+            The DataLoader for model evaluation.
+
+        Returns
+        -------
+        MetricResult
+            The training memory usage of the model.
+        """
+        return self.metric.compute(model, dataloader)
+
+
+class GPUMemoryMetric:
+    """
+    Deprecated class.
+
+    Parameters
+    ----------
+    *args : Any
+        Arguments for GPUMemoryStats.
+    **kwargs : Any
+        Keyword arguments for GPUMemoryStats.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        """Forwards to GPUMemoryStats."""
+        warn(
+            "GPUMemoryMetric is deprecated and will be removed in 'v0.2.8' release. \n "
+            "It has been replaced by GPUMemoryStats, "
+            "which is a shared parent class for 'DiskMemoryMetric', 'InferenceMemoryMetric' and 'TrainingMemoryMetric'. \n"  # noqa: E501
+            "In the future, please use 'DiskMemoryMetric', 'InferenceMemoryMetric' or 'TrainingMemoryMetric' instead.\n",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return GPUMemoryStats(*args, **kwargs)

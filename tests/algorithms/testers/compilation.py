@@ -9,7 +9,7 @@ from .base_tester import AlgorithmTesterBase
 class TestTorchCompile(AlgorithmTesterBase):
     """Test the torch_compile algorithm."""
 
-    models = ["mobilenet_v2"]
+    models = ["shufflenet"]
     reject_models = []
     allow_pickle_files = False
     algorithm_class = TorchCompileCompiler
@@ -18,8 +18,8 @@ class TestTorchCompile(AlgorithmTesterBase):
 class TestStableFast(AlgorithmTesterBase):
     """Test the stable_fast algorithm."""
 
-    models = ["stable_diffusion_v1_4"]
-    reject_models = ["opt_125m"]
+    models = ["sd_tiny_random"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = StableFastCompiler
 
@@ -27,8 +27,8 @@ class TestStableFast(AlgorithmTesterBase):
 class TestCGenerate(AlgorithmTesterBase):
     """Test the c_generate algorithm."""
 
-    models = ["opt_125m"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["opt_tiny_random"]
+    reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = CGenerateCompiler
 

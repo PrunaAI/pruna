@@ -35,7 +35,7 @@ class StableFastCompiler(PrunaCompiler):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict(cacher=["deepcache"], quantizer=["half"])
+    compatible_algorithms = dict(cacher=["deepcache", "fora"], quantizer=["half"])
     required_install = "``pip install pruna[stable-fast]``"
 
     def get_hyperparameters(self) -> list:
@@ -233,6 +233,62 @@ def deepcache_logic(
     return model
 
 
+def fora_logic(
+    model: Any,
+    imported_modules: Dict[str, Any],
+    config: Any,
+    smash_config: SmashConfigPrefixWrapper,
+) -> Any:
+    """
+    Apply compilation to models that use FORA Caching.
+
+    Parameters
+    ----------
+    model : Any
+        The model to compile.
+    imported_modules : Dict[str, Any]
+        The imported modules.
+    config : Any
+        The configuration.
+    smash_config : SmashConfigPrefixWrapper
+        The configuration for the compilation.
+
+    Returns
+    -------
+    Any
+        The compiled model.
+    """
+    lazy_trace_ = imported_modules["_build_lazy_trace"](
+        config,
+        enable_triton_reshape=config.enable_cuda_graph,
+        enable_triton_layer_norm=config.enable_cuda_graph,
+    )
+
+    # compile transformer blocks
+    for layer, block_forward in model.cache_helper.double_stream_blocks_forward.items():
+        block_forward = lazy_trace_(block_forward)
+        if config.enable_cuda_graph:
+            model.cache_helper.double_stream_blocks_forward[layer] = imported_modules["make_dynamic_graphed_callable"](
+                block_forward
+            )
+    for layer, block_forward in model.cache_helper.single_stream_blocks_forward.items():
+        block_forward = lazy_trace_(block_forward)
+        if config.enable_cuda_graph:
+            model.cache_helper.single_stream_blocks_forward[layer] = imported_modules["make_dynamic_graphed_callable"](
+                block_forward
+            )
+
+    # compile vae
+    ts_compiler = imported_modules["_build_ts_compiler"](
+        config,
+        enable_triton_reshape=config.enable_cuda_graph,
+        enable_triton_layer_norm=config.enable_cuda_graph,
+    )
+    model.vae = imported_modules["apply_auto_trace_compiler"](model.vae, ts_compiler=ts_compiler)
+    return model
+
+
 compilation_map = {
     "deepcache": deepcache_logic,
+    "fora": fora_logic,
 }
