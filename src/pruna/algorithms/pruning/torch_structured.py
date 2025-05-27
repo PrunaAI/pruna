@@ -21,7 +21,6 @@ import torch.nn as nn
 from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter, UniformIntegerHyperparameter
 from transformers.modeling_outputs import ImageClassifierOutput
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
-from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
 from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
 
 from pruna.algorithms.pruning import PrunaPruner
@@ -58,14 +57,14 @@ class TorchStructuredPruner(PrunaPruner):
     dataset_required: bool = True
     compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half"])
 
-    def get_hyperparameters(self) -> List:
+    def get_hyperparameters(self) -> list:
         """
-        Get the hyperparameters for the pruner.
+        Configure all algorithm-specific hyperparameters with ConfigSpace.
 
         Returns
         -------
-        List
-            The hyperparameters for the pruner.
+        list
+            The hyperparameters.
         """
         return [
             CategoricalHyperparameter(
@@ -81,9 +80,9 @@ class TorchStructuredPruner(PrunaPruner):
                 meta=dict(desc="Importance criterion for pruning."),
             ),
             UniformIntegerHyperparameter(
-                "calibration_samples",
-                1,
-                256,
+                name="calibration_samples",
+                lower=1,
+                upper=256,
                 default_value=64,
                 meta=dict(desc="Number of calibration samples for importance computation."),
             ),
@@ -92,28 +91,28 @@ class TorchStructuredPruner(PrunaPruner):
             Boolean("global_pruning", meta=dict(desc="Whether to perform global pruning.")),
             UniformFloatHyperparameter(
                 "sparsity",
-                0.0,
-                1.0,
+                lower=0.0,
+                upper=1.0,
                 default_value=0.1,
                 meta=dict(desc="Sparsity level up to which to prune."),
             ),
             UniformFloatHyperparameter(
                 "head_sparsity",
-                0.0,
-                1.0,
+                lower=0.0,
+                upper=1.0,
                 default_value=0.0,
                 meta=dict(desc="Sparsity level up to which to prune heads."),
             ),
             UniformIntegerHyperparameter(
-                "it_steps",
-                1,
-                10,
+                name="it_steps",
+                lower=1,
+                upper=10,
                 default_value=1,
                 meta=dict(desc="Number of iterations for pruning."),
             ),
         ]
 
-    def model_check_fn(self, model: Any) -> bool:  # noqa: PLR0911
+    def model_check_fn(self, model: Any) -> bool:
         """
         Check if the model is supported by the pruner.
 
@@ -127,20 +126,20 @@ class TorchStructuredPruner(PrunaPruner):
         bool
             True if the model is supported, False otherwise.
         """
-        # Pruning is still unstable for LLMs when they are *the* target artefact; skip for now
+        # Torch structured pruning is currently broken for LLMs, to be fixed
         if is_causal_lm(model):
             return False
-        imported = self.import_algorithm_packages()
+        imported_modules = self.import_algorithm_packages()
         # Simple heuristics – extend as needed
-        if isinstance(model, (imported["Opt"], imported["Llama"], imported["ViT"])):
+        if isinstance(model, (imported_modules["Opt"], imported_modules["Llama"], imported_modules["ViT"])):
             return True
-        if isinstance(model, imported["timm"].models.convnext.ConvNeXt):
+        if isinstance(model, imported_modules["timm"].models.convnext.ConvNeXt):
             return True
-        if isinstance(model, imported["torchvision"].models.resnet.ResNet):
+        if isinstance(model, imported_modules["torchvision"].models.resnet.ResNet):
             return True
-        if isinstance(model, imported["GLiNER"]):
+        if isinstance(model, imported_modules["GLiNER"]):
             return True
-        return isinstance(model, imported["timm"].models.resnet.ResNet)
+        return isinstance(model, imported_modules["timm"].models.resnet.ResNet)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -179,12 +178,13 @@ class TorchStructuredPruner(PrunaPruner):
                     batch[k] = v.to(device)
             example_input = batch
         else:
+            # PrunaDataModule always returns a tuple of two tensors, the first is the input.
             example_input = batch[0][:1, :].to(device)  # type: ignore[arg-type]
 
         # Get the target module to prune, and it's boundary and exterior
 
         target_module = get_target_module(model, imported, smash_config)
-        dg = tp.DependencyGraph().build_dependency(model, example_input)
+        dg = tp.DependencyGraph().build_dependency(model, example_input, output_transform=safe_output_transform)
         boundary, exterior = get_boundary_and_exterior(target_module, model, dg)
 
         # Get the ignored layers
@@ -207,6 +207,7 @@ class TorchStructuredPruner(PrunaPruner):
             prune_num_heads=smash_config["prune_num_heads"],
             head_pruning_ratio=smash_config["head_sparsity"],
             global_pruning=smash_config["global_pruning"],
+            output_transform=safe_output_transform,
         )
 
         for _ in range(iterative_steps):
@@ -339,6 +340,8 @@ def _get_q_head_attr_value(m: nn.Module) -> Optional[int]:
     for attr in _Q_HEAD_ATTRS:
         if hasattr(m, attr):
             return getattr(m, attr)
+        if hasattr(m, "config") and hasattr(m.config, attr):
+            return getattr(m.config, attr)
     return None
 
 
@@ -359,6 +362,8 @@ def _get_kv_head_attr_value(m: nn.Module) -> Optional[int]:
     for attr in _KV_HEAD_ATTRS:
         if hasattr(m, attr):
             return getattr(m, attr)
+        if hasattr(m, "config") and hasattr(m.config, attr):
+            return getattr(m.config, attr)
     return None
 
 
@@ -466,18 +471,7 @@ def patch_heads(model: nn.Module, new_heads: Dict[nn.Linear, int]):
                 new_h_kv = new_heads[k_proj]
                 setattr(m, "num_key_value_heads", new_h_kv)
 
-        if isinstance(m, LlamaRotaryEmbedding):
-            m.forward = _llama_rotary_embedding_forward.__get__(m, LlamaRotaryEmbedding)
     return model
-
-
-def _llama_rotary_embedding_forward(self: Any, x: torch.Tensor, seq_len: Optional[int] = None):
-    if seq_len > self.max_seq_len_cached:
-        self._set_cos_sin_cache(seq_len=seq_len, device=x.device, dtype=x.dtype)
-    return (
-        self.cos_cached[:seq_len, : x.shape[-1]].to(dtype=x.dtype),
-        self.sin_cached[:seq_len, : x.shape[-1]].to(dtype=x.dtype),
-    )
 
 
 def get_target_module(model: Any, imported: Dict[str, Any], smash_config: SmashConfigPrefixWrapper) -> nn.Module:
@@ -623,3 +617,30 @@ def compute_loss_and_accumulate_gradients(
             loss = loss_fn(logits, batch_labels)
         loss.backward()
     return model
+
+
+def safe_output_transform(output) -> torch.Tensor:
+    """
+    Extract a tensor from the model output.
+
+    Parameters
+    ----------
+    output : Any
+        The model output.
+
+    Returns
+    -------
+    torch.Tensor
+        The tensor from the model output.
+    """
+    if isinstance(output, torch.Tensor):
+        return output
+    if hasattr(output, "logits"):  # Huggingface models
+        return output.logits
+    if isinstance(output, dict) and "logits" in output:  # Huggingface models
+        return output["logits"]
+    if isinstance(output, (tuple, list)):  # Huggingface models
+        for o in output:
+            if isinstance(o, torch.Tensor):
+                return o
+    raise ValueError("Could not extract a tensor from model output for dependency tracing.")
