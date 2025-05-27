@@ -1,5 +1,3 @@
-import importlib
-
 import pytest
 
 from pruna import PrunaModel
@@ -120,10 +118,6 @@ class TestGPTQ(AlgorithmTesterBase):
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(
-    importlib.util.find_spec("llmcompressor") is None,
-    reason="llmcompressor not installed",
-)
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 
