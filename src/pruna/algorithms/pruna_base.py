@@ -234,7 +234,8 @@ def wrap_handle_imports(func):
             if self.required_install is not None:
                 pruna_logger.debug(str(e))
                 exception_message = (
-                    f"To use {self.algorithm_name}, follow the installation instructions: {self.required_install}."
+                    f"Could not import necessary packages for {self.algorithm_name}. ",
+                    f"To use {self.algorithm_name}, follow the installation instructions: {self.required_install}.",
                 )
             else:
                 exception_message = str(e)
