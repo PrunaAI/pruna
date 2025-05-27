@@ -14,8 +14,6 @@
 
 from typing import Any, Dict
 
-from ConfigSpace import Constant
-
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm
