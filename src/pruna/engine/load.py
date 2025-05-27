@@ -278,11 +278,11 @@ def load_diffusers_model(path: str, **kwargs) -> Any:
 
     # make loading of model backward compatible with older versions
     # in newer versions the dtype is always saved in the model_config.json file
-    dtype_info = load_json_config(path, "dtype_info.json")
     try:
+        dtype_info = load_json_config(path, "dtype_info.json")
         dtype = dtype_info["dtype"]
         dtype = getattr(torch, dtype)
-    except KeyError:
+    except (KeyError, FileNotFoundError):
         dtype = torch.float32
 
     # do not override user specified dtype
