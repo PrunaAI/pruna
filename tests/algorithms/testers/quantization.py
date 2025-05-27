@@ -1,3 +1,5 @@
+import importlib
+
 import pytest
 
 from pruna import PrunaModel
@@ -9,6 +11,7 @@ from pruna.algorithms.quantization.huggingface_diffusers_int8 import (
     DiffusersInt8Quantizer,
 )
 from pruna.algorithms.quantization.huggingface_llm_int8 import LLMInt8Quantizer
+from pruna.algorithms.quantization.llm_compressor import LLMCompressorQuantizer
 from pruna.algorithms.quantization.quanto import QuantoQuantizer
 from pruna.algorithms.quantization.torch_dynamic import TorchDynamicQuantizer
 from pruna.algorithms.quantization.torch_static import TorchStaticQuantizer
@@ -114,3 +117,17 @@ class TestGPTQ(AlgorithmTesterBase):
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
         assert "GPTQ" in model.model.__class__.__name__
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(
+    importlib.util.find_spec("llmcompressor") is None,
+    reason="llmcompressor not installed",
+)
+class TestLLMCompressor(AlgorithmTesterBase):
+    """Test the LLM Compressor quantizer."""
+
+    models = ["opt_125m"]
+    reject_models = ["sd_tiny_random"]
+    allow_pickle_files = False
+    algorithm_class = LLMCompressorQuantizer
