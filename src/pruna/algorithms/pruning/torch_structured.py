@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import torch
 import torch.nn as nn
-import torch_pruning as tp
 from ConfigSpace import (
     CategoricalHyperparameter,
     UniformFloatHyperparameter,
@@ -170,7 +169,7 @@ class TorchStructuredPruner(PrunaPruner):
             model.float()
 
         # Retrieve the importance function or class from the mapping based on the pruning type
-        importance_function = getattr(tp.importance, smash_config["type"])
+        importance_function = getattr(imported_modules["tp"].importance, smash_config["type"])
 
         ch_groups, num_heads, ignored_layers = get_prunable_layers(model, smash_config, imported_modules)
 
@@ -178,7 +177,7 @@ class TorchStructuredPruner(PrunaPruner):
         example_input = next(iter(smash_config.train_dataloader()))[0][:1, :].to(device)  # type: ignore[arg-type]
         iterative_steps = smash_config["it_steps"]
 
-        pruner = tp.pruner.MetaPruner(
+        pruner = imported_modules["tp"].pruner.MetaPruner(
             model,
             example_input,
             importance=importance_function(),
@@ -223,6 +222,7 @@ class TorchStructuredPruner(PrunaPruner):
         """
         try:
             import timm
+            import torch_pruning as tp
             import torchvision
             from timm.models.mvitv2 import MultiScaleAttention
             from timm.models.mvitv2 import MultiScaleVit as MViT
@@ -233,7 +233,7 @@ class TorchStructuredPruner(PrunaPruner):
             )
             raise
 
-        return dict(timm=timm, torchvision=torchvision, MultiScaleAttention=MultiScaleAttention, MViT=MViT)
+        return dict(timm=timm, torchvision=torchvision, MultiScaleAttention=MultiScaleAttention, MViT=MViT, tp=tp)
 
 
 def get_prunable_layers(

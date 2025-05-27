@@ -18,7 +18,7 @@ from typing import Any, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
-from transformers import AutoModelForCausalLM, HqqConfig
+from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -167,6 +167,7 @@ class HQQQuantizer(PrunaQuantizer):
                 from hqq.core.quantize import BaseQuantizeConfig
                 from hqq.models.hf.base import AutoHQQHFModel
                 from hqq.utils.patching import prepare_for_inference
+                from transformers import HqqConfig
         except ImportError:
             pruna_logger.error(
                 "You are trying to use the HQQ quantizer, but hqq is not installed. "
