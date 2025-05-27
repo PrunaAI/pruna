@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict
@@ -25,6 +26,7 @@ from pruna.engine.save import (
     SAVE_FUNCTIONS,
     save_pruna_model,
 )
+from pruna.logging.logger import pruna_logger
 
 
 class PrunaAlgorithmBase(ABC):
@@ -49,6 +51,22 @@ class PrunaAlgorithmBase(ABC):
             tokenizer_required=self.tokenizer_required,
             processor_required=self.processor_required,
         )
+
+    def __init_subclass__(cls, **kwargs):
+        """Intercept the instantiation of subclasses of the PrunaAlgorithmBase class."""
+        super().__init_subclass__(**kwargs)
+
+        # skip if subclass stayed abstract
+        impl = cls.__dict__.get("import_algorithm_packages")
+        if impl is None:
+            return
+
+        # Skip if we already wrapped it (multiple inheritance chains, reloads, etc.)
+        if getattr(impl, "__wrapped__", None) is not None:
+            return
+
+        # Replace the function with the wrapped version
+        cls.import_algorithm_packages = wrap_handle_imports(impl)
 
     @classmethod
     def compatible_devices(cls) -> list[str]:
@@ -190,3 +208,43 @@ class PrunaAlgorithmBase(ABC):
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         return self._apply(model, wrapped_config)
+
+
+def wrap_handle_imports(func):
+    """
+    Wraps the import_algorithm_packages method to handle import errors in a unified and user-friendly way.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to wrap.
+
+    Returns
+    -------
+    Callable
+        The wrapped function.
+    """
+
+    @functools.wraps(func)
+    def _wrapper(self, *args, **kwargs):
+        try:
+            result = func(self, *args, **kwargs)
+            return result
+        except Exception as e:
+            if self.required_install is not None:
+                pruna_logger.debug(str(e))
+                exception_message = (
+                    f"To use {self.algorithm_name}, follow the installation instructions: {self.required_install}."
+                )
+            else:
+                exception_message = str(e)
+                pruna_logger.error(
+                    (
+                        f"Could not import necessary packages for {self.algorithm_name}.",
+                        "Please verify your pruna installation.",
+                    )
+                )
+        raise ImportError(exception_message)
+
+    _wrapper.__wrapped__ = func  # mark the original (helps avoid double-wrapping)
+    return _wrapper
