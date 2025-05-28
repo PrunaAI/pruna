@@ -45,6 +45,10 @@ class TorchStructuredPruner(PrunaPruner):
 
     Structured pruning removes entire units like neurons, channels, or filters from a network, leading to a more compact
     and computationally efficient model while preserving a regular structure that standard hardware can easily optimize.
+
+    Note: If you would like a to prune a target module,
+    you can by setting the target_module parameter in the smash config.
+    Please set the experimental flag to True to use this feature.
     """
 
     algorithm_name: str = "torch_structured"
@@ -168,7 +172,7 @@ class TorchStructuredPruner(PrunaPruner):
             model.float()
 
         # Retrieve the importance function or class from the mapping based on the pruning type
-        importance_function = getattr(imported_modules["tp"].importance, smash_config["type"])
+        importance_function = getattr(imported["tp"].importance, smash_config["type"])
 
         # Get the example input and move to device correctly if it's a dict
         batch = next(iter(smash_config.train_dataloader()))
@@ -184,7 +188,11 @@ class TorchStructuredPruner(PrunaPruner):
         # Get the target module to prune, and it's boundary and exterior
 
         target_module = get_target_module(model, imported, smash_config)
-        dg = tp.DependencyGraph().build_dependency(model, example_input, output_transform=safe_output_transform)
+        dg = (
+            imported["tp"]
+            .DependencyGraph()
+            .build_dependency(model, example_input, output_transform=safe_output_transform)
+        )
         boundary, exterior = get_boundary_and_exterior(target_module, model, dg)
 
         # Get the ignored layers
@@ -195,7 +203,7 @@ class TorchStructuredPruner(PrunaPruner):
 
         iterative_steps = smash_config["it_steps"]
 
-        pruner = imported_modules["tp"].pruner.MetaPruner(
+        pruner = imported["tp"].pruner.MetaPruner(
             model,
             example_input,
             importance=importance_function(),
@@ -476,7 +484,7 @@ def patch_heads(model: nn.Module, new_heads: Dict[nn.Linear, int]):
 
 def get_target_module(model: Any, imported: Dict[str, Any], smash_config: SmashConfigPrefixWrapper) -> nn.Module:
     """
-    Returns the target submodule of a model to be used for pruning.
+    Return the target submodule of a model to be used for pruning.
 
     If a target module is explicitly provided via the Smash config (experimental mode), it is returned directly.
 
@@ -510,7 +518,7 @@ def get_target_module(model: Any, imported: Dict[str, Any], smash_config: SmashC
 
 def get_ignored_layers(boundary, exterior, model, imported: Dict[str, Any]) -> List[nn.Module]:
     """
-    Returns a list of layers to ignore during pruning.
+    Return a list of layers to ignore during pruning.
 
     Combines the boundary and exterior of the target module into the ignored set.
     In a few model-specific cases, key layers are also added.
