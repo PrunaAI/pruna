@@ -19,7 +19,6 @@ from ConfigSpace import OrdinalHyperparameter
 from pruna.algorithms.caching import PrunaCacher
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_unet_pipeline
-from pruna.logging.logger import pruna_logger
 
 
 class DeepCacheCacher(PrunaCacher):
@@ -120,13 +119,6 @@ class DeepCacheCacher(PrunaCacher):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            from DeepCache import DeepCacheSDHelper as DeepCacheUnetHelper
-        except ModuleNotFoundError:  # DeepCache is not installed for Pruna on CPU
-            pruna_logger.error(
-                "You are trying to use DeepCache Compiler, but DeepCache is not installed. "
-                "This is likely because you did not install the GPU version of Pruna."
-            )
-            raise
+        from DeepCache import DeepCacheSDHelper as DeepCacheUnetHelper
 
         return dict(DeepCacheUnetHelper=DeepCacheUnetHelper)

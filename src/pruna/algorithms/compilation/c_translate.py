@@ -522,14 +522,8 @@ class WhisperWrapper:
         torch.Tensor
             The generated sequence IDs representing the transcription.
         """
-        try:
-            from ctranslate2 import StorageView
-        except ImportError:
-            pruna_logger.error(
-                "CTranslate2 is not installed. Please install the full version of pruna with `pip install pruna[full] "
-                " --extra-index-url https://prunaai.pythonanywhere.com/`."
-            )
-            raise
+        from ctranslate2 import StorageView
+
         features = StorageView.from_array(features.cpu().numpy())
         # Detect the language.
         if kwargs.get("language"):

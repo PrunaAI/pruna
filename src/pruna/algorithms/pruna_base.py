@@ -212,7 +212,7 @@ class PrunaAlgorithmBase(ABC):
 
 def wrap_handle_imports(func):
     """
-    Wraps the import_algorithm_packages method to handle import errors in a unified and user-friendly way.
+    Wrap the import_algorithm_packages method to handle import errors in a unified and user-friendly way.
 
     Parameters
     ----------

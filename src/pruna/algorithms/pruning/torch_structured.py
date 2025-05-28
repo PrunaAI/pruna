@@ -35,7 +35,6 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.logging.logger import pruna_logger
 
 is_gradient_based = ["TaylorImportance", "HessianImportance"]
 
@@ -220,18 +219,11 @@ class TorchStructuredPruner(PrunaPruner):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            import timm
-            import torch_pruning as tp
-            import torchvision
-            from timm.models.mvitv2 import MultiScaleAttention
-            from timm.models.mvitv2 import MultiScaleVit as MViT
-        except ImportError:
-            pruna_logger.error(
-                "You are trying to use the Pruna Pruner, but timm is not installed. "
-                "This is likely because you did not install the GPU version of Pruna."
-            )
-            raise
+        import timm
+        import torch_pruning as tp
+        import torchvision
+        from timm.models.mvitv2 import MultiScaleAttention
+        from timm.models.mvitv2 import MultiScaleVit as MViT
 
         return dict(timm=timm, torchvision=torchvision, MultiScaleAttention=MultiScaleAttention, MViT=MViT, tp=tp)
 
