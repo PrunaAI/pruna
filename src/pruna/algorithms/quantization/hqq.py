@@ -167,7 +167,9 @@ class HQQQuantizer(PrunaQuantizer):
             from hqq.engine.hf import HQQModelForCausalLM
             from hqq.models.hf.base import AutoHQQHFModel
             from hqq.utils.patching import prepare_for_inference
-            from transformers import HqqConfig
+            from transformers import (
+                HqqConfig,  # we do isolate this because this statement will import HQQ (transformers' lazy import)
+            )
 
         return dict(
             BaseQuantizeConfig=BaseQuantizeConfig,
