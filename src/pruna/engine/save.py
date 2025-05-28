@@ -304,13 +304,13 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    from hqq.engine.hf import HQQModelForCausalLM
-    from hqq.models.hf.base import AutoHQQHFModel
+    from pruna.algorithms.quantization.hqq import HQQQuantizer
+    algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
-    if isinstance(model, HQQModelForCausalLM):
+    if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
         model.save_quantized(model_path)
     else:
-        AutoHQQHFModel.save_quantized(model, model_path)
+        algorithm_packages["AutoHQQHFModel"].save_quantized(model, model_path)
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 

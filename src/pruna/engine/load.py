@@ -331,23 +331,19 @@ def load_hqq(model_path: str, **kwargs) -> Any:
     Any
         The loaded model.
     """
-    try:
-        from hqq.engine.hf import HQQModelForCausalLM
-        from hqq.models.hf.base import AutoHQQHFModel
-    except ImportError:
-        pruna_logger.error(
-            "HQQ is not installed. Please install the full version of pruna with `pip install pruna[full] "
-            " --extra-index-url https://prunaai.pythonanywhere.com/`."
-        )
-        raise
+    from pruna.algorithms.quantization.hqq import HQQQuantizer
+
+    algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
     try:  # Try to use pipeline for HF specific HQQ quantization
-        model = HQQModelForCausalLM.from_quantized(
-            model_path, **filter_load_kwargs(HQQModelForCausalLM.from_quantized, kwargs)
+        model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
+            model_path, **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs)
         )
-    except Exception as e:  # Default to generic HQQ pipeline if it fails
-        pruna_logger.error(f"Error loading model using HQQ: {e}")
-        model = AutoHQQHFModel.from_quantized(model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs))
+    except Exception:  # Default to generic HQQ pipeline if it fails
+        pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
+        model = algorithm_packages["AutoHQQHFModel"].from_quantized(
+            model_path, **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs)
+        )
 
     return model
 

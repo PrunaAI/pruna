@@ -126,8 +126,8 @@ class HQQQuantizer(PrunaQuantizer):
                 device=smash_config["device"],
                 compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
             )
-        except Exception as e:  # Default to generic HF quantization if it fails
-            pruna_logger.error(f"Error: {e}")
+        except Exception:  # Default to generic HF quantization if it fails
+            pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
             # Create a temporary directory in a specific location
             base_temp_dir = smash_config["cache_dir"]
             temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
@@ -162,22 +162,17 @@ class HQQQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            with SuppressOutput():
-                from hqq.core.quantize import BaseQuantizeConfig
-                from hqq.models.hf.base import AutoHQQHFModel
-                from hqq.utils.patching import prepare_for_inference
-                from transformers import HqqConfig
-        except ImportError:
-            pruna_logger.error(
-                "You are trying to use the HQQ quantizer, but hqq is not installed. "
-                "This is likely because you did not install hqq; try pip install hqq."
-            )
-            raise
+        with SuppressOutput():
+            from hqq.core.quantize import BaseQuantizeConfig
+            from hqq.engine.hf import HQQModelForCausalLM
+            from hqq.models.hf.base import AutoHQQHFModel
+            from hqq.utils.patching import prepare_for_inference
+            from transformers import HqqConfig
 
         return dict(
             BaseQuantizeConfig=BaseQuantizeConfig,
             AutoHQQHFModel=AutoHQQHFModel,
             prepare_for_inference=prepare_for_inference,
             HqqConfig=HqqConfig,
+            HQQModelForCausalLM=HQQModelForCausalLM,
         )

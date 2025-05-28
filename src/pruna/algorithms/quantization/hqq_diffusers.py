@@ -14,7 +14,10 @@
 
 from typing import Any, Dict, Type
 
+import diffusers
 import torch
+import torch.nn as nn
+from accelerate import init_empty_weights
 from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
@@ -25,7 +28,6 @@ from pruna.engine.model_checks import (
 )
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import load_json_config
-from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
 
@@ -126,16 +128,16 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
 
         if hasattr(model, "transformer"):
             # Collect all linear layers recursively
-            linear_layers = find_module_layers_type(model.transformer, imported_modules["nn"].Linear)
+            linear_layers = find_module_layers_type(model.transformer, nn.Linear)
             # put them in the transformer.layers for HQQ
             model.transformer.layers = linear_layers
             working_model = model.transformer
         elif hasattr(model, "unet"):
-            linear_layers = find_module_layers_type(model.unet, imported_modules["nn"].Linear)
+            linear_layers = find_module_layers_type(model.unet, nn.Linear)
             model.unet.layers = linear_layers
             working_model = model.unet
         else:
-            linear_layers = find_module_layers_type(model, imported_modules["nn"].Linear)
+            linear_layers = find_module_layers_type(model, nn.Linear)
             model.layers = linear_layers
             working_model = model
 
@@ -198,34 +200,15 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            with SuppressOutput():
-                import json
-                import os
-
-                import diffusers
-                import torch.nn as nn
-                from accelerate import init_empty_weights
-                from hqq.core.quantize import BaseQuantizeConfig
-                from hqq.models.base import BaseHQQModel, BasePatch
-                from hqq.utils.patching import prepare_for_inference
-        except ImportError:
-            pruna_logger.error(
-                "You are trying to use the HQQ quantizer, but hqq is not installed. "
-                "This is likely because you did not install hqq; try pip install hqq."
-            )
-            raise
+        from hqq.core.quantize import BaseQuantizeConfig
+        from hqq.models.base import BaseHQQModel, BasePatch
+        from hqq.utils.patching import prepare_for_inference
 
         return dict(
             prepare_for_inference=prepare_for_inference,
             HqqConfig=BaseQuantizeConfig,
-            nn=nn,
             BaseHQQModel=BaseHQQModel,
             BasePatch=BasePatch,
-            init_empty_weights=init_empty_weights,
-            diffusers=diffusers,
-            json=json,
-            os=os,
         )
 
 
@@ -281,10 +264,10 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
             """
             model_kwargs: Dict[str, Any] = {}
 
-            with imported_modules["init_empty_weights"]():
+            with init_empty_weights():
                 # recover class from save_dir
                 config = load_json_config(save_dir, "config.json")
-                model_class = getattr(imported_modules["diffusers"], config["_class_name"])
+                model_class = getattr(diffusers, config["_class_name"])
                 model = model_class.from_config(save_dir, **model_kwargs)
 
             return model
