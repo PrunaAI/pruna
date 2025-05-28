@@ -267,6 +267,10 @@ class TorchaoQuantizer(PrunaQuantizer):
             int8wo=int8_weight_only(),
             fp8wo=float8_weight_only(),
             fp8dq=float8_dynamic_activation_float8_weight(),
-            fp8dqrow=float8_dynamic_activation_float8_weight(PerRow()),
+            fp8dqrow=float8_dynamic_activation_float8_weight(
+                activation_dtype=torch.float8_e4m3fn,
+                weight_dtype=torch.float8_e4m3fn,
+                granularity=PerRow(),
+            ),
             _is_linear=_is_linear,
         )
