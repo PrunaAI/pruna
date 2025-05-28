@@ -87,6 +87,7 @@ whisper-s2t = "==1.3.0"
 hqq = "*"
 torchao = "*"
 llmcompressor = "*"
+gliner = "0.2.19"
 # Added Optional Dependencies from Extras
 ruff = { version = "*", optional = true }
 jupyterlab = { version = "*", optional = true }
