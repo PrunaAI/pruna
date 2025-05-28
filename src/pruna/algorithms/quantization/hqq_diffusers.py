@@ -28,6 +28,7 @@ from pruna.engine.model_checks import (
 )
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import load_json_config
+from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
 
@@ -200,9 +201,10 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        from hqq.core.quantize import BaseQuantizeConfig
-        from hqq.models.base import BaseHQQModel, BasePatch
-        from hqq.utils.patching import prepare_for_inference
+        with SuppressOutput():
+            from hqq.core.quantize import BaseQuantizeConfig
+            from hqq.models.base import BaseHQQModel, BasePatch
+            from hqq.utils.patching import prepare_for_inference
 
         return dict(
             prepare_for_inference=prepare_for_inference,
