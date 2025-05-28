@@ -9,7 +9,6 @@ from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.task import Task
 
-
 @pytest.mark.parametrize(
     "model_fixture, device, clip_model",
     [
