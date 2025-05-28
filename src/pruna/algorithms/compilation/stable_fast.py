@@ -97,17 +97,14 @@ class StableFastCompiler(PrunaCompiler):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            from sfast.compilers.diffusion_pipeline_compiler import (
-                CompilationConfig,
-                _build_lazy_trace,
-                _build_ts_compiler,
-            )
-            from sfast.compilers.diffusion_pipeline_compiler import compile as compile_stable_fast
-            from sfast.cuda.graphs import make_dynamic_graphed_callable
-            from sfast.jit.trace_helper import apply_auto_trace_compiler, lazy_trace
-        except ImportError:
-            raise ImportError(f"stable_fast is not installed. Please install it using {self.required_install}.")
+        from sfast.compilers.diffusion_pipeline_compiler import (
+            CompilationConfig,
+            _build_lazy_trace,
+            _build_ts_compiler,
+        )
+        from sfast.compilers.diffusion_pipeline_compiler import compile as compile_stable_fast
+        from sfast.cuda.graphs import make_dynamic_graphed_callable
+        from sfast.jit.trace_helper import apply_auto_trace_compiler, lazy_trace
 
         return dict(
             CompilationConfig=CompilationConfig,

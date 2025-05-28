@@ -28,7 +28,6 @@ from pruna.engine.model_checks import (
     is_mochi_pipeline,
     is_wan_pipeline,
 )
-from pruna.logging.logger import pruna_logger
 
 
 class FasterCacheCacher(PrunaCacher):
@@ -126,7 +125,7 @@ class FasterCacheCacher(PrunaCacher):
         spatial_attention_block_identifiers: Tuple[str, ...] = (
             "blocks.*attn1",
             "transformer_blocks.*attn1",
-            "single_transformer_blocks.*attn1"
+            "single_transformer_blocks.*attn1",
         )
         temporal_attention_block_identifiers: Tuple[str, ...] = ("temporal_transformer_blocks.*attn1",)
         attention_weight_callback = lambda _: 0.5  # noqa: E731
@@ -143,12 +142,18 @@ class FasterCacheCacher(PrunaCacher):
             attention_weight_callback = lambda _: 0.3  # noqa: E731
         elif is_flux_pipeline(model):
             spatial_attention_timestep_skip_range = (-1, 961)
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
             tensor_format = "BCHW"
             is_guidance_distilled = True
         elif is_hunyuan_pipeline(model):
             spatial_attention_timestep_skip_range = (99, 941)
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
             tensor_format = "BCFHW"
             is_guidance_distilled = True
         elif is_latte_pipeline(model):
@@ -200,13 +205,6 @@ class FasterCacheCacher(PrunaCacher):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            from diffusers import FasterCacheConfig
-        except ModuleNotFoundError:
-            pruna_logger.error(
-                "You are trying to use FasterCache, but the FasterCacheConfig can not be imported from diffusers. "
-                "This is likely because your diffusers version is too old."
-            )
-            raise
+        from diffusers import FasterCacheConfig
 
         return dict(FasterCacheConfig=FasterCacheConfig)
