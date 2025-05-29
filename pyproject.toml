@@ -37,6 +37,10 @@ exclude = [
     "docs*",
 ]
 
+[[tool.poetry.source]]
+name = "pruna"
+url = "https://prunaai.pythonanywhere.com/"
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 wget = "*"
@@ -104,8 +108,7 @@ stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 's
 numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 types-PyYAML = { version = "*", optional = true }
-gptqmodel = { version = "*", optional = true }
-
+gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true }
 
 [tool.poetry.extras]
 stable-fast = [
