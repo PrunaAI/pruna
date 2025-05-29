@@ -1,8 +1,24 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
     hooks:
-      - id: ruff
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: no-commit-to-branch
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.12
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.15.0
@@ -19,7 +35,7 @@ repos:
           bash -c '
           git diff --cached --name-status |
           grep -v "^D" |
-          cut -f2- |                       
+          cut -f2- |
           while IFS= read -r file; do
               if [ -f "$file" ] && grep -q "pruna_pro" "$file"; then
                   echo "Error: pruna_pro found in staged file $file"
@@ -30,4 +46,4 @@ repos:
         language: system
         stages: [pre-commit]
         types: [python]
-        exclude: '^docs/'
+        exclude: "^docs/"
