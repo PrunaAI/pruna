@@ -21,104 +21,89 @@ author = "- Pruna AI GmbH"
 [tool.mypy]
 ignore_missing_imports = true
 
-[tool.poetry]
+[project]
 name = "pruna"
 version = "0.2.5"
 description = "Smash your AI models"
-authors = ["Pruna AI <hello@pruna.ai>"]
-license = "All Rights Reserved"
-
-# **Include only .so files in the built distributions**
-include = ["**/*.so"]
-
-# **Exclude specific files or directories from the built distributions**
-exclude = [
-    "tests*",
-    "docs*",
+authors = [
+    {name = "Pruna AI", email = "hello@pruna.ai"}
+]
+license = {text = "All Rights Reserved"}
+readme = "README.md"
+requires-python = ">=3.9,<3.13"
+keywords = ["AI", "machine learning", "model optimization", "pruning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.13"
-wget = "*"
-torch = "2.7.0"
-torchvision = "0.22.0"
-torchmetrics = { version = "*", extras = ["image"] }
-requests = ">=2.31.0"
-transformers = "*"
-pillow = ">=9.5.0"
-pytorch-lightning = "*"
-huggingface-hub = { version = ">=0.30.0", extras = ["hf-xet"] }
-datasets = ">=0.34"
-jsonschema = "*"
-numpy = ">=1.24.4"
-setuptools = "*"
-packaging = "*"
-diffusers = ">=0.21.4"
-platformdirs = "*"
-torch_pruning = "*"
-python-dotenv = "*"
-ConfigSpace = ">=1.2.1"
-cython = "*"  # Consider removing if Cython is only needed for building
-lago-python-client = "*"
-sentencepiece = "*"
-blobfile = "*"
-librosa = "*"
-openvino = "*"
-soundfile = "*"
-ipywidgets = ">=8.1.5"
-DeepCache = "*"
-colorama = "*"
-protobuf = "*"
-peft = "*"
-optuna = "*"
-trl = "*"
-opentelemetry-api = ">=1.30.0"
-opentelemetry-sdk = ">=1.30.0"
-opentelemetry-exporter-otlp = ">=1.29.0"
-codecarbon = "*"
-pynvml = "*"
-thop = "*"
-timm = "*"
-bitsandbytes = "*"
-optimum-quanto = ">=0.2.5"
-optimum = "*"
-ctranslate2 = "==4.5.0"
-whisper-s2t = "==1.3.0"
-hqq = "*"
-torchao = "*"
-llmcompressor = "*"
-# Added Optional Dependencies from Extras
-ruff = { version = "*", optional = true }
-jupyterlab = { version = "*", optional = true }
-notebook = { version = "*", optional = true }
-pre-commit = { version = "*", optional = true }
-build = { version = "*", optional = true }
-twine = { version = "*", optional = true }
-pyc-wheel = { version = "*", optional = true }
-pytest-cov = { version = "*", optional = true }
-coverage = { version = "*", optional = true }
-pytest = { version = "7.4.4", optional = true }
-docutils = { version = "*", optional = true }
-xformers = { version = "==0.0.30", optional = true }
-stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"}
-numpydoc-validation = { version = "*", optional = true }
-mypy = { version = "*", optional = true }
-types-PyYAML = { version = "*", optional = true }
-gptqmodel = { version = "*", optional = true }
+dependencies = [
+    "wget",
+    "torch==2.7.0",
+    "torchvision==0.22.0",
+    "torchmetrics[image]",
+    "requests>=2.31.0",
+    "transformers",
+    "pillow>=9.5.0",
+    "pytorch-lightning",
+    "huggingface-hub[hf-xet]>=0.30.0",
+    "datasets>=0.34",
+    "jsonschema",
+    "numpy>=1.24.4",
+    "setuptools",
+    "packaging",
+    "diffusers>=0.21.4",
+    "platformdirs",
+    "torch_pruning",
+    "python-dotenv",
+    "ConfigSpace>=1.2.1",
+    "cython",
+    "lago-python-client",
+    "sentencepiece",
+    "blobfile",
+    "librosa",
+    "openvino",
+    "soundfile",
+    "ipywidgets>=8.1.5",
+    "DeepCache",
+    "colorama",
+    "protobuf",
+    "peft",
+    "optuna",
+    "trl",
+    "opentelemetry-api>=1.30.0",
+    "opentelemetry-sdk>=1.30.0",
+    "opentelemetry-exporter-otlp>=1.29.0",
+    "codecarbon",
+    "pynvml",
+    "thop",
+    "timm",
+    "bitsandbytes",
+    "optimum-quanto>=0.2.5",
+    "optimum",
+    "ctranslate2==4.5.0",
+    "whisper-s2t==1.3.0",
+    "hqq",
+    "torchao",
+    "llmcompressor",
+]
 
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 stable-fast = [
-    "xformers",
-    "stable-fast-pruna",
+    "xformers==0.0.30",
+    "stable-fast-pruna==1.0.7",
 ]
-# Note: You must first install the base package with ``pip install pruna`` before installing the GPTQ extension with ``pip install pruna[gptq]``
 gptq = [
-    "gptqmodel",
+    "gptqmodel==4.0.0.dev0+cu126torch2.7",
 ]
 full = [
-    "xformers",
-    "stable-fast-pruna",
+    "xformers==0.0.30",
+    "stable-fast-pruna==1.0.7",
 ]
 dev = [
     "jupyterlab",
@@ -131,7 +116,7 @@ dev = [
     "numpydoc-validation",
 ]
 tests = [
-    "pytest",
+    "pytest==7.4.4",
     "pytest-cov",
     "coverage",
     "docutils",
@@ -144,8 +129,15 @@ tests = [
 cpu = []
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = ["**/*.so"]
+exclude = [
+    "tests*",
+    "docs*",
+]
 
 [tool.setuptools]
 package-dir = {"" = "pruna"}
