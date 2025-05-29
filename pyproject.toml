@@ -109,6 +109,12 @@ numpydoc-validation = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 types-PyYAML = { version = "*", optional = true }
 gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true }
+logbar = { version = "*", optional = true, markers = "extra == 'gptq'" }
+tokenicer = { version = "*", optional = true, markers = "extra == 'gptq'" }
+# Additional GPTQ dependencies
+threadpoolctl = { version = "*", optional = true, markers = "extra == 'gptq'" }
+device-smi = { version = "*", optional = true, markers = "extra == 'gptq'" }
+random-word = { version = "*", optional = true, markers = "extra == 'gptq'" }
 
 [tool.poetry.extras]
 stable-fast = [
@@ -118,6 +124,11 @@ stable-fast = [
 # Note: You must first install the base package with ``pip install pruna`` before installing the GPTQ extension with ``pip install pruna[gptq]``
 gptq = [
     "gptqmodel",
+    "logbar",
+    "tokenicer",
+    "threadpoolctl",
+    "device-smi",
+    "random-word",
 ]
 full = [
     "xformers",
