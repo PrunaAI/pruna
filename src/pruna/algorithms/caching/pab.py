@@ -41,7 +41,10 @@ class PABCacher(PrunaCacher):
     """
 
     algorithm_name = "pab"
-    references = {"Paper": "https://arxiv.org/abs/2408.12588", "HuggingFace": "https://huggingface.co/docs/diffusers/main/api/cache#pyramid-attention-broadcast"}
+    references = {
+        "Paper": "https://arxiv.org/abs/2408.12588",
+        "HuggingFace": "https://huggingface.co/docs/diffusers/main/api/cache#pyramid-attention-broadcast",
+    }
     tokenizer_required = False
     processor_required = False
     dataset_required = False
@@ -90,7 +93,7 @@ class PABCacher(PrunaCacher):
             is_flux_pipeline,
             is_hunyuan_pipeline,
             is_mochi_pipeline,
-            is_wan_pipeline
+            is_wan_pipeline,
         ]
         return any(is_pipeline(model) for is_pipeline in pipeline_check_fns)
 
@@ -117,9 +120,15 @@ class PABCacher(PrunaCacher):
         spatial_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
         temporal_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
         cross_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
-        spatial_attention_block_identifiers: Tuple[str, ...] = ("blocks", "transformer_blocks",)
+        spatial_attention_block_identifiers: Tuple[str, ...] = (
+            "blocks",
+            "transformer_blocks",
+        )
         temporal_attention_block_identifiers: Tuple[str, ...] = ("temporal_transformer_blocks",)
-        cross_attention_block_identifiers: Tuple[str, ...] = ("blocks", "transformer_blocks",)
+        cross_attention_block_identifiers: Tuple[str, ...] = (
+            "blocks",
+            "transformer_blocks",
+        )
 
         # set configs according to https://github.com/huggingface/diffusers/pull/9562
         if is_allegro_pipeline(model):
@@ -130,9 +139,15 @@ class PABCacher(PrunaCacher):
             spatial_attention_block_identifiers = ("transformer_blocks",)
         elif is_flux_pipeline(model):
             spatial_attention_timestep_skip_range = (100, 950)
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
         elif is_hunyuan_pipeline(model):
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
         elif is_latte_pipeline(model):
             temporal_attention_block_skip_range = None
             cross_attention_block_skip_range = None
@@ -155,7 +170,7 @@ class PABCacher(PrunaCacher):
             spatial_attention_block_identifiers=spatial_attention_block_identifiers,
             temporal_attention_block_identifiers=temporal_attention_block_identifiers,
             cross_attention_block_identifiers=cross_attention_block_identifiers,
-            current_timestep_callback=lambda: model.current_timestep
+            current_timestep_callback=lambda: model.current_timestep,
         )
         model.transformer.enable_cache(pab_config)
         return model

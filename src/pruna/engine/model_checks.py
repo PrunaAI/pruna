@@ -528,7 +528,8 @@ def check_fused_attention_processor(model: Any) -> bool:
     if not hasattr(model, "attn_processors"):
         return False
     fusing_possible_list = [
-        processor_name.replace("Fused", "") for processor_name in dir(diffusers.models.attention_processor)
+        processor_name.replace("Fused", "")
+        for processor_name in dir(diffusers.models.attention_processor)
         if "Fused" in processor_name
     ]
     return any(processor.__class__.__name__ in fusing_possible_list for processor in model.attn_processors.values())
