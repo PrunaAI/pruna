@@ -22,11 +22,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: astral-sh/setup-uv@v6
 
-      - name: Install dependencies
-        run: |
-          uv sync
+      - uses: astral-sh/setup-uv@v6
 
       - name: Build
         run: |
