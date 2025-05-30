@@ -31,7 +31,7 @@ description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
 ]
-license = {text = "All Rights Reserved"}
+license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
@@ -108,6 +108,11 @@ gptq = [
     "device-smi",
     "random-word",
     "gptqmodel==4.0.0.dev0+cu126torch2.7",
+    "logbar",
+    "tokenicer",
+    "threadpoolctl",
+    "device-smi",
+    "random-word",
 ]
 full = [
     "xformers==0.0.30",

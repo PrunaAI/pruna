@@ -937,6 +937,12 @@ wheels = [
 ]
 
 [[package]]
+name = "device-smi"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/84/89966bc76073acb86d6e2ef59f7da512f5172a836430b93ca82c16dfc0a1/device_smi-0.4.1.tar.gz", hash = "sha256:a83a68ff0beed151ce8c1c5955896d4f74ffadebd7228ec7259cf04cef7aa981", size = 17123, upload-time = "2025-03-01T10:32:30.319Z" }
+
+[[package]]
 name = "diffusers"
 version = "0.33.1"
 source = { registry = "https://pypi.org/simple" }
@@ -996,7 +1002,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749, upload-time = "2025-05-10T17:42:51.123Z" }
 wheels = [
@@ -1162,9 +1168,14 @@ wheels = [
 
 [[package]]
 name = "gptqmodel"
-version = "2.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b6/d5/1bf44ba82226e3f81e875415a0c27ab786d2fc0d4bbdde67d797eebb3266/gptqmodel-2.2.0.tar.gz", hash = "sha256:820363ea37691324c4eceee40af040d050719e856bed2dbcd65653a938e90fab", size = 284348, upload-time = "2025-04-03T05:28:13.941Z" }
+version = "4.0.0.dev0+cu126torch2.7"
+source = { registry = "https://prunaai.pythonanywhere.com/" }
+wheels = [
+    { url = "https://prunaai.pythonanywhere.com/packages/gptqmodel-4.0.0.dev0+cu126torch2.7-cp310-cp310-linux_x86_64.whl", hash = "sha256:6b654f831da78e770f90bf11a5d028989bffd9e010a6bec26672df6c61c6de8e" },
+    { url = "https://prunaai.pythonanywhere.com/packages/gptqmodel-4.0.0.dev0+cu126torch2.7-cp311-cp311-linux_x86_64.whl", hash = "sha256:8caba487563f7a13486072fe1785e396e425bb94143b2f4722159a8a83b2d30e" },
+    { url = "https://prunaai.pythonanywhere.com/packages/gptqmodel-4.0.0.dev0+cu126torch2.7-cp312-cp312-linux_x86_64.whl", hash = "sha256:c657a0018392648890b95e9a571d559b352c034f30d90835bd10e2106faa229b" },
+    { url = "https://prunaai.pythonanywhere.com/packages/gptqmodel-4.0.0.dev0+cu126torch2.7-cp39-cp39-linux_x86_64.whl", hash = "sha256:4ee457cb12f54a290650e5ca6845bd7acb317c0408f4c572ac94269ae4f75876" },
+]
 
 [[package]]
 name = "greenlet"
@@ -2039,6 +2050,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/53/ad/d79349dc07b8a395a99153d7ce8b01d6fcdc9f8231355a5df55ded649b61/llvmlite-0.44.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d752f89e31b66db6f8da06df8b39f9b91e78c5feea1bf9e8c1fba1d1c24c065d", size = 41184247, upload-time = "2025-01-20T11:13:56.159Z" },
     { url = "https://files.pythonhosted.org/packages/e2/3b/a9a17366af80127bd09decbe2a54d8974b6d8b274b39bf47fbaedeec6307/llvmlite-0.44.0-cp312-cp312-win_amd64.whl", hash = "sha256:eae7e2d4ca8f88f89d315b48c6b741dcb925d6a1042da694aa16ab3dd4cbd3a1", size = 30332380, upload-time = "2025-01-20T11:14:02.442Z" },
 ]
+
+[[package]]
+name = "logbar"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/dc/ad5d2dd05613ca93a0d6ea83c8ea173bbd1951983aab4565e9fa49d0862f/logbar-0.0.4.tar.gz", hash = "sha256:77117236e507cbd43b9e1d19f1042af56952f556496eabde7de184280d75414e", size = 12347, upload-time = "2025-03-19T07:53:04.218Z" }
 
 [[package]]
 name = "loguru"
@@ -3638,7 +3655,12 @@ full = [
     { name = "xformers" },
 ]
 gptq = [
+    { name = "device-smi" },
     { name = "gptqmodel" },
+    { name = "logbar" },
+    { name = "random-word" },
+    { name = "threadpoolctl" },
+    { name = "tokenicer" },
 ]
 stable-fast = [
     { name = "stable-fast-pruna" },
@@ -3648,6 +3670,7 @@ tests = [
     { name = "coverage" },
     { name = "docutils" },
     { name = "jupyterlab" },
+    { name = "logbar" },
     { name = "mypy" },
     { name = "numpydoc-validation" },
     { name = "pytest" },
@@ -3669,9 +3692,10 @@ requires-dist = [
     { name = "cython" },
     { name = "datasets", specifier = ">=0.34" },
     { name = "deepcache" },
+    { name = "device-smi", marker = "extra == 'gptq'" },
     { name = "diffusers", specifier = ">=0.21.4" },
     { name = "docutils", marker = "extra == 'tests'" },
-    { name = "gptqmodel", marker = "extra == 'gptq'" },
+    { name = "gptqmodel", marker = "extra == 'gptq'", specifier = "==4.0.0.dev0+cu126torch2.7" },
     { name = "hqq" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.30.0" },
     { name = "ipywidgets", specifier = ">=8.1.5" },
@@ -3681,6 +3705,8 @@ requires-dist = [
     { name = "lago-python-client" },
     { name = "librosa" },
     { name = "llmcompressor" },
+    { name = "logbar", marker = "extra == 'gptq'" },
+    { name = "logbar", marker = "extra == 'tests'" },
     { name = "mypy", marker = "extra == 'tests'" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy", specifier = ">=1.24.4" },
@@ -3705,6 +3731,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'tests'" },
     { name = "python-dotenv" },
     { name = "pytorch-lightning" },
+    { name = "random-word", marker = "extra == 'gptq'" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'tests'" },
@@ -3714,7 +3741,9 @@ requires-dist = [
     { name = "stable-fast-pruna", marker = "extra == 'full'", specifier = "==1.0.7" },
     { name = "stable-fast-pruna", marker = "extra == 'stable-fast'", specifier = "==1.0.7" },
     { name = "thop" },
+    { name = "threadpoolctl", marker = "extra == 'gptq'" },
     { name = "timm" },
+    { name = "tokenicer", marker = "extra == 'gptq'" },
     { name = "torch", specifier = "==2.7.0" },
     { name = "torch-pruning" },
     { name = "torchao" },
@@ -4268,6 +4297,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a8/b8/d16eb579277f3de9e56e5ad25280fab52fc5774117fb70362e8c2e016559/questionary-2.1.0.tar.gz", hash = "sha256:6302cdd645b19667d8f6e6634774e9538bfcd1aad9be287e743d96cacaf95587", size = 26775, upload-time = "2024-12-29T11:49:17.802Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ad/3f/11dd4cd4f39e05128bfd20138faea57bec56f9ffba6185d276e3107ba5b2/questionary-2.1.0-py3-none-any.whl", hash = "sha256:44174d237b68bc828e4878c763a9ad6790ee61990e0ae72927694ead57bab8ec", size = 36747, upload-time = "2024-12-29T11:49:16.734Z" },
+]
+
+[[package]]
+name = "random-word"
+version = "1.0.11"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+    { name = "pyyaml" },
+    { name = "requests" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fd/ed/f20c4cc602e0b4618c2c3998fd028d46daa639f92b2eebeb7fb1cc5cb097/Random_Word-1.0.11-py3-none-any.whl", hash = "sha256:23b146dfc530c57e4f416a5aa8b43a1b93512dc470bc66fa22b54ad32d50572f", size = 1176886, upload-time = "2022-09-17T13:09:47.827Z" },
 ]
 
 [[package]]
@@ -5309,6 +5351,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/7a/fd/7a5ee21fd08ff70d3
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e6/34/ebdc18bae6aa14fbee1a08b63c015c72b64868ff7dae68808ab500c492e2/tinycss2-1.4.0-py3-none-any.whl", hash = "sha256:3a49cf47b7675da0b15d0c6e1df8df4ebd96e9394bb905a5775adb0d884c5289", size = 26610, upload-time = "2024-10-24T14:58:28.029Z" },
 ]
+
+[[package]]
+name = "tokenicer"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/aa/3d/af0e903192cc92add1b934b7c62d9b39e97e69a05adc614a1848cd54332e/tokenicer-0.0.4.tar.gz", hash = "sha256:4b76763385dbfaedab46c4d4869ae9a791fdd8871527f847ea02945a7160a3f6", size = 10787, upload-time = "2025-02-21T09:37:31.937Z" }
 
 [[package]]
 name = "tokenizers"
