@@ -120,9 +120,22 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-stable-fast = ["xformers==0.0.30", "stable-fast-pruna==1.0.7"]
-gptq = ["gptqmodel==4.0.0.dev0+cu126torch2.7"]
-full = ["xformers==0.0.30", "stable-fast-pruna==1.0.7"]
+stable-fast = [
+    "xformers==0.0.30",
+    "stable-fast-pruna==1.0.7",
+]
+gptq = [
+    "gptqmodel==4.0.0.dev0+cu126torch2.7",
+    "logbar",
+    "tokenicer",
+    "threadpoolctl",
+    "device-smi",
+    "random-word",
+]
+full = [
+    "xformers==0.0.30",
+    "stable-fast-pruna==1.0.7",
+]
 dev = [
     "jupyterlab",
     "notebook",
