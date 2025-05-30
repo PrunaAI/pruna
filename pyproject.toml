@@ -3,13 +3,38 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408"]
-select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA"]
-preview = true  # enable preview features for copyright checking
+ignore = [
+    "ANN002",
+    "ANN003",
+    "ANN401",
+    "C901",
+    "D100",
+    "D104",
+    "D401",
+    "D406",
+    "C408",
+]
+select = [
+    "A",
+    "C",
+    "CPY",
+    "D",
+    "E",
+    "ERA",
+    "F",
+    "FIX",
+    "I",
+    "N",
+    "SIM",
+    "T20",
+    "W",
+    "FA",
+]
+preview = true # enable preview features for copyright checking
 
 [tool.ruff.lint.per-file-ignores]
-"*.ipynb" = ["ERA", "CPY", "T"]  # commented out code is intended for tutorials
-"tests/*" = ["T20", "CPY"]  # print statements are intended for tests
+"*.ipynb" = ["ERA", "CPY", "T"] # commented out code is intended for tutorials
+"tests/*" = ["T20", "CPY"]      # print statements are intended for tests
 "docs/*" = ["CPY"]
 
 [tool.ruff.lint.pydocstyle]
@@ -28,10 +53,8 @@ ignore_missing_imports = true
 name = "pruna"
 version = "0.2.5"
 description = "Smash your AI models"
-authors = [
-    {name = "Pruna AI", email = "hello@pruna.ai"}
-]
-license = {text = "All Rights Reserved"}
+authors = [{ name = "Pruna AI", email = "hello@pruna.ai" }]
+license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
@@ -97,17 +120,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-stable-fast = [
-    "xformers==0.0.30",
-    "stable-fast-pruna==1.0.7",
-]
-gptq = [
-    "gptqmodel==4.0.0.dev0+cu126torch2.7",
-]
-full = [
-    "xformers==0.0.30",
-    "stable-fast-pruna==1.0.7",
-]
+stable-fast = ["xformers==0.0.30", "stable-fast-pruna==1.0.7"]
+gptq = ["gptqmodel==4.0.0.dev0+cu126torch2.7"]
+full = ["xformers==0.0.30", "stable-fast-pruna==1.0.7"]
 dev = [
     "jupyterlab",
     "notebook",
@@ -137,16 +152,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/src",
-    "/README.md",
-    "/LICENSE",
-]
+include = ["/src", "/README.md", "/LICENSE"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pruna"]
 include = ["**/*.so"]
-exclude = [
-    "tests*",
-    "docs*",
-]
+exclude = ["tests*", "docs*"]
