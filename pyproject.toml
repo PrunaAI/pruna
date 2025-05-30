@@ -53,8 +53,10 @@ ignore_missing_imports = true
 name = "pruna"
 version = "0.2.5"
 description = "Smash your AI models"
-authors = [{ name = "Pruna AI", email = "hello@pruna.ai" }]
-license = { file = "LICENSE" }
+authors = [
+    {name = "Pruna AI", email = "hello@pruna.ai"}
+]
+license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
