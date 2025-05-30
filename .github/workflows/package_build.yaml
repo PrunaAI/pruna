@@ -22,23 +22,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v6
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
-
-      - name: Install build and conversion dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install setuptools wheel
+          uv sync
 
-      - name: Install Poetry on Unix
-        if: runner.os != 'Windows'
+      - name: Build
         run: |
-          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 -
-          echo "$(python3 -m site --user-base)/bin" >> $GITHUB_PATH
-
-      - name: Build Wheel
-        run: |
-          poetry build
+          uv build
 
       - name: Get wheel filename
         id: get_wheel
@@ -51,3 +43,4 @@ jobs:
         with:
           name: ${{ steps.get_wheel.outputs.wheel_name }}
           path: dist/*.whl
+          retention-days: 7
