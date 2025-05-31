@@ -154,7 +154,6 @@ tests = [
     "mypy",
     "ruff",
     "types-PyYAML",
-    "logbar",
 ]
 cpu = []
 
