@@ -114,7 +114,7 @@ tokenicer = { version = "*", optional = true, markers = "extra == 'gptq'" }
 # Additional GPTQ dependencies
 threadpoolctl = { version = "*", optional = true, markers = "extra == 'gptq'" }
 device-smi = { version = "*", optional = true, markers = "extra == 'gptq'" }
-random-word = { version = "*", optional = true, markers = "extra == 'gptq'" }
+random_word = { version = "*", optional = true, markers = "extra == 'gptq'" }
 
 [tool.poetry.extras]
 stable-fast = [
@@ -128,7 +128,7 @@ gptq = [
     "tokenicer",
     "threadpoolctl",
     "device-smi",
-    "random-word",
+    "random_word",
 ]
 full = [
     "xformers",
