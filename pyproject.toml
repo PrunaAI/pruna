@@ -40,6 +40,7 @@ exclude = [
 [[tool.poetry.source]]
 name = "pruna"
 url = "https://prunaai.pythonanywhere.com/"
+priority = "supplemental"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
@@ -111,10 +112,9 @@ types-PyYAML = { version = "*", optional = true }
 gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true , markers = "extra == 'gptq'"}
 logbar = { version = "*", optional = true, markers = "extra == 'gptq'" }
 tokenicer = { version = "*", optional = true, markers = "extra == 'gptq'" }
-# Additional GPTQ dependencies
 threadpoolctl = { version = "*", optional = true, markers = "extra == 'gptq'" }
 device-smi = { version = "*", optional = true, markers = "extra == 'gptq'" }
-random_word = { version = "*", optional = true, markers = "extra == 'gptq'" }
+random-word = { version = "*", optional = true, markers = "extra == 'gptq'" }
 
 [tool.poetry.extras]
 stable-fast = [
@@ -128,7 +128,7 @@ gptq = [
     "tokenicer",
     "threadpoolctl",
     "device-smi",
-    "random_word",
+    "random-word",
 ]
 full = [
     "xformers",
