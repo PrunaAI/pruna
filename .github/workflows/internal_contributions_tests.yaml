@@ -32,9 +32,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      
-      - name: Install random_word
-        run: pip install random_word
 
       - name: Install Poetry
         uses: abatilo/actions-poetry@v2
