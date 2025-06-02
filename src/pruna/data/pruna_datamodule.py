@@ -189,13 +189,16 @@ class PrunaDataModule(LightningDataModule):
             train_limit, val_limit, test_limit = limit
 
         if isinstance(self.train_dataset, Dataset):
-            self.train_dataset = self.train_dataset.select(range(train_limit))
-            self.val_dataset = self.val_dataset.select(range(val_limit))  # type: ignore[union-attr]
-            self.test_dataset = self.test_dataset.select(range(test_limit))  # type: ignore[union-attr]
+            self.train_dataset = self.train_dataset.select(range(min(len(self.train_dataset), train_limit)))
+            self.val_dataset = self.val_dataset.select(range(min(len(self.val_dataset), val_limit)))  # type: ignore[union-attr]
+            self.test_dataset = self.test_dataset.select(range(min(len(self.test_dataset), test_limit)))  # type: ignore[union-attr]
         elif isinstance(self.train_dataset, IterableDataset):
-            self.train_dataset = self.train_dataset[:train_limit]
-            self.val_dataset = self.val_dataset[:val_limit]
-            self.test_dataset = self.test_dataset[:test_limit]
+            train_length = sum(1 for _ in self.train_dataset)
+            val_length = sum(1 for _ in self.val_dataset)
+            test_length = sum(1 for _ in self.test_dataset)
+            self.train_dataset = self.train_dataset[: min(train_length, train_limit)]
+            self.val_dataset = self.val_dataset[: min(val_length, val_limit)]
+            self.test_dataset = self.test_dataset[: min(test_length, test_limit)]
         elif isinstance(self.train_dataset, TorchDataset):
             train_indices = list(range(min(len(self.train_dataset), train_limit)))  # type: ignore[arg-type]
             val_indices = list(range(min(len(self.val_dataset), val_limit)))  # type: ignore[arg-type]
