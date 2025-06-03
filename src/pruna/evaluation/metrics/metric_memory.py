@@ -102,7 +102,7 @@ class GPUMemoryStats(BaseMetric):
     Parameters
     ----------
     mode : str
-        The mode for memory evaluation. Must be one of 'disk', 'inference', or 'training'.
+        The mode for memory evaluation. Must be one of 'disk_memory', 'inference_memory', or 'training_memory'.
     gpu_indices : Optional[List[int]]
         List of GPU indices to monitor. If None, all GPUs are assumed.
     """
