@@ -7,7 +7,7 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
 
 .. grid:: 1 2 2 2
 
-   .. grid-item-card:: Optimize and Evaluate Large Language Models
+   .. grid-item-card:: Compress and Evaluate Large Language Models
       :text-align: center
       :link: ./llms.ipynb
 
