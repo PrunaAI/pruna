@@ -248,12 +248,15 @@ class GPUMemoryStats(BaseMetric):
 
         indices = set()
         for device in device_map.values():
-            if isinstance(device, str) and "cuda" in device:
-                try:
-                    idx = int(device.split(":")[1])
-                    indices.add(idx)
-                except (IndexError, ValueError):
-                    indices.add(0)
+            if isinstance(device, str):
+                if "cuda" in device:
+                    try:
+                        idx = int(device.split(":")[1])
+                        indices.add(idx)
+                    except (IndexError, ValueError):
+                        indices.add(0)
+                elif "mps" in device:
+                    indices.add(-1)  # Use -1 as a placeholder for MPS
 
         return sorted(indices) if indices else None
 
@@ -302,10 +305,17 @@ class GPUMemoryStats(BaseMetric):
             return None
 
         device = model.device
-        if hasattr(device, "index") and device.type == "cuda":
-            return [device.index]
-        elif isinstance(device, str) and "cuda" in device:
-            return [0]
+        if hasattr(device, "type"):
+            if device.type == "cuda":
+                return [device.index if device.index is not None else 0]
+            elif device.type == "mps":
+                return [-1]  # Placeholder for MPS
+
+        elif isinstance(device, str):
+            if "cuda" in device:
+                return [0]
+            elif "mps" in device:
+                return [-1]
 
         return None
 
@@ -348,7 +358,7 @@ class GPUMemoryStats(BaseMetric):
         """
         with torch.no_grad() if self.mode == INFERENCE_MEMORY else torch.enable_grad():
             batch = next(iter(dataloader))
-            model.run_inference(batch, "cuda")
+            model.run_inference(batch=batch, device=set_to_best_available_device(None))
 
 
 @MetricRegistry.register(DISK_MEMORY)
