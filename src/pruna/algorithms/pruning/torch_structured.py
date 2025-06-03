@@ -59,7 +59,7 @@ class TorchStructuredPruner(PrunaPruner):
     run_on_cpu = True
     run_on_cuda = True
     dataset_required = True
-    compatible_algorithms = dict(quantizer=["half"])
+    compatible_algorithms = dict(quantizer=["half", "torchao", "hqq"], compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -172,7 +172,7 @@ class TorchStructuredPruner(PrunaPruner):
         importance_function = getattr(imported["tp"].importance, smash_config["type"])
 
         # Get the example input and move to device correctly if it's a dict
-        batch = next(iter(smash_config.train_dataloader()))
+        batch = next(iter(smash_config.train_dataloader()))[0]
         if isinstance(batch, dict):
             for k, v in batch.items():
                 if isinstance(v, torch.Tensor):
@@ -180,7 +180,7 @@ class TorchStructuredPruner(PrunaPruner):
             example_input = batch
         else:
             # PrunaDataModule always returns a tuple of two tensors, the first is the input.
-            example_input = batch[0][:1, :].to(device)  # type: ignore[arg-type]
+            example_input = batch[:1, :].to(device)  # type: ignore[arg-type]
 
         # Get the target module to prune, and it's boundary and exterior
 
@@ -424,7 +424,7 @@ def get_qkv_head_counts(module: nn.Module) -> dict[nn.Linear, int]:
 
     Parameters
     ----------
-    model : nn.Module
+    module : nn.Module
         The model to find the attention blocks in.
 
     Returns
@@ -456,7 +456,7 @@ def update_heads_attribute(model: nn.Module, new_num_heads_map: Dict[nn.Linear, 
     ----------
     model : nn.Module
         The model to patch the heads for.
-    new_heads : Dict[nn.Linear, int]
+    new_num_heads_map : Dict[nn.Linear, int]
         The new head count map.
 
     Returns

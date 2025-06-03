@@ -45,7 +45,7 @@ class HQQQuantizer(PrunaQuantizer):
     run_on_cpu = False
     run_on_cuda = True
     dataset_required = False
-    compatible_algorithms = dict(compiler=["torch_compile"])
+    compatible_algorithms = dict(compiler=["torch_compile"], pruner=["torch_structured"])
 
     def get_hyperparameters(self) -> list:
         """
