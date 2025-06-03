@@ -3,38 +3,13 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = [
-    "ANN002",
-    "ANN003",
-    "ANN401",
-    "C901",
-    "D100",
-    "D104",
-    "D401",
-    "D406",
-    "C408",
-]
-select = [
-    "A",
-    "C",
-    "CPY",
-    "D",
-    "E",
-    "ERA",
-    "F",
-    "FIX",
-    "I",
-    "N",
-    "SIM",
-    "T20",
-    "W",
-    "FA",
-]
+ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408"]
+select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA"]
 preview = true # enable preview features for copyright checking
 
 [tool.ruff.lint.per-file-ignores]
-"*.ipynb" = ["ERA", "CPY", "T"] # commented out code is intended for tutorials
-"tests/*" = ["T20", "CPY"]      # print statements are intended for tests
+"*.ipynb" = ["ERA", "CPY", "T"]  # commented out code is intended for tutorials
+"tests/*" = ["T20", "CPY"]  # print statements are intended for tests
 "docs/*" = ["CPY"]
 
 [tool.ruff.lint.pydocstyle]
@@ -167,9 +142,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/README.md", "/LICENSE"]
+include = [
+    "/src",
+    "/README.md",
+    "/LICENSE",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pruna"]
 include = ["**/*.so"]
-exclude = ["tests*", "docs*"]
+exclude = [
+    "tests*",
+    "docs*",
+]
