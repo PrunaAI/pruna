@@ -40,13 +40,13 @@ class StandardHandler(InferenceHandler):
     def __init__(self, model_args: Optional[Dict[str, Any]] = None) -> None:
         self.model_args = model_args if model_args else {}
 
-    def prepare_inputs(self, batch: Tuple[List[str] | torch.Tensor, ...]) -> Any:
+    def prepare_inputs(self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]) -> Any:
         """
         Prepare the inputs for the model.
 
         Parameters
         ----------
-        batch : Tuple[Any, ...]
+        batch : List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]
             The batch to prepare the inputs for.
 
         Returns

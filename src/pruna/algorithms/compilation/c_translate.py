@@ -199,7 +199,6 @@ class CTranslateCompiler(PrunaCompiler):
         elif self.task_name == "whisper":
             optimized_model = imported_modules["Whisper"](temp_dir, device=smash_config["device"])
             optimized_model = WhisperWrapper(optimized_model, temp_dir, smash_config.processor)
-            optimized_model.config = model.config
         else:
             raise ValueError("Task not supported")
 
