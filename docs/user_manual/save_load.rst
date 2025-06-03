@@ -150,7 +150,6 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
     .. tab:: Hugging Face Hub Loading
 
         .. code-block:: python
-            :class: noextract
 
             from pruna import PrunaModel
 

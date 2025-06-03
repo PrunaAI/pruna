@@ -54,8 +54,7 @@ Let's see what that looks like in code.
 
     # Run inference
     optimized_model.set_progress_bar_config(disable=True)
-    optimized_model.inference_handler.model_args.update({"num_inference_steps": 1, "guidance_scale": 0.0})
-    optimized_model("A serene landscape with mountains").images[0]
+    optimized_model("A serene landscape with mountains").images[0].save("output.png")
 
 Step-by-Step Optimisation Workflow
 ----------------------------------
@@ -138,7 +137,8 @@ To evaluate the optimized model, we can use the same interface as the original m
 
     # Evaluate the model
     eval_agent = EvaluationAgent(task)
-    eval_agent.evaluate(optimized_model)
+    results = eval_agent.evaluate(optimized_model)
+    print(results)
 
 To understand how to run more complex evaluation workflows, see :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>`.
 
@@ -155,9 +155,7 @@ To run inference with the optimized model, we can use the same interface as the 
     optimized_model = PrunaModel.from_hub("PrunaAI/segmind-tiny-sd-smashed")
 
     optimized_model.set_progress_bar_config(disable=True)
-    optimized_model.inference_handler.model_args.update(
-        {"num_inference_steps": 1, "guidance_scale": 0.0}
-    )
+
     prompt = "A serene landscape with mountains"
     optimized_model(prompt).images[0].save("output.png")
 
@@ -188,7 +186,7 @@ Example 1: Diffusion Model Optimization
 
     # Generate an image
     prompt = "A serene landscape with mountains"
-    optimized_model(prompt).images[0].save("cat.png")
+    optimized_model(prompt).images[0].save("output.png")
 
 
 Example 2: Large Language Model Optimization
@@ -211,7 +209,6 @@ Example 2: Large Language Model Optimization
 
     # Optimize the model
     optimized_model = smash(model=pipe.model, smash_config=smash_config)
-    pipe.model = optimized_model
 
     # Use the model for generation
     pipe("The best way to learn programming is", max_new_tokens=100)
