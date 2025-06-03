@@ -219,6 +219,7 @@ class TorchMetricWrapper(StatefulMetric):
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 
+            kwargs.pop("device", None)
             return PairwiseClipScore(**kwargs)
         return super().__new__(cls)
 
@@ -233,8 +234,9 @@ class TorchMetricWrapper(StatefulMetric):
         """
         super().__init__()
         try:
+            device = kwargs.pop("device", None)
             if metric_name == "perplexity":
-                device = set_to_best_available_device(device=kwargs.get("device"))
+                device = set_to_best_available_device(device=device)
                 self.metric = TorchMetrics[metric_name](**kwargs).to(device)
             else:
                 self.metric = TorchMetrics[metric_name](**kwargs)
