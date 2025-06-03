@@ -128,6 +128,9 @@ def check_argument_compatibility(smash_config: SmashConfig, algorithm_name: str)
         raise ValueError(f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor().")
     if algorithm_requirements["dataset_required"] and smash_config.data is None:
         raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
+    if smash_config._target_module is not None:
+        raise ValueError("Target module is only available in experimental mode. Please set experimental=True.")
+
 
 
 def check_algorithm_availability(algorithm: str, algorithm_group: str, algorithm_dict: dict[str, Any]) -> None:

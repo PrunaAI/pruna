@@ -26,15 +26,14 @@ from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
 from pruna.algorithms.pruning import PrunaPruner
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
-from pruna.engine.model_checks import is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
-_QKV_PAT = re.compile(r"(q|k|v).*proj|query|key|value", re.I)
-_Q_HEAD_ATTRS = ("num_attention_heads", "num_heads", "n_heads")
-_KV_HEAD_ATTRS = ("num_key_value_heads",)
-_HEAD_DIM_ATTRS = ("head_dim", "attention_head_size")
-_EMBED_DIM_ATTRS = ("all_head_size", "embed_dim", "hidden_size")
+_QKV_PAT = re.compile(r"(q|k|v).*proj|query|key|value", re.I)  # To capture all QKV layers
+_Q_HEAD_ATTRS = ("num_attention_heads", "num_heads", "n_heads")  # To capture all Q head attributes
+_KV_HEAD_ATTRS = ("num_key_value_heads",)  # To capture all KV head attributes
+_HEAD_DIM_ATTRS = ("head_dim", "attention_head_size")  # To capture all head dimension attributes
+_EMBED_DIM_ATTRS = ("all_head_size", "embed_dim", "hidden_size")  # To capture all embed dimension attributes
 
 is_gradient_based = {"TaylorImportance", "HessianImportance"}
 
@@ -46,7 +45,7 @@ class TorchStructuredPruner(PrunaPruner):
     Structured pruning removes entire units like neurons, channels, or filters from a network, leading to a more compact
     and computationally efficient model while preserving a regular structure that standard hardware can easily optimize.
 
-    Note: If you would like a to prune a target module,
+    Note: If you would like to prune a target module,
     you can by setting the target_module parameter in the smash config.
     Please set the experimental flag to True to use this feature.
     """
@@ -130,12 +129,9 @@ class TorchStructuredPruner(PrunaPruner):
         bool
             True if the model is supported, False otherwise.
         """
-        # Torch structured pruning is currently broken for LLMs, to be fixed
-        if is_causal_lm(model):
-            return False
         imported_modules = self.import_algorithm_packages()
         # Simple heuristics – extend as needed
-        if isinstance(model, (imported_modules["Opt"], imported_modules["Llama"], imported_modules["ViT"])):
+        if isinstance(model, (imported_modules["Opt"], imported_modules["ViT"])):
             return True
         if isinstance(model, imported_modules["timm"].models.convnext.ConvNeXt):
             return True
@@ -188,18 +184,18 @@ class TorchStructuredPruner(PrunaPruner):
         # Get the target module to prune, and it's boundary and exterior
 
         target_module = get_target_module(model, imported, smash_config)
-        dg = (
+        dependency_graph = (
             imported["tp"]
             .DependencyGraph()
             .build_dependency(model, example_input, output_transform=safe_output_transform)
         )
-        boundary, exterior = get_boundary_and_exterior(target_module, model, dg)
+        boundary, exterior = get_boundary_and_exterior(target_module, model, dependency_graph)
 
         # Get the ignored layers
         ignored_layers = get_ignored_layers(boundary, exterior, model, imported)
 
         # Get the number of heads
-        num_heads = find_attention_blocks(target_module)
+        num_heads = get_qkv_head_counts(target_module)
 
         iterative_steps = smash_config["it_steps"]
 
@@ -233,7 +229,7 @@ class TorchStructuredPruner(PrunaPruner):
         for p in model.parameters():
             p.requires_grad = False
 
-        model = patch_heads(model, pruner.num_heads)
+        model = update_heads_attribute(model, pruner.num_heads)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -271,7 +267,7 @@ class TorchStructuredPruner(PrunaPruner):
         )
 
 
-def get_boundary_and_exterior(target_module, model, dg):
+def get_boundary_and_exterior(target_module, model, dependency_graph):
     """
     Get the boundary and exterior for a target module.
 
@@ -286,7 +282,7 @@ def get_boundary_and_exterior(target_module, model, dg):
         The target module to prune.
     model : nn.Module
         The full model.
-    dg : tp.DependencyGraph
+    dependency_graph : tp.DependencyGraph
         The dependency graph of the model.
 
     Returns
@@ -297,33 +293,41 @@ def get_boundary_and_exterior(target_module, model, dg):
     if target_module == model:  # If we are pruning the entire model, there is no boundary or exterior
         return set(), set()
 
-    real_nodes = dg.module2node  # includes all modules, parameters, buffers, even internals like autograd nodes
-    name_of = dg._module2name  # modules and parameter with actual names
+    real_nodes = (
+        dependency_graph.module2node
+    )  # includes all modules, parameters, buffers, even internals like autograd nodes
+    name_of = dependency_graph._module2name  # modules and parameter with actual names
     # We only want the modules and parameters that have actual names
     real_named = set(real_nodes.keys()) & set(name_of.keys())
 
     # Get the modules and parameters that are inside the target module
-    enc_inside_prms = set(target_module.parameters())
-    enc_inside_modules = set(target_module.modules())
-    enc_inside = enc_inside_prms | enc_inside_modules  # We want both the parameters and the modules
+    inside_prms = set(target_module.parameters())
+    inside_modules = set(target_module.modules())
+    inside = inside_prms | inside_modules  # We want both the parameters and the modules
 
-    interior = real_named & enc_inside  # interior is intersection of entire model and target module
+    interior = real_named & inside  # interior is intersection of entire model and target module
     exterior = real_named - interior  # exterior is the rest of the modules
 
     def touches_exterior(node):
+        """
+        Check if the module has any inputs or outputs that are in the exterior.
+
+        This would mean that the module is on the boundary of the pruning scope.
+        """
         stack, seen = node.inputs + node.outputs, set()
         while stack:
             n = stack.pop()
-            if n in seen:
-                continue
-            seen.add(n)
-            mod = n.module
-            # We don't want the auxiliary nodes like autograd nodes
-            # So we only want the modules that have actual names
-            if mod in real_named:
-                return mod in exterior  # If the input or output is in the exterior, then the module touches the exterior
-            stack.extend(n.inputs)
-            stack.extend(n.outputs)
+            if n not in seen:
+                seen.add(n)
+                mod = n.module
+                # We don't want the auxiliary nodes like autograd nodes
+                # So we only want the modules that have actual names
+                if mod in real_named:
+                    return (
+                        mod in exterior
+                    )  # If the input or output is in the exterior, then the module touches the exterior
+                stack.extend(n.inputs)
+                stack.extend(n.outputs)
         return False
 
     boundary = {m for m in interior if touches_exterior(real_nodes[m])}
@@ -331,57 +335,73 @@ def get_boundary_and_exterior(target_module, model, dg):
     return boundary, exterior
 
 
-def _get_q_head_attr_value(m: nn.Module) -> Optional[int]:
+def _pick_attr(module: nn.Module, names: Tuple[str, ...], default: Optional[int] = None) -> Optional[Any]:
     """
-    Get the head count attribute value from the module.
+    Return the first attribute (or config attribute) from the possible candidates that exists.
 
     Parameters
     ----------
-    m : nn.Module
-        The module to get the head count attribute value from.
+    module : nn.Module
+        The module to pick the attribute from.
+    names : Tuple[str, ...]
+        The ordered list of candidate names.
+    default : value to return if nothing is found
+
+    Returns
+    -------
+    Optional[Any]
+        The first attribute that exists.
+    """
+    for name in names:
+        if hasattr(module, name):
+            return getattr(module, name)
+        cfg = getattr(module, "config", None)  # Huggingface models
+        if cfg is not None and hasattr(cfg, name):
+            return getattr(cfg, name)
+    return default
+
+
+def get_num_q_heads(module: nn.Module) -> int | None:
+    """
+    Return the number of Q heads for the module.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The module to get the Q heads for.
 
     Returns
     -------
     Optional[int]
-        The head count attribute value.
+        The number of Q heads.
     """
-    for attr in _Q_HEAD_ATTRS:
-        if hasattr(m, attr):
-            return getattr(m, attr)
-        if hasattr(m, "config") and hasattr(m.config, attr):
-            return getattr(m.config, attr)
-    return None
+    return _pick_attr(module, _Q_HEAD_ATTRS)
 
 
-def _get_kv_head_attr_value(m: nn.Module) -> Optional[int]:
+def get_num_kv_heads(module: nn.Module) -> int | None:
     """
-    Get the KV head count attribute value from the module if it exists.
+    Return the number of KV heads for the module.
 
     Parameters
     ----------
-    m : nn.Module
-        The module to get the KV head count attribute value from.
+    module : nn.Module
+        The module to get the KV heads for.
 
     Returns
     -------
     Optional[int]
-        The KV head count attribute value.
+        The number of KV heads.
     """
-    for attr in _KV_HEAD_ATTRS:
-        if hasattr(m, attr):
-            return getattr(m, attr)
-        if hasattr(m, "config") and hasattr(m.config, attr):
-            return getattr(m.config, attr)
-    return None
+    return _pick_attr(module, _KV_HEAD_ATTRS)
 
 
-def _infer_qkv_linears(m: nn.Module) -> List[Tuple[str, nn.Linear]]:
+def _infer_qkv_linears(module: nn.Module) -> List[Tuple[str, nn.Linear]]:
     """
     Infer the QKV layers from the module.
 
     Parameters
     ----------
-    m : nn.Module
+    module : nn.Module
         The module to infer the QKV layers from.
 
     Returns
@@ -389,10 +409,12 @@ def _infer_qkv_linears(m: nn.Module) -> List[Tuple[str, nn.Linear]]:
     List[Tuple[str, nn.Linear]]
         The QKV name and layer pairs.
     """
-    return [(name, sub) for name, sub in m.named_children() if isinstance(sub, nn.Linear) and _QKV_PAT.fullmatch(name)]
+    return [
+        (name, sub) for name, sub in module.named_children() if isinstance(sub, nn.Linear) and _QKV_PAT.fullmatch(name)
+    ]
 
 
-def find_attention_blocks(model: nn.Module) -> Dict[nn.Linear, int]:
+def get_qkv_head_counts(module: nn.Module) -> dict[nn.Linear, int]:
     """
     Return the projection to head_count map.
 
@@ -410,24 +432,22 @@ def find_attention_blocks(model: nn.Module) -> Dict[nn.Linear, int]:
         The projection to head_count map.
     """
     mapping: Dict[nn.Linear, int] = {}
-    for m in model.modules():
+    for m in module.modules():
         # Is m an attention block? Keep going if not.
-        if (heads := _get_q_head_attr_value(m)) is None:
-            continue
-        # Do we have a separate KV head count?
-        kv_heads = _get_kv_head_attr_value(m)
-        # Get the QKV layers.
-        qkv = _infer_qkv_linears(m)
-        if len(qkv) < 3:
-            continue
-        # Map every projection to the original head count
-        for name, proj in qkv:
-            is_kv = name.lower().startswith(("k", "v"))
-            mapping[proj] = kv_heads if is_kv and kv_heads is not None else heads
+        if (num_q_heads := get_num_q_heads(m)) is not None:
+            # Do we have a separate KV head count?
+            num_kv_heads = get_num_kv_heads(m)
+            # Get the QKV layers.
+            qkv = _infer_qkv_linears(m)
+            if len(qkv) >= 3:
+                # Map every projection to the original head count
+                for name, proj in qkv:
+                    is_kv = name.lower().startswith(("k", "v"))
+                    mapping[proj] = num_kv_heads if is_kv and num_kv_heads is not None else num_q_heads
     return mapping
 
 
-def patch_heads(model: nn.Module, new_heads: Dict[nn.Linear, int]):
+def update_heads_attribute(model: nn.Module, new_num_heads_map: Dict[nn.Linear, int]):
     """
     Update head count attributes and derived sizes after pruning.
 
@@ -444,40 +464,34 @@ def patch_heads(model: nn.Module, new_heads: Dict[nn.Linear, int]):
         The patched model.
     """
     for m in model.modules():
-        if (_get_q_head_attr_value(m)) is None:
-            continue
+        if get_num_q_heads(m) is not None:
+            q_proj = getattr(m, "q_proj", None) or getattr(m, "query", None) or getattr(m, "query_proj", None)
+            if q_proj in new_num_heads_map:
+                new_num_head = new_num_heads_map[q_proj]
+                new_num_out_features = q_proj.out_features  # type: ignore[union-attr]
+                new_num_head_dim = new_num_out_features // new_num_head
 
-        q_proj = (
-            getattr(m, "q_proj", None) or getattr(m, "query", None) or getattr(m, "query_proj", None)
-        )  # Maybe this should be the QKV pattern instead.
-        if q_proj not in new_heads:
-            continue  # This block was ignored
+                # Update head count.
+                for attr in _Q_HEAD_ATTRS:
+                    if hasattr(m, attr):
+                        setattr(m, attr, new_num_head)
 
-        new_h = new_heads[q_proj]
-        out_features = q_proj.out_features  # type: ignore[union-attr]
-        head_dim = out_features // new_h
+                # Update head_dim
+                for attr in _HEAD_DIM_ATTRS:
+                    if hasattr(m, attr):
+                        setattr(m, attr, new_num_head_dim)
 
-        # Update head count.
-        for attr in _Q_HEAD_ATTRS:
-            if hasattr(m, attr):
-                setattr(m, attr, new_h)
+                # Update embed_dim
+                for attr in _EMBED_DIM_ATTRS:
+                    if hasattr(m, attr):
+                        setattr(m, attr, new_num_out_features)
 
-        # Update head_dim
-        for attr in _HEAD_DIM_ATTRS:
-            if hasattr(m, attr):
-                setattr(m, attr, head_dim)
-
-        # Update embed_dim
-        for attr in _EMBED_DIM_ATTRS:
-            if hasattr(m, attr):
-                setattr(m, attr, out_features)
-
-        # Update num_key_value_heads
-        if hasattr(m, "num_key_value_heads"):
-            k_proj = getattr(m, "k_proj", None) or getattr(m, "key", None) or getattr(m, "key_proj", None)
-            if k_proj in new_heads:
-                new_h_kv = new_heads[k_proj]
-                setattr(m, "num_key_value_heads", new_h_kv)
+                # Update num_key_value_heads
+                if hasattr(m, "num_key_value_heads"):
+                    k_proj = getattr(m, "k_proj", None) or getattr(m, "key", None) or getattr(m, "key_proj", None)
+                    if k_proj in new_num_heads_map:
+                        new_num_kv_head = new_num_heads_map[k_proj]
+                        setattr(m, "num_key_value_heads", new_num_kv_head)
 
     return model
 

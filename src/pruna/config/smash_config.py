@@ -461,8 +461,12 @@ class SmashConfig:
         target_module : Any
             The target module to prune.
         """
-        if self["pruner"] != "torch_structured":
-            pruna_logger.error("Target module is only supported for torch_structured pruner")
+        if self["pruner"] is None:
+            pruna_logger.error("No pruner selected, target module is only supported by torch_structured pruner.")
+            raise
+        elif self["pruner"] != "torch_structured":
+            pruna_logger.error("Target module is only supported for torch_structured pruner.")
+            raise
         self._target_module = target_module
 
     def get_tokenizer_name(self) -> str | None:
