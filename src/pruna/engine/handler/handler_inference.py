@@ -33,7 +33,7 @@ class InferenceHandler(ABC):
         self.model_args: Dict[str, Any] = {}
 
     @abstractmethod
-    def prepare_inputs(self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]) -> Any:
+    def prepare_inputs(self, batch: Any) -> Any:
         """
         Prepare the inputs for the model.
 
@@ -68,9 +68,9 @@ class InferenceHandler(ABC):
 
     def move_inputs_to_device(
         self,
-        inputs: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...],
+        inputs: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | Dict[str, Any],
         device: torch.device | str = "cuda",
-    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]:
+    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor | Dict[str, Any], ...] | Dict[str, Any]:
         """
         Recursively move inputs to device.
 
@@ -86,6 +86,10 @@ class InferenceHandler(ABC):
         List[str] | torch.Tensor
             The prepared inputs.
         """
+        if isinstance(inputs, dict):
+            for key, value in inputs.items():
+                if isinstance(value, torch.Tensor):
+                    inputs[key] = value.to(device)
         if isinstance(inputs, torch.Tensor):
             return inputs.to(device)
         elif isinstance(inputs, tuple):

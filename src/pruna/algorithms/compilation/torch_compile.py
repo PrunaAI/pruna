@@ -54,6 +54,7 @@ class TorchCompileCompiler(PrunaCompiler):
         factorizer=["qkv_diffusers"],
         quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq", "torchao"],
         cacher=["deepcache", "fora"],
+        pruner=["torch_structured"],
     )
 
     def get_hyperparameters(self) -> list:
