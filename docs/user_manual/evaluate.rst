@@ -74,6 +74,11 @@ Let's see what that looks like in code.
     # Create and configure EvaluationAgent
     eval_agent = EvaluationAgent(task)
 
+    # Optional: tweak model generation parameters for benchmarking
+    optimized_model.inference_handler.model_args.update(
+        {"max_new_tokens": 100}
+    )
+
     # Evaluate the model
     results = eval_agent.evaluate(optimized_model)
 
@@ -353,8 +358,6 @@ Let's see how this works in code.
 
         .. code-block:: python
 
-            import copy
-
             from diffusers import StableDiffusionPipeline
 
             from pruna import SmashConfig, smash
@@ -372,8 +375,7 @@ Let's see how this works in code.
             pipe = StableDiffusionPipeline.from_pretrained(model_path)
 
             # Smash the model
-            copy_pipe = copy.deepcopy(pipe)
-            smashed_pipe = smash(copy_pipe, smash_config)
+            smashed_pipe = smash(pipe, smash_config)
 
             # Define the task and the evaluation agent
             metrics = [CMMD()]
@@ -381,6 +383,11 @@ Let's see how this works in code.
             datamodule.limit_datasets(5)
             task = Task(metrics, datamodule=datamodule)
             eval_agent = EvaluationAgent(task)
+
+            # Optional: tweak model generation parameters for benchmarking
+            smashed_pipe.inference_handler.model_args.update(
+                {"num_inference_steps": 1, "guidance_scale": 0.0}
+            )
 
             # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
             first_results = eval_agent.evaluate(pipe)
@@ -417,6 +424,14 @@ Let's see how this works in code.
             datamodule.limit_datasets(5)
             task = Task(metrics, datamodule=datamodule)
             eval_agent = EvaluationAgent(task)
+
+            # wrap the model in a PrunaModel to use the EvaluationAgent
+            wrapped_pipe = PrunaModel(pipe, None)
+
+            # Optional: tweak model generation parameters for benchmarking
+            inference_arguments = {"num_inference_steps": 1, "guidance_scale": 0.0}
+            wrapped_pipe.inference_handler.model_args.update(inference_arguments)
+            wrapped_pipe.inference_handler.update_model(wrapped_pipe)
 
             # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
             first_results = eval_agent.evaluate(pipe)
