@@ -132,7 +132,6 @@ def check_argument_compatibility(smash_config: SmashConfig, algorithm_name: str)
         raise ValueError("Target module is only available in experimental mode. Please set experimental=True.")
 
 
-
 def check_algorithm_availability(algorithm: str, algorithm_group: str, algorithm_dict: dict[str, Any]) -> None:
     """
     Check if the algorithm is available in the algorithm dictionary.

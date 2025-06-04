@@ -115,7 +115,7 @@ dependencies = [
     "hqq==0.2.6",
     "torchao",
     "llmcompressor",
-    gliner = "*"
+    "gliner",
 ]
 
 [project.optional-dependencies]

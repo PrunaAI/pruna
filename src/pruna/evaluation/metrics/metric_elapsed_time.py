@@ -116,10 +116,7 @@ class InferenceTimeStats(BaseMetric):
         """
         if self.timing_type == "async" or self.device == "cpu":
             startevent_time = time.time()
-            if isinstance(x, dict):
-                _ = model(**x, **model.inference_handler.model_args)
-            else:
-                _ = model(x, **model.inference_handler.model_args)
+            model.run_inference(x)
             endevent_time = time.time()
             return (endevent_time - startevent_time) * 1000  # in ms
         elif self.timing_type == "sync":
