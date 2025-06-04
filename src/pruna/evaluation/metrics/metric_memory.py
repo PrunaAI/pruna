@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, List, Optional, Type
+from typing import Any, Dict, Generator, List, Optional, Type, cast
 from warnings import warn
 
 import pynvml
@@ -136,6 +136,7 @@ class GPUMemoryStats(BaseMetric):
 
         self.mode = mode
         self.gpu_indices = gpu_indices
+        self.device_map = None
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -155,6 +156,10 @@ class GPUMemoryStats(BaseMetric):
         """
         save_path = model.smash_config.cache_dir + "/metrics_save"
         model_cls = model.__class__
+        model_device_indices = self._detect_model_gpus(model)
+        if not model_device_indices:
+            pruna_logger.warning("No GPUs found.")
+            raise ValueError("No GPUs detected for the model. Memory metric is designed to measure the GPU usage.")
         model.save_pretrained(save_path)
         model.move_to_device("cpu")
 
@@ -164,15 +169,11 @@ class GPUMemoryStats(BaseMetric):
             memory_before_load = gpu_manager.get_memory_usage()
 
             # Load and prepare the model
-            model = self._load_and_prepare_model(save_path, model_cls)
+            metric_model = self._load_and_prepare_model(save_path, model_cls)
 
             memory_after_load = gpu_manager.get_memory_usage()
 
-            utilized_gpus = self._detect_model_gpus(model) or gpu_manager.gpu_indices
-            if not utilized_gpus:
-                pruna_logger.warning("No GPUs found.")
-                raise ValueError("No GPUs detected for the model.")
-
+            utilized_gpus = cast(List[int], self._detect_model_gpus(metric_model) or gpu_manager.gpu_indices)
             pruna_logger.info(f"Utilized GPUs: {utilized_gpus}")
 
             # Perform forward pass if required by the mode
@@ -193,6 +194,11 @@ class GPUMemoryStats(BaseMetric):
 
             safe_memory_cleanup()
 
+        if len(model_device_indices) > 1 and self.device_map is None:
+            pruna_logger.error("Multiple GPUs detected, but no device map found. Please check the model configuration.")
+            raise
+        else:
+            model.move_to_device("cuda")
         return MetricResult(self.mode, self.__dict__.copy(), peak_memory)
 
     def _detect_model_gpus(self, model: PrunaModel) -> List[int]:
@@ -243,6 +249,7 @@ class GPUMemoryStats(BaseMetric):
             The list of GPU indices the model is using.
         """
         device_map = getattr(model, attr_name, None)
+        self.device_map = device_map
         if not isinstance(device_map, dict):
             return None
 
