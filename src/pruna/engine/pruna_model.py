@@ -346,7 +346,11 @@ class PrunaModel:
             local_dir_use_symlinks=local_dir_use_symlinks,
             resume_download=resume_download,
         )
-        return PrunaModel(model=model, smash_config=smash_config)
+        if not isinstance(model, PrunaModel):
+            model = PrunaModel(model=model, smash_config=smash_config)
+        else:
+            model.smash_config = smash_config
+        return model
 
     def destroy(self) -> None:
         """Destroy model."""
