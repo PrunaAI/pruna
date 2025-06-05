@@ -84,7 +84,8 @@ codecarbon = "*"
 pynvml = "*"
 thop = "*"
 timm = "*"
-bitsandbytes = "*"
+# bitsandbytes is not supported on macOS arm64
+bitsandbytes = { version = "*", markers = "sys_platform != 'darwin' or platform_machine != 'arm64'" }
 optimum-quanto = ">=0.2.5"
 optimum = "*"
 ctranslate2 = "==4.5.0"
@@ -93,23 +94,23 @@ hqq = "*"
 torchao = "*"
 llmcompressor = "*"
 # Added Optional Dependencies from Extras
-ruff = { version = "*", optional = true }
-jupyterlab = { version = "*", optional = true }
-notebook = { version = "*", optional = true }
-pre-commit = { version = "*", optional = true }
-build = { version = "*", optional = true }
-twine = { version = "*", optional = true }
-pyc-wheel = { version = "*", optional = true }
-pytest-cov = { version = "*", optional = true }
-coverage = { version = "*", optional = true }
-pytest = { version = "7.4.4", optional = true }
-docutils = { version = "*", optional = true }
-xformers = { version = "==0.0.30", optional = true }
-stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 'stable-fast' or extra == 'full'"}
-numpydoc-validation = { version = "*", optional = true }
-mypy = { version = "*", optional = true }
-types-PyYAML = { version = "*", optional = true }
-gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true , markers = "extra == 'gptq'"}
+ruff = { version = "*", optional = true, markers = "extra == 'dev' or extra == 'tests'" }
+jupyterlab = { version = "*", optional = true, markers = "extra == 'dev' or extra == 'tests'" }
+notebook = { version = "*", optional = true, markers = "extra == 'dev'" }
+pre-commit = { version = "*", optional = true, markers = "extra == 'dev'" }
+build = { version = "*", optional = true, markers = "extra == 'dev'" }
+twine = { version = "*", optional = true, markers = "extra == 'dev'" }
+pyc-wheel = { version = "*", optional = true, markers = "extra == 'dev'" }
+pytest-cov = { version = "*", optional = true, markers = "extra == 'tests'" }
+coverage = { version = "*", optional = true, markers = "extra == 'tests'" }
+pytest = { version = "7.4.4", optional = true, markers = "extra == 'tests'" }
+docutils = { version = "*", optional = true, markers = "extra == 'tests'" }
+xformers = { version = "==0.0.30", optional = true, markers = "extra == 'stable-fast' or extra == 'full'" }
+stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 'stable-fast' or extra == 'full'" }
+numpydoc-validation = { version = "*", optional = true, markers = "extra == 'dev' or extra == 'tests'" }
+mypy = { version = "*", optional = true, markers = "extra == 'tests'" }
+types-PyYAML = { version = "*", optional = true, markers = "extra == 'tests'" }
+gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true, markers = "extra == 'gptq'" }
 logbar = { version = "*", optional = true, markers = "extra == 'gptq'" }
 tokenicer = { version = "*", optional = true, markers = "extra == 'gptq'" }
 threadpoolctl = { version = "*", optional = true, markers = "extra == 'gptq'" }
