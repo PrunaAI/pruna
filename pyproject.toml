@@ -110,7 +110,10 @@ stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 's
 numpydoc-validation = { version = "*", optional = true, markers = "extra == 'dev' or extra == 'tests'" }
 mypy = { version = "*", optional = true, markers = "extra == 'tests'" }
 types-PyYAML = { version = "*", optional = true, markers = "extra == 'tests'" }
-gptqmodel = { version = "==4.0.0.dev0+cu126torch2.7", optional = true, markers = "extra == 'gptq'" }
+gptqmodel = [
+    { version = "==4.0.0.dev0+cu126torch2.7", optional = true, markers = "extra == 'gptq' and (sys_platform != 'darwin' or platform_machine != 'arm64')" },
+    { version = "*", optional = true, markers = "extra == 'gptq' and (sys_platform == 'darwin' and platform_machine == 'arm64')" }
+]
 logbar = { version = "*", optional = true, markers = "extra == 'gptq'" }
 tokenicer = { version = "*", optional = true, markers = "extra == 'gptq'" }
 threadpoolctl = { version = "*", optional = true, markers = "extra == 'gptq'" }

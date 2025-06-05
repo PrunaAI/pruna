@@ -1574,6 +1574,31 @@ grpc = ["grpcio (>=1.44.0,<2.0.0)"]
 
 [[package]]
 name = "gptqmodel"
+version = "2.2.0"
+description = "Production ready LLM model compression/quantization toolkit with hw accelerated inference support for both cpu/gpu via HF, vLLM, and SGLang."
+optional = true
+python-versions = ">=3.9.0"
+files = [
+    {file = "gptqmodel-2.2.0.tar.gz", hash = "sha256:820363ea37691324c4eceee40af040d050719e856bed2dbcd65653a938e90fab"},
+]
+
+[package.extras]
+auto-round = ["auto_round (>=0.3)"]
+bitblas = ["bitblas (==0.0.1-dev13)"]
+eval = ["evalplus (>=0.3.1)", "lm_eval (>=0.4.7)"]
+hf = ["optimum (>=1.21.2)"]
+ipex = ["intel_extension_for_pytorch (>=2.6.0)"]
+logger = ["clearml", "plotly", "random_word"]
+mlx = ["mlx_lm (>=0.20.6)"]
+openai = ["fastapi", "pydantic", "uvicorn"]
+quality = ["isort (==6.0.0)", "ruff (==0.9.6)"]
+sglang = ["flashinfer-python (>=0.2.1)", "sglang[srt] (>=0.3.2)"]
+test = ["parameterized", "pytest (>=8.2.2)"]
+triton = ["triton (>=2.0.0)"]
+vllm = ["flashinfer-python (>=0.2.1)", "vllm (>=0.7.3)"]
+
+[[package]]
+name = "gptqmodel"
 version = "4.0.0.dev0+cu126torch2.7"
 description = "Production ready LLM model compression/quantization toolkit with hw accelerated inference support for both cpu/gpu via HF, vLLM, and SGLang."
 optional = true
@@ -7841,11 +7866,11 @@ type = ["pytest-mypy"]
 cpu = []
 dev = ["build", "jupyterlab", "notebook", "numpydoc-validation", "pre-commit", "pyc-wheel", "ruff", "twine"]
 full = ["stable-fast-pruna", "xformers"]
-gptq = ["device-smi", "gptqmodel", "logbar", "random-word", "threadpoolctl", "tokenicer"]
+gptq = ["device-smi", "gptqmodel", "gptqmodel", "logbar", "random-word", "threadpoolctl", "tokenicer"]
 stable-fast = ["stable-fast-pruna", "xformers"]
 tests = ["coverage", "docutils", "jupyterlab", "mypy", "numpydoc-validation", "pytest", "pytest-cov", "ruff", "types-PyYAML"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "3aca16ac5b630d5f47370c778597437a7abe65d44433a5c775df4abf9dbd989f"
+content-hash = "25f12e44b5d925b124801d0450c1b55b75026814479465461cdb847210e01b30"
