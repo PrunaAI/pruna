@@ -17,6 +17,7 @@ class TestWhisperS2T(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = WS2TBatcher
+    metrics = ["latency"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -30,6 +31,7 @@ class TestIFW(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = IFWBatcher
+    metrics = ["latency"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""

@@ -139,6 +139,7 @@ class CMMD(StatefulMetric):
             The CLIP embeddings for the images.
         """
         processed = self.clip_processor(images=images.cpu(), return_tensors="pt").to(self.device)
+        self.clip_model.to(self.device)
         embeddings = self.clip_model(**processed).image_embeds
         embeddings = embeddings / embeddings.norm(p=2, dim=-1, keepdim=True)
         return embeddings

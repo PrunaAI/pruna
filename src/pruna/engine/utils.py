@@ -111,7 +111,10 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
     elif hasattr(model, "task") and getattr(model, "task") == "automatic-speech-recognition":
-        model.model.to(device)
+        try:
+            model.model.to(device)
+        except AttributeError as e:
+            pruna_logger.warning(f"Could not move model to device: {str(e)}")
     else:
         if raise_error:
             raise ValueError("Model does not support device movement.")
@@ -152,6 +155,8 @@ def set_to_eval(model: Any) -> None:
             model.eval()
         except RecursionError:
             recursive_set_to_eval(model)
+        except Exception as e:
+            pruna_logger.warning(f"Could not set model to evaluation mode: {str(e)}")
     else:
         nn_modules = get_nn_modules(model)
         for _, module in nn_modules.items():

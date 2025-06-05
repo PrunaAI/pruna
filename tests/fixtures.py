@@ -69,7 +69,6 @@ def stable_diffusion_v1_4_model() -> tuple[Any, SmashConfig]:
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
-    source_model_id = "openai/whisper-tiny"
     model_id = "yujiepan/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
@@ -79,8 +78,9 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
         device="cpu",
     )
     smash_config = SmashConfig()
-    smash_config.add_tokenizer(source_model_id)
-    smash_config.add_processor(source_model_id)
+    smash_config.add_data("AIPodcast")
+    smash_config.add_tokenizer(model_id)
+    smash_config.add_processor(model_id)
     return model, smash_config
 
 
@@ -130,24 +130,18 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
 MODEL_FACTORY: dict[str, Callable] = {
     # whisper models
     "whisper_tiny_random": whisper_tiny_random_model,
-
     # vision models
     "shufflenet": partial(get_torchvision_model, "shufflenet_v2_x0_5"),
     "mobilenet_v2": partial(get_torchvision_model, "mobilenet_v2"),
     "resnet_18": partial(get_torchvision_model, "resnet18"),
     "vit_b_16": partial(get_torchvision_model, "vit_b_16"),
-
     # image generation models
     "stable_diffusion_v1_4": stable_diffusion_v1_4_model,
     "stable_diffusion_3_medium_diffusers": partial(
         get_diffusers_model, StableDiffusion3Pipeline, "stabilityai/stable-diffusion-3-medium-diffusers"
     ),
     "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
-    "sd_tiny_random": partial(
-        get_diffusers_model,
-        StableDiffusionPipeline,
-        "dg845/tiny-random-stable-diffusion"
-    ),
+    "sd_tiny_random": partial(get_diffusers_model, StableDiffusionPipeline, "dg845/tiny-random-stable-diffusion"),
     "sana": partial(
         get_diffusers_model,
         SanaPipeline,
@@ -157,7 +151,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     ),
     "sana_tiny_random": partial(get_diffusers_model, SanaPipeline, "katuni4ka/tiny-random-sana"),
     "flux_tiny_random": partial(get_diffusers_model, FluxPipeline, "katuni4ka/tiny-random-flux"),
-
     # text generation models
     "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m"),
     "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
