@@ -309,6 +309,8 @@ def set_to_eval(model: Any) -> None:
             model.eval()
         except RecursionError:
             recursive_set_to_eval(model)
+        except Exception as e:
+            pruna_logger.warning(f"Could not set model to evaluation mode: {str(e)}")
     else:
         nn_modules = get_nn_modules(model)
         for _, module in nn_modules.items():
