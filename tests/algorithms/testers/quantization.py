@@ -24,6 +24,7 @@ class TestTorchDynamic(AlgorithmTesterBase):
     reject_models = []
     allow_pickle_files = False
     algorithm_class = TorchDynamicQuantizer
+    metrics = ["latency"]
 
 
 class TestQuanto(AlgorithmTesterBase):
@@ -33,6 +34,7 @@ class TestQuanto(AlgorithmTesterBase):
     reject_models = ["dummy_lambda"]
     allow_pickle_files = False
     algorithm_class = QuantoQuantizer
+    metrics = ["perplexity"]
 
 
 class TestLLMint8(AlgorithmTesterBase):
@@ -42,6 +44,7 @@ class TestLLMint8(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMInt8Quantizer
+    metrics = ["perplexity"]
 
 
 class TestDiffusersInt8(AlgorithmTesterBase):
@@ -51,6 +54,7 @@ class TestDiffusersInt8(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = DiffusersInt8Quantizer
+    metrics = ["cmmd"]
 
 
 class TestHQQ(AlgorithmTesterBase):
@@ -60,6 +64,7 @@ class TestHQQ(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HQQQuantizer
+    metrics = ["perplexity"]
 
 
 class TestHQQDiffusers(AlgorithmTesterBase):
@@ -69,6 +74,7 @@ class TestHQQDiffusers(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HQQDiffusersQuantizer
+    metrics = ["cmmd"]
 
 
 class TestHalf(AlgorithmTesterBase):
@@ -78,6 +84,7 @@ class TestHalf(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HalfQuantizer
+    metrics = ["perplexity"]
 
 
 class TestTorchao(AlgorithmTesterBase):
@@ -87,6 +94,7 @@ class TestTorchao(AlgorithmTesterBase):
     reject_models = ["dummy_lambda"]
     allow_pickle_files = False
     algorithm_class = TorchaoQuantizer
+    metrics = ["cmmd"]
 
 
 @pytest.mark.slow
@@ -102,6 +110,7 @@ class TestGPTQ(AlgorithmTesterBase):
         "gptq_weight_bits": 4,
         "gptq_group_size": 128,
     }
+    metrics = ["perplexity"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -116,3 +125,4 @@ class TestLLMCompressor(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMCompressorQuantizer
+    metrics = ["perplexity"]

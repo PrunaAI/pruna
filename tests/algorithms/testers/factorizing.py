@@ -10,3 +10,4 @@ class TestQKVDiffusers(AlgorithmTesterBase):
     reject_models = ["opt_125m"]
     allow_pickle_files = False
     algorithm_class = QKVDiffusers
+    metrics = ["cmmd"]

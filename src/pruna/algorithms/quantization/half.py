@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+import functools
+from typing import Any, Dict, Mapping, Sequence
 
 import torch
 
@@ -99,9 +100,11 @@ class HalfQuantizer(PrunaQuantizer):
 
         original_forward = model.forward
 
-        def new_forward(*args: Any, **kwargs: Any) -> Any:
-            args = tuple(arg.half() if hasattr(arg, "half") else arg for arg in args)
-            kwargs = {k: v.half() if hasattr(v, "half") else v for k, v in kwargs.items()}
+        functools.wraps(original_forward)
+
+        def new_forward(*args, **kwargs):
+            args = tuple(_map_half(arg) for arg in args)
+            kwargs = {k: _map_half(v) for k, v in kwargs.items()}
             return original_forward(*args, **kwargs)
 
         model.forward = new_forward
@@ -118,3 +121,17 @@ class HalfQuantizer(PrunaQuantizer):
             The algorithm packages.
         """
         return dict()
+
+
+def _to_half(x):
+    if isinstance(x, torch.Tensor) and torch.is_floating_point(x):
+        return x.half()
+    return x
+
+
+def _map_half(obj):
+    if isinstance(obj, Mapping):
+        return {k: _map_half(v) for k, v in obj.items()}
+    if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes)):
+        return type(obj)(_map_half(v) for v in obj)
+    return _to_half(obj)

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import os
 import shutil
 import tempfile
 from abc import abstractmethod
@@ -6,7 +9,14 @@ from typing import Any
 
 from pruna import PrunaModel, SmashConfig, smash
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
+from pruna.evaluation.evaluation_agent import EvaluationAgent
+from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.task import Task
+from pruna.logging.logger import pruna_logger
 
 
 class AlgorithmTesterBase:
@@ -37,6 +47,12 @@ class AlgorithmTesterBase:
     @abstractmethod
     def algorithm_class(self) -> type[PrunaAlgorithmBase]:
         """The algorithm class to test."""
+        pass
+
+    @property
+    @abstractmethod
+    def metrics(self) -> list[str]:
+        """The metrics to evaluate the algorithm."""
         pass
 
     def final_teardown(self, smash_config: SmashConfig) -> None:
@@ -78,6 +94,30 @@ class AlgorithmTesterBase:
         """Get the algorithm group."""
         return cls.algorithm_class.algorithm_group
 
+    @classmethod
+    def get_metrics(cls, device: str) -> list[BaseMetric | StatefulMetric]:
+        """Get the metrics to evaluate the algorithm."""
+        metrics = cls.metrics
+        return cls.get_metric_instances(metrics, device)
+
+    @classmethod
+    def get_metric_instances(cls, metrics: list[str], device: str) -> list[BaseMetric | StatefulMetric]:
+        """Get the metric instances."""
+        metric_instances = [MetricRegistry.get_metric(metric) for metric in metrics]
+        for metric in metric_instances:
+            if hasattr(metric, "n_iterations"):
+                metric.n_warmup_iterations = 1
+                metric.n_iterations = 1
+            if hasattr(metric, "device"):
+                try:
+                    metric.device = device
+                except Exception:
+                    try:
+                        metric.to(device)
+                    except Exception:
+                        pruna_logger.warning(f"Failed to move metric {metric} to device {device}")
+        return metric_instances
+
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Fast hook to verify algorithm application after smashing."""
         pass
@@ -102,6 +142,16 @@ class AlgorithmTesterBase:
         self.post_smash_hook(smashed_model)
         assert get_device(smashed_model) == smash_config["device"]
         return smashed_model
+
+    def execute_evaluation(self, model: Any, datamodule: PrunaDataModule, device: str) -> None:
+        """Execute the evaluation operation."""
+        metrics = self.get_metrics(device=device)
+        datamodule.limit_datasets(10)
+        task = Task(request=metrics, datamodule=datamodule, device=device)
+        evaluation_agent = EvaluationAgent(task=task)
+        results = evaluation_agent.evaluate(model=model)
+        for result in results:
+            pruna_logger.info(result)
 
     def prepare_smash_config(self, smash_config: SmashConfig, device: str) -> None:
         """Prepare the smash config for the test."""
