@@ -373,6 +373,37 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
     return torch.float32
 
 
+def _resolve_cuda_device(device: str) -> str:
+    """
+    Resolve CUDA device string to a valid CUDA device.
+
+    Parameters
+    ----------
+    device : str
+        CUDA device string (e.g. "cuda", "cuda:0", "cuda:1")
+
+    Returns
+    -------
+    str
+        Valid CUDA device string
+    """
+    if not torch.cuda.is_available():
+        pruna_logger.warning("'cuda' requested but not available.")
+        return set_to_best_available_device(device=None)
+
+    device_idx = device.split(":")[1] if ":" in device else "0"
+    try:
+        idx = int(device_idx)
+        if idx >= torch.cuda.device_count():
+            pruna_logger.warning(f"CUDA device {idx} not available, using device 0")
+            return "cuda:0"
+        torch.cuda.get_device_properties(idx)
+        return f"cuda:{idx}"
+    except (ValueError, AssertionError):
+        pruna_logger.warning(f"Invalid CUDA device index: {device_idx}")
+        return "cuda:0"
+
+
 def set_to_best_available_device(device: str | torch.device | None) -> str:
     """
     Set the device to the best available device.
@@ -397,43 +428,21 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         pruna_logger.info(f"Using best available device: '{device}'")
         return device
-
-    if device == "cpu":
+    elif device == "cpu":
         return "cpu"
-
-    if device == "accelerate":
+    elif device == "accelerate":
         if not torch.cuda.is_available() and not torch.backends.mps.is_available():
             raise ValueError("'accelerate' requested but neither CUDA nor MPS is available.")
         return "accelerate"
-
-    # Handle cuda devices (e.g. "cuda", "cuda:0", "cuda:1")
-    if device.startswith("cuda"):
-        if not torch.cuda.is_available():
-            pruna_logger.warning("'cuda' requested but not available.")
-            return set_to_best_available_device(device=None)
-        # Extract device index if present (e.g. "cuda:0" -> "0")
-        device_idx = device.split(":")[1] if ":" in device else "0"
-        try:
-            # Validate device index
-            idx = int(device_idx)
-            if idx >= torch.cuda.device_count():
-                pruna_logger.warning(f"CUDA device {idx} not available, using device 0")
-                return "cuda:0"
-            torch.cuda.get_device_properties(idx)
-            return f"cuda:{idx}"
-        except (ValueError, AssertionError):
-            pruna_logger.warning(f"Invalid CUDA device index: {device_idx}")
-            return "cuda:0"
-
-    # Handle mps devices (e.g. "mps", "mps:0")
-    if device.startswith("mps"):
+    elif isinstance(device, str) and device.startswith("cuda"):
+        return _resolve_cuda_device(device)
+    elif isinstance(device, str) and device.startswith("mps"):
         if not torch.backends.mps.is_available():
             pruna_logger.warning("'mps' requested but not available.")
             return set_to_best_available_device(device=None)
-        # MPS currently only supports one device, so we ignore any index and always return mps:0
-        return "mps:0"
-
-    raise ValueError(f"Device not supported: '{device}'")
+        return "mps:0"  # MPS currently only supports one device
+    else:
+        raise ValueError(f"Device not supported: '{device}'")
 
 
 class ModelContext:
