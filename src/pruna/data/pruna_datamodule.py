@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import inspect
 from functools import partial
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, cast
 
 from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
@@ -189,16 +189,22 @@ class PrunaDataModule(LightningDataModule):
             train_limit, val_limit, test_limit = limit
 
         if isinstance(self.train_dataset, Dataset):
+            self.train_dataset = cast(Dataset, self.train_dataset)  # for mypy
+            self.val_dataset = cast(Dataset, self.val_dataset)
+            self.test_dataset = cast(Dataset, self.test_dataset)
+
             self.train_dataset = self.train_dataset.select(range(min(len(self.train_dataset), train_limit)))
             self.val_dataset = self.val_dataset.select(range(min(len(self.val_dataset), val_limit)))  # type: ignore[union-attr]
             self.test_dataset = self.test_dataset.select(range(min(len(self.test_dataset), test_limit)))  # type: ignore[union-attr]
         elif isinstance(self.train_dataset, IterableDataset):
-            train_length = sum(1 for _ in self.train_dataset)
-            val_length = sum(1 for _ in self.val_dataset)
-            test_length = sum(1 for _ in self.test_dataset)
-            self.train_dataset = self.train_dataset[: min(train_length, train_limit)]
-            self.val_dataset = self.val_dataset[: min(val_length, val_limit)]
-            self.test_dataset = self.test_dataset[: min(test_length, test_limit)]
+            self.train_dataset = cast(IterableDataset, self.train_dataset)  # for mypy
+            self.val_dataset = cast(IterableDataset, self.val_dataset)
+            self.test_dataset = cast(IterableDataset, self.test_dataset)
+
+            self.train_dataset = self.train_dataset.take(train_limit)
+            self.val_dataset = self.val_dataset.take(val_limit)
+            self.test_dataset = self.test_dataset.take(test_limit)
+
         elif isinstance(self.train_dataset, TorchDataset):
             train_indices = list(range(min(len(self.train_dataset), train_limit)))  # type: ignore[arg-type]
             val_indices = list(range(min(len(self.val_dataset), val_limit)))  # type: ignore[arg-type]
