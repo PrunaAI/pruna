@@ -475,6 +475,8 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
     """
     Filter out keyword arguments that cannot be passed to the given function.
 
+    Only filters if the function does not accept arbitrary keyword arguments.
+
     Parameters
     ----------
     func : Callable
@@ -489,9 +491,15 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
     """
     # Get the function's signature
     signature = inspect.signature(func)
-    valid_params = set(signature.parameters.keys())
 
-    # Filter valid and invalid kwargs
+    # Check if function accepts arbitrary kwargs
+    has_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
+
+    if has_kwargs:
+        return kwargs
+
+    # Only filter if function doesn't accept arbitrary kwargs
+    valid_params = set(signature.parameters.keys())
     valid_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
     invalid_kwargs = {k: v for k, v in kwargs.items() if k not in valid_params}
 
