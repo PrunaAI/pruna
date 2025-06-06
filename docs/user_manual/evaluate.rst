@@ -55,25 +55,32 @@ Let's see what that looks like in code.
 
 .. code-block:: python
 
+    from pruna import PrunaModel
+    from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
     from pruna.evaluation.task import Task
-    from pruna.data.pruna_datamodule import PrunaDataModule
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_pretrained("PrunaAI/opt-125m-smashed")
+    optimized_model = PrunaModel.from_hub("PrunaAI/Llama-3.2-1b-Instruct-smashed")
 
     # Create and configure Task
-    task = Task(
-        requests=["accuracy"],
-        datamodule=PrunaDataModule.from_string('WikiText'),
-        device="cpu"
+    datamodule = PrunaDataModule.from_string(
+        dataset_name="WikiText",
+        tokenizer=optimized_model.smash_config.tokenizer,
     )
+    datamodule.limit_datasets(10)
+    task = Task(request=["perplexity"], datamodule=datamodule, device="cpu")
 
     # Create and configure EvaluationAgent
     eval_agent = EvaluationAgent(task)
 
+    # Optional: tweak model generation parameters for benchmarking
+    optimized_model.inference_handler.model_args.update(
+        {"max_new_tokens": 100}
+    )
+
     # Evaluate the model
-    eval_agent.evaluate(optimized_model)
+    results = eval_agent.evaluate(optimized_model)
 
 Evaluation Components
 ---------------------
@@ -123,7 +130,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             task = Task(
-                metrics=["clip_score", "psnr"],
+                request=["clip_score", "psnr"],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -139,7 +146,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.evaluation.metrics import CMMD, TorchMetricWrapper
 
             task = Task(
-                metrics=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="accuracy")],
+                request=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="clip_score")],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -183,7 +190,7 @@ These high-level modes abstract away the underlying input ordering. Internally, 
 Internal Call Types
 ~~~~~~~~~~~~~~~~~~~~
 
-The following table lists the supported internal call types and examples of metrics using them. 
+The following table lists the supported internal call types and examples of metrics using them.
 
 This is what's happening under the hood when you pass ``call_type="single"`` or ``call_type="pairwise"`` to a metric.
 
@@ -265,19 +272,19 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
 
         .. code-block:: python
 
-            from pruna.data.pruna_datamodule import PrunaDataModule
             from transformers import AutoTokenizer
 
+            from pruna.data.pruna_datamodule import PrunaDataModule
+
             # Load the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
 
             # Create the data Module
             datamodule = PrunaDataModule.from_string(
-                dataset_name='WikiText',
+                dataset_name="WikiText",
                 tokenizer=tokenizer,
-                collate_fn="text_generation_collate",
                 collate_fn_args={"max_seq_len": 512},
-                dataloader_args={"batch_size": 16, "num_workers": 4}
+                dataloader_args={"batch_size": 16, "num_workers": 4},
             )
 
     .. tab:: From Datasets
@@ -286,12 +293,14 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
 
         .. code-block:: python
 
-            from pruna.data.pruna_datamodule import prunadatamodule
-            from transformers import AutoTokenizer
             from datasets import load_dataset
+            from transformers import AutoTokenizer
+
+            from pruna.data.pruna_datamodule import PrunaDataModule
+            from pruna.data.utils import split_train_into_train_val_test
 
             # Load the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
 
             # Load custom datasets
             train_ds = load_dataset("SamuelYang/bookcorpus")["train"]
@@ -303,7 +312,7 @@ The ``Task`` accepts ``PrunaDataModule`` in two different ways:
                 collate_fn="text_generation_collate",
                 tokenizer=tokenizer,
                 collate_fn_args={"max_seq_len": 512},
-                dataloader_args={"batch_size": 16, "num_workers": 4}
+                dataloader_args={"batch_size": 16, "num_workers": 4},
             )
 
 .. tip::
@@ -314,16 +323,19 @@ Lastly, you can limit the number of samples in the dataset by using the ``PrunaD
 
 .. code-block:: python
 
+    from transformers import AutoTokenizer
+
     from pruna.data.pruna_datamodule import PrunaDataModule
 
     # Create the data module
-    datamodule = PrunaDataModule.from_string('WikiText')
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
+    datamodule = PrunaDataModule.from_string("WikiText", tokenizer=tokenizer)
 
     # Limit all splits to 100 samples
     datamodule.limit_datasets(100)
 
     # Use different limits for each split
-    datamodule.limit_datasets([500, 100, 200])  # train, val, test
+    datamodule.limit_datasets([50, 10, 20])  # train, val, test
 
 EvaluationAgent
 ^^^^^^^^^^^^^^^
@@ -346,35 +358,39 @@ Let's see how this works in code.
 
         .. code-block:: python
 
-            import copy
-
             from diffusers import StableDiffusionPipeline
 
-            from pruna import smash, SmashConfig
+            from pruna import SmashConfig, smash
             from pruna.data.pruna_datamodule import PrunaDataModule
             from pruna.evaluation.evaluation_agent import EvaluationAgent
-            from pruna.evaluation.task import Task
             from pruna.evaluation.metrics import CMMD
+            from pruna.evaluation.task import Task
+
             # Load data and set up smash config
             smash_config = SmashConfig()
-            smash_config['cacher'] = 'deepcache'
+            smash_config["quantizer"] = "hqq_diffusers"
 
             # Load the base model
-            model_path = "CompVis/stable-diffusion-v1-4"
+            model_path = "segmind/tiny-sd"
             pipe = StableDiffusionPipeline.from_pretrained(model_path)
 
             # Smash the model
-            copy_pipe = copy.deepcopy(pipe)
-            smashed_pipe = smash(copy_pipe, smash_config)
+            smashed_pipe = smash(pipe, smash_config)
 
             # Define the task and the evaluation agent
             metrics = [CMMD()]
-            task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+            datamodule = PrunaDataModule.from_string("LAION256")
+            datamodule.limit_datasets(5)
+            task = Task(metrics, datamodule=datamodule)
             eval_agent = EvaluationAgent(task)
+
+            # Optional: tweak model generation parameters for benchmarking
+            smashed_pipe.inference_handler.model_args.update(
+                {"num_inference_steps": 1, "guidance_scale": 0.0}
+            )
 
             # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
             first_results = eval_agent.evaluate(pipe)
-            print(first_results)
 
     .. tab:: Pairwise Evaluation
 
@@ -384,17 +400,18 @@ Let's see how this works in code.
 
             from diffusers import StableDiffusionPipeline
 
-            from pruna import smash, SmashConfig
+            from pruna import SmashConfig, smash
             from pruna.data.pruna_datamodule import PrunaDataModule
             from pruna.evaluation.evaluation_agent import EvaluationAgent
-            from pruna.evaluation.task import Task
             from pruna.evaluation.metrics import CMMD
+            from pruna.evaluation.task import Task
+
             # Load data and set up smash config
             smash_config = SmashConfig()
-            smash_config['cacher'] = 'deepcache'
+            smash_config["quantizer"] = "hqq_diffusers"
 
             # Load the base model
-            model_path = "CompVis/stable-diffusion-v1-4"
+            model_path = "segmind/tiny-sd"
             pipe = StableDiffusionPipeline.from_pretrained(model_path)
 
             # Smash the model
@@ -403,16 +420,24 @@ Let's see how this works in code.
 
             # Define the task and the evaluation agent
             metrics = [CMMD(call_type="pairwise")]
-            task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+            datamodule = PrunaDataModule.from_string("LAION256")
+            datamodule.limit_datasets(5)
+            task = Task(metrics, datamodule=datamodule)
             eval_agent = EvaluationAgent(task)
+
+            # wrap the model in a PrunaModel to use the EvaluationAgent
+            wrapped_pipe = PrunaModel(pipe, None)
+
+            # Optional: tweak model generation parameters for benchmarking
+            inference_arguments = {"num_inference_steps": 1, "guidance_scale": 0.0}
+            wrapped_pipe.inference_handler.model_args.update(inference_arguments)
+            wrapped_pipe.inference_handler.update_model(wrapped_pipe)
 
             # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
             first_results = eval_agent.evaluate(pipe)
-            print(first_results)
 
             # Evaluate smashed model
             smashed_results = eval_agent.evaluate(smashed_pipe)
-            print(smashed_results)
 
 Best Practices
 --------------

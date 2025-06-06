@@ -214,7 +214,7 @@ class PrunaModel:
 
     @staticmethod
     @track_usage
-    def from_pretrained(model_path: str, verbose: bool = False, **kwargs: Any) -> Any:
+    def from_pretrained(model_path: str, verbose: bool = False, **kwargs: Any) -> PrunaModel:
         """
         Load a `PrunaModel` from the specified model path.
 
@@ -268,7 +268,7 @@ class PrunaModel:
         local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
         resume_download: Optional[bool] = None,
         **kwargs,
-    ) -> Any:
+    ) -> PrunaModel:
         """
         Load a `PrunaModel` from the specified repository.
 
