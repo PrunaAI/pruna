@@ -39,3 +39,15 @@ def test_device_available(device: str | torch.device, expected: str) -> None:
     smash_config = SmashConfig(device=device)
     assert smash_config.device == expected
 
+@pytest.mark.cuda
+@pytest.mark.parametrize(
+    "device,expected",
+    [
+        ("mps:0", "mps:0") if torch.backends.mps.is_available() else ("cuda:0", "cuda:0"),
+        ("cuda:0", "cuda:0") if torch.cuda.is_available() else ("mps:0", "mps:0"),
+    ],
+)
+def test_device_with_index(device: str | torch.device, expected: str) -> None:
+    """Test that setting device to an unavailable device falls back to CPU."""
+    smash_config = SmashConfig(device=device)
+    assert smash_config.device == expected
