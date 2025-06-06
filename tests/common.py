@@ -70,6 +70,7 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         load_kwargs = algorithm_tester.check_loading_dtype(model)
         model = algorithm_tester.cast_to_device(model, device=smash_config["device"])
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
+        algorithm_tester.execute_evaluation(smashed_model, smash_config.data, smash_config["device"])
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
         algorithm_tester.execute_load(load_kwargs)

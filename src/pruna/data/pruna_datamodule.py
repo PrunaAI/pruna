@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import inspect
 from functools import partial
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, cast
 
 from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
@@ -189,9 +189,12 @@ class PrunaDataModule(LightningDataModule):
             train_limit, val_limit, test_limit = limit
 
         if isinstance(self.train_dataset, Dataset):
-            self.train_dataset = self.train_dataset.select(range(train_limit))
-            self.val_dataset = self.val_dataset.select(range(val_limit))  # type: ignore[union-attr]
-            self.test_dataset = self.test_dataset.select(range(test_limit))  # type: ignore[union-attr]
+            self.train_dataset = cast(Dataset, self.train_dataset)  # for mypy
+            self.val_dataset = cast(Dataset, self.val_dataset)
+            self.test_dataset = cast(Dataset, self.test_dataset)
+            self.train_dataset = self.train_dataset.select(range(min(len(self.train_dataset), train_limit)))
+            self.val_dataset = self.val_dataset.select(range(min(len(self.val_dataset), val_limit)))  # type: ignore[union-attr]
+            self.test_dataset = self.test_dataset.select(range(min(len(self.test_dataset), test_limit)))  # type: ignore[union-attr]
         elif isinstance(self.train_dataset, IterableDataset):
             self.train_dataset = self.train_dataset[:train_limit]
             self.val_dataset = self.val_dataset[:val_limit]
