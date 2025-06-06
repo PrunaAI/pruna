@@ -23,7 +23,7 @@ Basic Evaluation Workflow
     Task -->|defines| Metrics
     Task -->|is used by| EvaluationAgent
     Metrics -->|includes| B["Base Metrics"]
-    Metrics -->|includes| C["Stateless Metric"]
+    Metrics -->|includes| C["Stateful Metric"]
     PrunaModel -->|provides predictions| EvaluationAgent
     EvaluationAgent -->|evaluates| PrunaModel
     EvaluationAgent -->|returns| D["Evaluation Results"]
@@ -123,7 +123,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             task = Task(
-                metrics=["clip_score", "psnr"],
+                request=["clip_score", "psnr"],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -139,7 +139,7 @@ The ``Task`` accepts ``Metrics`` in three ways:
             from pruna.evaluation.metrics import CMMD, TorchMetricWrapper
 
             task = Task(
-                metrics=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="accuracy")],
+                request=[CMMD(call_type="pairwise"), TorchMetricWrapper(metric_name="accuracy")],
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
@@ -151,9 +151,9 @@ The ``Task`` accepts ``Metrics`` in three ways:
 Metric Call Types
 ~~~~~~~~~~~~~~~~~
 
-|pruna| metrics can operate in both single-model and pairwise modes.
+All |pruna| stateful metrics besides Image Quality Assessment (IQA) metrics can operate in both single-model and pairwise modes.
 
-- **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated.
+- **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated. IQA metrics are only supported in single-model mode.
 - **Pairwise mode**: Metrics compare a subsequent model against the first model evaluated by the agent and produce a single comparison score.
 
 Underneath the hood, the ``StatefulMetric`` class uses the ``call_type`` parameter to determine the order of the inputs.
@@ -222,6 +222,10 @@ This is what's happening under the hood when you pass ``call_type="single"`` or 
    * - ``pairwise_gt_y``
      - Subsequent model's output first, then base model's output
      - ``psnr``, ``ssim``, ``lpips``, ``cmmd``
+
+   * - ``y``
+     - Only the output is used, the metric has an internal dataset
+     - ``arniqa``
 
 Metric Results
 ~~~~~~~~~~~~~~~
@@ -406,7 +410,7 @@ Let's see how this works in code.
             task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
             eval_agent = EvaluationAgent(task)
 
-            # Evaluate base model, all models need to be wrapped in a PrunaModel before passing them to the EvaluationAgent
+            # Evaluate base model.
             first_results = eval_agent.evaluate(pipe)
             print(first_results)
 
