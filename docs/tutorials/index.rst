@@ -7,11 +7,11 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
 
 .. grid:: 1 2 2 2
 
-   .. grid-item-card:: Optimize and Evaluate Image Generation Models
+   .. grid-item-card:: Compress and Evaluate Image Generation Models
       :text-align: center
       :link: ./image_generation.ipynb
 
-      Optimize with a ``hq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``elapsed_time``, ``lpi``, ``ssim``, ``psnr``, ``clip_score`` and ``cmmd``.
+      Compress with a ``hq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
 
    .. grid-item-card:: Transcribe 2 hour of audio in 2 minutes with Whisper
       :text-align: center
