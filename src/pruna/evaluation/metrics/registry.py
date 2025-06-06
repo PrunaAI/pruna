@@ -17,6 +17,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Any, Callable, Dict, Iterable, List
 
+from pruna.engine.load import filter_load_kwargs
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.logging.logger import pruna_logger
@@ -105,7 +106,12 @@ class MetricRegistry:
         """
         if name not in cls._registry:
             raise ValueError(f"Metric '{name}' is not registered.")
-        return cls._registry[name](**kwargs)
+
+        metric_cls = cls._registry[name]
+        if isinstance(metric_cls, partial) and "TorchMetricWrapper" in metric_cls.func.__name__:
+            return metric_cls(**kwargs)
+        else:
+            return metric_cls(**filter_load_kwargs(metric_cls, kwargs))
 
     @classmethod
     def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric | StatefulMetric]:
