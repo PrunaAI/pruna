@@ -30,6 +30,7 @@ from torchmetrics.image import (
     PeakSignalNoiseRatio,
     StructuralSimilarityIndexMeasure,
 )
+from torchmetrics.image.arniqa import ARNIQA
 from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
@@ -107,6 +108,21 @@ def lpips_update(metric: LearnedPerceptualImagePatchSimilarity, preds: Any, targ
     metric.update(preds, target)
 
 
+def arniqa_update(metric: ARNIQA, preds: Any) -> None:
+    """
+    Update handler for ARNIQA metric.
+
+    Parameters
+    ----------
+    metric : ARNIQA instance
+        The ARNIQA metric instance.
+    preds : Any
+        The generated images tensor.
+    """
+    preds = preds.float() / 255.0
+    metric.update(preds)
+
+
 def ssim_update(metric: StructuralSimilarityIndexMeasure, preds: Any, target: Any) -> None:
     """
     Update handler for SSIM metric.
@@ -163,6 +179,7 @@ class TorchMetrics(Enum):
     psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
     ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
+    arniqa = (partial(ARNIQA), arniqa_update, "y")
 
     def __init__(self, *args, **kwargs) -> None:
         self.tm = self.value[0]
@@ -352,6 +369,9 @@ def get_call_type(call_type: str, metric_name: str) -> str:
     elif call_type == PAIRWISE:
         # If the call type and default call type match, we use the default call type.
         if TorchMetrics[metric_name].call_type.startswith(PAIRWISE):
+            return TorchMetrics[metric_name].call_type
+        elif TorchMetrics[metric_name].call_type == "y":
+            pruna_logger.warning("IQA metrics cannot be used with pairwise call type. Using default call type.")
             return TorchMetrics[metric_name].call_type
         else:
             return get_pairwise_pairing(TorchMetrics[metric_name].call_type)

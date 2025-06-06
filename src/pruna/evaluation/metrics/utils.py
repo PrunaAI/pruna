@@ -86,6 +86,8 @@ def metric_data_processor(
         return [gt, outputs]
     elif call_type == "pairwise_y_gt":
         return [outputs, gt]
+    elif call_type == "y":  # IQA metrics that have an internal dataset
+        return [outputs]
     else:
         raise ValueError(f"Invalid call type: {call_type}")
 
