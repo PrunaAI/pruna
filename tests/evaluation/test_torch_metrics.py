@@ -62,3 +62,11 @@ def test_torch_metrics(dataloader_fixture: Any, metric: str) -> None:
     _, gt = next(iter(dataloader_fixture))
     metric.update(gt, gt, gt)
     assert metric.compute().result == 1.0
+
+@pytest.mark.cpu
+@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
+def test_arniqa(dataloader_fixture: Any) -> None:
+    """Test arniqa."""
+    metric = TorchMetricWrapper("arniqa")
+    x, gt = next(iter(dataloader_fixture))
+    metric.update(x, gt, gt)    
