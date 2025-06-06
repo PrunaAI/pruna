@@ -187,12 +187,11 @@ For example, looking at the :doc:`Algorithm Overview </compression>` we see that
      - ``add_processor()``
    * - ``data``
      - Loads a dataset.
-     - ``add_dataset()``
+     - ``add_data()``
 
 .. note::
 
-  If you try to activate a algorithm that requires a dataset, tokenizer or processor and haven’t added them to the ``SmashConfig``, you will receive an error.
-  Make sure to add them before activating the algorithm! If you want to know which algorithms require a dataset, tokenizer or processor, you can look at the :doc:`Algorithm Overview </compression>`.
+  If you try to add a text dataset, you will have to specify a tokenizer first.
 
 Configure Tokenizers, Processors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
