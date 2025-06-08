@@ -17,6 +17,7 @@ from __future__ import annotations
 import atexit
 import json
 import os
+from pathlib import Path
 import shutil
 import tempfile
 from functools import singledispatchmethod
@@ -142,7 +143,7 @@ class SmashConfig:
         self.cleanup_cache_dir()
         self.cache_dir = tempfile.mkdtemp(dir=self.cache_dir_prefix)
 
-    def load_from_json(self, path: str) -> None:
+    def load_from_json(self, path: Union[str,Path]) -> None:
         """
         Load a SmashConfig from a JSON file.
 
@@ -213,13 +214,13 @@ class SmashConfig:
         if os.path.exists(os.path.join(path, PROCESSOR_SAVE_PATH)):
             self.processor = AutoProcessor.from_pretrained(os.path.join(path, PROCESSOR_SAVE_PATH))
 
-    def save_to_json(self, path: str) -> None:
+    def save_to_json(self, path: Union[str,Path]) -> None:
         """
         Save the SmashConfig to a JSON file, including additional keys.
 
         Parameters
         ----------
-        path : str
+        path : Union[str,Path]
             The file path where the JSON file will be saved.
         """
         config_dict = dict(self._configuration)

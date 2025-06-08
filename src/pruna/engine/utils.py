@@ -19,7 +19,8 @@ import gc
 import inspect
 import json
 import os
-from typing import Any
+from pathlib import Path
+from typing import Any, Union
 
 import torch
 import torch.nn as nn
@@ -34,7 +35,7 @@ def safe_memory_cleanup() -> None:
     torch.cuda.empty_cache()
 
 
-def load_json_config(path: str, json_name: str) -> dict:
+def load_json_config(path: Union[str,Path], json_name: str) -> dict:
     """
     Load and parse a JSON configuration file.
 
