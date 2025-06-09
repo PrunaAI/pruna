@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import Any, List
+from warnings import warn
 
 import torch
 from torch import Tensor
 
 from pruna.config.utils import is_empty_config
+from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
+from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import group_metrics_by_inheritance
@@ -33,12 +38,44 @@ class EvaluationAgent:
 
     Parameters
     ----------
-    task : Task
+    task : Task, optional
         Configuration object that defines how to evaluate the model.
+        Deprecated: Use metrics, datamodule, and device parameters directly.
+    metrics : str | List[str | BaseMetric | StatefulMetric], optional
+        The metrics to evaluate. Required if task is not provided.
+    datamodule : PrunaDataModule, optional
+        The dataloader to use for the evaluation. Required if task is not provided.
+    device : str | torch.device | None, optional
+        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+        If None, the best available device will be used.
     """
 
-    def __init__(self, task: Task) -> None:
-        self.task = task
+    def __init__(
+        self,
+        task: Task | None = None,
+        *,
+        metrics: str | List[str | BaseMetric | StatefulMetric] | None = None,
+        datamodule: PrunaDataModule | None = None,
+        device: str | torch.device | None = None,
+    ) -> None:
+        if task is not None:
+            if metrics is not None or datamodule is not None or device is not None:
+                raise ValueError(
+                    "Cannot specify both 'task' parameter and direct parameters (metrics, datamodule, device). "
+                    "Use either the deprecated 'task' parameter or the new direct parameters."
+                )
+            warn(
+                "The 'task' parameter is deprecated and will be removed in a future version. "
+                "Use 'metrics', 'datamodule', and 'device' parameters directly instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.task = task
+        else:
+            if metrics is None or datamodule is None:
+                raise ValueError("When not using 'task' parameter, both 'metrics' and 'datamodule' must be provided.")
+            self.task = Task(request=metrics, datamodule=datamodule, device=device)
+
         self.first_model_results: List[MetricResult] = []
         self.subsequent_model_results: List[MetricResult] = []
         self.device = set_to_best_available_device(self.task.device)

@@ -67,3 +67,47 @@ def test_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip
     result = eval_agent.evaluate(model)
 
     assert result[0].result == pytest.approx(0.0, abs=1e-2)
+
+
+@pytest.mark.parametrize(
+    "model_fixture, device, clip_model",
+    [
+        pytest.param("sd_tiny_random", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
+    ],
+    indirect=["model_fixture"],
+)
+def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
+    """Test CMMD pairwise using direct parameters to EvaluationAgent."""
+    model, _ = model_fixture
+    data_module = PrunaDataModule.from_string("LAION256")
+    data_module.limit_datasets(10)
+
+    eval_agent = EvaluationAgent(
+        metrics=[CMMD(call_type="pairwise", clip_model_name=clip_model, device=device)],
+        datamodule=data_module,
+        device=device,
+    )
+
+    eval_agent.evaluate(model)
+    result = eval_agent.evaluate(model)
+
+    assert result[0].result == pytest.approx(0.0, abs=1e-2)
+
+
+def test_evaluation_agent_parameter_validation():
+    """Test parameter validation for EvaluationAgent constructor."""
+    data_module = PrunaDataModule.from_string("LAION256")
+    
+    with pytest.raises(ValueError, match="Cannot specify both 'task' parameter and direct parameters"):
+        task = Task(request="image_generation_quality", datamodule=data_module)
+        EvaluationAgent(task=task, metrics="image_generation_quality")
+    
+    with pytest.raises(ValueError, match="both 'metrics' and 'datamodule' must be provided"):
+        EvaluationAgent(metrics="image_generation_quality")
+    
+    with pytest.raises(ValueError, match="both 'metrics' and 'datamodule' must be provided"):
+        EvaluationAgent(datamodule=data_module)
+    
+    task = Task(request="image_generation_quality", datamodule=data_module)
+    agent = EvaluationAgent(task=task)
+    assert agent is not None
