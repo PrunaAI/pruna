@@ -7,8 +7,9 @@ from transformers import AutoModelForCausalLM
 from pruna.config.smash_config import SmashConfig
 from pruna import smash
 from pruna.engine.save import save_pruna_model
-from pruna.engine.load import load_pruna_model
 from pruna.engine.save import save_pruna_model_to_hub
+from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.load import load_pruna_model
 from pruna.config.smash_config import SmashConfig
 from diffusers import DiffusionPipeline
 
@@ -73,9 +74,6 @@ def test_save_pruna_model_path_types(tmp_path, path_type: str) -> None:
 @pytest.mark.cpu
 def test_save_functions_path_types(tmp_path, path_type: str) -> None:
     """Test individual save functions with different path types."""
-    from pruna.engine.save import SAVE_FUNCTIONS
-    from pruna.config.smash_config import SmashConfig
-    import torch
     
     dummy_model = torch.nn.Linear(5, 3)
     config = SmashConfig()
@@ -85,14 +83,8 @@ def test_save_functions_path_types(tmp_path, path_type: str) -> None:
         test_path = str(model_path)
     else: 
         test_path = Path(model_path)
-    
-
     os.makedirs(test_path, exist_ok=True)
-    
-
     SAVE_FUNCTIONS.pickled(dummy_model, test_path, config)
-    
-
     expected_file = os.path.join(test_path, "optimized_model.pt")
     assert os.path.exists(expected_file)
 
