@@ -102,7 +102,8 @@ stable-fast = [
     "stable-fast-pruna==1.0.7",
 ]
 gptq = [
-    "gptqmodel==4.0.0.dev0+cu126torch2.7",
+    "gptqmodel==4.0.0.dev0+cu126torch2.7; sys_platform != 'darwin' or platform_machine != 'arm64'",
+    "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "logbar",
     "tokenicer",
     "threadpoolctl",
