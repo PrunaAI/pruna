@@ -65,7 +65,7 @@ class EvaluationAgent:
                     "Use either the deprecated 'task' parameter or the new direct parameters."
                 )
             warn(
-                "The 'task' parameter is deprecated and will be removed in a future version. "
+                "The 'task' parameter is deprecated and will be removed in version v0.2.8. "
                 "Use 'metrics', 'datamodule', and 'device' parameters directly instead.",
                 DeprecationWarning,
                 stacklevel=2,
