@@ -47,13 +47,15 @@ class DiffuserHandler(InferenceHandler):
             default_args.update(model_args)
         self.model_args = default_args
 
-    def prepare_inputs(self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]) -> Any:
+    def prepare_inputs(
+        self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor | dict[str, Any], ...] | dict[str, Any]
+    ) -> Any:
         """
         Prepare the inputs for the model.
 
         Parameters
         ----------
-        batch : List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]
+        batch : List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor | dict[str, Any], ...] | dict[str, Any]
             The batch to prepare the inputs for.
 
         Returns
