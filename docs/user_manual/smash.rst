@@ -66,9 +66,9 @@ First, load any model using its original library, like ``transformers`` or ``dif
 
 .. code-block:: python
 
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
 
-    base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
 Step 2: Define optimizations with a ``SmashConfig``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,10 +99,10 @@ Let's use the ``smash()`` function to apply the configured optimizations:
 
     from pruna import SmashConfig, smash
 
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
 
     # Load the model
-    base_model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
@@ -112,7 +112,7 @@ Let's use the ``smash()`` function to apply the configured optimizations:
     optimized_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the optimized model
-    optimized_model.save_to_hub("PrunaAI/segmind-tiny-sd-smashed")
+    optimized_model.save_to_hub("PrunaAI/Segmind-Vega-smashed")
 
 The ``smash()`` function returns a ``PrunaModel`` - a wrapper that provides a standardized interface for the optimized model. So, we can still use the model as we would use the original one.
 
@@ -127,7 +127,7 @@ To evaluate the optimized model, we can use the same interface as the original m
     from pruna.evaluation.evaluation_agent import EvaluationAgent
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_pretrained("PrunaAI/segmind-tiny-sd-smashed")
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
 
     # Define metrics
     metrics = ['clip_score', 'psnr']
@@ -152,7 +152,7 @@ To run inference with the optimized model, we can use the same interface as the 
     from pruna import PrunaModel
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/segmind-tiny-sd-smashed")
+    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
 
     optimized_model.set_progress_bar_config(disable=True)
 
@@ -169,12 +169,12 @@ Example 1: Diffusion Model Optimization
 
 .. code-block:: python
 
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
 
     from pruna import SmashConfig, smash
 
     # Load the model
-    model = StableDiffusionPipeline.from_pretrained("segmind/tiny-sd")
+    model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()

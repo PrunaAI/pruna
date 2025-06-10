@@ -358,7 +358,7 @@ Let's see how this works in code.
 
         .. code-block:: python
 
-            from diffusers import StableDiffusionPipeline
+            from diffusers import DiffusionPipeline
 
             from pruna import SmashConfig, smash
             from pruna.data.pruna_datamodule import PrunaDataModule
@@ -371,8 +371,8 @@ Let's see how this works in code.
             smash_config["quantizer"] = "hqq_diffusers"
 
             # Load the base model
-            model_path = "segmind/tiny-sd"
-            pipe = StableDiffusionPipeline.from_pretrained(model_path)
+            model_path = "segmind/Segmind-Vega"
+            pipe = DiffusionPipeline.from_pretrained(model_path)
 
             # Smash the model
             smashed_pipe = smash(pipe, smash_config)
@@ -398,7 +398,7 @@ Let's see how this works in code.
 
             import copy
 
-            from diffusers import StableDiffusionPipeline
+            from diffusers import DiffusionPipeline
 
             from pruna import SmashConfig, smash
             from pruna.data.pruna_datamodule import PrunaDataModule
@@ -411,8 +411,8 @@ Let's see how this works in code.
             smash_config["quantizer"] = "hqq_diffusers"
 
             # Load the base model
-            model_path = "segmind/tiny-sd"
-            pipe = StableDiffusionPipeline.from_pretrained(model_path)
+            model_path = "segmind/Segmind-Vega"
+            pipe = DiffusionPipeline.from_pretrained(model_path)
 
             # Smash the model
             copy_pipe = copy.deepcopy(pipe)
