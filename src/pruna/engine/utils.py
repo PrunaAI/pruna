@@ -155,7 +155,7 @@ def remove_all_accelerate_hooks(model: Any) -> None:
     if isinstance(model, torch.nn.Module):
         # transformers models are all torch.nn.Module, which is what the hook removal expects
         remove_hook_from_module(model, recurse=True)
-    else:
+    elif hasattr(model, "components"):
         # diffusers pipelines e.g. are not torch modules, so we need to find all attributes that are modules
         # we only do this at the first level, recurse will take care of the rest
         for attr in model.components:
