@@ -15,13 +15,9 @@ Basic Evaluation Workflow
 
 .. mermaid::
    :align: center
-
    graph LR
-    User -->|creates| EvaluationAgent
     User -->|configures| Metrics
     User -->|configures| PrunaDataModule
-    Metrics -->|includes| B["Base Metrics"]
-    Metrics -->|includes| C["Stateless Metric"]
     PrunaModel -->|provides predictions| EvaluationAgent
     EvaluationAgent -->|evaluates| PrunaModel
     EvaluationAgent -->|returns| D["Evaluation Results"]
@@ -29,17 +25,11 @@ Basic Evaluation Workflow
     subgraph E["Evaluation Configuration"]
         PrunaDataModule
         Metrics
-        A
     end
 
-
-    subgraph A["Metric Types"]
-        B
-        C
-    end
-
+    Metrics-->|is used by| EvaluationAgent
     PrunaDataModule -->|is used by| EvaluationAgent
-    A -->|is used by| EvaluationAgent
+    User -->|creates| EvaluationAgent
 
     style User fill:#bbf,stroke:#333,stroke-width:2px
     style EvaluationAgent fill:#bbf,stroke:#333,stroke-width:2px
@@ -47,8 +37,6 @@ Basic Evaluation Workflow
     style PrunaModel fill:#bbf,stroke:#333,stroke-width:2px
     style D fill:#bbf,stroke:#333,stroke-width:2px
     style Metrics fill:#bbf,stroke:#333,stroke-width:2px
-    style B fill:#f9f,stroke:#333,stroke-width:2px
-    style C fill:#f9f,stroke:#333,stroke-width:2px
 
 Let's see what that looks like in code.
 
