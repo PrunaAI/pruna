@@ -39,7 +39,9 @@ jobs:
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
       - name: Configure Poetry to not create virtual environments
-        run: poetry config virtualenvs.create false
+        run: |
+          export PATH="${HOME}/.local/bin:$PATH"
+          poetry config virtualenvs.create false
 
       - name: Install dependencies
         run: pip install -e .[tests] --extra-index-url https://prunaai.pythonanywhere.com/
