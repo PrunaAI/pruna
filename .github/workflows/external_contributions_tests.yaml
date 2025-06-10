@@ -34,12 +34,7 @@ jobs:
         run: pip install --upgrade pip setuptools wheel
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python                    -poetry.org | python3 -
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure Poetry to not create virtual environments
-        run: poetry config virtualenvs.create false
+        uses: abatilo/actions-poetry@v2
 
       - name: Install dependencies
         run: pip install -e .[tests] --extra-index-url https://prunaai.pythonanywhere.com/
