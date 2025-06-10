@@ -88,7 +88,7 @@ timm = "*"
 bitsandbytes = { version = "*", markers = "sys_platform != 'darwin' or platform_machine != 'arm64'" }
 optimum-quanto = ">=0.2.5"
 optimum = "*"
-ctranslate2 = "==4.5.0"
+ctranslate2 = "==4.6.0"
 whisper-s2t = "==1.3.0"
 hqq = "<0.2.7" # pinned to 0.2.6 to avoid re-loading model bug introduced in 0.2.7
 torchao = "*"
