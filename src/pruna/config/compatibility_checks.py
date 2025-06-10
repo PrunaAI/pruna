@@ -36,30 +36,10 @@ def ensure_device_consistency(model, smash_config):
     """
     model_device = get_device(model)
 
-    if smash_config.device in ["cpu", "cuda", "mps"]:
-        if model_device == smash_config.device:
-            pruna_logger.debug("Device consistency check passed.")
-        else:
-            if model_device != "accelerate":
-                pruna_logger.warning(
-                    (
-                        f"Model and SmashConfig have different devices. Model: {model_device}, "
-                        f"SmashConfig: {smash_config.device}. Casting model to {smash_config.device}."
-                        f"If this is not desired, please use SmashConfig(device='{model_device}')."
-                    )
-                )
-            else:
-                # in this case, the model_device is a device map and the model is on multiple GPUs
-                pruna_logger.warning(
-                    (
-                        f"SmashConfig specifies {smash_config.device} but model is distributed. "
-                        f"Casting model to {smash_config.device}. If this is not desired, please use "
-                        f"SmashConfig(device='accelerate') to continue with distributed model."
-                    )
-                )
-            move_to_device(model, smash_config.device)
-
-    elif smash_config.device == "accelerate":
+    # model and smash config devices match
+    if model_device == smash_config.device:
+        pruna_logger.debug("Device consistency check passed.")
+        # in case of accelerate, we need to store the device map
         if model_device == "accelerate":
             pruna_logger.debug("Device consistency check passed.")
             hf_device_map = get_device(model, return_device_map=True)
@@ -67,14 +47,25 @@ def ensure_device_consistency(model, smash_config):
                 raise ValueError("Device map indicates CPU offloading, this is not supported at this time.")
             else:
                 smash_config.device_map = hf_device_map
-        else:
-            pruna_logger.warning(
-                (
-                    f"SmashConfig specifies 'accelerate' but model is not distributed and is on device {model_device}. "
-                    f"Updating SmashConfig to device='{model_device}'."
-                )
+
+    if smash_config.device in ["cpu", "cuda", "mps"] and model_device in ["cpu", "cuda", "mps"]:
+        pruna_logger.warning(
+            (
+                f"Model and SmashConfig have different devices. Model: {model_device}, "
+                f"SmashConfig: {smash_config.device}. Casting model to {smash_config.device}."
+                f"If this is not desired, please use SmashConfig(device='{model_device}')."
             )
-            smash_config.device = model_device
+        )
+        move_to_device(model, smash_config.device)
+
+    elif smash_config.device == "accelerate" or model_device == "accelerate":
+        pruna_logger.warning(
+            (
+                f"Model and SmashConfig have different devices. Model: {model_device}, "
+                f"SmashConfig: {smash_config.device}. Updating SmashConfig to device='{model_device}'."
+            )
+        )
+        smash_config.device = model_device
     else:
         raise ValueError(f"Invalid device: {smash_config.device}")
 
