@@ -29,7 +29,7 @@ Let's see what that looks like in code.
 
 .. code-block:: python
 
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
 
     from pruna import SmashConfig, smash
     from pruna.data.pruna_datamodule import PrunaDataModule
@@ -37,7 +37,7 @@ Let's see what that looks like in code.
     from pruna.evaluation.task import Task
 
     # Load the model
-    model = StableDiffusionPipeline.from_pretrained("Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers")
+    model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
