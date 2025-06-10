@@ -20,7 +20,7 @@ import tempfile
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, List
 
 import torch
 import transformers
@@ -38,7 +38,7 @@ from pruna.engine.utils import determine_dtype
 from pruna.logging.logger import pruna_logger
 
 
-def save_pruna_model(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the model to the specified directory.
 
@@ -46,7 +46,7 @@ def save_pruna_model(model: Any, model_path: Union[str, Path], smash_config: Sma
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -93,7 +93,7 @@ def save_pruna_model_to_hub(
     model: Any,
     smash_config: SmashConfig,
     repo_id: str,
-    model_path: Union[str, Path, None] = None,
+    model_path: str | Path | None = None,
     *,
     revision: str | None = None,
     private: bool = False,
@@ -114,7 +114,7 @@ def save_pruna_model_to_hub(
         The SmashConfig object containing the save and load functions.
     repo_id : str
         The repository ID.
-    model_path : Union[str,Path,None], optional
+    model_path : str | Path| None, optional
         The path to the directory where the model will be saved.
     revision : str | None, optional
         The revision of the model.
@@ -180,7 +180,7 @@ def save_pruna_model_to_hub(
         )
 
 
-def original_save_fn(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def original_save_fn(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the model to the specified directory.
 
@@ -188,7 +188,7 @@ def original_save_fn(model: Any, model_path: Union[str, Path], smash_config: Sma
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -219,7 +219,7 @@ def original_save_fn(model: Any, model_path: Union[str, Path], smash_config: Sma
         smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 
-def save_pipeline_info(pipeline_obj: Any, save_directory: Union[str, Path]) -> None:
+def save_pipeline_info(pipeline_obj: Any, save_directory: str | Path) -> None:
     """
     Save pipeline information to a JSON file in the specified directory for easy loading.
 
@@ -227,7 +227,7 @@ def save_pipeline_info(pipeline_obj: Any, save_directory: Union[str, Path]) -> N
     ----------
     pipeline_obj : Any
         The pipeline object to save.
-    save_directory : Union[str, Path]
+    save_directory : str | Path
         The directory to save the pipeline information to.
     """
     pruna_logger.info(f"Detected pipeline, saving info to {PIPELINE_INFO_FILE_NAME}")
@@ -242,7 +242,7 @@ def save_pipeline_info(pipeline_obj: Any, save_directory: Union[str, Path]) -> N
         json.dump(info, f)
 
 
-def save_before_apply(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the model by moving already saved, temporary files into the model path.
 
@@ -250,7 +250,7 @@ def save_before_apply(model: Any, model_path: Union[str, Path], smash_config: Sm
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -270,7 +270,7 @@ def save_before_apply(model: Any, model_path: Union[str, Path], smash_config: Sm
         shutil.move(os.path.join(save_dir, file), os.path.join(model_path, file))
 
 
-def save_pickled(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the model by pickling it.
 
@@ -278,7 +278,7 @@ def save_pickled(model: Any, model_path: Union[str, Path], smash_config: SmashCo
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -291,7 +291,7 @@ def save_pickled(model: Any, model_path: Union[str, Path], smash_config: SmashCo
     smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 
-def save_model_hqq(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the model with HQQ functionality.
 
@@ -299,7 +299,7 @@ def save_model_hqq(model: Any, model_path: Union[str, Path], smash_config: Smash
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -315,7 +315,7 @@ def save_model_hqq(model: Any, model_path: Union[str, Path], smash_config: Smash
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
 
-def save_model_hqq_diffusers(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the pipeline by saving the quantized model with HQQ, and rest of the pipeline with diffusers.
 
@@ -323,7 +323,7 @@ def save_model_hqq_diffusers(model: Any, model_path: Union[str, Path], smash_con
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -356,7 +356,7 @@ def save_model_hqq_diffusers(model: Any, model_path: Union[str, Path], smash_con
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
-def save_torch_artifacts(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Save the model by saving the torch artifacts.
 
@@ -364,7 +364,7 @@ def save_torch_artifacts(model: Any, model_path: Union[str, Path], smash_config:
     ----------
     model : Any
         The model to save.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to save the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
@@ -386,7 +386,7 @@ def save_torch_artifacts(model: Any, model_path: Union[str, Path], smash_config:
     smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
 
 
-def reapply(model: Any, model_path: Union[str, Path], smash_config: SmashConfig) -> None:
+def reapply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Reapply the model.
 
@@ -394,7 +394,7 @@ def reapply(model: Any, model_path: Union[str, Path], smash_config: SmashConfig)
     ----------
     model : Any
         The model to reapply.
-    model_path : Union[str, Path]
+    model_path : str | Path
         The directory to reapply the model to.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
