@@ -42,7 +42,7 @@ git remote add upstream https://github.com/PrunaAI/pruna.git
 Always work on a new branch rather than the main branch. You can create a new branch for your feature or fix:
 
 ```bash
-git checkout -b feat/new-feature
+git switch -c feat/new-feature
 ```
 
 ### 2. Installation
@@ -51,8 +51,8 @@ You can now set up a virtual environment of your choice and install the dependen
 
 ```bash
 pip install -e .
-pip install -e .[dev]
-pip install -e .[tests]
+pip install -e '.[dev]'
+pip install -e '.[tests]'
 ```
 
 You can then also install the pre-commit hooks with:
@@ -66,7 +66,7 @@ pre-commit install
 You are now ready to work on your contribution. Check out a branch on your forked repository and start coding! When committing your changes, we recommend following the [Conventional Commit Guidelines](https://www.conventionalcommits.org/en/v1.0.0/).
 
 ```bash
-git checkout -b feat/new-feature
+git switch -c feat/new-feature
 git add .
 git commit -m "feat: new amazing feature setup"
 git push origin feat/new-feature
