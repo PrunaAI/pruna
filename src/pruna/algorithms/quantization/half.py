@@ -35,7 +35,7 @@ class HalfQuantizer(PrunaQuantizer):
     save_fn: Callable = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
-    runs_on: list[str] = ["cpu", "cuda", "mps"]
+    runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(
         batcher=["ifw", "whisper_s2t"],
