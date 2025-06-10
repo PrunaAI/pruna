@@ -6,8 +6,8 @@ permissions:
 
 on:
   pull_request_target:
-    types: [ review_requested ]
-    branches: [ main ]
+    types: [review_requested]
+    branches: [main]
 
 jobs:
   test:
@@ -16,10 +16,9 @@ jobs:
       github.event.pull_request.author_association != 'MEMBER' &&
       github.event.pull_request.author_association != 'COLLABORATOR'
     runs-on: pruna-cpu
-
     strategy:
       matrix:
-        python-version: [ "3.10" ]
+        python-version: ["3.10"]
 
     steps:
       - name: Checkout code
@@ -34,17 +33,12 @@ jobs:
         run: pip install --upgrade pip setuptools wheel
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python                    -poetry.org | python3 -
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure Poetry to not create virtual environments
-        run: |
-          export PATH="${HOME}/.local/bin:$PATH"
-          poetry config virtualenvs.create false
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: false
 
       - name: Install dependencies
-        run: pip install -e .[tests] --extra-index-url https://prunaai.pythonanywhere.com/
+        run: poetry install --with tests
 
       - name: Run tests
         run: |
