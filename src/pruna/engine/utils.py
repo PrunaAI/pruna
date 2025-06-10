@@ -105,7 +105,7 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
-        if device != "accelerate":
+        if device != "accelerate" and hasattr(model.model, "hf_device_map"):
             delattr(model.model, "hf_device_map")
         return
 

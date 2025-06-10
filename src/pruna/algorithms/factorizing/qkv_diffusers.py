@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 from pruna.algorithms.factorizing import PrunaFactorizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -34,7 +34,7 @@ class QKVDiffusers(PrunaFactorizer):
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",
     }
-    save_fn: Callable = SAVE_FUNCTIONS.save_before_apply
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]

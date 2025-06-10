@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -37,7 +37,7 @@ class QuantoQuantizer(PrunaQuantizer):
 
     algorithm_name: str = "quanto"
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
-    save_fn: Callable = SAVE_FUNCTIONS.pickled
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
     processor_required: bool = False
     dataset_required: bool = False

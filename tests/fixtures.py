@@ -70,12 +70,13 @@ def stable_diffusion_v1_4_model() -> tuple[Any, SmashConfig]:
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
     source_model_id = "openai/whisper-tiny"
+    model_id = "yujiepan/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
-        model=source_model_id,
+        model=model_id,
         chunk_length_s=30,
         torch_dtype=torch.float16,
-        device_map="balanced",
+        device_map="cpu",
     )
     smash_config = SmashConfig()
     smash_config.add_tokenizer(source_model_id)
@@ -92,8 +93,7 @@ def dummy_model() -> tuple[Any, SmashConfig]:
 
 def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get a diffusers model for image generation."""
-    # load in distributed mode, if not intended by test this will be cast down to CPU/CUDA
-    model = cls.from_pretrained(model_id, **kwargs, device_map="balanced")
+    model = cls.from_pretrained(model_id, **kwargs)
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
     return model, smash_config
@@ -101,7 +101,7 @@ def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any])
 
 def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get an AutoModelForCausalLM model for text generation."""
-    model = AutoModelForCausalLM.from_pretrained(model_id, device_map="balanced", **kwargs)
+    model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
     smash_config = SmashConfig()
     try:
         smash_config.add_tokenizer(model_id)

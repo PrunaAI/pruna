@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import importlib
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 import torch
 
@@ -75,7 +75,7 @@ class TorchaoQuantizer(PrunaQuantizer):
 
     algorithm_name: str = "torchao"
     references: dict[str, str] = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
-    save_fn: Callable = SAVE_FUNCTIONS.save_before_apply
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]

@@ -114,6 +114,7 @@ class PrunaModel:
         Returns
         -------
         bool
+            True if the model is an instance of the given type, False otherwise.
         """
         return isinstance(self.model, instance_type)
 

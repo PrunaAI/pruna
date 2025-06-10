@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict, Type
+from typing import Any, Dict, Type
 
 import torch
 import torch.nn as nn
@@ -45,7 +45,7 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",
     }
-    save_fn: Callable = SAVE_FUNCTIONS.hqq_diffusers
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.hqq_diffusers
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]

@@ -14,7 +14,7 @@
 
 import shutil
 import tempfile
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
@@ -42,7 +42,7 @@ class HQQQuantizer(PrunaQuantizer):
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",
     }
-    save_fn: Callable = SAVE_FUNCTIONS.hqq
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.hqq
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]

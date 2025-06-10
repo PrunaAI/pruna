@@ -70,7 +70,14 @@ class PrunaAlgorithmBase(ABC):
         cls.import_algorithm_packages = wrap_handle_imports(impl)
 
     def compatible_devices(self) -> list[str]:
-        """Return the compatible devices for the algorithm."""
+        """
+        Return the compatible devices for the algorithm.
+
+        Returns
+        -------
+        list[str]
+            The compatible devices for the algorithm.
+        """
         return self.runs_on
 
     @property
@@ -92,14 +99,8 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     @abstractmethod
-    def run_on_cpu(self) -> bool:
-        """Subclasses need to provide a boolean indicating if the algorithm can be applied on cpu."""
-        pass
-
-    @property
-    @abstractmethod
-    def run_on_cuda(self) -> bool:
-        """Subclasses need to provide a boolean indicating if the algorithm can be applied on cuda."""
+    def runs_on(self) -> list[str]:
+        """Subclasses need to provide a list of devices the algorithm can run on."""
         pass
 
     @property

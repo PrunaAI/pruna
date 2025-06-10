@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 import torch
 
@@ -32,7 +32,7 @@ class HalfQuantizer(PrunaQuantizer):
     algorithm_name: str = "half"
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
-    save_fn: Callable = SAVE_FUNCTIONS.save_before_apply
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]

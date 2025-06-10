@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import inspect
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 import torch
 from ConfigSpace import OrdinalHyperparameter
@@ -34,7 +34,7 @@ class TorchDynamicQuantizer(PrunaQuantizer):
 
     algorithm_name = "torch_dynamic"
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
-    save_fn: Callable = SAVE_FUNCTIONS.pickled
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
