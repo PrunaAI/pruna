@@ -73,13 +73,7 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
     if len(smash_config.load_fns) > 1:
         pruna_logger.error(f"Load functions not used: {smash_config.load_fns[1:]}")
 
-    model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, **kwargs)
-
-    if "device_map" not in kwargs and "device" not in kwargs:
-        try:
-            move_to_device(model, smash_config.device, device_map=smash_config.device_map)
-        except Exception as e:
-            pruna_logger.error(f"Error moving model to device: {e}")
+    model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, smash_config, **kwargs)
 
     # check if there are any algorithms to reapply
     if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
@@ -222,7 +216,7 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     return smash(model=model, smash_config=smash_config_subset)
 
 
-def load_transformers_model(path: str, **kwargs) -> Any:
+def load_transformers_model(path: str, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a transformers model or pipeline from the given model path.
 
@@ -230,6 +224,8 @@ def load_transformers_model(path: str, **kwargs) -> Any:
     ----------
     path : str
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -253,10 +249,11 @@ def load_transformers_model(path: str, **kwargs) -> Any:
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
         # transformers discards kwargs automatically, no need for filtering
-        return cls.from_pretrained(path, **kwargs)
+        device_map = smash_config.device_map if smash_config.device == "accelerate" else smash_config.device
+        return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
-def load_diffusers_model(path: str, **kwargs) -> Any:
+def load_diffusers_model(path: str, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
@@ -264,6 +261,8 @@ def load_diffusers_model(path: str, **kwargs) -> Any:
     ----------
     path : str
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -293,11 +292,14 @@ def load_diffusers_model(path: str, **kwargs) -> Any:
         kwargs["torch_dtype"] = dtype
 
     cls = getattr(diffusers, model_index["_class_name"])
-    # transformers discards kwargs automatically, no need for filtering
-    return cls.from_pretrained(path, **kwargs)
+    # diffusers discards kwargs automatically, no need for filtering
+    # diffusers does not support device_maps as dicts at the moment, we load on cpu and cast it ourselves
+    model = cls.from_pretrained(path, device_map=None, **kwargs)
+    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
+    return model
 
 
-def load_pickled(path: str, **kwargs) -> Any:
+def load_pickled(path: str, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a pickled model from the given model path.
 
@@ -305,6 +307,8 @@ def load_pickled(path: str, **kwargs) -> Any:
     ----------
     path : str
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -313,12 +317,20 @@ def load_pickled(path: str, **kwargs) -> Any:
     Any
         The loaded pickled model.
     """
-    return torch.load(
-        os.path.join(path, PICKLED_FILE_NAME), weights_only=False, **filter_load_kwargs(torch.load, kwargs)
+    # torch load has a target device but no interface to reproduce an accelerate-distributed model, we first map to cpu
+    target_device = "cpu" if smash_config.device == "accelerate" else smash_config.device
+    model = torch.load(
+        os.path.join(path, PICKLED_FILE_NAME),
+        weights_only=False,
+        map_location=target_device,
+        **filter_load_kwargs(torch.load, kwargs),
     )
+    # for cpu/cuda this will just continue as its on the correct device, for accelerate it will now distribute / cast
+    move_to_device(model, target_device, device_map=smash_config.device_map)
+    return model
 
 
-def load_hqq(model_path: str, **kwargs) -> Any:
+def load_hqq(model_path: str, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a model quantized with HQQ from the given model path.
 
@@ -326,6 +338,8 @@ def load_hqq(model_path: str, **kwargs) -> Any:
     ----------
     model_path : str
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -340,12 +354,16 @@ def load_hqq(model_path: str, **kwargs) -> Any:
 
     try:  # Try to use pipeline for HF specific HQQ quantization
         model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
-            model_path, **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs)
+            model_path,
+            device=smash_config.device,
+            **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
         )
     except Exception:  # Default to generic HQQ pipeline if it fails
         pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
         model = algorithm_packages["AutoHQQHFModel"].from_quantized(
-            model_path, **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs)
+            model_path,
+            device=smash_config.device,
+            **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
         )
 
     return model
@@ -368,7 +386,7 @@ def load_torch_artifacts(model_path: str, **kwargs) -> None:
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
-def load_hqq_diffusers(path: str, **kwargs) -> Any:
+def load_hqq_diffusers(path: str, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
@@ -376,6 +394,8 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     ----------
     path : str
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -415,6 +435,8 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     else:
         # load the whole model if a pipeline wasn't saved
         model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
+    # HQQ does not support direct loading on the correct device, so we move it afterwards
+    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
 
 
