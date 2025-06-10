@@ -57,19 +57,32 @@ Always work on a new branch rather than the main branch. You can create a new br
 2. Installation
 ^^^^^^^^^^^^^^^^^^^^^^
 
-You can now set up a virtual environment of your choice and install the dependencies by running the following command:
+You can now install the dependencies using uv (our dependency manager) by running the following commands:
 
 .. code-block:: bash
 
-    pip install -e .
-    pip install -e .[dev]
-    pip install -e .[tests]
+    uv sync --extra dev --extra tests
+    uv pip install -e .
+
+The first command creates a virtual environment in ``.venv/`` and installs all necessary dependencies including development and testing dependencies. The second command installs the pruna package itself in editable mode so your changes will be reflected immediately.
 
 You can then also install the pre-commit hooks with
 
 .. code-block:: bash
 
     pre-commit install
+
+If you don't have uv installed, you can install it with:
+
+.. code-block:: bash
+
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+Or using pip:
+
+.. code-block:: bash
+
+    pip install uv
 
 
 3. Develop your contribution
@@ -98,13 +111,15 @@ You can run the tests by running the following command:
 
 .. code-block:: bash
 
-    pytest
+    uv run pytest
 
 If you want to run only the tests with a specific marker, e.g. fast CPU tests, you can do so by running:
 
 .. code-block:: bash
 
-    pytest -m "cpu and not slow"
+    uv run pytest -m "cpu and not slow"
+
+Note: ``uv run`` automatically activates the virtual environment managed by uv, so you don't need to manually activate it.
 
 
 5. Create a Pull Request
