@@ -150,7 +150,14 @@ def remove_all_accelerate_hooks(model: Any) -> None:
     """
     if hasattr(model, "reset_device_map"):
         # remove distributed device state to be able to use ".to" for diffusers models
-        model.reset_device_map()
+        try:
+            model.reset_device_map()
+        # inside reset device map, diffusers will attempt device casting and bnb is being difficult
+        except ValueError as e:
+            if "bitsandbytes" in str(e):
+                pass
+            else:
+                raise e
 
     if isinstance(model, torch.nn.Module):
         # transformers models are all torch.nn.Module, which is what the hook removal expects
@@ -352,9 +359,6 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
     str
         Best available device name.
     """
-    if isinstance(device, torch.device):
-        device = str(device)
-
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         pruna_logger.info(f"Using best available device: '{device}'")
