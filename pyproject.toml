@@ -103,7 +103,7 @@ twine = { version = "*", optional = true, markers = "extra == 'dev'" }
 pyc-wheel = { version = "*", optional = true, markers = "extra == 'dev'" }
 pytest-cov = { version = "*", optional = true, markers = "extra == 'tests'" }
 coverage = { version = "*", optional = true, markers = "extra == 'tests'" }
-pytest = { version = "7.4.4", optional = true, markers = "extra == 'tests'" }
+pytest = { version = "8.4.0", optional = true, markers = "extra == 'tests'" }
 docutils = { version = "*", optional = true, markers = "extra == 'tests'" }
 xformers = { version = "==0.0.30", optional = true, markers = "extra == 'stable-fast' or extra == 'full'" }
 stable-fast-pruna = { version = "1.0.7", optional = true, markers = "extra == 'stable-fast' or extra == 'full'" }
