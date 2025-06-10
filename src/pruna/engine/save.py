@@ -102,6 +102,7 @@ def save_pruna_model_to_hub(
     num_workers: int | None = None,
     print_report: bool = True,
     print_report_every: int = 60,
+    _library_name: str = "pruna",
 ) -> None:
     """
     Save the model to the specified directory.
@@ -130,6 +131,8 @@ def save_pruna_model_to_hub(
         Whether to print the report.
     print_report_every : int, optional
         The print report every.
+    _library_name : str
+        The name of the library.
     """
     # Create a temporary directory within the specified folder path to store the model files
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -159,6 +162,8 @@ def save_pruna_model_to_hub(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
+            model_class="PrunaModel" if _library_name == "pruna" else "PrunaProModel",
+            pruna_library=_library_name,
         )
 
         # Define the path for the README file and write the formatted content to it
