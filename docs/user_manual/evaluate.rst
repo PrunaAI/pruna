@@ -25,13 +25,21 @@ Basic Evaluation Workflow
     PrunaModel -->|provides predictions| EvaluationAgent
     EvaluationAgent -->|evaluates| PrunaModel
     EvaluationAgent -->|returns| D["Evaluation Results"]
-    EvaluationAgent -->|uses| Metrics
-    EvaluationAgent -->|uses| PrunaDataModule
+
+    subgraph E["Evaluation Configuration"]
+        PrunaDataModule
+        Metrics
+        A
+    end
+
 
     subgraph A["Metric Types"]
         B
         C
     end
+
+    PrunaDataModule -->|is used by| EvaluationAgent
+    A -->|is used by| EvaluationAgent
 
     style User fill:#bbf,stroke:#333,stroke-width:2px
     style EvaluationAgent fill:#bbf,stroke:#333,stroke-width:2px
