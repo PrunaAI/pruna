@@ -15,7 +15,6 @@ on:
 jobs:
   test:
     runs-on: pruna-cpu
-    environment: restricted_actions
 
     strategy:
       matrix:
