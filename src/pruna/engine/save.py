@@ -310,7 +310,7 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
     if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
         model.save_quantized(model_path)
     else:
-        algorithm_packages["AutoHQQHFModel"].save_quantized(model, model_path)
+        algorithm_packages["AutoHQQHFModel"].save_quantized(model, str(model_path))
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 

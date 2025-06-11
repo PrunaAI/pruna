@@ -54,15 +54,15 @@ def test_save_pruna_model_path_types(tmp_path, path_type: str) -> None:
     """Test saving PrunaModel with different path types (str vs Path)."""
     dummy_model = torch.nn.Linear(10, 5)
     config = SmashConfig()
-    config.save_fns = []  
+    config.save_fns = []
     model_path = tmp_path / "test_model"
     if path_type == "string":
         test_path = str(model_path)
     else:
         test_path = Path(model_path)
-    
+
     save_pruna_model(dummy_model, test_path, config)
-    
+
     assert os.path.exists(test_path)
     assert os.path.exists(os.path.join(test_path, "smash_config.json"))
 
@@ -74,14 +74,14 @@ def test_save_pruna_model_path_types(tmp_path, path_type: str) -> None:
 @pytest.mark.cpu
 def test_save_functions_path_types(tmp_path, path_type: str) -> None:
     """Test individual save functions with different path types."""
-    
+
     dummy_model = torch.nn.Linear(5, 3)
     config = SmashConfig()
-    
+
     model_path = tmp_path / "pickled_test"
     if path_type == "string":
         test_path = str(model_path)
-    else: 
+    else:
         test_path = Path(model_path)
     os.makedirs(test_path, exist_ok=True)
     SAVE_FUNCTIONS.pickled(dummy_model, test_path, config)
@@ -102,19 +102,19 @@ def test_save_functions_path_types(tmp_path, path_type: str) -> None:
 def test_save_load_integration_path_types(tmp_path, save_path_type: str, load_path_type: str) -> None:
     """Test integration between save and load with different path types."""
     original_model = torch.nn.Linear(8, 4)
-    original_model.weight.data.fill_(1.0) 
+    original_model.weight.data.fill_(1.0)
     original_model.bias.data.fill_(0.5)
     original_model = original_model.cpu()
-    
+
     config = SmashConfig()
-    config.save_fns = []  
-    
+    config.save_fns = []
+
     model_path = tmp_path / "integration_test"
     if save_path_type == "string":
         save_path = str(model_path)
-    else:  
+    else:
         save_path = Path(model_path)
-    
+
     if load_path_type == "string":
         load_path = str(model_path)
     else:
@@ -137,7 +137,7 @@ def test_save_to_hub_path_types(tmp_path) -> None:
     config = SmashConfig()
     string_path = str(tmp_path / "string_test")
     pathlib_path = Path(tmp_path / "pathlib_test")
-    
+
     with patch('pruna.engine.save.upload_large_folder') as mock_upload:
         save_pruna_model_to_hub(
             model=dummy_model,
@@ -147,9 +147,9 @@ def test_save_to_hub_path_types(tmp_path) -> None:
             private=True
         )
         assert mock_upload.called
-        
+
         mock_upload.reset_mock()
-        
+
         save_pruna_model_to_hub(
             model=dummy_model,
             smash_config=config,
@@ -159,98 +159,3 @@ def test_save_to_hub_path_types(tmp_path) -> None:
         )
         assert mock_upload.called
 
-
-@pytest.mark.cpu
-def test_deprecation_save_string_only_behavior(tmp_path) -> None:
-    """Test that old string-only save behavior still works (deprecation test)."""
-    dummy_model = torch.nn.Linear(12, 6)
-    config = SmashConfig()
-    config.save_fns = []
-    
-    model_path = str(tmp_path / "deprecation_save")
-    save_pruna_model(dummy_model, model_path, config)
-    
-    assert os.path.exists(model_path)
-    assert os.path.exists(os.path.join(model_path, "smash_config.json"))
-    assert os.path.exists(os.path.join(model_path, "optimized_model.pt"))
-
-
-@pytest.mark.cpu
-def test_deprecation_save_functions_string_behavior(tmp_path) -> None:
-    """Test that individual save functions maintain string backward compatibility."""
-    dummy_model = torch.nn.Linear(7, 3)
-    config = SmashConfig()
-    
-    save_path = str(tmp_path / "save_func_deprecation")
-    os.makedirs(save_path, exist_ok=True)
-    
-    SAVE_FUNCTIONS.pickled(dummy_model, save_path, config)
-    
-    expected_file = os.path.join(save_path, "optimized_model.pt")
-    assert os.path.exists(expected_file)
-
-
-@pytest.mark.cpu
-def test_deprecation_save_to_hub_string_behavior(tmp_path) -> None:
-    """Test save_to_hub maintains backward compatibility with string paths."""
-    dummy_model = torch.nn.Linear(5, 2)  
-    config = SmashConfig()
-    
-    string_path = str(tmp_path / "hub_deprecation")
-    
-    with patch('pruna.engine.save.upload_large_folder') as mock_upload:
-        save_pruna_model_to_hub(
-            model=dummy_model,
-            smash_config=config, 
-            repo_id="test/deprecation-repo",
-            model_path=string_path,
-            private=True
-        )
-        assert mock_upload.called
-
-
-@pytest.mark.cpu
-def test_deprecation_backward_compatibility_complete_workflow(tmp_path) -> None:
-    """Test complete save/load workflow using old string-only methods."""
-    original_model = torch.nn.Linear(10, 5)
-    original_model.weight.data.fill_(2.0)
-    original_model.bias.data.fill_(1.0)
-    
-    config = SmashConfig()
-    config.save_fns = []
-    
-    model_path_str = str(tmp_path / "complete_workflow")
-    
-    save_pruna_model(original_model, model_path_str, config)
-    
-    loaded_model, loaded_config = load_pruna_model(model_path_str)
-    loaded_model = loaded_model.cpu()
-
-    assert isinstance(loaded_model, torch.nn.Linear)
-    assert torch.allclose(loaded_model.weight, original_model.weight)
-    assert torch.allclose(loaded_model.bias, original_model.bias)
-    assert isinstance(loaded_config, SmashConfig)
-
-
-@pytest.mark.cpu
-def test_deprecation_no_breaking_changes(tmp_path) -> None:
-    """Ensure no breaking changes were introduced with Path support."""
-    models_and_paths = []
-    
-    for i in range(3):
-        model = torch.nn.Linear(4, 2)
-        path = str(tmp_path / f"no_breaking_{i}")
-        models_and_paths.append((model, path))
-    
-    config = SmashConfig()
-    config.save_fns = []
-    
-    for model, path in models_and_paths:
-        save_pruna_model(model, path, config)
-        assert os.path.exists(path)
-    
-    for original_model, path in models_and_paths:
-        loaded_model, _ = load_pruna_model(path)
-        assert isinstance(loaded_model, torch.nn.Linear)
-        assert loaded_model.in_features == original_model.in_features
-        assert loaded_model.out_features == original_model.out_features

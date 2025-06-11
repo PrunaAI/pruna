@@ -243,7 +243,7 @@ def load_transformers_model(path: str | Path, **kwargs) -> Any:
         with open(os.path.join(path, PIPELINE_INFO_FILE_NAME), "r") as f:
             pipeline_info = json.load(f)
         # transformers discards kwargs automatically, no need for filtering
-        return pipeline(pipeline_info["task"], path, **kwargs)
+        return pipeline(pipeline_info["task"], str(path), **kwargs)
     else:
         with open(os.path.join(path, "config.json"), "r") as f:
             config = json.load(f)

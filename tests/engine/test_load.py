@@ -36,21 +36,21 @@ def test_load_pruna_model_path_types(tmp_path, path_type: str) -> None:
     """Test loading PrunaModel with different path types (str vs Path)."""
     model_path = tmp_path / "test_model"
     model_path.mkdir()
-    
+
     config = SmashConfig()
     config.load_fns = ["pickled"]
     config.save_to_json(model_path)
-    
+
     dummy_model = torch.nn.Linear(10, 5)
     torch.save(dummy_model, model_path / "optimized_model.pt")
-    
+
     if path_type == "string":
         test_path = str(model_path)
-    else: 
+    else:
         test_path = Path(model_path)
-    
+
     loaded_model, loaded_config = load_pruna_model(test_path)
-    
+
     assert isinstance(loaded_model, torch.nn.Linear)
     assert loaded_model.in_features == 10
     assert loaded_model.out_features == 5
@@ -65,55 +65,16 @@ def test_load_functions_path_types(tmp_path, path_type: str) -> None:
     """Test individual load functions with different path types."""
     model_path = tmp_path / "pickled_test"
     model_path.mkdir()
-    
+
     dummy_model = torch.nn.Linear(5, 3)
     torch.save(dummy_model, model_path / "optimized_model.pt")
-    
+
     if path_type == "string":
         test_path = str(model_path)
-    else:  
+    else:
         test_path = Path(model_path)
-    
+
     loaded_model = LOAD_FUNCTIONS.pickled(test_path)
     assert isinstance(loaded_model, torch.nn.Linear)
     assert loaded_model.in_features == 5
     assert loaded_model.out_features == 3
-
-
-@pytest.mark.cpu
-def test_deprecation_load_string_only_behavior(tmp_path) -> None:
-    """Test that old string-only behavior still works (deprecation test)."""
-    model_path = tmp_path / "deprecation_test"
-    model_path.mkdir()
-    
-    config = SmashConfig()
-    config.load_fns = ["pickled"]
-    config.save_to_json(model_path)
-    
-    dummy_model = torch.nn.Linear(8, 4)
-    torch.save(dummy_model, model_path / "optimized_model.pt")
-    
-    string_path = str(model_path) 
-    loaded_model, loaded_config = load_pruna_model(string_path)
-    
-    assert isinstance(loaded_model, torch.nn.Linear)
-    assert loaded_model.in_features == 8
-    assert loaded_model.out_features == 4
-    assert isinstance(loaded_config, SmashConfig)
-
-
-@pytest.mark.cpu 
-def test_deprecation_load_functions_string_behavior(tmp_path) -> None:
-    """Test that individual load functions maintain string-only backward compatibility."""
-    model_path = tmp_path / "load_func_deprecation"
-    model_path.mkdir()
-    
-    dummy_model = torch.nn.Linear(6, 2)
-    torch.save(dummy_model, model_path / "optimized_model.pt")
-    
-    string_path = str(model_path)
-    loaded_model = LOAD_FUNCTIONS.pickled(string_path)
-    
-    assert isinstance(loaded_model, torch.nn.Linear)
-    assert loaded_model.in_features == 6
-    assert loaded_model.out_features == 2
