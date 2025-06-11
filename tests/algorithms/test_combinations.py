@@ -21,7 +21,6 @@ class CombinationsTester(AlgorithmTesterBase):
         """Allow pickle files."""
         return self._allow_pickle_files
 
-    @property
     def compatible_devices(self) -> list[str]:
         """Return the compatible devices for the test."""
         return ["cuda"]
