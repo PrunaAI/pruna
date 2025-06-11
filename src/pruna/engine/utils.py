@@ -197,7 +197,7 @@ def remove_all_accelerate_hooks(model: Any) -> None:
                 remove_hook_from_module(getattr(model, attr), recurse=True)
     else:
         pruna_logger.warning(
-            f"Could not remove hooks from {type(model)}, is not a torch.nn.Module and does not have a 'components' attribute"
+            f"Could not remove hooks from {type(model)}, is not a torch.nn.Module and does not have 'components' "
         )
 
 
