@@ -5,7 +5,7 @@ line-length = 121
 [tool.ruff.lint]
 ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408"]
 select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA"]
-preview = true  # enable preview features for copyright checking
+preview = true # enable preview features for copyright checking
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["ERA", "CPY", "T"]  # commented out code is intended for tutorials
@@ -31,7 +31,7 @@ description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
 ]
-license = {text = "Apache-2.0"}
+license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
@@ -107,7 +107,8 @@ gptq = [
     "threadpoolctl",
     "device-smi",
     "random-word",
-    "gptqmodel==4.0.0.dev0+cu126torch2.7",
+    "gptqmodel==4.0.0.dev0+cu126torch2.7; sys_platform != 'darwin' or platform_machine != 'arm64'",
+    "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "logbar",
     "tokenicer",
     "threadpoolctl",
@@ -160,3 +161,7 @@ exclude = [
     "tests*",
     "docs*",
 ]
+
+[[tool.uv.index]]
+name = "pruna"
+url = "https://prunaai.pythonanywhere.com/"
