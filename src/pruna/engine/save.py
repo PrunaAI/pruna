@@ -34,7 +34,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers
-from pruna.engine.utils import determine_dtype
+from pruna.engine.utils import ModelContext, determine_dtype
 from pruna.logging.logger import pruna_logger
 
 
@@ -307,10 +307,32 @@ def save_model_hqq(model: Any, model_path: str, smash_config: SmashConfig) -> No
     from hqq.engine.hf import HQQModelForCausalLM
     from hqq.models.hf.base import AutoHQQHFModel
 
-    if isinstance(model, HQQModelForCausalLM):
-        model.save_quantized(model_path)
+    # we need to create a separate path for the quantized model
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        q_path = os.path.join(model_path, "hqq_language_model")
     else:
-        AutoHQQHFModel.save_quantized(model, model_path)
+        q_path = model_path
+
+    # save the quantized model only.
+    with ModelContext(model) as (pipeline, working_model, denoiser_type):
+        if isinstance(working_model, HQQModelForCausalLM):
+            working_model.save_quantized(q_path)
+        else:
+            AutoHQQHFModel.save_quantized(working_model, q_path)
+        pipeline.working_model = working_model
+
+    # save the rest of the model, if it is a janus like model,
+    # and add a config file to the quantized model path.
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        transformer_backup = model.model.language_model
+        model.model.language_model = None
+        model.save_pretrained(model_path)
+        hqq_config = model.config.text_config
+        hqq_config.architectures = ["LlamaForCausalLM"]
+        os.makedirs(q_path, exist_ok=True)
+        with open(os.path.join(q_path, "config.json"), "w") as f:
+            json.dump(hqq_config.to_dict(), f, indent=2)
+        model.model.language_model = transformer_backup
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
