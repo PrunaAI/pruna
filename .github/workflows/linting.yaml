@@ -32,9 +32,6 @@ jobs:
         run: |
           uv sync --extra tests
 
-      # - name: Remove .so files
-      #   run: find . -name "*.so" -delete
-
       - name: Run ruff on Pruna code
         uses: astral-sh/ruff-action@v3
         with:
