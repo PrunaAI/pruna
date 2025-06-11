@@ -72,6 +72,8 @@ def test_accelerate_diffusers_casting(target_device: str | torch.device, model_f
     """Test that a diffusers pipeline can be cast to the target device."""
     model, _ = model_fixture
     device_map = construct_device_map_manually(model)
+    move_to_device(model, "accelerate", device_map=device_map)
+    
     move_and_verify(model, target_device, device_map)
 
     # verify functionality of forward pass
