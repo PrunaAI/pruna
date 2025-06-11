@@ -146,10 +146,7 @@ class PrunaModel:
         attr : str
             The attribute to delete.
         """
-        if self.model is None:
-            raise ValueError("No more model available, this model is likely destroyed.")
-        else:
-            delattr(self.model, attr)
+        delattr(self.model, attr)
 
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """

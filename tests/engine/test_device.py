@@ -5,6 +5,7 @@ from pruna.engine.utils import move_to_device, get_device
 from diffusers import StableDiffusionPipeline, FluxTransformer2DModel, FluxPipeline
 from typing import Any
 from ..common import construct_device_map_manually
+from transformers import Pipeline
 
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
@@ -151,6 +152,8 @@ def move_and_verify(model: Any, target_device: str, device_map: dict[str, Any]) 
 
 def find_unique_devices(model: Any) -> list[torch.device]:
     """Find all unique devices in the model."""
+    if isinstance(model, Pipeline):
+        return find_unique_devices(model.model)
     devices = []
     targets = [model] if hasattr(model, "parameters") else [getattr(model, component) for component in model.components]
     for target in targets:

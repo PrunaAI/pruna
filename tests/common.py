@@ -10,6 +10,7 @@ import torch
 from accelerate.utils import compute_module_sizes, infer_auto_device_map
 from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
+from transformers import Pipeline
 
 from pruna import SmashConfig
 from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
@@ -98,7 +99,10 @@ def construct_device_map_manually(model: Any) -> dict:
     device_map : dict
         The device map for the model.
     """
-    assert torch.cuda.device_count()
+    assert torch.cuda.device_count() > 1, "This test requires at least 2 GPUs"
+
+    if isinstance(model, Pipeline):
+        return construct_device_map_manually(model.model)
 
     if isinstance(model, torch.nn.Module):
         # even when requesting a balanced device map, some models might be too small to be distributed
