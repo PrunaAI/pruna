@@ -371,7 +371,7 @@ def get_call_type(call_type: str, metric_name: str) -> str:
         if TorchMetrics[metric_name].call_type.startswith(PAIRWISE):
             return TorchMetrics[metric_name].call_type
         elif TorchMetrics[metric_name].call_type == "y":
-            pruna_logger.warning("IQA metrics cannot be used with pairwise call type. Using default call type.")
+            pruna_logger.warning("IQA metrics cannot be used with pairwise call type. Using default call type y.")
             return TorchMetrics[metric_name].call_type
         else:
             return get_pairwise_pairing(TorchMetrics[metric_name].call_type)
