@@ -140,7 +140,8 @@ def image_classification_collate(
     images, labels = [], []
 
     for item in data:
-        image = item["image"]
+        key = "image" if "image" in item else "img"
+        image = item[key]
         if image.mode != "RGB":
             image = image.convert("RGB")
         image_tensor = transformations(image)

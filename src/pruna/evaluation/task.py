@@ -20,6 +20,7 @@ from warnings import warn
 import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.data.utils import get_num_classification_labels
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
@@ -69,9 +70,9 @@ class Task:
         device: str | torch.device | None = None,
     ) -> None:
         device = set_to_best_available_device(device)
-        self.metrics = get_metrics(request, device)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
+        self.metrics = self.get_metrics(request, device)
         self.device = device
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
@@ -118,86 +119,105 @@ class Task:
         """
         return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
 
+    def get_metrics(
+        self, request: str | List[str | BaseMetric | StatefulMetric], device: str | torch.device | None = None
+    ) -> List[BaseMetric | StatefulMetric]:
+        """
+        Convert user requests into a list of metrics.
 
-def get_metrics(
-    request: str | List[str | BaseMetric | StatefulMetric], device: str | torch.device | None = None
-) -> List[BaseMetric | StatefulMetric]:
-    """
-    Convert user requests into a list of metrics.
+        Parameters
+        ----------
+        request : str | List[str]
+            The user request. Right now, it only supports image generation quality.
+        device : str | torch.device | None, optional
+            The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+            If None, the best available device will be used.
 
-    Parameters
-    ----------
-    request : str | List[str]
-        The user request. Right now, it only supports image generation quality.
-    device : str | torch.device | None, optional
-        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
-        If None, the best available device will be used.
+        Returns
+        -------
+        List[BaseMetric | StatefulMetric]
+            The list of metrics for the task.
 
-    Returns
-    -------
-    List[BaseMetric | StatefulMetric]
-        The list of metrics for the task.
-
-    Raises
-    ------
-    NotImplementedError
-        _description_
-    ValueError
-        _description_
-    """
-    if isinstance(request, List):
-        if all(isinstance(item, BaseMetric | StatefulMetric) for item in request):
-            return _process_metric_instances(request=cast(List[BaseMetric | StatefulMetric], request))
-        elif all(isinstance(item, str) for item in request):
-            return _process_metric_names(request=cast(List[str], request), device=device)
+        Raises
+        ------
+        NotImplementedError
+            _description_
+        ValueError
+            _description_
+        """
+        if isinstance(request, List):
+            if all(isinstance(item, BaseMetric | StatefulMetric) for item in request):
+                return self._process_metric_instances(request=cast(List[BaseMetric | StatefulMetric], request))
+            elif all(isinstance(item, str) for item in request):
+                return self._process_metric_names(request=cast(List[str], request), device=device)
+            else:
+                pruna_logger.error(
+                    "List must contain either all strings or all [BaseMetric | StatefulMetric] instances."
+                )
+                raise ValueError("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
         else:
-            pruna_logger.error("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
-            raise ValueError("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
-    else:
-        return _process_single_request(request, device)
+            return self._process_single_request(request, device)
 
+    def _process_metric_instances(self, request: List[BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
+        pruna_logger.info("Using provided list of metric instances.")
+        new_request_metrics: List[BaseMetric | StatefulMetric] = []
+        for metric in request:
+            if metric.__class__.__name__ in PARENT_METRICS:
+                for child in metric.__class__.__subclasses__():
+                    child = cast(type[BaseMetric], child)
+                    hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
+                    new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
+            else:
+                new_request_metrics.append(cast(BaseMetric | StatefulMetric, metric))
+        return new_request_metrics
 
-def _process_metric_instances(request: List[BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
-    pruna_logger.info("Using provided list of metric instances.")
-    new_request_metrics: List[BaseMetric | StatefulMetric] = []
-    for metric in request:
-        if metric.__class__.__name__ in PARENT_METRICS:
-            for child in metric.__class__.__subclasses__():
-                child = cast(type[BaseMetric], child)
-                hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
-                new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
+    def _process_metric_names(
+        self, request: List[str], device: str | torch.device | None
+    ) -> List[BaseMetric | StatefulMetric]:
+        pruna_logger.info(f"Creating metrics from names: {request}")
+        new_requests: List[str] = []
+        metrics: List[BaseMetric | StatefulMetric] = []
+        for metric_name in request:
+            metric_name = cast(str, metric_name)
+            if metric_name in DEPRECATION_TO_NEW_MAP:
+                warn(
+                    f"Metric {metric_name} is deprecated and will be removed in 'v0.2.8' release. "
+                    f"Use {DEPRECATION_TO_NEW_MAP[metric_name]} instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                for new_metric in DEPRECATION_TO_NEW_MAP[metric_name]:
+                    new_requests.append(cast(str, new_metric))
+            else:
+                if metric_name in ["precision", "recall", "accuracy"]:
+                    num_classes = get_num_classification_labels(self.datamodule.train_dataset)
+                    if num_classes == -1:
+                        pruna_logger.error(
+                            f"Requested a classification metric {metric_name} but the datamodule "
+                            "does not contain a classification dataset."
+                            "As a result, number of classes could not be determined."
+                            "If you are sure that the datamodule is correct, "
+                            "please try passing the metric by creating a metric instance"
+                        )
+                        raise
+                    else:
+                        task = "binary" if num_classes == 2 else "multiclass"
+                        metrics.append(MetricRegistry.get_metric(metric_name, task=task, num_classes=num_classes))
+                else:
+                    new_requests.append(cast(str, metric_name))
+        metrics.extend(MetricRegistry.get_metrics(names=new_requests))
+        return metrics
+
+    def _process_single_request(
+        self, request: str, device: str | torch.device | None
+    ) -> List[BaseMetric | StatefulMetric]:
+        if request == "image_generation_quality":
+            pruna_logger.info("An evaluation task for image generation quality is being created.")
+            return [
+                TorchMetricWrapper("clip_score"),
+                TorchMetricWrapper("clip_score", call_type="pairwise"),
+                CMMD(device=device),
+            ]
         else:
-            new_request_metrics.append(cast(BaseMetric | StatefulMetric, metric))
-    return new_request_metrics
-
-
-def _process_metric_names(request: List[str], device: str | torch.device | None) -> List[BaseMetric | StatefulMetric]:
-    pruna_logger.info(f"Creating metrics from names: {request}")
-    new_requests: List[str] = []
-    for metric_name in request:
-        metric_name = cast(str, metric_name)
-        if metric_name in DEPRECATION_TO_NEW_MAP:
-            warn(
-                f"Metric {metric_name} is deprecated and will be removed in 'v0.2.8' release. "
-                f"Use {DEPRECATION_TO_NEW_MAP[metric_name]} instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            for new_metric in DEPRECATION_TO_NEW_MAP[metric_name]:
-                new_requests.append(cast(str, new_metric))
-        else:
-            new_requests.append(cast(str, metric_name))
-    return MetricRegistry.get_metrics(names=new_requests, device=device)
-
-
-def _process_single_request(request: str, device: str | torch.device | None) -> List[BaseMetric | StatefulMetric]:
-    if request == "image_generation_quality":
-        pruna_logger.info("An evaluation task for image generation quality is being created.")
-        return [
-            TorchMetricWrapper("clip_score"),
-            TorchMetricWrapper("clip_score", call_type="pairwise"),
-            CMMD(device=device),
-        ]
-    else:
-        pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
-        raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
+            pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
+            raise
