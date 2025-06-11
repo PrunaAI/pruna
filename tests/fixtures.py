@@ -69,7 +69,6 @@ def stable_diffusion_v1_4_model() -> tuple[Any, SmashConfig]:
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
-    source_model_id = "openai/whisper-tiny"
     model_id = "yujiepan/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
@@ -79,8 +78,9 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
         device="cpu",
     )
     smash_config = SmashConfig()
-    smash_config.add_tokenizer(source_model_id)
-    smash_config.add_processor(source_model_id)
+    smash_config.add_data("AIPodcast")
+    smash_config.add_tokenizer(model_id)
+    smash_config.add_processor(model_id)
     return model, smash_config
 
 
