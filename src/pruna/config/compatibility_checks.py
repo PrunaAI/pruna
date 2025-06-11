@@ -48,7 +48,7 @@ def ensure_device_consistency(model, smash_config):
             else:
                 smash_config.device_map = hf_device_map
 
-    if smash_config.device in ["cpu", "cuda", "mps"] and model_device in ["cpu", "cuda", "mps"]:
+    elif smash_config.device in ["cpu", "cuda", "mps"] and model_device in ["cpu", "cuda", "mps"]:
         pruna_logger.warning(
             (
                 f"Model and SmashConfig have different devices. Model: {model_device}, "
