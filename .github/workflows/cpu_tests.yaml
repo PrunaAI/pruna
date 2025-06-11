@@ -29,25 +29,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v4
-
-      - name: Update Poetry lock file
-        run: poetry lock
-
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
+      - uses: astral-sh/setup-uv@v6
         with:
-          path: ~/.cache/pypoetry/virtualenvs
-          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            poetry-${{ runner.os }}-${{ matrix.python-version }}
-
-      - name: Install dependencies using Poetry
-        run: poetry install --extras tests
+          enable-cache: true
+      - name: Install dependencies
+        run: |
+          uv sync --extra tests
 
       - name: Run tests
         run: |
-          poetry run pytest -m "cpu and not slow and not high_cpu"
+          uv run pytest -m "cpu and not slow and not high_cpu"
 
       
