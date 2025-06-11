@@ -57,7 +57,9 @@ def setup_imagenet_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The ImageNet dataset.
     """
-    train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"], trust_remote_code=True)
+    train_ds, val = load_dataset(
+        "benjamin-paine/imagenet-1k-128x128", split=["train", "validation"], trust_remote_code=True
+    )
     val_ds, test_ds = split_val_into_val_test(val, seed)
     return train_ds, val_ds, test_ds
 

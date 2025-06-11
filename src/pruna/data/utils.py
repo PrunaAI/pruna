@@ -16,9 +16,11 @@ from __future__ import annotations
 
 from typing import Any, Tuple, Union
 
+import numpy as np
 import torch
-from datasets import Dataset
+from datasets import Dataset, IterableDataset
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as TorchDataset
 
 from pruna.logging.logger import pruna_logger
 
@@ -181,3 +183,24 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
             raise ValueError()
         texts.extend(out)
     return texts
+
+
+def get_num_classification_labels(dataset: Dataset | IterableDataset | TorchDataset) -> int:
+    """
+    Get the number of classes in the dataset.
+
+    Parameters
+    ----------
+    dataset : Dataset | IterableDataset | TorchDataset
+        The dataset to get the number of classes from.
+
+    Returns
+    -------
+    int
+        The number of classes in the dataset.
+    """
+    try:
+        return len(np.unique(dataset["label"]))
+    except Exception:
+        pruna_logger.error("Dataset is not a classification dataset.")
+        return -1
