@@ -19,7 +19,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
+from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import SMASH_SPACE
 from pruna.engine.save import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
@@ -51,6 +51,7 @@ class PrunaAlgorithmBase(ABC):
             tokenizer_required=self.tokenizer_required,
             processor_required=self.processor_required,
         )
+        assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
     def __init_subclass__(cls, **kwargs):
         """Intercept the instantiation of subclasses of the PrunaAlgorithmBase class."""
@@ -68,17 +69,9 @@ class PrunaAlgorithmBase(ABC):
         # Replace the function with the wrapped version
         cls.import_algorithm_packages = wrap_handle_imports(impl)
 
-    @classmethod
-    def compatible_devices(cls) -> list[str]:
+    def compatible_devices(self) -> list[str]:
         """Return the compatible devices for the algorithm."""
-        compatible_devices = []
-        if cls.run_on_cpu:  # type: ignore
-            compatible_devices.append("cpu")
-        if cls.run_on_cuda:  # type: ignore
-            compatible_devices.append("cuda")
-        if not compatible_devices:
-            raise ValueError(f"Algorithm {cls.algorithm_name} is not compatible with any device.")
-        return compatible_devices
+        return self.runs_on
 
     @property
     @abstractmethod

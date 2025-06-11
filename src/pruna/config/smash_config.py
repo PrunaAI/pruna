@@ -48,6 +48,7 @@ ADDITIONAL_ARGS = [
 TOKENIZER_SAVE_PATH = "tokenizer/"
 PROCESSOR_SAVE_PATH = "processor/"
 SMASH_CONFIG_FILE_NAME = "smash_config.json"
+SUPPORTED_DEVICES = ["cpu", "cuda", "mps", "accelerate"]
 
 
 class SmashConfig:
@@ -61,7 +62,7 @@ class SmashConfig:
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
     device : str | torch.device | None, optional
-        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used for smashing, options are "cpu", "cuda", "mps", "accelerate". Default is None.
         If None, the best available device will be used.
     cache_dir_prefix : str, optional
         The prefix for the cache directory. If None, a default cache directory will be created.
