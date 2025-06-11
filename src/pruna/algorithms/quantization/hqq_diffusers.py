@@ -14,7 +14,6 @@
 
 from typing import Any, Dict, Type
 
-import diffusers
 import torch
 import torch.nn as nn
 from accelerate import init_empty_weights
@@ -206,11 +205,14 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
             from hqq.models.base import BaseHQQModel, BasePatch
             from hqq.utils.patching import prepare_for_inference
 
+        import diffusers
+
         return dict(
             prepare_for_inference=prepare_for_inference,
             HqqConfig=BaseQuantizeConfig,
             BaseHQQModel=BaseHQQModel,
             BasePatch=BasePatch,
+            diffusers=diffusers,
         )
 
 
@@ -269,7 +271,7 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
             with init_empty_weights():
                 # recover class from save_dir
                 config = load_json_config(save_dir, "config.json")
-                model_class = getattr(diffusers, config["_class_name"])
+                model_class = getattr(imported_modules["diffusers"], config["_class_name"])
                 model = model_class.from_config(save_dir, **model_kwargs)
 
             return model
