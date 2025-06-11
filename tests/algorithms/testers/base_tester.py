@@ -69,7 +69,7 @@ class AlgorithmTesterBase:
     @classmethod
     def compatible_devices(cls) -> list[str]:
         """Get the compatible devices for the algorithm."""
-        return cls.algorithm_class.compatible_devices()
+        return cls.algorithm_class.runs_on
 
     @classmethod
     def get_algorithm_name(cls) -> str:

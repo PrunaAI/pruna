@@ -136,7 +136,7 @@ def get_required_inputs(obj: PrunaAlgorithmBase) -> str:
 def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible devices of a Pruna algorithm."""
     compatible_devices = []
-    for device in obj.compatible_devices():
+    for device in obj.runs_on:
         name_map = {
             "cpu": "CPU",
             "cuda": "CUDA",
