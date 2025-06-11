@@ -86,6 +86,27 @@ def get_nn_modules(model: Any) -> dict[str | None, torch.nn.Module]:
         }
 
 
+def safe_is_instance(model: Any, instance_type: type) -> bool:
+    """
+    Safely check if the model is an instance of the given type.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    instance_type : type
+        The type to check against.
+
+    Returns
+    -------
+    bool
+        True if the model is an instance of the given type, False otherwise.
+    """
+    if hasattr(model, "is_instance"):
+        return model.is_instance(instance_type)
+    return isinstance(model, instance_type)
+
+
 def move_to_device(model: Any, device: str, raise_error: bool = False, device_map: dict[str, str] | None = None) -> None:
     """
     Move the model to a specific device.
@@ -165,9 +186,7 @@ def remove_all_accelerate_hooks(model: Any) -> None:
             else:
                 raise e
 
-    if isinstance(model, torch.nn.Module) or (
-        hasattr(model, "compare_model_isinstance") and model.compare_model_isinstance(torch.nn.Module)
-    ):
+    if safe_is_instance(model, torch.nn.Module):
         # transformers models are all torch.nn.Module, which is what the hook removal expects
         remove_hook_from_module(model, recurse=True)
     elif hasattr(model, "components"):
