@@ -57,7 +57,19 @@ Always work on a new branch rather than the main branch. You can create a new br
 2. Installation
 ^^^^^^^^^^^^^^^^^^^^^^
 
-You can now set up a virtual environment of your choice and install the dependencies by running the following command:
+You have two options for installing dependencies:
+
+**Option A: Using uv with its own virtual environment (recommended)**
+
+.. code-block:: bash
+
+    uv sync --extra dev --extra tests
+
+This creates a virtual environment in ``.venv/`` and installs all dependencies there, including pruna itself in editable mode. **Important**: This does NOT install into your current conda environment! You'll need to use ``uv run`` for all commands.
+
+**Option B: Installing into your current environment (conda/pip)**
+
+If you want to install directly into your current conda environment or use pip:
 
 .. code-block:: bash
 
@@ -65,11 +77,25 @@ You can now set up a virtual environment of your choice and install the dependen
     pip install -e .[dev]
     pip install -e .[tests]
 
+This installs dependencies directly in your current environment.
+
 You can then also install the pre-commit hooks with
 
 .. code-block:: bash
 
     pre-commit install
+
+If you don't have uv installed, you can install it with:
+
+.. code-block:: bash
+
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+Or using pip:
+
+.. code-block:: bash
+
+    pip install uv
 
 
 3. Develop your contribution
@@ -94,17 +120,33 @@ We will do our best to have your contribution integrated and maintained into |pr
 We have a comprehensive test suite that is designed to catch potential issues before they are merged into |pruna|.
 When you make a contribution, it is highly recommended to not only run the existing tests but also to add new tests that cover your contribution.
 
-You can run the tests by running the following command:
+You can run the tests depending on which installation option you chose:
+
+**If you used Option A (uv):**
+
+.. code-block:: bash
+
+    uv run pytest
+
+For specific test markers:
+
+.. code-block:: bash
+
+    uv run pytest -m "cpu and not slow"
+
+**If you used Option B (pip/conda):**
 
 .. code-block:: bash
 
     pytest
 
-If you want to run only the tests with a specific marker, e.g. fast CPU tests, you can do so by running:
+For specific test markers:
 
 .. code-block:: bash
 
     pytest -m "cpu and not slow"
+
+Note: ``uv run`` automatically uses uv's virtual environment in ``.venv/``, not your conda environment.
 
 
 5. Create a Pull Request
