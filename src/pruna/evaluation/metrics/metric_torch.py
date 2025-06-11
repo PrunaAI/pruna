@@ -288,7 +288,7 @@ class TorchMetricWrapper(StatefulMetric):
         outputs : Any
             The output data.
         """
-        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type, self.metric.device)
         self.update_fn(self.metric, *metric_inputs)
 
     def add_state(
@@ -369,9 +369,6 @@ def get_call_type(call_type: str, metric_name: str) -> str:
     elif call_type == PAIRWISE:
         # If the call type and default call type match, we use the default call type.
         if TorchMetrics[metric_name].call_type.startswith(PAIRWISE):
-            return TorchMetrics[metric_name].call_type
-        elif TorchMetrics[metric_name].call_type == "y":
-            pruna_logger.warning("IQA metrics cannot be used with pairwise call type. Using default call type.")
             return TorchMetrics[metric_name].call_type
         else:
             return get_pairwise_pairing(TorchMetrics[metric_name].call_type)

@@ -216,7 +216,8 @@ The ``EvaluationAgent`` accepts ``Metrics`` in three ways:
 Metric Call Types
 ~~~~~~~~~~~~~~~~~
 
-All |pruna| stateful metrics besides Image Quality Assessment (IQA) metrics can operate in both single-model and pairwise modes.
+Stateful metrics can generally be evaluated in single-model and pariwise modes.
+Single-mode allows to compare a mode against ground-truth data, while pairwise mode allows to compare the fidelity of model against another model.
 
 - **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated. IQA metrics are only supported in single-model mode.
 - **Pairwise mode**: Metrics compare a subsequent model against the first model evaluated by the agent and produce a single comparison score.
@@ -492,7 +493,7 @@ Let's see how this works in code.
             # Optional: tweak model generation parameters for benchmarking
             inference_arguments = {"num_inference_steps": 1, "guidance_scale": 0.0}
             wrapped_pipe.inference_handler.model_args.update(inference_arguments)
-            
+
 
             # Evaluate base model first (cached for comparison)
             first_results = eval_agent.evaluate(pipe)
