@@ -15,6 +15,7 @@ from pruna import SmashConfig
 from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
 
 EPS_MEMORY_SIZE = 1000
+NO_SPLIT_MODULES_ACCELERATE = ["OPTDecoderLayer"]
 
 
 def device_parametrized(cls: Any) -> Any:
@@ -107,6 +108,7 @@ def construct_device_map_manually(model: Any) -> dict:
         return infer_auto_device_map(
             model,
             max_memory={0: model_size - EPS_MEMORY_SIZE, 1: model_size - EPS_MEMORY_SIZE},
+            no_split_module_classes=NO_SPLIT_MODULES_ACCELERATE,
         )
     else:
         # make sure a pipelines components are distributed by putting the first half on GPU 0, second half on GPU 1

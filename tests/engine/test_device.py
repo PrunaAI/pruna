@@ -4,6 +4,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.utils import move_to_device, get_device
 from diffusers import StableDiffusionPipeline, FluxTransformer2DModel, FluxPipeline
 from typing import Any
+from ..common import construct_device_map_manually
 
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
@@ -65,36 +66,29 @@ def test_device_casting(input_device: str | torch.device, target_device: str | t
 
 @pytest.mark.distributed
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
-@pytest.mark.parametrize("model_fixture", ["stable_diffusion_v1_4"], indirect=True)
+@pytest.mark.parametrize("model_fixture", ["sd_tiny_random"], indirect=True)
 def test_accelerate_diffusers_casting(target_device: str | torch.device, model_fixture: Any) -> None:
     """Test that a diffusers pipeline can be cast to the target device."""
     model, _ = model_fixture
-    device_map = model.hf_device_map.copy()
-    move_to_device(model, target_device)
+    device_map = construct_device_map_manually(model)
+    move_and_verify(model, target_device, device_map)
 
-    # verify that get_device works as intended
-    assert get_device(model) == target_device 
-    # verify that all tensors were actually cast to the *same* device
-    assert len(find_unique_devices(model)) == 1
     # verify functionality of forward pass
     model("an elf on a shelf", num_inference_steps=2, width=16, height=16)
 
     # cast back to distributed state
-    move_to_device(model, "accelerate", device_map=device_map)
-    # verify that get_device works as intended and forward pass works
-    assert get_device(model) == "accelerate" 
+    move_and_verify(model, "accelerate", device_map)
     model("an elf on a shelf", num_inference_steps=2, width=16, height=16)
-    # verify that all tensors were actually cast to *different* devices
-    assert len(find_unique_devices(model)) > 1
 
 
 @pytest.mark.distributed
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
-@pytest.mark.parametrize("model_fixture", ["opt_125m"], indirect=True)
+@pytest.mark.parametrize("model_fixture", ["opt_tiny_random"], indirect=True)
 def test_accelerate_autocausallm_casting(target_device: str | torch.device, model_fixture: Any) -> None:
     """Test that a transformer AutoModel can be cast to the target device."""
     model, config = model_fixture
-    device_map = model.hf_device_map.copy()
+    device_map = construct_device_map_manually(model)
+    move_to_device(model, "accelerate", device_map=device_map)
     
     move_and_verify(model, target_device, device_map)
     dummy = config.tokenizer([""] * 10, max_length=100, padding="max_length", return_tensors="pt") 
@@ -131,11 +125,12 @@ def test_accelerate_diffusers_model_casting(target_device: str | torch.device) -
 
 @pytest.mark.distributed
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
-@pytest.mark.parametrize("model_fixture", ["asr_tiny_random"], indirect=True)
+@pytest.mark.parametrize("model_fixture", ["whisper_tiny_random"], indirect=True)
 def test_accelerate_transformer_pipeline_casting(target_device: str | torch.device, model_fixture: Any) -> None:
     """Test that a diffusers model can be cast to the target device."""
     model, _ = model_fixture
-    device_map = model.model.hf_device_map.copy()
+    device_map = construct_device_map_manually(model)
+    move_to_device(model, target_device, device_map=device_map)
     move_and_verify(model, target_device, device_map)  
     move_and_verify(model, "accelerate", device_map)
 
