@@ -64,7 +64,7 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
     """Run the full integration test."""
     try:
         model, smash_config = model_fixture[0], model_fixture[1]
-        if device not in algorithm_tester.compatible_devices():
+        if device not in algorithm_tester.compatible_devices:
             pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
         algorithm_tester.prepare_smash_config(smash_config, device)
         load_kwargs = algorithm_tester.check_loading_dtype(model)
