@@ -73,7 +73,7 @@ def test_accelerate_diffusers_casting(target_device: str | torch.device, model_f
     model, _ = model_fixture
     device_map = construct_device_map_manually(model)
     move_to_device(model, "accelerate", device_map=device_map)
-    
+
     move_and_verify(model, target_device, device_map)
 
     # verify functionality of forward pass
@@ -92,11 +92,11 @@ def test_accelerate_autocausallm_casting(target_device: str | torch.device, mode
     model, config = model_fixture
     device_map = construct_device_map_manually(model)
     move_to_device(model, "accelerate", device_map=device_map)
-    
+
     move_and_verify(model, target_device, device_map)
-    dummy = config.tokenizer([""] * 10, max_length=100, padding="max_length", return_tensors="pt") 
+    dummy = config.tokenizer([""] * 10, max_length=100, padding="max_length", return_tensors="pt")
     dummy = dummy.to(target_device)
-    model(**dummy)   
+    model(**dummy)
 
     move_and_verify(model, "accelerate", device_map)
     model(**dummy)
@@ -108,12 +108,12 @@ def test_accelerate_diffusers_model_casting(target_device: str | torch.device) -
     """Test that a diffusers model can be cast to the target device."""
     model = FluxTransformer2DModel.from_pretrained("black-forest-labs/FLUX.1-dev", subfolder="transformer", device_map="balanced")
     full_pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", device_map="balanced", transformer=None)
-    
+
     device_map_model = model.hf_device_map.copy()
     device_map_full_pipe = full_pipe.hf_device_map.copy()
 
-    move_and_verify(full_pipe, target_device, device_map_full_pipe)  
-    move_and_verify(model, target_device, device_map_model)  
+    move_and_verify(full_pipe, target_device, device_map_full_pipe)
+    move_and_verify(model, target_device, device_map_model)
 
     full_pipe.transformer = model
     full_pipe("an elf on a shelf", num_inference_steps=2, width=16, height=16)
@@ -134,10 +134,10 @@ def test_accelerate_transformer_pipeline_casting(target_device: str | torch.devi
     model, _ = model_fixture
     device_map = construct_device_map_manually(model)
     move_to_device(model, target_device, device_map=device_map)
-    move_and_verify(model, target_device, device_map)  
+    move_and_verify(model, target_device, device_map)
     move_and_verify(model, "accelerate", device_map)
 
-    
+
 
 def move_and_verify(model: Any, target_device: str, device_map: dict[str, Any]) -> None:
     """Move the model to the target device and verify that the casting was successful."""
@@ -150,7 +150,7 @@ def move_and_verify(model: Any, target_device: str, device_map: dict[str, Any]) 
         assert len(find_unique_devices(model)) == 1
     else:
         assert len(find_unique_devices(model)) > 1
-    
+
 
 def find_unique_devices(model: Any) -> list[torch.device]:
     """Find all unique devices in the model."""
@@ -166,3 +166,15 @@ def find_unique_devices(model: Any) -> list[torch.device]:
     return list(set(devices))
 
 
+@pytest.mark.cuda
+@pytest.mark.parametrize(
+    "device,expected",
+    [
+        ("mps:0", "mps:0") if torch.backends.mps.is_available() else ("cuda:0", "cuda:0"),
+        ("cuda:0", "cuda:0") if torch.cuda.is_available() else ("mps:0", "mps:0"),
+    ],
+)
+def test_device_with_index(device: str | torch.device, expected: str) -> None:
+    """Test that setting device to an unavailable device falls back to CPU."""
+    smash_config = SmashConfig(device=device)
+    assert smash_config.device == expected
