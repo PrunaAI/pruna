@@ -107,7 +107,12 @@ def safe_is_instance(model: Any, instance_type: type) -> bool:
     return isinstance(model, instance_type)
 
 
-def move_to_device(model: Any, device: str, raise_error: bool = False, device_map: dict[str, str] | None = None) -> None:
+def move_to_device(
+    model: Any,
+    device: str | torch.device,
+    raise_error: bool = False,
+    device_map: dict[str, str] | None = None,
+) -> None:
     """
     Move the model to a specific device.
 

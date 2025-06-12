@@ -44,6 +44,18 @@ def test_device_available(device: str | torch.device, expected: str) -> None:
     smash_config = SmashConfig(device=device)
     assert smash_config.device == expected
 
+@pytest.mark.cuda
+@pytest.mark.parametrize(
+    "device,expected",
+    [
+        ("mps:0", "mps:0") if torch.backends.mps.is_available() else ("cuda:0", "cuda:0"),
+        ("cuda:0", "cuda:0") if torch.cuda.is_available() else ("mps:0", "mps:0"),
+    ],
+)
+def test_device_available_with_index(device: str | torch.device, expected: str) -> None:
+    """Test that setting device to an unavailable device falls back to CPU."""
+    smash_config = SmashConfig(device=device)
+    assert smash_config.device == expected
 
 @pytest.mark.cuda
 @pytest.mark.parametrize(
@@ -139,7 +151,7 @@ def test_accelerate_transformer_pipeline_casting(target_device: str | torch.devi
 
 
 
-def move_and_verify(model: Any, target_device: str, device_map: dict[str, Any]) -> None:
+def move_and_verify(model: Any, target_device: str | torch.device, device_map: dict[str, Any]) -> None:
     """Move the model to the target device and verify that the casting was successful."""
     unique = target_device != "accelerate"
     move_to_device(model, target_device, device_map=device_map)
@@ -164,17 +176,3 @@ def find_unique_devices(model: Any) -> list[torch.device]:
         for param in target.parameters():
             devices.append(param.device)
     return list(set(devices))
-
-
-@pytest.mark.cuda
-@pytest.mark.parametrize(
-    "device,expected",
-    [
-        ("mps:0", "mps:0") if torch.backends.mps.is_available() else ("cuda:0", "cuda:0"),
-        ("cuda:0", "cuda:0") if torch.cuda.is_available() else ("mps:0", "mps:0"),
-    ],
-)
-def test_device_with_index(device: str | torch.device, expected: str) -> None:
-    """Test that setting device to an unavailable device falls back to CPU."""
-    smash_config = SmashConfig(device=device)
-    assert smash_config.device == expected
