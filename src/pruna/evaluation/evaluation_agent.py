@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from typing import Any, List
-from warnings import warn
 
 import torch
 from torch import Tensor
@@ -40,7 +39,6 @@ class EvaluationAgent:
     ----------
     task : Task, optional
         Configuration object that defines how to evaluate the model.
-        Deprecated: Use metrics, datamodule, and device parameters directly.
     metrics : str | List[str | BaseMetric | StatefulMetric], optional
         The metrics to evaluate. Required if task is not provided.
     datamodule : PrunaDataModule, optional
@@ -64,12 +62,6 @@ class EvaluationAgent:
                     "Cannot specify both 'task' parameter and direct parameters (metrics, datamodule, device). "
                     "Use either the deprecated 'task' parameter or the new direct parameters."
                 )
-            warn(
-                "The 'task' parameter is deprecated and will be removed in version v0.2.8. "
-                "Use 'metrics', 'datamodule', and 'device' parameters directly instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             self.task = task
         else:
             if metrics is None or datamodule is None:

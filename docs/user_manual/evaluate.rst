@@ -11,10 +11,13 @@ Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/use
 Basic Evaluation Workflow
 -------------------------
 
-|pruna| follows a simple workflow for evaluating model optimizations:
+|pruna| follows a simple workflow for evaluating model optimizations. You can use either the direct parameters approach or the Task-based approach:
+
+**Direct Parameters Workflow:**
 
 .. mermaid::
    :align: center
+
    graph LR
     User -->|configures| Metrics
     User -->|configures| PrunaDataModule
@@ -38,36 +41,47 @@ Basic Evaluation Workflow
     style D fill:#bbf,stroke:#333,stroke-width:2px
     style Metrics fill:#bbf,stroke:#333,stroke-width:2px
 
-Let's see what that looks like in code.
+**Task-based Workflow:**
 
-.. code-block:: python
+.. mermaid::
+   :align: center
 
-    from pruna import PrunaModel
-    from pruna.data.pruna_datamodule import PrunaDataModule
-    from pruna.evaluation.evaluation_agent import EvaluationAgent
-    from pruna.evaluation.task import Task
+   flowchart LR
+    User -->|creates| Task
+    User -->|creates| EvaluationAgent
+    Task -->|defines| PrunaDataModule
+    Task -->|defines| Metrics
+    Task -->|is used by| EvaluationAgent
+    Metrics -->|includes| B["Base Metrics"]
+    Metrics -->|includes| C["Stateful Metrics"]
+    PrunaModel -->|provides predictions| EvaluationAgent
+    EvaluationAgent -->|evaluates| PrunaModel
+    EvaluationAgent -->|returns| D["Evaluation Results"]
+    User -->|configures| EvaluationAgent
 
-    # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/Llama-3.2-1b-Instruct-smashed")
+    subgraph A["Metric Types"]
+        B
+        C
+    end
 
-    # Create and configure Task
-    datamodule = PrunaDataModule.from_string(
-        dataset_name="WikiText",
-        tokenizer=optimized_model.smash_config.tokenizer,
-    )
-    datamodule.limit_datasets(10)
-    task = Task(request=["perplexity"], datamodule=datamodule, device="cpu")
+    subgraph E["Task Definition"]
+        Task
+        PrunaDataModule
+        Metrics
+        A
+    end
 
-    # Create and configure EvaluationAgent
-    eval_agent = EvaluationAgent(task)
+    style User fill:#bbf,stroke:#333,stroke-width:2px
+    style Task fill:#bbf,stroke:#333,stroke-width:2px
+    style EvaluationAgent fill:#bbf,stroke:#333,stroke-width:2px
+    style PrunaDataModule fill:#bbf,stroke:#333,stroke-width:2px
+    style PrunaModel fill:#bbf,stroke:#333,stroke-width:2px
+    style D fill:#bbf,stroke:#333,stroke-width:2px
+    style Metrics fill:#bbf,stroke:#333,stroke-width:2px
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#f9f,stroke:#333,stroke-width:2px
 
-    # Optional: tweak model generation parameters for benchmarking
-    optimized_model.inference_handler.model_args.update(
-        {"max_new_tokens": 100}
-    )
-
-    # Evaluate the model
-    results = eval_agent.evaluate(optimized_model)
+The implementation details and initialization options are covered in the sections below.
 
 Evaluation Components
 ---------------------
@@ -75,37 +89,44 @@ Evaluation Components
 The |pruna| package provides a variety of evaluation metrics to assess your models.
 In this section, we'll introduce the evaluation metrics you can use.
 
-EvaluationAgent
-^^^^^^^^^^^^^^^
+EvaluationAgent Initialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``EvaluationAgent`` is the main class for evaluating model performance. It can be initialized in two ways:
+The ``EvaluationAgent`` is the main class for evaluating model performance. It can be initialized using two approaches:
 
-**Recommended Approach** (Direct Parameters):
+.. tabs::
 
-.. code-block:: python
+    .. tab:: Direct Parameters
 
-    from pruna.evaluation.evaluation_agent import EvaluationAgent
-    from pruna.data.pruna_datamodule import PrunaDataModule
+        Pass metrics, datamodule, and device directly to the constructor:
 
-    eval_agent = EvaluationAgent(
-        metrics=["accuracy", "perplexity"], 
-        datamodule=PrunaDataModule.from_string('WikiText'),
-        device="cpu"
-    )
+        .. code-block:: python
 
-**Deprecated Approach** (Task-based):
+            from pruna.evaluation.evaluation_agent import EvaluationAgent
+            from pruna.data.pruna_datamodule import PrunaDataModule
 
-.. code-block:: python
+            eval_agent = EvaluationAgent(
+                metrics=["accuracy", "perplexity"],
+                datamodule=PrunaDataModule.from_string('WikiText'),
+                device="cpu"
+            )
 
-    # DEPRECATED - Will be removed in version 0.2.8
-    from pruna.evaluation.task import Task
-    
-    task = Task(
-        request=["accuracy", "perplexity"],
-        datamodule=PrunaDataModule.from_string('WikiText'),
-        device="cpu"
-    )
-    eval_agent = EvaluationAgent(task)
+    .. tab:: Task-based
+
+        Create a Task object that encapsulates the configuration:
+
+        .. code-block:: python
+
+            from pruna.evaluation.evaluation_agent import EvaluationAgent
+            from pruna.evaluation.task import Task
+            from pruna.data.pruna_datamodule import PrunaDataModule
+
+            task = Task(
+                request=["accuracy", "perplexity"],
+                datamodule=PrunaDataModule.from_string('WikiText'),
+                device="cpu"
+            )
+            eval_agent = EvaluationAgent(task)
 
 Parameters
 ~~~~~~~~~~
@@ -114,13 +135,21 @@ Parameters
 - **datamodule**: ``PrunaDataModule`` - The data module containing the evaluation dataset
 - **device**: ``str | torch.device | None`` - The device to use for evaluation (defaults to best available)
 
-Task (Deprecated)
-^^^^^^^^^^^^^^^^^
+Task
+^^^^
 
-.. warning::
-    The ``Task`` class is **deprecated** and will be removed in version 0.2.8. Use the direct parameters of ``EvaluationAgent`` instead.
+The ``Task`` class provides an alternative way to define evaluation configurations. It encapsulates the evaluation parameters and can be passed directly to the ``EvaluationAgent`` constructor.
 
-The ``Task`` class was previously used to define evaluation configurations, but this functionality has been moved directly to the ``EvaluationAgent`` constructor for simplicity.
+.. code-block:: python
+
+    from pruna.evaluation.task import Task
+    from pruna.data.pruna_datamodule import PrunaDataModule
+
+    task = Task(
+        request=["accuracy", "perplexity"],
+        datamodule=PrunaDataModule.from_string('WikiText'),
+        device="cpu"
+    )
 
 Metrics
 ~~~~~~~
@@ -219,6 +248,7 @@ These high-level modes abstract away the underlying input ordering. Internally, 
 Internal Call Types
 ~~~~~~~~~~~~~~~~~~~~
 
+The following table lists the supported internal call types and examples of metrics using them.
 The following table lists the supported internal call types and examples of metrics using them.
 
 This is what's happening under the hood when you pass ``call_type="single"`` or ``call_type="pairwise"`` to a metric.
@@ -462,6 +492,12 @@ Let's see how this works in code.
 
             # Evaluate smashed model (compared against base model)
             smashed_results = eval_agent.evaluate(smashed_pipe)
+            print(smashed_results)
+
+EvaluationAgent Initialization Options
+--------------------------------------
+
+You can choose between the two initialization approaches shown above based on your preference and project requirements. Both approaches provide identical functionality and can be used interchangeably.
 
 Best Practices
 --------------
@@ -476,7 +512,7 @@ Use pairwise metrics for comparison
 
 When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores.
 
-Use direct parameters instead of Task
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Choose your initialization style
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For new code, use the direct parameter initialization of ``EvaluationAgent`` instead of the deprecated ``Task`` class.
+Both direct parameters and Task-based initialization are valid approaches. Choose the one that best fits your project's coding patterns and requirements.

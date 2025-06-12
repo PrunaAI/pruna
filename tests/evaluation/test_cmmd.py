@@ -50,7 +50,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
     ],
     indirect=["model_fixture"],
 )
-def test_deprecated_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
+def test_task_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
     """Test CMMD pairwise."""
     model, _ = model_fixture
     data_module = PrunaDataModule.from_string("LAION256")
@@ -97,43 +97,17 @@ def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], dev
 def test_evaluation_agent_parameter_validation():
     """Test parameter validation for EvaluationAgent constructor."""
     data_module = PrunaDataModule.from_string("LAION256")
-    
+
     with pytest.raises(ValueError, match="Cannot specify both 'task' parameter and direct parameters"):
         task = Task(request="image_generation_quality", datamodule=data_module)
         EvaluationAgent(task=task, metrics="image_generation_quality")
-    
+
     with pytest.raises(ValueError, match="both 'metrics' and 'datamodule' must be provided"):
         EvaluationAgent(metrics="image_generation_quality")
-    
+
     with pytest.raises(ValueError, match="both 'metrics' and 'datamodule' must be provided"):
         EvaluationAgent(datamodule=data_module)
-    
+
     task = Task(request="image_generation_quality", datamodule=data_module)
     agent = EvaluationAgent(task=task)
     assert agent is not None
-
-@pytest.mark.parametrize(
-    "model_fixture, device, clip_model",
-    [
-        pytest.param("sd_tiny_random", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
-    ],
-    indirect=["model_fixture"],
-)
-def test_deprecation_warning_for_task(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
-    """Test deprecation warning for task parameter."""
-    model, _ = model_fixture
-    data_module = PrunaDataModule.from_string("LAION256")
-    data_module.limit_datasets(10)
-
-    task = Task(
-        request=[CMMD(call_type="pairwise", clip_model_name=clip_model, device=device)],
-        datamodule=data_module,
-        device=device,
-    )
-    with pytest.warns(DeprecationWarning, match="The 'task' parameter is deprecated and will be removed in version v0.2.8. Use 'metrics', 'datamodule', and 'device' parameters directly instead."):
-        eval_agent = EvaluationAgent(task=task)
-
-    eval_agent.evaluate(model)
-    result = eval_agent.evaluate(model)
-
-    assert result[0].result == pytest.approx(0.0, abs=1e-2)
