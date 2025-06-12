@@ -94,9 +94,9 @@ def check_model_compatibility(
     for current_group in ALGORITHM_GROUPS:
         algorithm = smash_config[current_group]
         if algorithm is not None:
+            check_algorithm_availability(algorithm, current_group, algorithm_dict)
             # test if all required packages are installed, if not this will raise an ImportError
             algorithm_dict[current_group][algorithm].import_algorithm_packages()
-            check_algorithm_availability(algorithm, current_group, algorithm_dict)
             check_argument_compatibility(smash_config, algorithm)
             # check for model-algorithm compatibility with the model_check_fn
             if not algorithm_dict[current_group][algorithm].model_check_fn(model):
