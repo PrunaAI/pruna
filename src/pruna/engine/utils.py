@@ -408,12 +408,12 @@ def _resolve_cuda_device(device: str) -> str:
         idx = int(device_idx)
         if idx >= torch.cuda.device_count():
             pruna_logger.warning(f"CUDA device {idx} not available, using device 0")
-            return "cuda:0"
+            return "cuda"
         torch.cuda.get_device_properties(idx)
-        return f"cuda:{idx}"
+        return f"cuda:{idx}" if idx > 0 else "cuda"
     except (ValueError, AssertionError):
         pruna_logger.warning(f"Invalid CUDA device index: {device_idx}")
-        return "cuda:0"
+        return "cuda"
 
 
 def set_to_best_available_device(device: str | torch.device | None) -> str:
