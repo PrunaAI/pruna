@@ -98,7 +98,7 @@ The ``EvaluationAgent`` is the main class for evaluating model performance. It c
 
     .. tab:: Direct Parameters
 
-        Pass metrics, datamodule, and device directly to the constructor:
+        Pass request, datamodule, and device directly to the constructor:
 
         .. code-block:: python
 
@@ -106,7 +106,7 @@ The ``EvaluationAgent`` is the main class for evaluating model performance. It c
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             eval_agent = EvaluationAgent(
-                metrics=["accuracy", "perplexity"],
+                request=["accuracy", "perplexity"],
                 datamodule=PrunaDataModule.from_string('WikiText'),
                 device="cpu"
             )
@@ -131,7 +131,7 @@ The ``EvaluationAgent`` is the main class for evaluating model performance. It c
 Parameters
 ~~~~~~~~~~
 
-- **metrics**: ``str | List[str | BaseMetric | StatefulMetric]`` - The metrics to evaluate
+- **request**: ``str | List[str | BaseMetric | StatefulMetric]`` - The metrics to evaluate
 - **datamodule**: ``PrunaDataModule`` - The data module containing the evaluation dataset
 - **device**: ``str | torch.device | None`` - The device to use for evaluation (defaults to best available)
 
@@ -173,7 +173,7 @@ The ``EvaluationAgent`` accepts ``Metrics`` in three ways:
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             eval_agent = EvaluationAgent(
-                metrics="image_generation_quality",
+                request ="image_generation_quality",
                 datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )

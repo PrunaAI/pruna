@@ -83,7 +83,7 @@ def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], dev
     data_module.limit_datasets(10)
 
     eval_agent = EvaluationAgent(
-        metrics=[CMMD(call_type="pairwise", clip_model_name=clip_model, device=device)],
+        request=[CMMD(call_type="pairwise", clip_model_name=clip_model, device=device)],
         datamodule=data_module,
         device=device,
     )
@@ -98,16 +98,18 @@ def test_evaluation_agent_parameter_validation():
     """Test parameter validation for EvaluationAgent constructor."""
     data_module = PrunaDataModule.from_string("LAION256")
 
-    with pytest.raises(ValueError, match="Cannot specify both 'task' parameter and direct parameters"):
-        task = Task(request="image_generation_quality", datamodule=data_module)
-        EvaluationAgent(task=task, metrics="image_generation_quality")
+    device = "cpu"
 
-    with pytest.raises(ValueError, match="both 'metrics' and 'datamodule' must be provided"):
-        EvaluationAgent(metrics="image_generation_quality")
+    with pytest.raises(ValueError, match=r"Cannot specify both 'task' parameter and direct parameters"):
+        task = Task(request="image_generation_quality", datamodule=data_module, device=device)
+        EvaluationAgent(task=task, request="image_generation_quality")
 
-    with pytest.raises(ValueError, match="both 'metrics' and 'datamodule' must be provided"):
+    with pytest.raises(ValueError, match=r"both 'request' and 'datamodule' must be provided"):
+        EvaluationAgent(request="image_generation_quality")
+
+    with pytest.raises(ValueError, match=r"both 'request' and 'datamodule' must be provided"):
         EvaluationAgent(datamodule=data_module)
 
-    task = Task(request="image_generation_quality", datamodule=data_module)
+    task = Task(request="image_generation_quality", datamodule=data_module, device=device)
     agent = EvaluationAgent(task=task)
     assert agent is not None

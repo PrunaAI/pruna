@@ -39,8 +39,8 @@ class EvaluationAgent:
     ----------
     task : Task, optional
         Configuration object that defines how to evaluate the model.
-    metrics : str | List[str | BaseMetric | StatefulMetric], optional
-        The metrics to evaluate. Required if task is not provided.
+    request : str | List[str | BaseMetric | StatefulMetric], optional
+        The user request to evaluate. Required if task is not provided.
     datamodule : PrunaDataModule, optional
         The dataloader to use for the evaluation. Required if task is not provided.
     device : str | torch.device | None, optional
@@ -52,21 +52,21 @@ class EvaluationAgent:
         self,
         task: Task | None = None,
         *,
-        metrics: str | List[str | BaseMetric | StatefulMetric] | None = None,
+        request: str | List[str | BaseMetric | StatefulMetric] | None = None,
         datamodule: PrunaDataModule | None = None,
         device: str | torch.device | None = None,
     ) -> None:
         if task is not None:
-            if metrics is not None or datamodule is not None or device is not None:
+            if request is not None or datamodule is not None or device is not None:
                 raise ValueError(
-                    "Cannot specify both 'task' parameter and direct parameters (metrics, datamodule, device). "
-                    "Use either the deprecated 'task' parameter or the new direct parameters."
+                    "Cannot specify both 'task' parameter and direct parameters (request, datamodule, device). "
+                    "Use either the 'task' parameter or the new direct parameters."
                 )
             self.task = task
         else:
-            if metrics is None or datamodule is None:
-                raise ValueError("When not using 'task' parameter, both 'metrics' and 'datamodule' must be provided.")
-            self.task = Task(request=metrics, datamodule=datamodule, device=device)
+            if request is None or datamodule is None:
+                raise ValueError("When not using 'task' parameter, both 'request' and 'datamodule' must be provided.")
+            self.task = Task(request=request, datamodule=datamodule, device=device)
 
         self.first_model_results: List[MetricResult] = []
         self.subsequent_model_results: List[MetricResult] = []
