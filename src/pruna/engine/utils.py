@@ -116,8 +116,9 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
     ----------
     model : Any
         The model to move.
-    device : str
-        The device to move the model to.
+    device : str | torch.device
+        The device to move the model to. Can be a string like "cpu", "cuda:0", "mps", "accelerate"
+        or a torch.device object.
     raise_error : bool
         Whether to raise an error when the device movement fails.
     device_map : dict[str, str] | None
@@ -131,9 +132,16 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
             delattr(model.model, "hf_device_map")
         return
 
-    # sanity check for expected device types
-    if device not in ["cpu", "cuda", "mps", "accelerate"]:
-        raise ValueError("Device must be a string in [cpu, cuda, mps, accelerate].")
+    # Convert string device to torch.device for consistent handling
+    if isinstance(device, str):
+        if device == "accelerate":
+            pass  # Handle accelerate separately
+        elif any(device.startswith(d) for d in ["cpu", "cuda", "mps"]):
+            device = torch.device(device)  # This handles "cuda:0" etc correctly
+        else:
+            raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
+    elif isinstance(device, torch.device) and not any(device.type.startswith(d) for d in ["cpu", "cuda", "mps"]):
+        raise ValueError("Device must be a torch.device with type in [cpu, cuda, mps].")
 
     # do not cast if the model is already on the correct device
     if get_device(model) == device:
@@ -149,7 +157,6 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
             model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
-
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
