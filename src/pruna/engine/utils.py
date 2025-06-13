@@ -410,6 +410,37 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
     return torch.float32
 
 
+def _resolve_cuda_device(device: str) -> str:
+    """
+    Resolve CUDA device string to a valid CUDA device.
+
+    Parameters
+    ----------
+    device : str
+        CUDA device string (e.g. "cuda", "cuda:0", "cuda:1")
+
+    Returns
+    -------
+    str
+        Valid CUDA device string
+    """
+    if not torch.cuda.is_available():
+        pruna_logger.warning("'cuda' requested but not available.")
+        return set_to_best_available_device(device=None)
+
+    device_idx = device.split(":")[1] if ":" in device else "0"
+    try:
+        idx = int(device_idx)
+        if idx >= torch.cuda.device_count():
+            pruna_logger.warning(f"CUDA device {idx} not available, using device 0")
+            return "cuda"
+        torch.cuda.get_device_properties(idx)
+        return f"cuda:{idx}" if idx > 0 else "cuda"
+    except (ValueError, AssertionError):
+        pruna_logger.warning(f"Invalid CUDA device index: {device_idx}")
+        return "cuda"
+
+
 def set_to_best_available_device(device: str | torch.device | None) -> str:
     """
     Set the device to the best available device.
