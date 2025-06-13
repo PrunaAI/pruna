@@ -182,8 +182,6 @@ The Pruna package was made with 💜 by the Pruna AI team. [Contribute to the re
 
 [![Contributors](https://contrib.rocks/image?repo=PrunaAI/pruna)](https://github.com/PrunaAI/pruna/graphs/contributors)
 
-Contributors are displayed in a random order to avoid any perceived ranking.
-
 ## <img src="./docs/assets/images/pruna_emotional.png" alt="Pruna Emotional" width=20></img> Citation
 
 If you use Pruna in your research, feel free to cite the project! 💜
