@@ -120,8 +120,9 @@ def move_to_device(
     ----------
     model : Any
         The model to move.
-    device : str
-        The device to move the model to.
+    device : str | torch.device
+        The device to move the model to. Can be a string like "cpu", "cuda:0", "mps", "accelerate"
+        or a torch.device object.
     raise_error : bool
         Whether to raise an error when the device movement fails.
     device_map : dict[str, str] | None
@@ -135,9 +136,16 @@ def move_to_device(
             delattr(model.model, "hf_device_map")
         return
 
-    # sanity check for expected device types
-    if device not in ["cpu", "cuda", "mps", "accelerate"]:
-        raise ValueError("Device must be a string in [cpu, cuda, mps, accelerate].")
+    # Convert string device to torch.device for consistent handling
+    if isinstance(device, str):
+        if device == "accelerate":
+            pass  # Handle accelerate separately
+        elif any(device.startswith(d) for d in ["cpu", "cuda", "mps"]):
+            device = torch.device(device)  # This handles "cuda:0" etc correctly
+        else:
+            raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
+    elif isinstance(device, torch.device) and not any(device.type.startswith(d) for d in ["cpu", "cuda", "mps"]):
+        raise ValueError("Device must be a torch.device with type in [cpu, cuda, mps].")
 
     # do not cast if the model is already on the correct device
     if get_device(model) == device:
@@ -153,7 +161,6 @@ def move_to_device(
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
             model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
-
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
@@ -396,17 +403,12 @@ def _resolve_cuda_device(device: str) -> str:
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
 
-    device_idx = device.split(":")[1] if ":" in device else "0"
     try:
-        idx = int(device_idx)
-        if idx >= torch.cuda.device_count():
-            pruna_logger.warning(f"CUDA device {idx} not available, using device 0")
-            return "cuda:0"
-        torch.cuda.get_device_properties(idx)
-        return f"cuda:{idx}"
+        torch.cuda.get_device_properties(device)
+        return device
     except (ValueError, AssertionError):
-        pruna_logger.warning(f"Invalid CUDA device index: {device_idx}")
-        return "cuda:0"
+        pruna_logger.warning(f"Invalid CUDA device index: {device}. Using 'cuda' instead.")
+        return "cuda"
 
 
 def set_to_best_available_device(device: str | torch.device | None) -> str:
@@ -445,7 +447,7 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         if not torch.backends.mps.is_available():
             pruna_logger.warning("'mps' requested but not available.")
             return set_to_best_available_device(device=None)
-        return "mps:0"  # MPS currently only supports one device
+        return device
     else:
         raise ValueError(f"Device not supported: '{device}'")
 
