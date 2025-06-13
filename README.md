@@ -180,9 +180,7 @@ If you can not find an answer to your question or problem in our [documentation]
 
 The Pruna package was made with 💜 by the Pruna AI team. [Contribute to the repository][docs-contributing] to become part of the Pruna family!
 
-<a href="https://github.com/PrunaAI/pruna/graphs/contributors">
-  <img src="https://pruna-github-repository.s3.eu-central-1.amazonaws.com/contributors.png" width="500" />
-</a>
+[![Contributors](https://contrib.rocks/image?repo=PrunaAI/pruna)](https://github.com/PrunaAI/pruna/graphs/contributors)
 
 Contributors are displayed in a random order to avoid any perceived ranking.
 
