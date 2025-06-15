@@ -7,6 +7,12 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
 
 .. grid:: 1 2 2 2
 
+   .. grid-item-card:: Compress and Evaluate Image Generation Models
+      :text-align: center
+      :link: ./image_generation.ipynb
+
+      Compress with a ``hq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
+
    .. grid-item-card:: Transcribe 2 hour of audio in 2 minutes with Whisper
       :text-align: center
       :link: ./asr_tutorial.ipynb
@@ -30,12 +36,6 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :link: ./evaluation_agent_cmmd.ipynb
 
       ``Evaluate`` image generation quality with ``CMMD`` and ``EvaluationAgent``.
-
-   .. grid-item-card:: Run your Flux model with half the memory
-      :text-align: center
-      :link: ./flux_small.ipynb
-
-      Speed up your image generation model with ``torch_compile`` ``compilation`` and ``hqq_diffusers`` ``quantization``.
 
    .. grid-item-card:: Making your LLMs 4x smaller
       :text-align: center
