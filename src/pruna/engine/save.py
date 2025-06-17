@@ -148,7 +148,7 @@ def save_pruna_model_to_hub(
             smash_config_data = json.load(f)
 
         # Determine the library name from the smash config
-        pruna_model_module = pruna_model.__module__
+        pruna_model_module = pruna_model.model.__module__
         if "diffusers" in pruna_model_module:
             library_name = "diffusers"
         elif "transformers" in pruna_model_module:
