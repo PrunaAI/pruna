@@ -94,7 +94,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
 
 
 def save_pruna_model_to_hub(
-    pruna_model: Union[Any, "PrunaModel"],
+    pruna_model: Union["PrunaModel", Any],
     repo_id: str,
     model_path: str | Path | None = None,
     *,
@@ -111,10 +111,8 @@ def save_pruna_model_to_hub(
 
     Parameters
     ----------
-    model : Any
-        The model to save.
-    smash_config : SmashConfig
-        The SmashConfig object containing the save and load functions.
+    pruna_model : Union[Any, PrunaModel]
+        The PrunaModel object to save.
     repo_id : str
         The repository ID.
     model_path : str | Path | None, optional
@@ -163,7 +161,7 @@ def save_pruna_model_to_hub(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
-            model_class=pruna_model.__class__.__name__,
+            pruna_model_class=pruna_model.__class__.__name__,
             pruna_library=pruna_model.__module__.split(".")[0],
         )
 

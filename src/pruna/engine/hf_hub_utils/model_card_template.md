@@ -21,9 +21,9 @@ You can [use the {library_name} library to load the model](https://huggingface.c
 To ensure that all optimizations are applied, use the pruna library to load the model using the following code:
 
 ```python
-from {pruna_library} import {model_class}
+from {pruna_library} import {pruna_model_class}
 
-loaded_model = {model_class}.from_hub(
+loaded_model = {pruna_model_class}.from_hub(
     "{repo_id}"
 )
 ```
