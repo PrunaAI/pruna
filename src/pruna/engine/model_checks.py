@@ -604,4 +604,4 @@ def is_janus_llamagen_ar(model: Any) -> bool:
     bool
         True if the model is a Janus LlamaGen AR model, False otherwise.
     """
-    return is_image_text_to_text_model(model) and model.__class__.__name__ == "JanusForConditionalGeneration"
+    return model.__class__.__name__ == "JanusForConditionalGeneration"
