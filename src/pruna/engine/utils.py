@@ -108,7 +108,50 @@ def safe_is_instance(model: Any, instance_type: type) -> bool:
     return isinstance(model, instance_type)
 
 
-def move_to_device(model: Any, device: str, raise_error: bool = False, device_map: dict[str, str] | None = None) -> None:
+def _normalize_device_type(device: str | torch.device) -> str:
+    """
+    Normalize device type to a string representation.
+
+    Parameters
+    ----------
+    device : str | torch.device
+        The device to normalize.
+
+    Returns
+    -------
+    str
+        The normalized device type as a string.
+    """
+    if isinstance(device, torch.device):
+        return device.type
+    return device
+
+
+def _normalize_device_type(device: str | torch.device) -> str:
+    """
+    Normalize device type to a string representation.
+
+    Parameters
+    ----------
+    device : str | torch.device
+        The device to normalize.
+
+    Returns
+    -------
+    str
+        The normalized device type as a string.
+    """
+    if isinstance(device, torch.device):
+        return device.type
+    return device
+
+
+def move_to_device(
+    model: Any,
+    device: str | torch.device,
+    raise_error: bool = False,
+    device_map: dict[str, str] | None = None,
+) -> None:
     """
     Move the model to a specific device.
 
@@ -128,37 +171,36 @@ def move_to_device(model: Any, device: str, raise_error: bool = False, device_ma
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
-        if device != "accelerate" and hasattr(model.model, "hf_device_map"):
+        if _normalize_device_type(device) != "accelerate" and hasattr(model.model, "hf_device_map"):
             delattr(model.model, "hf_device_map")
         return
 
     # Convert string device to torch.device for consistent handling
-    if isinstance(device, str):
-        if device == "accelerate":
-            pass  # Handle accelerate separately
-        elif any(device.startswith(d) for d in ["cpu", "cuda", "mps"]):
-            device = torch.device(device)  # This handles "cuda:0" etc correctly
-        else:
-            raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
-    elif isinstance(device, torch.device) and not any(device.type.startswith(d) for d in ["cpu", "cuda", "mps"]):
-        raise ValueError("Device must be a torch.device with type in [cpu, cuda, mps].")
+    device_type = _normalize_device_type(device)
+    if device_type == "accelerate":
+        device_obj = "accelerate"  # Keep as string for accelerate
+    elif isinstance(device, str) and any(device.startswith(d) for d in ["cpu", "cuda", "mps"]):
+        device_obj = torch.device(device)  # This handles "cuda:0" etc correctly
+    elif isinstance(device, torch.device):
+        device_obj = device
+    else:
+        raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate] or a torch.device object.")
 
     # do not cast if the model is already on the correct device
-    if get_device(model) == device:
+    if _normalize_device_type(get_device(model)) == device_type:
         return
 
-    if device == "accelerate":
+    if device_type == "accelerate":
         if device_map is None:
             raise ValueError("Device map is required when moving to accelerate.")
         cast_model_to_accelerate_device_map(model, device_map)
-
     else:
         if get_device(model) == "accelerate":
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
-            model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
+            model.hf_device_map = {"": "cpu" if device_type == "cpu" else "cuda:0"}
         try:
-            model.to(device)
+            model.to(device_obj)
         except torch.cuda.OutOfMemoryError as e:
             # there is anyway no way to recover from this error
             # raise it here for better traceability
@@ -428,10 +470,19 @@ def _resolve_cuda_device(device: str) -> str:
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
 
-    try:
-        torch.cuda.get_device_properties(device)
+    # If just "cuda", return as is
+    if device == "cuda":
         return device
-    except (ValueError, AssertionError):
+
+    # Try to extract device index for "cuda:N" format
+    try:
+        if ":" in device:
+            device_idx = int(device.split(":")[-1])
+            # Check if this CUDA device exists
+            torch.cuda.get_device_properties(device_idx)
+            return device
+        return "cuda"  # Default to "cuda" if no index specified
+    except (ValueError, AssertionError, RuntimeError):
         pruna_logger.warning(f"Invalid CUDA device index: {device}. Using 'cuda' instead.")
         return "cuda"
 
