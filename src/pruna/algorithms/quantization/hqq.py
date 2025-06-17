@@ -92,7 +92,7 @@ class HQQQuantizer(PrunaQuantizer):
         Returns
         -------
         bool
-            True if the model is a causal language model, False otherwise.
+            True if the model is a causal language model or a Janus LlamaGen AR model, False otherwise.
         """
         return is_causal_lm(model) or is_janus_llamagen_ar(model)
 

@@ -320,16 +320,16 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     # we need to create a separate path for the quantized model
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        q_path = os.path.join(model_path, "hqq_language_model")
+        quantized_path = os.path.join(model_path, "hqq_language_model")
     else:
-        q_path = model_path
+        quantized_path = model_path
 
     # save the quantized model only.
     with ModelContext(model) as (pipeline, working_model, denoiser_type):
         if isinstance(working_model, algorithm_packages["HQQModelForCausalLM"]):
-            working_model.save_quantized(q_path)
+            working_model.save_quantized(quantized_path)
         else:
-            algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(q_path))
+            algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(quantized_path))
         # redefining the working_model breaks links with context manager
         # so we need to re-define the working_model as an attribute of the model.
         pipeline.working_model = working_model
@@ -342,8 +342,8 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         model.save_pretrained(model_path)
         hqq_config = model.config.text_config
         hqq_config.architectures = ["LlamaForCausalLM"]
-        os.makedirs(q_path, exist_ok=True)
-        with open(os.path.join(q_path, "config.json"), "w") as f:
+        os.makedirs(quantized_path, exist_ok=True)
+        with open(os.path.join(quantized_path, "config.json"), "w") as f:
             json.dump(hqq_config.to_dict(), f, indent=2)
         model.model.language_model = transformer_backup
 
