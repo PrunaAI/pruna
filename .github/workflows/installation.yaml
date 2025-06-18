@@ -35,4 +35,5 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -e .
+          uv venv
+          uv pip install -e .
