@@ -21,6 +21,11 @@ author = "- Pruna AI GmbH"
 [tool.mypy]
 ignore_missing_imports = true
 
+[tool.uv]
+extra-index-url = [
+    "https://prunaai.pythonanywhere.com/simple/"
+]
+
 [project]
 name = "pruna"
 version = "0.2.5"
@@ -41,12 +46,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-
-[tool.uv]
-extra-index-url = [
-    "https://prunaai.pythonanywhere.com/simple/"
-]
-
 dependencies = [
     "wget",
     "torch==2.7.0",
@@ -110,13 +109,8 @@ gptq = [
     "threadpoolctl",
     "device-smi",
     "random-word",
-    "gptqmodel==4.0.0.dev0+cu126torch2.7; sys_platform != 'darwin' or platform_machine != 'arm64'",
+    "gptqmodel; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "logbar",
-    "tokenicer",
-    "threadpoolctl",
-    "device-smi",
-    "random-word",
 ]
 full = [
     "xformers==0.0.30",
