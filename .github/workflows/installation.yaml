@@ -35,4 +35,4 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv add -e .
+          uv pip install --system -e .
