@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import json
 import os
 import shutil
@@ -340,7 +341,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         transformer_backup = model.model.language_model
         model.model.language_model = None
         model.save_pretrained(model_path)
-        hqq_config = model.config.text_config
+        # Create a copy to avoid modifying the original config
+        hqq_config = copy.deepcopy(model.config.text_config)
+        # for re-loading the model, hqq expects the architecture to be LlamaForCausalLM
         hqq_config.architectures = ["LlamaForCausalLM"]
         os.makedirs(quantized_path, exist_ok=True)
         with open(os.path.join(quantized_path, "config.json"), "w") as f:
