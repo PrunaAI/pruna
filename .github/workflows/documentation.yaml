@@ -16,9 +16,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.11"]
 
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,22 +27,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "${HOME}/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure Poetry to not create virtual environments
-        run: poetry config virtualenvs.create false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Install dependencies
-        run: pip install -e .[cpu]
+        run: |
+          pip install -e .[cpu]
 
       - name: Remove .so files
         run: find . -name "*.so" -delete
 
       - name: Run generation script
-        run: python docs/utils/gen_docs.py
+        run: uv run docs/utils/gen_docs.py
 
       - name: Verify generated file exists
         run: |

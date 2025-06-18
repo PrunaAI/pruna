@@ -200,7 +200,7 @@ class CTranslateCompiler(PrunaCompiler):
             optimized_model = WhisperWrapper(optimized_model, temp_dir, smash_config.processor)
         else:
             raise ValueError("Task not supported")
-
+        optimized_model.config = model.config
         return optimized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
