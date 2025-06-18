@@ -114,7 +114,7 @@ def save_pruna_model_to_hub(
     Parameters
     ----------
     self : Union[Any, PrunaModel]
-        The self object.
+        The PrunaModel object.
     model : Any
         The model to save.
     smash_config : Union[SmashConfig, Any]
@@ -152,10 +152,9 @@ def save_pruna_model_to_hub(
             smash_config_data = json.load(f)
 
         # Determine the library name from the smash config
-        model_module = model.__module__
-        if "diffusers" in model_module:
+        if "diffusers" in model.__module__:
             library_name = "diffusers"
-        elif "transformers" in model_module:
+        elif "transformers" in model.__module__:
             library_name = "transformers"
         else:
             library_name = None
@@ -163,12 +162,13 @@ def save_pruna_model_to_hub(
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
+        pruna_library = self.__module__.split(".")[0] if "." in self.__module__ else self.__module__
         content = template.format(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
             pruna_model_class=self.__class__.__name__,
-            pruna_library=self.__module__.split(".")[0],
+            pruna_library=pruna_library,
         )
 
         # Define the path for the README file and write the formatted content to it
