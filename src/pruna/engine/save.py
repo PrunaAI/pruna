@@ -94,7 +94,9 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
 
 
 def save_pruna_model_to_hub(
-    pruna_model: Union["PrunaModel", Any],
+    self: Union["PrunaModel", Any],
+    model: Any,
+    smash_config: Union["SmashConfig", Any],
     repo_id: str,
     model_path: str | Path | None = None,
     *,
@@ -111,8 +113,12 @@ def save_pruna_model_to_hub(
 
     Parameters
     ----------
-    pruna_model : Union[Any, PrunaModel]
-        The PrunaModel object to save.
+    self : Union[Any, PrunaModel]
+        The self object.
+    model : Any
+        The model to save.
+    smash_config : Union[SmashConfig, Any]
+        The SmashConfig object containing the save and load functions.
     repo_id : str
         The repository ID.
     model_path : str | Path | None, optional
@@ -139,17 +145,17 @@ def save_pruna_model_to_hub(
         model_path_pathlib = Path(model_path)
 
         # Save the model and its configuration to the temporary directory
-        save_pruna_model(model=pruna_model.model, model_path=model_path, smash_config=pruna_model.smash_config)
+        save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
 
         # Load the smash config
         with (model_path_pathlib / SMASH_CONFIG_FILE_NAME).open() as f:
             smash_config_data = json.load(f)
 
         # Determine the library name from the smash config
-        pruna_model_module = pruna_model.model.__module__
-        if "diffusers" in pruna_model_module:
+        model_module = model.__module__
+        if "diffusers" in model_module:
             library_name = "diffusers"
-        elif "transformers" in pruna_model_module:
+        elif "transformers" in model_module:
             library_name = "transformers"
         else:
             library_name = None
@@ -161,8 +167,8 @@ def save_pruna_model_to_hub(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
-            pruna_model_class=pruna_model.__class__.__name__,
-            pruna_library=pruna_model.__module__.split(".")[0],
+            pruna_model_class=self.__class__.__name__,
+            pruna_library=self.__module__.split(".")[0],
         )
 
         # Define the path for the README file and write the formatted content to it

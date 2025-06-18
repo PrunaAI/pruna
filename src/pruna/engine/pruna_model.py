@@ -225,7 +225,9 @@ class PrunaModel:
             The number of steps to print the report of the saved model.
         """
         save_pruna_model_to_hub(
-            pruna_model=self,
+            self=self,
+            model=self.model,
+            smash_config=self.smash_config,
             repo_id=repo_id,
             model_path=model_path,
             revision=revision,
