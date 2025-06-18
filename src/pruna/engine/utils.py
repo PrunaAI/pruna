@@ -108,22 +108,24 @@ def safe_is_instance(model: Any, instance_type: type) -> bool:
     return isinstance(model, instance_type)
 
 
-def _normalize_device_type(device: str | torch.device) -> str:
+def _normalize_device_type(device: str | torch.device | dict[str, str] | None) -> str | dict[str, str]:
     """
     Normalize device type to a string representation.
 
     Parameters
     ----------
-    device : str | torch.device
+    device : str | torch.device | dict[str, str] | None
         The device to normalize.
 
     Returns
     -------
-    str
-        The normalized device type as a string.
+    str | dict[str, str]
+        The normalized device type as a string or device map.
     """
+    if device is None:
+        return "cpu"  # Default fallback
     if isinstance(device, torch.device):
-        return device.type
+        return str(device)
     return device
 
 
@@ -167,30 +169,24 @@ def move_to_device(
     device_map : dict[str, str] | None
         The device map to use if the target device is "accelerate".
     """
+    # Convert string device to torch.device for consistent handling
+    device_str = _normalize_device_type(device)
+    if isinstance(device_str, dict):
+        raise ValueError("Device cannot be a device map in move_to_device")
+
     if isinstance(model, Pipeline):
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
-        if _normalize_device_type(device) != "accelerate" and hasattr(model.model, "hf_device_map"):
+        if device_str != "accelerate" and hasattr(model.model, "hf_device_map"):
             delattr(model.model, "hf_device_map")
         return
 
-    # Convert string device to torch.device for consistent handling
-    device_type = _normalize_device_type(device)
-    if device_type == "accelerate":
-        device_obj = "accelerate"  # Keep as string for accelerate
-    elif isinstance(device, str) and any(device.startswith(d) for d in ["cpu", "cuda", "mps"]):
-        device_obj = torch.device(device)  # This handles "cuda:0" etc correctly
-    elif isinstance(device, torch.device):
-        device_obj = device
-    else:
-        raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate] or a torch.device object.")
-
     # do not cast if the model is already on the correct device
-    if _normalize_device_type(get_device(model)) == device_type:
+    if _normalize_device_type(get_device(model)) == device:
         return
 
-    if device_type == "accelerate":
+    if device_str == "accelerate":
         if device_map is None:
             raise ValueError("Device map is required when moving to accelerate.")
         cast_model_to_accelerate_device_map(model, device_map)
@@ -198,9 +194,9 @@ def move_to_device(
         if get_device(model) == "accelerate":
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
-            model.hf_device_map = {"": "cpu" if device_type == "cpu" else "cuda:0"}
+            model.hf_device_map = {"": "cpu" if device_str == "cpu" else "cuda:0"}
         try:
-            model.to(device_obj)
+            model.to(device)
         except torch.cuda.OutOfMemoryError as e:
             # there is anyway no way to recover from this error
             # raise it here for better traceability
@@ -505,8 +501,11 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         Best available device name.
     """
     # check if the device is a torch.device object, if so convert it to a string to simplify the logic
-    if isinstance(device, torch.device):
-        device = str(device)
+    if device is not None:
+        device_str = _normalize_device_type(device)
+        if isinstance(device_str, dict):
+            raise ValueError("Device cannot be a device map in set_to_best_available_device")
+        device = device_str
 
     # check basic string cases
     if device is None:
