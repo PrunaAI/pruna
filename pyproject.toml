@@ -162,7 +162,3 @@ exclude = [
     "tests*",
     "docs*",
 ]
-
-[[tool.uv.index]]
-name = "pruna"
-url = "https://prunaai.pythonanywhere.com/"
