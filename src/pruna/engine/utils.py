@@ -504,9 +504,11 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
     str
         Best available device name.
     """
+    # check if the device is a torch.device object, if so convert it to a string to simplify the logic
     if isinstance(device, torch.device):
-        device = device.type
+        device = str(device)
 
+    # check basic string cases
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         pruna_logger.info(f"Using best available device: '{device}'")
