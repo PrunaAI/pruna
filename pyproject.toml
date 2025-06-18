@@ -22,6 +22,7 @@ author = "- Pruna AI GmbH"
 ignore_missing_imports = true
 
 [tool.uv]
+index-url = "https://pypi.org/simple/"
 extra-index-url = [
     "https://prunaai.pythonanywhere.com/simple/"
 ]
