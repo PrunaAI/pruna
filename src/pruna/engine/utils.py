@@ -183,7 +183,7 @@ def move_to_device(
         return
 
     # do not cast if the model is already on the correct device
-    if _normalize_device_type(get_device(model)) == device:
+    if _normalize_device_type(get_device(model)) == device_str:
         return
 
     if device_str == "accelerate":
