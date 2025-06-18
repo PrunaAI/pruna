@@ -357,7 +357,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     if os.path.exists(os.path.join(model_path, "hqq_language_model")):
         quantized_path = os.path.join(model_path, "hqq_language_model")
         # load the weight on cpu to rename attr -> model.attr,
-        # and also artifically add a lm_head to the weights.
+        # and also artifically add a random lm_head to the weights.
         weights = torch.load(os.path.join(quantized_path, "qmodel.pt"), map_location="cpu", weights_only=True)
         weights = {f"model.{k}" if not k.startswith("model.") else k: v for k, v in weights.items()}
         weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
@@ -378,9 +378,11 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         if "compute_dtype" in kwargs:
             compute_dtype = kwargs.pop("compute_dtype")
         else:
-            smash_config = SmashConfig()
-            smash_config.load_from_json(model_path)
-            compute_dtype = torch.float16 if smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
+            saved_smash_config = SmashConfig()
+            saved_smash_config.load_from_json(model_path)
+            compute_dtype = (
+                torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
+            )
         quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
             quantized_path,
             device=smash_config.device,
