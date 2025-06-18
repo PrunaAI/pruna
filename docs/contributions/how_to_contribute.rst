@@ -8,6 +8,8 @@ Please make sure to review and adhere to the `Pruna Code of Conduct <https://git
 Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms.
 Contributions that do not adhere to the code of conduct will be ignored.
 
+If you don't have uv installed, you can install it by following the instructions on the `uv website <https://docs.astral.sh/uv/getting-started/installation/>`_.
+
 There are various ways you can contribute:
 
 - Have a question? Discuss with us on `Discord <https://discord.gg/Tun8YgzxZ9>`_ or check out the :doc:`/resources/faq`
@@ -63,7 +65,7 @@ You have two options for installing dependencies:
 
 .. code-block:: bash
 
-    uv sync --extra dev --extra tests
+    uv sync --extra dev --extra tests --extra stable-fast --extra gptq
 
 This creates a virtual environment in ``.venv/`` and installs all dependencies there, including pruna itself in editable mode. **Important**: This does NOT install into your current conda environment! You'll need to use ``uv run`` for all commands.
 
@@ -85,20 +87,7 @@ You can then also install the pre-commit hooks with
 
     pre-commit install
 
-If you don't have uv installed, you can install it with:
-
-.. code-block:: bash
-
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-
-Or using pip:
-
-.. code-block:: bash
-
-    pip install uv
-
-
-3. Develop your contribution
+1. Develop your contribution
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You are now ready to work on your contribution. Check out a branch on your forked repository and start coding!

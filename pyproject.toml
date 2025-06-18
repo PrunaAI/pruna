@@ -101,6 +101,7 @@ stable-fast = [
     "xformers==0.0.30",
     "stable-fast-pruna==1.0.7",
 ]
+# dependencies are added here because the wheels aren't bundling them
 gptq = [
     "logbar",
     "tokenicer",
