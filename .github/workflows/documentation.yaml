@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install -e .[cpu]
+          uv add -e .[cpu]
 
       - name: Remove .so files
         run: find . -name "*.so" -delete
