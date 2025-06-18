@@ -1,7 +1,7 @@
 ---
 library_name: {library_name}
 tags:
-- pruna-ai
+- {pruna_library}-ai
 ---
 
 # Model Card for {repo_id}
@@ -13,7 +13,7 @@ This model was created using the [pruna](https://github.com/PrunaAI/pruna) libra
 First things first, you need to install the pruna library:
 
 ```bash
-pip install pruna
+pip install {pruna_library}
 ```
 
 You can [use the {library_name} library to load the model](https://huggingface.co/{repo_id}?library={library_name}) but this might not include all optimizations by default.
@@ -21,9 +21,9 @@ You can [use the {library_name} library to load the model](https://huggingface.c
 To ensure that all optimizations are applied, use the pruna library to load the model using the following code:
 
 ```python
-from pruna import PrunaModel
+from {pruna_library} import {pruna_model_class}
 
-loaded_model = PrunaModel.from_hub(
+loaded_model = {pruna_model_class}.from_hub(
     "{repo_id}"
 )
 ```
