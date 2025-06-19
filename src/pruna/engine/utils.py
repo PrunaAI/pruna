@@ -171,8 +171,6 @@ def move_to_device(
     """
     # Convert string device to torch.device for consistent handling
     device_str = str(device)
-    if isinstance(device_str, dict):
-        raise ValueError("Device cannot be a device map in move_to_device")
 
     if isinstance(model, Pipeline):
         move_to_device(model.model, device, raise_error, device_map)
@@ -194,7 +192,7 @@ def move_to_device(
         if get_device(model) == "accelerate":
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
-            model.hf_device_map = {"": "cpu" if device_str == "cpu" else "cuda:0"}
+            model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
