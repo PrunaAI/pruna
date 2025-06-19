@@ -23,7 +23,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
-from accelerate import dispatch_model
+from accelerate import dispatch_model, infer_auto_device_map
 from accelerate.hooks import remove_hook_from_module
 from diffusers.models.modeling_utils import ModelMixin
 from transformers import Pipeline
@@ -188,13 +188,17 @@ def move_to_device(
 
     if device_str == "accelerate":
         if device_map is None:
-            raise ValueError("Device map is required when moving to accelerate.")
+            device_map = infer_auto_device_map(model)
+            pruna_logger.info(
+                "'accelerate' requested, but no device map provided. Automatically inferring device map..."
+            )
+            pruna_logger.info(f"Device map: {device_map}")
         cast_model_to_accelerate_device_map(model, device_map)
     else:
         if get_device(model) == "accelerate":
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
-            model.hf_device_map = {"": "cpu" if device_str == "cpu" else "cuda:0"}
+            model.hf_device_map = {"": "cpu" if device_str == "cpu" else "cuda"}
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
