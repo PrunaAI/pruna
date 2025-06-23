@@ -7,6 +7,14 @@ from pruna.data import base_datasets
 from pruna.evaluation.metrics.metric_torch import TorchMetrics
 from torchmetrics.classification import Accuracy, Precision, Recall
 from functools import partial
+from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+from pruna.engine.utils import split_device, device_to_string
+from ..common import device_parametrized
+from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric
+from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
+from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 
 @pytest.fixture(autouse=True)
 def _mock_torch_metrics():
@@ -31,3 +39,61 @@ def _mock_torch_metrics():
 def test_metric_initialization_from_metric_name(metric_name):
     datamodule = PrunaDataModule.from_string("LAION256")
     Task(request=[metric_name], datamodule=datamodule)
+
+
+@device_parametrized
+def test_device_is_set_correctly_for_metrics(device:str):
+    task = Task(request=['latency', 'cmmd', 'pairwise_clip_score'], datamodule=PrunaDataModule.from_string("LAION256"), device = device)
+    assert split_device(device_to_string(task.device)) == split_device(device_to_string(device))
+    for metric in task.metrics:
+        if isinstance(metric, BaseMetric):
+            assert split_device(device_to_string(metric.device)) == split_device(device_to_string(device))
+        elif isinstance(metric, StatefulMetric):
+            if hasattr(metric, 'metric'):
+                assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+            else:
+                assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize(
+    "inference_device, stateful_metric_device, task_device",
+    [
+        ("accelerate", "cpu", "cpu"),
+        ("accelerate", "cpu", "cuda"),
+        ("accelerate", "cpu", "accelerate"),
+        ("accelerate", "cuda", "cpu"),
+        ("accelerate", "cuda", "cuda"),
+        ("accelerate", "cuda", "accelerate"),
+        ("cpu", "cpu", "cuda"),
+        ("cpu", "cpu", "cpu"),
+        ("cpu", "cpu", "accelerate"),
+        ("cpu", "cuda", "cpu"),
+        ("cpu", "cuda", "cuda"),
+        ("cpu", "cuda", "accelerate"),
+        ("cuda", "cpu", "cuda"),
+        ("cuda", "cpu", "cpu"),
+        ("cuda", "cpu", "accelerate"),
+        ("cuda", "cuda", "cuda"),
+        ("cuda", "cuda", "accelerate"),
+        ("cuda", "cuda", "cpu"),
+    ],
+)
+def test_metric_device_adapts_to_task_device(inference_device: str, stateful_metric_device: str, task_device: str):
+    latency = LatencyMetric(device=inference_device)
+    cmmd = CMMD(device=stateful_metric_device)
+    pairwise_clip_score = PairwiseClipScore(device=stateful_metric_device)
+    psnr = TorchMetricWrapper('psnr', device=stateful_metric_device)
+
+    task = Task(request=[latency, cmmd, pairwise_clip_score, psnr], datamodule=PrunaDataModule.from_string("LAION256"), device = task_device)
+    assert split_device(device_to_string(task.device)) == split_device(device_to_string(task_device))
+    for metric in task.metrics:
+        if isinstance(metric, BaseMetric):
+            assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
+        elif isinstance(metric, StatefulMetric):
+            if hasattr(metric, "device"):
+                assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+            elif hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
+                assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+            else:
+                raise ValueError("Could not find device for metric.")

@@ -22,6 +22,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from transformers.models.clip.modeling_clip import CLIPModel as _CLIPModel
 from transformers.models.clip.processing_clip import CLIPProcessor as _CLIPProcessor
 
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -48,17 +49,13 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
     metric_name: str = "pairwise_clip_score"
 
     def __init__(self, **kwargs: Any) -> None:
+        device = kwargs.pop("device", None)
+        device = set_to_best_available_device(device)
         if "call_type" in kwargs:
             pruna_logger.error(f"Call type is not supported for {self.metric_name}. Using default call type {PAIRWISE}")
             kwargs.pop("call_type")
-        if "device" in kwargs:
-            device = kwargs["device"]
-            # Torchmetrics cannot handle device argument so we handle it ourselves.
-            kwargs.pop("device")
-            super().__init__(**kwargs)
-            self.to(device)  # Move the metric to the correct device.
-        else:
-            super().__init__(**kwargs)
+        super().__init__(**kwargs)
+        self.move_to_device(device)
         self.call_type = "pairwise_y_gt"
         pruna_logger.info(f"Using call_type: {self.call_type} for metric {self.metric_name}")
 
@@ -77,7 +74,7 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         gt : Tensor | List[Tensor]
             The ground truth images.
         """
-        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type, self.device)
         source, target = metric_inputs
         score, n_samples = _clip_score_update(
             cast(Tensor, source),
@@ -100,6 +97,17 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         pairwise_score = super().compute()  # type: ignore[safe-super]
         pairwise_score_item = pairwise_score.item() if isinstance(pairwise_score, Tensor) else pairwise_score
         return MetricResult(self.metric_name, self.__dict__.copy(), pairwise_score_item)
+
+    def move_to_device(self, device: str | torch.device) -> None:
+        """
+        Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        self.to(device)
 
 
 def _process_image_data(images: Tensor) -> List[Tensor]:

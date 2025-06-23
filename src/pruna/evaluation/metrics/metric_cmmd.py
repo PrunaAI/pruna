@@ -21,7 +21,7 @@ from huggingface_hub import model_info
 from huggingface_hub.utils import EntryNotFoundError
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import device_to_string, set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -99,7 +99,7 @@ class CMMD(StatefulMetric):
         outputs : torch.Tensor
             The output images.
         """
-        inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        inputs = metric_data_processor(x, gt, outputs, self.call_type, self.device)
         gt_embeddings = self._get_embeddings(inputs[0])
         output_embeddings = self._get_embeddings(inputs[1])
 
@@ -183,3 +183,17 @@ class CMMD(StatefulMetric):
             )
         )
         return self.scale * (k_xx + k_yy - 2 * k_xy)
+
+    def move_to_device(self, device: str | torch.device) -> None:
+        """
+        Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        self.device = device_to_string(device)
+        self.clip_model = self.clip_model.to(device)
+        self.ground_truth_embeddings = [embedding.to(device) for embedding in self.ground_truth_embeddings]
+        self.output_embeddings = [embedding.to(device) for embedding in self.output_embeddings]
