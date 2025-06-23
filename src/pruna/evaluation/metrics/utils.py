@@ -15,13 +15,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from pruna.evaluation.task import Task
+
 from collections import defaultdict
 from inspect import Signature, getmro, signature
-from typing import Any, Callable, Dict, List, Tuple, Type, cast
+from typing import Callable, Dict, List, Tuple, Type
 
 import torch
 
 from pruna.data.utils import move_batch_to_device
+from pruna.engine.utils import get_device, move_to_device, split_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.logging.logger import pruna_logger
 
@@ -35,7 +41,7 @@ def metric_data_processor(
     gt: List[Any] | torch.Tensor,
     outputs: Any,
     call_type: str,
-    device: torch.device | str | None = None,
+    device: str | torch.device | None = None,
 ) -> List[Any]:
     """
     Arrange metric inputs based on the specified configuration call type.
@@ -61,8 +67,8 @@ def metric_data_processor(
         The model outputs or predictions.
     call_type : str
         The type of call to be made to the metric.
-    device : torch.device | str | None
-        The device to be used for the metric.
+    device : str | torch.device | None
+        The device to move the data to.
 
     Returns
     -------
@@ -85,16 +91,34 @@ def metric_data_processor(
         gt = move_batch_to_device(gt, device)
         outputs = move_batch_to_device(outputs, device)
     if call_type == "x_y":
+        if device is not None:
+            x = move_batch_to_device(x, device)
+            outputs = move_batch_to_device(outputs, device)
         return [x, outputs]
     elif call_type == "gt_y":
+        if device is not None:
+            gt = move_batch_to_device(gt, device)
+            outputs = move_batch_to_device(outputs, device)
         return [gt, outputs]
     elif call_type == "y_x":
+        if device is not None:
+            outputs = move_batch_to_device(outputs, device)
+            x = move_batch_to_device(x, device)
         return [outputs, x]
     elif call_type == "y_gt":
+        if device is not None:
+            outputs = move_batch_to_device(outputs, device)
+            gt = move_batch_to_device(gt, device)
         return [outputs, gt]
     elif call_type == "pairwise_gt_y":
+        if device is not None:
+            gt = move_batch_to_device(gt, device)
+            outputs = move_batch_to_device(outputs, device)
         return [gt, outputs]
     elif call_type == "pairwise_y_gt":
+        if device is not None:
+            outputs = move_batch_to_device(outputs, device)
+            gt = move_batch_to_device(gt, device)
         return [outputs, gt]
     elif call_type == "y":  # IQA metrics that have an internal dataset
         return [outputs]
@@ -289,5 +313,133 @@ def get_call_type_for_single_metric(call_type_requested: str, default_call_type:
     elif call_type_requested == SINGLE:
         return default_call_type
     else:
-        pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
-        raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+        if call_type_requested == default_call_type or call_type_requested == get_pairwise_pairing(default_call_type):
+            warn(
+                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
+                f"Use {SINGLE} or {PAIRWISE} instead. \n"
+                f"Using default call type {default_call_type}.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return default_call_type
+        else:
+            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+
+
+def ensure_device_consistency(model: Any, task: Task) -> None:
+    """
+    Ensure the model and the task agree on the device they will run on.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    task : Task
+        The task to check.
+    """
+    # Preprocessing the devices
+    model_device_raw = cast(str, get_device(model))
+    if isinstance(task.device, torch.device):
+        task.device = task.device.type
+    model_device, idx_m = split_device(model_device_raw, strict=True)
+    task_device, idx_t = split_device(task.device, strict=True)
+
+    # Everything is fine scenario.
+    if (model_device, idx_m) == (task_device, idx_t):
+        pruna_logger.debug("Device consistency check passed.")
+        if model_device == "accelerate":
+            # in case of accelerate, we need to check loading the metrics didn't offload the model.
+            _check_offload(model)
+        return
+    if model_device == task_device == "cuda":  # Cases like cuda:0 and cuda:1
+        pruna_logger.info(
+            f"Model on cuda:{idx_m}, task on cuda:{idx_t}. If undesired, call task(device='{model_device_raw}')."
+        )
+        return
+
+    # If the user explicitly provided a device and it doesn't match the model's device,
+    # raise an error: we assume they know what they're doing and want control.
+    if not task.auto_device:
+        raise ValueError(
+            f"Model and task have different devices. Model: {model_device}, task: {task.device}. \n"
+            f"If you want auto device casting, create the task without providing a device."
+        )
+
+    # Only auto-resolve device mismatches when no device was provided.
+    else:
+        # If one side uses accelerate, we trust the model to be on the correct device.
+        if "accelerate" in (model_device, task_device):
+            if model_device == "accelerate":
+                pruna_logger.warning(
+                    (
+                        f"Model and task have different devices. Model: {model_device}, "
+                        f"task: {task.device}. Updating task to device='{model_device}'."
+                        f"The inference for metric computations will be done on {model_device}."
+                    )
+                )
+                _check_offload(model)  # We want to make sure to catch if the model is offloaded to CPU.
+                task.device = model_device_raw
+                task.stateful_metric_device = "cpu"
+                # We update the inference device for the metrics in the task.
+                # Stateful metrics go to cpu until the evaluation agent is finished with the inference.
+                _update_metric_devices(
+                    task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device
+                )
+            # task side is accelerate. right now the auto device casting would not set the task device to accelerate.
+            # But for future proofing.
+            else:
+                pruna_logger.warning(
+                    (
+                        f"Model and task have different devices. Model: {model_device}, "
+                        f"task: {task.device}. Updating task to device='{model_device}'."
+                    )
+                )
+                task.device = model_device_raw
+                task.stateful_metric_device = model_device_raw
+                # We update all metric devices to the model device.
+                _update_metric_devices(
+                    task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device
+                )
+
+            return
+
+        pruna_logger.warning(
+            f"Model on {model_device_raw}, task on {task.device}. "
+            f"Casting model to {task.device}. "
+            f"If undesired, call task(device='{model_device_raw}')."
+        )
+        move_to_device(model, task.device)
+        return
+
+
+def _check_offload(model: Any) -> None:
+    """
+    Check if the model is offloaded to CPU.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    """
+    hf_device_map = cast(dict[str, str], get_device(model, return_device_map=True))
+    if not all(isinstance(v, int) for v in hf_device_map.values()):
+        raise ValueError("Device map indicates CPU offloading; not supported at this time.")
+
+
+def _update_metric_devices(task: Task, inference_device: str, stateful_device: str) -> None:
+    """
+    Update the inference device for the metrics in the task.
+
+    Parameters
+    ----------
+    task : Task
+        The task to update.
+    device : str
+        The device to update the metrics to.
+    """
+    for metric in task.metrics:
+        if isinstance(metric, BaseMetric):
+            metric.device = inference_device
+        else:
+            metric.move_to_device(stateful_device)

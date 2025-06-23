@@ -26,7 +26,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
 
     batch = next(iter(smash_config.test_dataloader()))
     x, gt = batch
-    outputs = pruna_model.run_inference(batch, device)
+    outputs = pruna_model.run_inference(batch)
 
     # Calculate CMMD between model outputs and ground truth
     metric.update(x, gt, outputs)

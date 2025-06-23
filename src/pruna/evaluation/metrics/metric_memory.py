@@ -345,7 +345,7 @@ class GPUMemoryStats(BaseMetric):
         """
         with torch.no_grad() if self.mode == INFERENCE_MEMORY else torch.enable_grad():
             batch = next(iter(dataloader))
-            model.run_inference(batch=batch, device=set_to_best_available_device(None))
+            model.run_inference(batch=batch)
 
 
 @MetricRegistry.register(DISK_MEMORY)

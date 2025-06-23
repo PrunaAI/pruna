@@ -28,7 +28,7 @@ from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import group_metrics_by_inheritance
+from pruna.evaluation.metrics.utils import ensure_device_consistency, group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -169,9 +169,8 @@ class EvaluationAgent:
                 model.smash_config.batch_size,
             )
 
-        # ensure the model is on the cpu
-        model.move_to_device("cpu")
-
+        ensure_device_consistency(model, self.task)
+        self.device = self.task.device
         return model
 
     def update_stateful_metrics(
@@ -201,7 +200,7 @@ class EvaluationAgent:
 
         model.move_to_device(self.device)
         for batch_idx, batch in enumerate(self.task.dataloader):
-            processed_outputs = model.run_inference(batch, self.device)
+            processed_outputs = model.run_inference(batch)
 
             batch = move_batch_to_device(batch, self.device)
             processed_outputs = move_batch_to_device(processed_outputs, self.device)

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from functools import partial
+from inspect import isclass
 from typing import Any, Callable, Dict, Iterable, List
 
 from pruna.engine.load import filter_load_kwargs
@@ -108,10 +109,19 @@ class MetricRegistry:
             raise ValueError(f"Metric '{name}' is not registered.")
 
         metric_cls = cls._registry[name]
+        inference_device = kwargs.pop("inference_device", None)
+        stateful_metric_device = kwargs.pop("stateful_metric_device", None)
         if isinstance(metric_cls, partial) and "TorchMetricWrapper" in metric_cls.func.__name__:
+            kwargs["device"] = stateful_metric_device
             return metric_cls(**kwargs)
-        else:
+        elif isclass(metric_cls):
+            if issubclass(metric_cls, StatefulMetric):
+                kwargs["device"] = stateful_metric_device
+            elif issubclass(metric_cls, BaseMetric):
+                kwargs["device"] = inference_device
             return metric_cls(**filter_load_kwargs(metric_cls, kwargs))
+        else:
+            raise ValueError(f"Metric '{metric_cls}' dos not inherit from a valid metric class.")
 
     @classmethod
     def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric | StatefulMetric]:
