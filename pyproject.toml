@@ -43,8 +43,8 @@ classifiers = [
 ]
 dependencies = [
     "wget",
-    "torch==2.7.0",
-    "torchvision==0.22.0",
+    "torch>=2.5.1",
+    "torchvision>=0.20.1",
     "torchmetrics[image]",
     "requests>=2.31.0",
     "transformers",
@@ -94,6 +94,7 @@ dependencies = [
 
 [project.optional-dependencies]
 stable-fast = [
+    "torch==2.7.0",
     "xformers==0.0.30",
     "stable-fast-pruna==1.0.7",
 ]
@@ -108,6 +109,7 @@ gptq = [
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 full = [
+    "torch==2.7.0",
     "xformers==0.0.30",
     "stable-fast-pruna==1.0.7",
 ]
