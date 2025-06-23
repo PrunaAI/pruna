@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any, Dict, List
 
+import torch
 from torch import Tensor
 
 from pruna.logging.logger import pruna_logger
@@ -120,3 +121,14 @@ class StatefulMetric(ABC):
             True if the metric is pairwise, False otherwise.
         """
         return self.call_type.startswith("pairwise")
+
+    @abstractmethod
+    def move_to_device(self, device: str | torch.device) -> None:
+        """Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        pass

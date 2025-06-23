@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Tuple
 
 import torch
 
+from pruna.data.utils import move_batch_to_device
+
 
 class InferenceHandler(ABC):
     """
@@ -69,7 +71,7 @@ class InferenceHandler(ABC):
     def move_inputs_to_device(
         self,
         inputs: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...],
-        device: torch.device | str = "cuda",
+        device: torch.device | str | dict[str, str],
     ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]:
         """
         Recursively move inputs to device.
@@ -86,9 +88,6 @@ class InferenceHandler(ABC):
         List[str] | torch.Tensor
             The prepared inputs.
         """
-        if isinstance(inputs, torch.Tensor):
-            return inputs.to(device)
-        elif isinstance(inputs, tuple):
-            return tuple(self.move_inputs_to_device(item, device) for item in inputs)  # type: ignore
-        else:
-            return inputs
+        if isinstance(device, dict):
+            device = min(device.values())
+        return move_batch_to_device(inputs, device)

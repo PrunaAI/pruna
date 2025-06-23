@@ -23,9 +23,9 @@ from tqdm.auto import tqdm as base_tqdm
 
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
-from pruna.engine.load import load_pruna_model, load_pruna_model_from_hub
+from pruna.engine.load import filter_load_kwargs, load_pruna_model, load_pruna_model_from_hub
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import get_nn_modules, move_to_device, set_to_best_available_device, set_to_eval
+from pruna.engine.utils import get_device, get_nn_modules, move_to_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -74,9 +74,7 @@ class PrunaModel:
             with torch.no_grad():
                 return self.model.__call__(*args, **kwargs)
 
-    def run_inference(
-        self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str | None = None
-    ) -> Any:
+    def run_inference(self, batch: Tuple[List[str] | torch.Tensor, ...]) -> Any:
         """
         Run inference on the model.
 
@@ -84,21 +82,19 @@ class PrunaModel:
         ----------
         batch : Tuple[List[str] | torch.Tensor, ...]
             The batch to run inference on.
-        device : torch.device | str | None
-            The device to run inference on. If None, the best available device will be used.
 
         Returns
         -------
         Any
             The processed output.
         """
-        device = set_to_best_available_device(device)
-        batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
+        if self.model is None:
+            raise ValueError("No more model available, this model is likely destroyed.")
+        model_device = get_device(self.model, return_device_map=True)  # Get the device of the model
+        batch = self.inference_handler.move_inputs_to_device(batch, model_device)  # type: ignore
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
-        if prepared_inputs is not None:
-            outputs = self(prepared_inputs, **self.inference_handler.model_args)
-        else:
-            outputs = self(**self.inference_handler.model_args)
+        args = (prepared_inputs,) if prepared_inputs is not None else ()
+        outputs = self(*args, **self.inference_handler.model_args)
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
@@ -147,6 +143,17 @@ class PrunaModel:
             The attribute to delete.
         """
         delattr(self.model, attr)
+
+    def get_device(self, **kwargs: Any) -> str | dict[str, str]:
+        """
+        Get the device of the model.
+
+        Returns
+        -------
+        str
+            The device of the model.
+        """
+        return get_device(self.model, **filter_load_kwargs(get_device, kwargs))
 
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """

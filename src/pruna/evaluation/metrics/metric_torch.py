@@ -220,7 +220,6 @@ class TorchMetricWrapper(StatefulMetric):
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 
-            kwargs.pop("device", None)
             return PairwiseClipScore(**kwargs)
         return super().__new__(cls)
 
@@ -271,7 +270,7 @@ class TorchMetricWrapper(StatefulMetric):
         outputs : Any
             The output data.
         """
-        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type, self.metric.device)
         self.update_fn(self.metric, *metric_inputs)
 
     def add_state(
@@ -329,6 +328,17 @@ class TorchMetricWrapper(StatefulMetric):
             self.__dict__.copy(),
             result.item() if isinstance(result, Tensor) else result,
         )
+
+    def move_to_device(self, device: str | torch.device) -> None:
+        """
+        Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        self.metric = self.metric.to(device)
 
 
 def get_call_type(call_type: str, metric_name: str) -> str:
