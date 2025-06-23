@@ -352,21 +352,51 @@ def load_hqq(model_path: str, smash_config: SmashConfig, **kwargs) -> Any:
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
+    # if the model is a janus like model, we need to load the quantized model from the hqq_language_model directory
+    if os.path.exists(os.path.join(model_path, "hqq_language_model")):
+        quantized_path = os.path.join(model_path, "hqq_language_model")
+        # load the weight on cpu to rename attr -> model.attr,
+        # and also artifically add a random lm_head to the weights.
+        weights = torch.load(os.path.join(quantized_path, "qmodel.pt"), map_location="cpu", weights_only=True)
+        weights = {f"model.{k}" if not k.startswith("model.") else k: v for k, v in weights.items()}
+        weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
+        # hqq expects the qmodel.pt file to be in the quantized_path directory.
+        expected_quantized_model_path = os.path.join(quantized_path, "qmodel.pt")
+        torch.save(weights, expected_quantized_model_path)
+    else:
+        quantized_path = model_path
+
     try:  # Try to use pipeline for HF specific HQQ quantization
-        model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
-            model_path,
+        quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
+            quantized_path,
             device=smash_config.device,
             **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
         )
     except Exception:  # Default to generic HQQ pipeline if it fails
         pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
-        model = algorithm_packages["AutoHQQHFModel"].from_quantized(
-            model_path,
+        if "compute_dtype" in kwargs:
+            compute_dtype = kwargs.pop("compute_dtype")
+        else:
+            saved_smash_config = SmashConfig()
+            saved_smash_config.load_from_json(model_path)
+            compute_dtype = (
+                torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
+            )
+        quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
+            quantized_path,
             device=smash_config.device,
+            compute_dtype=compute_dtype,
             **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
         )
 
-    return model
+    original_config = load_json_config(model_path, "config.json")
+    if original_config["architectures"][0] == "JanusForConditionalGeneration":
+        cls = getattr(transformers, "JanusForConditionalGeneration")
+        model = cls.from_pretrained(model_path, **kwargs)
+        model.model.language_model = quantized_model.model
+        return model
+    else:
+        return quantized_model
 
 
 def load_torch_artifacts(model_path: str, **kwargs) -> None:
