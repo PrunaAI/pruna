@@ -44,7 +44,7 @@ classifiers = [
 dependencies = [
     "wget",
     "torch==2.7.0",
-    "torchvision==0.22.0",
+    "torchvision==0.22.1",
     "torchmetrics[image]",
     "requests>=2.31.0",
     "transformers",
