@@ -1,8 +1,7 @@
 ---
 library_name: {library_name}
 tags:
-- pruna-ai
-- {pruna_library}
+- {pruna_library}-ai
 ---
 
 # Model Card for {repo_id}

@@ -20,13 +20,13 @@ import tempfile
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, List, Union
 
 import torch
 import transformers
 from huggingface_hub import upload_large_folder
 
-from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME, SmashConfig
+from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
 from pruna.engine.load import (
     LOAD_FUNCTIONS,
     PICKLED_FILE_NAME,
@@ -36,6 +36,10 @@ from pruna.engine.load import (
 from pruna.engine.model_checks import get_helpers
 from pruna.engine.utils import determine_dtype
 from pruna.logging.logger import pruna_logger
+
+if TYPE_CHECKING:
+    from pruna.config.smash_config import SmashConfig
+    from pruna.engine.pruna_model import PrunaModel
 
 
 def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -90,8 +94,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
 
 
 def save_pruna_model_to_hub(
-    model: Any,
-    smash_config: SmashConfig,
+    pruna_model: Union[Any, "PrunaModel"],
     repo_id: str,
     model_path: str | Path | None = None,
     *,
@@ -102,7 +105,6 @@ def save_pruna_model_to_hub(
     num_workers: int | None = None,
     print_report: bool = True,
     print_report_every: int = 60,
-    _library_name: str = "pruna",
 ) -> None:
     """
     Save the model to the specified directory.
@@ -131,8 +133,6 @@ def save_pruna_model_to_hub(
         Whether to print the report.
     print_report_every : int, optional
         The print report every.
-    _library_name : str
-        The name of the library.
     """
     # Create a temporary directory within the specified folder path to store the model files
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -141,16 +141,17 @@ def save_pruna_model_to_hub(
         model_path_pathlib = Path(model_path)
 
         # Save the model and its configuration to the temporary directory
-        save_pruna_model(model=model, model_path=model_path, smash_config=smash_config)
+        save_pruna_model(model=pruna_model.model, model_path=model_path, smash_config=pruna_model.smash_config)
 
         # Load the smash config
         with (model_path_pathlib / SMASH_CONFIG_FILE_NAME).open() as f:
             smash_config_data = json.load(f)
 
         # Determine the library name from the smash config
-        if "diffusers" in model.__module__:
+        pruna_model_module = pruna_model.__module__
+        if "diffusers" in pruna_model_module:
             library_name = "diffusers"
-        elif "transformers" in model.__module__:
+        elif "transformers" in pruna_model_module:
             library_name = "transformers"
         else:
             library_name = None
@@ -162,8 +163,8 @@ def save_pruna_model_to_hub(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
-            model_class="PrunaModel" if _library_name == "pruna" else "PrunaProModel",
-            pruna_library=_library_name,
+            model_class=pruna_model.__class__.__name__,
+            pruna_library=pruna_model.__module__.split(".")[0],
         )
 
         # Define the path for the README file and write the formatted content to it
@@ -310,6 +311,7 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         The SmashConfig object containing the save and load functions.
     """
     from pruna.algorithms.quantization.hqq import HQQQuantizer
+
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
     if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
