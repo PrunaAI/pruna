@@ -29,14 +29,13 @@ class LLMCompressorQuantizer(PrunaQuantizer):
     range of weights while minimizing accuracy loss to the most salient weight values.
     """
 
-    algorithm_name = "awq"
-    references = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
-    tokenizer_required = True
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = True
-    compatible_algorithms: Dict[str, list[str]] = dict()
+    algorithm_name: str = "awq"
+    references: dict[str, str] = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
+    tokenizer_required: bool = True
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = True
+    compatible_algorithms: dict[str, list[str]] = dict()
 
     def get_hyperparameters(self) -> list:
         """

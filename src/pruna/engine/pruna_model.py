@@ -102,6 +102,22 @@ class PrunaModel:
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
+    def is_instance(self, instance_type: type) -> bool:
+        """
+        Compare the model to the given instance type.
+
+        Parameters
+        ----------
+        instance_type : type
+            The type to compare the model to.
+
+        Returns
+        -------
+        bool
+            True if the model is an instance of the given type, False otherwise.
+        """
+        return isinstance(self.model, instance_type)
+
     def __getattr__(self, attr: str) -> Any:
         """
         Forward attribute access to the underlying model.
@@ -121,6 +137,17 @@ class PrunaModel:
         else:
             return getattr(self.model, attr)
 
+    def __delattr__(self, attr: str) -> None:
+        """
+        Delete an attribute from the model.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute to delete.
+        """
+        delattr(self.model, attr)
+
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """
         Get the nn.Module instances in the model.
@@ -136,13 +163,13 @@ class PrunaModel:
         """Set the model to evaluation mode."""
         set_to_eval(self.model)
 
-    def move_to_device(self, device: str | torch.device) -> None:
+    def move_to_device(self, device: str) -> None:
         """
         Move the model to a specific device.
 
         Parameters
         ----------
-        device : str | torch.device
+        device : str
             The device to move the model to.
         """
         move_to_device(self.model, device)
@@ -214,7 +241,7 @@ class PrunaModel:
 
     @staticmethod
     @track_usage
-    def from_pretrained(model_path: str, verbose: bool = False, **kwargs: Any) -> Any:
+    def from_pretrained(model_path: str, verbose: bool = False, **kwargs: Any) -> PrunaModel:
         """
         Load a `PrunaModel` from the specified model path.
 
@@ -268,7 +295,7 @@ class PrunaModel:
         local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
         resume_download: Optional[bool] = None,
         **kwargs,
-    ) -> Any:
+    ) -> PrunaModel:
         """
         Load a `PrunaModel` from the specified repository.
 

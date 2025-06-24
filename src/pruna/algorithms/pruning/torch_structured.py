@@ -47,16 +47,15 @@ class TorchStructuredPruner(PrunaPruner):
     and computationally efficient model while preserving a regular structure that standard hardware can easily optimize.
     """
 
-    algorithm_name = "torch_structured"
-    references = {"GitHub": "https://github.com/pytorch/pytorch"}
+    algorithm_name: str = "torch_structured"
+    references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # when performing structured pruning, the tensor sizes can change and disrupt normal saving
     save_fn = SAVE_FUNCTIONS.pickled
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = True
-    compatible_algorithms = dict(quantizer=["half"])
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    dataset_required: bool = True
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half"])
 
     def get_hyperparameters(self) -> list:
         """

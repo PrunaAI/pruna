@@ -19,7 +19,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
+from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import SMASH_SPACE
 from pruna.engine.save import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
@@ -51,6 +51,7 @@ class PrunaAlgorithmBase(ABC):
             tokenizer_required=self.tokenizer_required,
             processor_required=self.processor_required,
         )
+        assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
     def __init_subclass__(cls, **kwargs):
         """Intercept the instantiation of subclasses of the PrunaAlgorithmBase class."""
@@ -68,17 +69,16 @@ class PrunaAlgorithmBase(ABC):
         # Replace the function with the wrapped version
         cls.import_algorithm_packages = wrap_handle_imports(impl)
 
-    @classmethod
-    def compatible_devices(cls) -> list[str]:
-        """Return the compatible devices for the algorithm."""
-        compatible_devices = []
-        if cls.run_on_cpu:  # type: ignore
-            compatible_devices.append("cpu")
-        if cls.run_on_cuda:  # type: ignore
-            compatible_devices.append("cuda")
-        if not compatible_devices:
-            raise ValueError(f"Algorithm {cls.algorithm_name} is not compatible with any device.")
-        return compatible_devices
+    def compatible_devices(self) -> list[str]:
+        """
+        Return the compatible devices for the algorithm.
+
+        Returns
+        -------
+        list[str]
+            The compatible devices for the algorithm.
+        """
+        return self.runs_on
 
     @property
     @abstractmethod
@@ -99,14 +99,8 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     @abstractmethod
-    def run_on_cpu(self) -> bool:
-        """Subclasses need to provide a boolean indicating if the algorithm can be applied on cpu."""
-        pass
-
-    @property
-    @abstractmethod
-    def run_on_cuda(self) -> bool:
-        """Subclasses need to provide a boolean indicating if the algorithm can be applied on cuda."""
+    def runs_on(self) -> list[str]:
+        """Subclasses need to provide a list of devices the algorithm can run on."""
         pass
 
     @property

@@ -57,8 +57,7 @@ class CTranslateCompiler(PrunaCompiler):
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True
     processor_required: bool = False
-    run_on_cpu: bool = False
-    run_on_cuda: bool = True
+    runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
     compatible_algorithms = dict(batcher=["whisper_s2t"], quantizer=["half"])
 
@@ -201,7 +200,7 @@ class CTranslateCompiler(PrunaCompiler):
             optimized_model = WhisperWrapper(optimized_model, temp_dir, smash_config.processor)
         else:
             raise ValueError("Task not supported")
-
+        optimized_model.config = model.config
         return optimized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

@@ -29,14 +29,16 @@ class DeepCacheCacher(PrunaCacher):
     features.
     """
 
-    algorithm_name = "deepcache"
-    references = {"GitHub": "https://github.com/horseee/DeepCache", "Paper": "https://arxiv.org/abs/2312.00858"}
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    compatible_algorithms = dict(
+    algorithm_name: str = "deepcache"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/horseee/DeepCache",
+        "Paper": "https://arxiv.org/abs/2312.00858",
+    }
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    compatible_algorithms: dict[str, list[str]] = dict(
         factorizer=["qkv_diffusers"],
         compiler=["stable_fast", "torch_compile"],
         quantizer=["half", "hqq_diffusers", "diffusers_int8", "quanto"],

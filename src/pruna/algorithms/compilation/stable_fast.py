@@ -28,15 +28,14 @@ class StableFastCompiler(PrunaCompiler):
     into optimized kernels and converting diffusion pipelines into efficient TorchScript graphs.
     """
 
-    algorithm_name = "stable_fast"
-    references = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(cacher=["deepcache", "fora"], quantizer=["half"])
-    required_install = "``pip install pruna[stable-fast]``"
+    algorithm_name: str = "stable_fast"
+    references: dict[str, str] = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(cacher=["deepcache", "fora"], quantizer=["half"])
+    required_install: str = "``pip install pruna[stable-fast]``"
 
     def get_hyperparameters(self) -> list:
         """

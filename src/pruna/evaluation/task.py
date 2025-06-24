@@ -72,6 +72,8 @@ class Task:
         self.metrics = get_metrics(request, device)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
+        if device not in ["cuda", "cpu", "mps"]:
+            raise ValueError(f"Unsupported device: {device}. Must be one of: cuda, cpu, mps.")
         self.device = device
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:

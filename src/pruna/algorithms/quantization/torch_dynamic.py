@@ -33,14 +33,13 @@ class TorchDynamicQuantizer(PrunaQuantizer):
     """
 
     algorithm_name = "torch_dynamic"
-    references = {"GitHub": "https://github.com/pytorch/pytorch"}
-    save_fn = SAVE_FUNCTIONS.pickled
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict()
+    references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict()
 
     def get_hyperparameters(self) -> list:
         """

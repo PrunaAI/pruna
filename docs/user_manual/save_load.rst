@@ -60,23 +60,24 @@ Let's see what that looks like in code.
 
 .. code-block:: python
 
-    from pruna import smash, SmashConfig
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
+
+    from pruna import PrunaModel, SmashConfig, smash
 
     # prepare the base model
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and smash your model
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
-    smash_config["compiler"] = "diffusers2"
+    smash_config["compiler"] = "torch_compile"
+    smash_config["quantizer"] = "hqq_diffusers"
     smashed_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the model
-    smashed_model.save_pretrained("saved_model/") # or save_to_hub
+    smashed_model.save_pretrained("saved_model/")  # or save_to_hub
 
     # Load the model
-    loaded_model = PrunaModel.from_pretrained("saved_model/") # or from_hub
+    loaded_model = PrunaModel.from_pretrained("saved_model/")  # or from_hub
 
 Saving a ``PrunaModel``
 -----------------------
@@ -90,38 +91,36 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
         .. code-block:: python
 
             from pruna import smash, SmashConfig
-            from diffusers import StableDiffusionPipeline
+            from diffusers import DiffusionPipeline
 
             # prepare the base model
-            base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+            base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
             # Create and smash your model
             smash_config = SmashConfig()
-            smash_config["cacher"] = "deepcache"
-            smash_config["compiler"] = "diffusers2"
+            smash_config["quantizer"] = "hqq_diffusers"
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
-            smashed_model.save_pretrained("saved_model/")
+            smashed_model.save_pretrained("saved_model")
 
     .. tab:: Hugging Face Hub Saving
 
         .. code-block:: python
 
             from pruna import smash, SmashConfig
-            from diffusers import StableDiffusionPipeline
+            from diffusers import DiffusionPipeline
 
             # prepare the base model
-            base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+            base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
             # Create and smash your model
             smash_config = SmashConfig()
-            smash_config["cacher"] = "deepcache"
-            smash_config["compiler"] = "diffusers2"
+            smash_config["quantizer"] = "hqq_diffusers"
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
-            smashed_model.save_to_hub("PrunaAI/smashed-stable-diffusion-v1-4-smashed")
+            smashed_model.save_to_hub("PrunaAI/Segmind-Vega-smashed")
 
         .. tip::
 
@@ -142,6 +141,7 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
     .. tab:: Local Loading
 
         .. code-block:: python
+            :class: noextract
 
             from pruna import PrunaModel
 
@@ -153,7 +153,7 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
 
             from pruna import PrunaModel
 
-            loaded_model = PrunaModel.from_hub("PrunaAI/smashed-stable-diffusion-v1-4")
+            loaded_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
 
 The load operation will:
 
@@ -171,9 +171,9 @@ So, when the base model was loaded with e.g. a specific precision:
 .. code-block:: python
 
     import torch
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
 
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16)
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega", torch_dtype=torch.float16)
 
 you should also load the smashed model as follows:
 
@@ -181,7 +181,7 @@ you should also load the smashed model as follows:
 
     from pruna import PrunaModel
 
-    loaded_model = PrunaModel.from_pretrained("saved_model/", torch_dtype=torch.float16)
+    loaded_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed", torch_dtype=torch.float16)
 
 Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
 In that case, we discard and log a warning about unused keyword arguments.

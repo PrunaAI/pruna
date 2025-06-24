@@ -43,14 +43,16 @@ class FasterCacheCacher(PrunaCacher):
     https://github.com/huggingface/diffusers/pull/9562.
     """
 
-    algorithm_name = "fastercache"
-    references = {"GitHub": "https://github.com/Vchitect/FasterCache", "Paper": "https://arxiv.org/abs/2410.19355"}
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    compatible_algorithms = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
+    algorithm_name: str = "fastercache"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/Vchitect/FasterCache",
+        "Paper": "https://arxiv.org/abs/2410.19355",
+    }
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
 
     def get_hyperparameters(self) -> list:
         """

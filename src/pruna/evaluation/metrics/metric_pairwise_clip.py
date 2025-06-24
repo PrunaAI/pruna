@@ -48,6 +48,8 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
     metric_name: str = "pairwise_clip_score"
 
     def __init__(self, **kwargs: Any) -> None:
+        if "device" in kwargs:
+            kwargs.pop("device")
         if "call_type" in kwargs:
             pruna_logger.error(f"Call type is not supported for {self.metric_name}. Using default call type {PAIRWISE}")
             kwargs.pop("call_type")

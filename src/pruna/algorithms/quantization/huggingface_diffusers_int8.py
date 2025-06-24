@@ -26,7 +26,7 @@ from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
 )
-from pruna.engine.utils import safe_memory_cleanup
+from pruna.engine.utils import determine_dtype, move_to_device
 
 
 class DiffusersInt8Quantizer(PrunaQuantizer):
@@ -39,17 +39,14 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
     This algorithm is specifically adapted for diffusers models.
     """
 
-    algorithm_name = "diffusers_int8"
-    references = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    compatible_algorithms = dict(
-        factorizer=["qkv_diffusers"],
-        cacher=["deepcache", "fastercache", "fora", "pab"],
-        compiler=["torch_compile"],
+    algorithm_name: str = "diffusers_int8"
+    references: dict[str, str] = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cuda", "accelerate"]
+    compatible_algorithms: dict[str, list[str]] = dict(
+        factorizer=["qkv_diffusers"], cacher=["deepcache", "fastercache", "fora", "pab"], compiler=["torch_compile"]
     )
 
     def get_hyperparameters(self) -> list:
@@ -122,25 +119,29 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
             The quantized model.
         """
         with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
-            # cast original model to CPU to free memory for smashed model
-            if hasattr(model, "to"):
-                input_device = model.device
-                model.to("cpu")
-                safe_memory_cleanup()
-
             # save the latent model (to be quantized) in a temp directory
             if hasattr(model, "transformer"):
-                model.transformer.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(model.transformer).__name__)
-                compute_dtype = next(iter(model.transformer.parameters())).dtype
+                working_model = model.transformer
+                device_map = {
+                    "": smash_config.device
+                    if smash_config.device != "accelerate"
+                    else smash_config.device_map["transformer"]
+                }
             elif hasattr(model, "unet"):
-                model.unet.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(model.unet).__name__)
-                compute_dtype = next(iter(model.unet.parameters())).dtype
+                working_model = model.unet
+                device_map = {
+                    "": smash_config.device if smash_config.device != "accelerate" else smash_config.device_map["unet"]
+                }
             else:
-                model.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(model).__name__)
-                compute_dtype = next(iter(model.parameters())).dtype
+                working_model = model
+                device_map = (
+                    {"": smash_config.device} if smash_config.device != "accelerate" else smash_config.device_map
+                )
+
+            move_to_device(working_model, "cpu")
+            working_model.save_pretrained(temp_dir)
+            latent_class = getattr(diffusers, type(working_model).__name__)
+            compute_dtype = determine_dtype(working_model)
 
             bnb_config = DiffusersBitsAndBytesConfig(
                 load_in_8bit=smash_config["weight_bits"] == 8,
@@ -159,6 +160,7 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 temp_dir,
                 quantization_config=bnb_config,
                 torch_dtype=compute_dtype,
+                device_map=device_map,
             )
             # replace the latent model in the pipeline
             if hasattr(model, "transformer"):
@@ -167,10 +169,6 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 model.unet = smashed_latent
             else:
                 model = smashed_latent
-
-            # move the model back to the original device
-            if hasattr(model, "to"):
-                model.to(input_device)
             return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

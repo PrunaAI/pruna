@@ -76,7 +76,7 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
         model=model_id,
         chunk_length_s=30,
         torch_dtype=torch.float16,
-        device="cpu",
+        device_map="cpu",
     )
     smash_config = SmashConfig()
     smash_config.add_tokenizer(source_model_id)
@@ -99,9 +99,9 @@ def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any])
     return model, smash_config
 
 
-def get_automodel_transformers(model_id: str) -> tuple[Any, SmashConfig]:
+def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get an AutoModelForCausalLM model for text generation."""
-    model = AutoModelForCausalLM.from_pretrained(model_id)
+    model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
     smash_config = SmashConfig()
     try:
         smash_config.add_tokenizer(model_id)

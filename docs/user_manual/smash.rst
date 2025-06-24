@@ -29,35 +29,32 @@ Let's see what that looks like in code.
 
 .. code-block:: python
 
-    from pruna import smash, SmashConfig
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
+
+    from pruna import SmashConfig, smash
     from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
     from pruna.evaluation.task import Task
 
     # Load the model
-    model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
+    smash_config["quantizer"] = "hqq_diffusers"
 
     # Smash the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Evaluate the model
-    metrics = ['clip_score', 'psnr']
-    task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+    metrics = ["clip_score", "psnr"]
+    task = Task(metrics, datamodule=PrunaDataModule.from_string("LAION256"))
     eval_agent = EvaluationAgent(task)
     eval_agent.evaluate(optimized_model)
 
     # Run inference
     optimized_model.set_progress_bar_config(disable=True)
-    optimized_model.inference_handler.model_args.update(
-        {"num_inference_steps": 1, "guidance_scale": 0.0}
-    )
-    optimized_model("A serene landscape with mountains").images[0]
-
+    optimized_model("A serene landscape with mountains").images[0].save("output.png")
 
 Step-by-Step Optimisation Workflow
 ----------------------------------
@@ -69,10 +66,9 @@ First, load any model using its original library, like ``transformers`` or ``dif
 
 .. code-block:: python
 
-    from diffusers import StableDiffusionPipeline
+    from diffusers import DiffusionPipeline
 
-    base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
-
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
 Step 2: Define optimizations with a ``SmashConfig``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,14 +77,14 @@ After loading the model, we can define a ``SmashConfig`` to customize the optimi
 This ``SmashConfig`` is a dictionary-like object that configures which optimizations to apply to your model.
 You can specify multiple optimization algorithms from different categories like batching, caching and quantization.
 
-For now, let's just use a ``cacher`` to accelerate the model during inference.
+For now, let's just use a ``quantizer`` to accelerate the model during inference.
 
 .. code-block:: python
 
     from pruna import SmashConfig
 
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"  # Accelerate the model with caching
+    smash_config["quantizer"] = "hqq_diffusers"  # Accelerate the model with caching
 
 Pruna support a wide range of algorithms for specific optimizations, all with different trade-offs.
 To understand how to configure the right one for your scenario, see :doc:`Define a SmashConfig </docs_pruna/user_manual/configure>`.
@@ -101,10 +97,22 @@ Let's use the ``smash()`` function to apply the configured optimizations:
 
 .. code-block:: python
 
-    from pruna import smash
+    from pruna import SmashConfig, smash
 
+    from diffusers import DiffusionPipeline
+
+    # Load the model
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
+
+    # Create and configure SmashConfig
+    smash_config = SmashConfig()
+    smash_config["quantizer"] = "hqq_diffusers"
+
+    # Smash the model
     optimized_model = smash(model=base_model, smash_config=smash_config)
 
+    # Save the optimized model
+    optimized_model.save_to_hub("PrunaAI/Segmind-Vega-smashed")
 
 The ``smash()`` function returns a ``PrunaModel`` - a wrapper that provides a standardized interface for the optimized model. So, we can still use the model as we would use the original one.
 
@@ -118,10 +126,19 @@ To evaluate the optimized model, we can use the same interface as the original m
     from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
 
+    # Load the optimized model
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
+
+    # Define metrics
     metrics = ['clip_score', 'psnr']
+
+    # Define task
     task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+
+    # Evaluate the model
     eval_agent = EvaluationAgent(task)
-    eval_agent.evaluate(optimized_model)
+    results = eval_agent.evaluate(optimized_model)
+    print(results)
 
 To understand how to run more complex evaluation workflows, see :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>`.
 
@@ -132,11 +149,15 @@ To run inference with the optimized model, we can use the same interface as the 
 
 .. code-block:: python
 
+    from pruna import PrunaModel
+
+    # Load the optimized model
+    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
+
     optimized_model.set_progress_bar_config(disable=True)
-    optimized_model.inference_handler.model_args.update(
-        {"num_inference_steps": 1, "guidance_scale": 0.0}
-    )
-    optimized_model("A serene landscape with mountains").images[0]
+
+    prompt = "A serene landscape with mountains"
+    optimized_model(prompt).images[0].save("output.png")
 
 Example use cases
 -----------------
@@ -148,60 +169,64 @@ Example 1: Diffusion Model Optimization
 
 .. code-block:: python
 
-    from diffusers import StableDiffusionPipeline
-    from pruna import smash, SmashConfig
+    from diffusers import DiffusionPipeline
+
+    from pruna import SmashConfig, smash
 
     # Load the model
-    model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+    model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["cacher"] = "deepcache"
-    smash_config["compiler"] = "stable_fast"
+    smash_config["compiler"] = "torch_compile"
+    smash_config["quantizer"] = "hqq_diffusers"
 
     # Optimize the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Generate an image
-    optimized_model("A serene landscape with mountains").images[0]
+    prompt = "A serene landscape with mountains"
+    optimized_model(prompt).images[0].save("output.png")
+
 
 Example 2: Large Language Model Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-    from transformers import AutoModelForCausalLM
-    from pruna import smash, SmashConfig
+    from transformers import pipeline
+
+    from pruna import SmashConfig, smash
 
     # Load the model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m")
+    model_id = "meta-llama/Llama-3.2-1b-Instruct"
+    pipe = pipeline("text-generation", model=model_id)
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["quantizer"] = "gptq"  # Apply GPTQ quantization
+    smash_config["compiler"] = "torch_compile"
+    smash_config["quantizer"] = "hqq"
 
     # Optimize the model
-    optimized_model = smash(model=model, smash_config=smash_config)
+    optimized_model = smash(model=pipe.model, smash_config=smash_config)
 
     # Use the model for generation
-    input_text = "The best way to learn programming is"
-    optimized_model(input_text)
-
+    pipe("The best way to learn programming is", max_new_tokens=100)
 
 Example 3: Speech Recognition Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-    from transformers import AutoModelForSpeechSeq2Seq
-    from pruna import smash, SmashConfig
+    import requests
     import torch
+    from transformers import AutoModelForSpeechSeq2Seq
+
+    from pruna import SmashConfig, smash
 
     # Load the model
-    model_id = "openai/whisper-large-v3"
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True
-    ).to("cuda")
+    model_id = "openai/whisper-tiny"
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True).to("cuda")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
@@ -212,5 +237,17 @@ Example 3: Speech Recognition Optimization
     # Optimize the model
     optimized_model = smash(model=model, smash_config=smash_config)
 
-    # Use the model for transcription
-    optimized_model("audio_file.wav")
+    # Download and transcribe audio sample
+    audio_url = "https://huggingface.co/datasets/reach-vb/random-audios/resolve/main/sam_altman_lex_podcast_367.flac"
+    audio_file = "sam_altman_lex_podcast_367.flac"
+
+    # Download audio file
+    response = requests.get(audio_url)
+    response.raise_for_status()  # Raise exception for bad status codes
+
+    # Save audio file
+    with open(audio_file, "wb") as f:
+        f.write(response.content)
+
+    # Transcribe audio
+    transcription = optimized_model(audio_file)

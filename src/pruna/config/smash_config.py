@@ -39,6 +39,7 @@ from pruna.logging.logger import pruna_logger
 ADDITIONAL_ARGS = [
     "batch_size",
     "device",
+    "device_map",
     "cache_dir",
     "save_fns",
     "load_fns",
@@ -48,6 +49,7 @@ ADDITIONAL_ARGS = [
 TOKENIZER_SAVE_PATH = "tokenizer/"
 PROCESSOR_SAVE_PATH = "processor/"
 SMASH_CONFIG_FILE_NAME = "smash_config.json"
+SUPPORTED_DEVICES = ["cpu", "cuda", "mps", "accelerate"]
 
 
 class SmashConfig:
@@ -61,7 +63,7 @@ class SmashConfig:
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
     device : str | torch.device | None, optional
-        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
+        The device to be used for smashing, options are "cpu", "cuda", "mps", "accelerate". Default is None.
         If None, the best available device will be used.
     cache_dir_prefix : str, optional
         The prefix for the cache directory. If None, a default cache directory will be created.
@@ -92,6 +94,7 @@ class SmashConfig:
         else:
             self.batch_size = batch_size
         self.device = set_to_best_available_device(device)
+        self.device_map = None
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
@@ -165,16 +168,19 @@ class SmashConfig:
             value = config_dict.pop("load_fn")
             config_dict["load_fns"] = [value]
 
+        # support deprecated max batch size argument
+        if "max_batch_size" in config_dict:
+            config_dict["batch_size"] = config_dict.pop("max_batch_size")
+
         for name in ADDITIONAL_ARGS:
+            if name not in config_dict:
+                pruna_logger.warning(f"Argument {name} not found in config file. Skipping...")
+                continue
+
             # do not load the old cache directory
             if name == "cache_dir":
                 if name in config_dict:
                     del config_dict[name]
-                continue
-
-            # backwards compatibility for old batch size argument
-            if name == "batch_size" and "batch_size" not in config_dict:
-                setattr(self, name, config_dict.pop("max_batch_size"))
                 continue
 
             setattr(self, name, config_dict.pop(name))

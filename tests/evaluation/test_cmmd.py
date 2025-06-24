@@ -50,7 +50,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
     ],
     indirect=["model_fixture"],
 )
-def test_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
+def test_task_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
     """Test CMMD pairwise."""
     model, _ = model_fixture
     data_module = PrunaDataModule.from_string("LAION256")
@@ -67,3 +67,49 @@ def test_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip
     result = eval_agent.evaluate(model)
 
     assert result[0].result == pytest.approx(0.0, abs=1e-2)
+
+
+@pytest.mark.parametrize(
+    "model_fixture, device, clip_model",
+    [
+        pytest.param("sd_tiny_random", "cuda", "openai/clip-vit-large-patch14-336", marks=pytest.mark.cuda),
+    ],
+    indirect=["model_fixture"],
+)
+def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
+    """Test CMMD pairwise using direct parameters to EvaluationAgent."""
+    model, _ = model_fixture
+    data_module = PrunaDataModule.from_string("LAION256")
+    data_module.limit_datasets(10)
+
+    eval_agent = EvaluationAgent(
+        request=[CMMD(call_type="pairwise", clip_model_name=clip_model, device=device)],
+        datamodule=data_module,
+        device=device,
+    )
+
+    eval_agent.evaluate(model)
+    result = eval_agent.evaluate(model)
+
+    assert result[0].result == pytest.approx(0.0, abs=1e-2)
+
+
+def test_evaluation_agent_parameter_validation():
+    """Test parameter validation for EvaluationAgent constructor."""
+    data_module = PrunaDataModule.from_string("LAION256")
+
+    device = "cpu"
+
+    with pytest.raises(ValueError, match=r"Cannot specify both 'task' parameter and direct parameters"):
+        task = Task(request="image_generation_quality", datamodule=data_module, device=device)
+        EvaluationAgent(task=task, request="image_generation_quality")
+
+    with pytest.raises(ValueError, match=r"both 'request' and 'datamodule' must be provided"):
+        EvaluationAgent(request="image_generation_quality")
+
+    with pytest.raises(ValueError, match=r"both 'request' and 'datamodule' must be provided"):
+        EvaluationAgent(datamodule=data_module)
+
+    task = Task(request="image_generation_quality", datamodule=data_module, device=device)
+    agent = EvaluationAgent(task=task)
+    assert agent is not None

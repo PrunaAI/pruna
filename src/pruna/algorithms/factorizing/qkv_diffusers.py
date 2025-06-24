@@ -29,18 +29,17 @@ class QKVDiffusers(PrunaFactorizer):
     all at once: the matrix multiplication involve a larger matrix but we compute one operation instead of three.
     """
 
-    algorithm_name = "qkv_diffusers"
-    references = {
+    algorithm_name: str = "qkv_diffusers"
+    references: dict[str, str] = {
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",
     }
-    save_fn = SAVE_FUNCTIONS.save_before_apply
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(
         quantizer=["diffusers_int8", "hqq_diffusers", "quanto", "torchao"],
         cacher=["deepcache", "fora"],
         compiler=["torch_compile"],
