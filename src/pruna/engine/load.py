@@ -253,7 +253,7 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwarg
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
-def load_diffusers_model(path: path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+def load_diffusers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
@@ -330,7 +330,7 @@ def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     return model
 
 
-def load_hqq(model_path: path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a model quantized with HQQ from the given model path.
 
@@ -386,7 +386,7 @@ def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
-def load_hqq_diffusers(path: path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 

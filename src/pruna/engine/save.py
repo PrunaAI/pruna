@@ -114,7 +114,7 @@ def save_pruna_model_to_hub(
         The SmashConfig object containing the save and load functions.
     repo_id : str
         The repository ID.
-    model_path : str | Path| None, optional
+    model_path : str | Path | None, optional
         The path to the directory where the model will be saved.
     revision : str | None, optional
         The revision of the model.
