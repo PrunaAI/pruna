@@ -20,7 +20,7 @@ import tempfile
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Union
+from typing import TYPE_CHECKING, Any, List
 
 import torch
 import transformers
@@ -94,9 +94,9 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
 
 
 def save_pruna_model_to_hub(
-    self: Union["PrunaModel", Any],
+    instance: "PrunaModel" | Any,
     model: Any,
-    smash_config: Union["SmashConfig", Any],
+    smash_config: "SmashConfig" | Any,
     repo_id: str,
     model_path: str | Path | None = None,
     *,
@@ -109,12 +109,12 @@ def save_pruna_model_to_hub(
     print_report_every: int = 60,
 ) -> None:
     """
-    Save the model to the specified directory.
+    Save the model to the Hugging Face Hub.
 
     Parameters
     ----------
-    self : Union[Any, PrunaModel]
-        The PrunaModel object.
+    instance : PrunaModel | Any
+        The PrunaModel instance to save.
     model : Any
         The model to save.
     smash_config : Union[SmashConfig, Any]
@@ -162,12 +162,12 @@ def save_pruna_model_to_hub(
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
-        pruna_library = self.__module__.split(".")[0] if "." in self.__module__ else self.__module__
+        pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
         content = template.format(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
-            pruna_model_class=self.__class__.__name__,
+            pruna_model_class=instance.__class__.__name__,
             pruna_library=pruna_library,
         )
 
