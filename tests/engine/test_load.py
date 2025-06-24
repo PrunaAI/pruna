@@ -41,7 +41,7 @@ def test_load_functions_path_types(tmp_path, path_type: str) -> None:
         test_path = str(model_path)
     else:
         test_path = Path(model_path)
-    loaded_model = LOAD_FUNCTIONS.pickled(test_path)
+    loaded_model = LOAD_FUNCTIONS.pickled(test_path, SmashConfig())
     assert isinstance(loaded_model, torch.nn.Linear)
     assert loaded_model.in_features == 5
     assert loaded_model.out_features == 3
