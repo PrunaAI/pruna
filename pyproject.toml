@@ -124,16 +124,11 @@ dev = [
     "pyc-wheel",
     "ruff",
     "numpydoc-validation",
-]
-tests = [
     "pytest",
     "pytest-cov",
     "coverage",
     "docutils",
-    "jupyterlab",
-    "numpydoc-validation",
     "mypy",
-    "ruff",
     "types-PyYAML",
     "logbar",
 ]
