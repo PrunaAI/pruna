@@ -1,0 +1,13 @@
+name: setup-uv-project
+description: Install uv and set up the project with its dependencies
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+      with:
+        activate-environment: true
+        enable-cache: true
+
+    - shell: bash
+      run: uv sync --frozen --extra tests
