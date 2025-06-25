@@ -98,7 +98,7 @@ dependencies = [
 
 [project.optional-dependencies]
 stable-fast = [
-    "xformers==0.0.30",
+    "xformers==0.0.31",
     "stable-fast-pruna==1.0.7",
 ]
 # dependencies are added here because the wheels aren't bundling them
@@ -112,7 +112,7 @@ gptq = [
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 full = [
-    "xformers==0.0.30",
+    "xformers==0.0.31",
     "stable-fast-pruna==1.0.7",
 ]
 dev = [
