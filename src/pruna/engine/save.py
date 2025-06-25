@@ -20,13 +20,13 @@ import tempfile
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, List
 
 import torch
 import transformers
 from huggingface_hub import upload_large_folder
 
-from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME, SmashConfig
+from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
 from pruna.engine.load import (
     LOAD_FUNCTIONS,
     PICKLED_FILE_NAME,
@@ -36,6 +36,10 @@ from pruna.engine.load import (
 from pruna.engine.model_checks import get_helpers
 from pruna.engine.utils import determine_dtype
 from pruna.logging.logger import pruna_logger
+
+if TYPE_CHECKING:
+    from pruna.config.smash_config import SmashConfig
+    from pruna.engine.pruna_model import PrunaModel
 
 
 def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -90,8 +94,9 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
 
 
 def save_pruna_model_to_hub(
+    instance: "PrunaModel" | Any,
     model: Any,
-    smash_config: SmashConfig,
+    smash_config: "SmashConfig" | Any,
     repo_id: str,
     model_path: str | Path | None = None,
     *,
@@ -104,13 +109,15 @@ def save_pruna_model_to_hub(
     print_report_every: int = 60,
 ) -> None:
     """
-    Save the model to the specified directory.
+    Save the model to the Hugging Face Hub.
 
     Parameters
     ----------
+    instance : PrunaModel | Any
+        The PrunaModel instance to save.
     model : Any
         The model to save.
-    smash_config : SmashConfig
+    smash_config : Union[SmashConfig, Any]
         The SmashConfig object containing the save and load functions.
     repo_id : str
         The repository ID.
@@ -155,10 +162,13 @@ def save_pruna_model_to_hub(
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         template = template_path.read_text()
+        pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
         content = template.format(
             repo_id=repo_id,
             smash_config=json.dumps(smash_config_data, indent=4),
             library_name=library_name,
+            pruna_model_class=instance.__class__.__name__,
+            pruna_library=pruna_library,
         )
 
         # Define the path for the README file and write the formatted content to it
@@ -305,6 +315,7 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         The SmashConfig object containing the save and load functions.
     """
     from pruna.algorithms.quantization.hqq import HQQQuantizer
+
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
     if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
