@@ -156,15 +156,13 @@ class PrunaAlgorithmBase(ABC):
         """
         pass
 
-    @abstractmethod
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """Provide a algorithm packages for the algorithm."""
-        pass
+        return dict()
 
-    @abstractmethod
     def get_hyperparameters(self) -> list:
         """Configure all algorithm-specific hyperparameters with ConfigSpace."""
-        pass
+        return []
 
     @abstractmethod
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
