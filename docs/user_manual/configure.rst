@@ -119,6 +119,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - ❌
      - ➖
      - ✅
+   * - ``distributer``
+     - Distributes the inference, the model or certain calculations across multiple devices.
+     - ✅
+     - ❌
+     - ➖
 
 ✅(improves), ➖(approx. the same), ❌(worsens)
 
