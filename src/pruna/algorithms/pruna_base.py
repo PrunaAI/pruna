@@ -157,11 +157,25 @@ class PrunaAlgorithmBase(ABC):
         pass
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
-        """Provide a algorithm packages for the algorithm."""
+        """
+        Provide a algorithm packages for the algorithm.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The algorithm packages.
+        """
         return dict()
 
     def get_hyperparameters(self) -> list:
-        """Configure all algorithm-specific hyperparameters with ConfigSpace."""
+        """
+        Configure all algorithm-specific hyperparameters with ConfigSpace.
+
+        Returns
+        -------
+        list
+            The hyperparameters for the algorithm.
+        """
         return []
 
     @abstractmethod
