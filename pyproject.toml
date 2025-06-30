@@ -27,7 +27,7 @@ extra-index-url = ["https://prunaai.pythonanywhere.com/simple/"]
 
 [project]
 name = "pruna"
-version = "0.2.5"
+version = "0.2.6"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
