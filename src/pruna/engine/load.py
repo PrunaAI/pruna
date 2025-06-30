@@ -355,17 +355,17 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
 
     # if the model is a janus like model, we need to load the quantized model from the hqq_language_model directory
     if os.path.exists(os.path.join(model_path, "hqq_language_model")):
-        quantized_path = os.path.join(model_path, "hqq_language_model")
+        quantized_path = str(os.path.join(model_path, "hqq_language_model"))
+        quantized_model_path = os.path.join(quantized_path, "qmodel.pt")
         # load the weight on cpu to rename attr -> model.attr,
         # and also artifically add a random lm_head to the weights.
-        weights = torch.load(os.path.join(quantized_path, "qmodel.pt"), map_location="cpu", weights_only=True)
+        weights = torch.load(quantized_model_path, map_location="cpu", weights_only=True)
         weights = {f"model.{k}" if not k.startswith("model.") else k: v for k, v in weights.items()}
         weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
         # hqq expects the qmodel.pt file to be in the quantized_path directory.
-        expected_quantized_model_path = os.path.join(quantized_path, "qmodel.pt")
-        torch.save(weights, expected_quantized_model_path)
+        torch.save(weights, quantized_model_path)
     else:
-        quantized_path = model_path
+        quantized_path = str(model_path)
 
     try:  # Try to use pipeline for HF specific HQQ quantization
         quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(

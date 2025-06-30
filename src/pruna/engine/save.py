@@ -321,9 +321,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     # we need to create a separate path for the quantized model
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        quantized_path = os.path.join(model_path, "hqq_language_model")
+        quantized_path = os.path.join(str(model_path), "hqq_language_model")
     else:
-        quantized_path = model_path
+        quantized_path = str(model_path)
 
     # save the quantized model only.
     with ModelContext(model) as (pipeline, working_model, denoiser_type):
