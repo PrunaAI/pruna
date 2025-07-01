@@ -120,23 +120,18 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
         """
         with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
             # save the latent model (to be quantized) in a temp directory
+            device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
             if hasattr(model, "transformer"):
                 working_model = model.transformer
                 device_map = {
-                    "": smash_config.device
-                    if smash_config.device != "accelerate"
-                    else smash_config.device_map["transformer"]
+                    "": device if smash_config.device != "accelerate" else smash_config.device_map["transformer"]
                 }
             elif hasattr(model, "unet"):
                 working_model = model.unet
-                device_map = {
-                    "": smash_config.device if smash_config.device != "accelerate" else smash_config.device_map["unet"]
-                }
+                device_map = {"": device if smash_config.device != "accelerate" else smash_config.device_map["unet"]}
             else:
                 working_model = model
-                device_map = (
-                    {"": smash_config.device} if smash_config.device != "accelerate" else smash_config.device_map
-                )
+                device_map = {"": device} if smash_config.device != "accelerate" else smash_config.device_map
 
             move_to_device(working_model, "cpu")
             working_model.save_pretrained(temp_dir)

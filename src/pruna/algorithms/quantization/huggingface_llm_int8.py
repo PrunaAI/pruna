@@ -121,12 +121,13 @@ class LLMInt8Quantizer(PrunaQuantizer):
                 bnb_4bit_use_double_quant=smash_config["double_quant"],
             )
 
+            device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
             smashed_model = AutoModelForCausalLM.from_pretrained(
                 temp_dir,
                 quantization_config=bnb_config,
                 trust_remote_code=True,
                 torch_dtype=smash_config["compute_dtype"],  # storage type of the non-int8 params
-                device_map=smash_config.device_map if smash_config.device == "accelerate" else smash_config.device,
+                device_map=smash_config.device_map if smash_config.device == "accelerate" else device,
             )
 
         return smashed_model
