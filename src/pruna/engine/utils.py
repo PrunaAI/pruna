@@ -108,46 +108,6 @@ def safe_is_instance(model: Any, instance_type: type) -> bool:
     return isinstance(model, instance_type)
 
 
-def _normalize_device_type(device: str | torch.device | dict[str, str] | None) -> str | dict[str, str]:
-    """
-    Normalize device type to a string representation.
-
-    Parameters
-    ----------
-    device : str | torch.device | dict[str, str] | None
-        The device to normalize.
-
-    Returns
-    -------
-    str | dict[str, str]
-        The normalized device type as a string or device map.
-    """
-    if device is None:
-        return "cpu"  # Default fallback
-    if isinstance(device, torch.device):
-        return str(device)
-    return device
-
-
-def _normalize_device_type(device: str | torch.device) -> str:
-    """
-    Normalize device type to a string representation.
-
-    Parameters
-    ----------
-    device : str | torch.device
-        The device to normalize.
-
-    Returns
-    -------
-    str
-        The normalized device type as a string.
-    """
-    if isinstance(device, torch.device):
-        return device.type
-    return device
-
-
 def move_to_device(
     model: Any,
     device: str | torch.device,
@@ -507,34 +467,19 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         pruna_logger.info(f"Using best available device: '{device}'")
         return device
 
-    if device == "cpu":
-
     device_str = str(device)
     if device_str == "cpu":
         return "cpu"
-
-    if device == "accelerate":
     elif device_str == "accelerate":
         if not torch.cuda.is_available() and not torch.backends.mps.is_available():
             raise ValueError("'accelerate' requested but neither CUDA nor MPS is available.")
         return "accelerate"
-
-    if device == "cuda":
-        if not torch.cuda.is_available():
-            pruna_logger.warning("'cuda' requested but not available.")
-            return set_to_best_available_device(device=None)
-        return "cuda"
-
-    if device == "mps":
     elif device_str.startswith("cuda"):
         return _resolve_cuda_device(device_str)
     elif device_str.startswith("mps"):
         if not torch.backends.mps.is_available():
             pruna_logger.warning("'mps' requested but not available.")
             return set_to_best_available_device(device=None)
-        return "mps"
-
-    raise ValueError(f"Device not supported: '{device}'")
         return device_str
     else:
         raise ValueError(f"Device not supported: '{device_str}'")
