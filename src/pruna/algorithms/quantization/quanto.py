@@ -35,18 +35,14 @@ class QuantoQuantizer(PrunaQuantizer):
     and device memory usage is roughly reduced in proportion to the bitwidth ratio.
     """
 
-    algorithm_name = "quanto"
-    references = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
-    save_fn = SAVE_FUNCTIONS.pickled
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    compatible_algorithms = dict(
-        factorizer=["qkv_diffusers"],
-        cacher=["deepcache"],
-    )
+    algorithm_name: str = "quanto"
+    references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    compatible_algorithms: dict[str, list[str]] = dict(factorizer=["qkv_diffusers"], cacher=["deepcache"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -133,7 +129,7 @@ class QuantoQuantizer(PrunaQuantizer):
                         calibrate(
                             working_model,
                             smash_config.val_dataloader(),
-                            smash_config["device"],
+                            model.device,  # only e.g. CUDA here is not enough, we need also the correct device index
                             batch_size=smash_config.batch_size,
                             samples=smash_config["calibration_samples"],
                         )

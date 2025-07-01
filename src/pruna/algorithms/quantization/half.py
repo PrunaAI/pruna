@@ -29,16 +29,15 @@ class HalfQuantizer(PrunaQuantizer):
     that support it.
     """
 
-    algorithm_name = "half"
-    references = {"GitHub": "https://github.com/pytorch/pytorch"}
+    algorithm_name: str = "half"
+    references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
-    save_fn = SAVE_FUNCTIONS.save_before_apply
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(
         batcher=["ifw", "whisper_s2t"],
         cacher=["deepcache"],
         compiler=[

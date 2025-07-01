@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from torchvision import transforms
@@ -47,13 +47,13 @@ class DiffuserHandler(InferenceHandler):
             default_args.update(model_args)
         self.model_args = default_args
 
-    def prepare_inputs(self, batch: Tuple[Any, ...]) -> Any:
+    def prepare_inputs(self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]) -> Any:
         """
         Prepare the inputs for the model.
 
         Parameters
         ----------
-        batch : Tuple[Any, ...]
+        batch : List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]
             The batch to prepare the inputs for.
 
         Returns

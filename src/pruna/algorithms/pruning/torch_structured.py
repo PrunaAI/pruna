@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import torch
 import torch.nn as nn
-import torch_pruning as tp
 from ConfigSpace import (
     CategoricalHyperparameter,
     UniformFloatHyperparameter,
@@ -36,7 +35,6 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.logging.logger import pruna_logger
 
 is_gradient_based = ["TaylorImportance", "HessianImportance"]
 
@@ -49,16 +47,15 @@ class TorchStructuredPruner(PrunaPruner):
     and computationally efficient model while preserving a regular structure that standard hardware can easily optimize.
     """
 
-    algorithm_name = "torch_structured"
-    references = {"GitHub": "https://github.com/pytorch/pytorch"}
+    algorithm_name: str = "torch_structured"
+    references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # when performing structured pruning, the tensor sizes can change and disrupt normal saving
     save_fn = SAVE_FUNCTIONS.pickled
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    dataset_required = True
-    compatible_algorithms = dict(quantizer=["half"])
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    dataset_required: bool = True
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -170,7 +167,7 @@ class TorchStructuredPruner(PrunaPruner):
             model.float()
 
         # Retrieve the importance function or class from the mapping based on the pruning type
-        importance_function = getattr(tp.importance, smash_config["type"])
+        importance_function = getattr(imported_modules["tp"].importance, smash_config["type"])
 
         ch_groups, num_heads, ignored_layers = get_prunable_layers(model, smash_config, imported_modules)
 
@@ -178,7 +175,7 @@ class TorchStructuredPruner(PrunaPruner):
         example_input = next(iter(smash_config.train_dataloader()))[0][:1, :].to(device)  # type: ignore[arg-type]
         iterative_steps = smash_config["it_steps"]
 
-        pruner = tp.pruner.MetaPruner(
+        pruner = imported_modules["tp"].pruner.MetaPruner(
             model,
             example_input,
             importance=importance_function(),
@@ -221,19 +218,13 @@ class TorchStructuredPruner(PrunaPruner):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            import timm
-            import torchvision
-            from timm.models.mvitv2 import MultiScaleAttention
-            from timm.models.mvitv2 import MultiScaleVit as MViT
-        except ImportError:
-            pruna_logger.error(
-                "You are trying to use the Pruna Pruner, but timm is not installed. "
-                "This is likely because you did not install the GPU version of Pruna."
-            )
-            raise
+        import timm
+        import torch_pruning as tp
+        import torchvision
+        from timm.models.mvitv2 import MultiScaleAttention
+        from timm.models.mvitv2 import MultiScaleVit as MViT
 
-        return dict(timm=timm, torchvision=torchvision, MultiScaleAttention=MultiScaleAttention, MViT=MViT)
+        return dict(timm=timm, torchvision=torchvision, MultiScaleAttention=MultiScaleAttention, MViT=MViT, tp=tp)
 
 
 def get_prunable_layers(

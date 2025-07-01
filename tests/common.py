@@ -6,11 +6,17 @@ from typing import Any, Callable
 
 import numpydoc_validation
 import pytest
+import torch
+from accelerate.utils import compute_module_sizes, infer_auto_device_map
 from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
+from transformers import Pipeline
 
 from pruna import SmashConfig
-from pruna.engine.utils import safe_memory_cleanup
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
+
+EPS_MEMORY_SIZE = 1000
+NO_SPLIT_MODULES_ACCELERATE = ["OPTDecoderLayer"]
 
 
 def device_parametrized(cls: Any) -> Any:
@@ -19,6 +25,7 @@ def device_parametrized(cls: Any) -> Any:
         "device",
         [
             pytest.param("cuda", marks=pytest.mark.cuda),
+            pytest.param("accelerate", marks=pytest.mark.distributed),
             pytest.param("cpu", marks=pytest.mark.cpu),
         ],
     )(cls)
@@ -67,14 +74,53 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         if device not in algorithm_tester.compatible_devices():
             pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
         algorithm_tester.prepare_smash_config(smash_config, device)
-        load_kwargs = algorithm_tester.check_loading_dtype(model)
-        model = algorithm_tester.cast_to_device(model, device=smash_config["device"])
+        device_map = construct_device_map_manually(model) if device == "accelerate" else None
+        move_to_device(model, device=smash_config["device"], device_map=device_map)
+        assert device == get_device(model)
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
-        algorithm_tester.execute_load(load_kwargs)
+        algorithm_tester.execute_load()
     finally:
         algorithm_tester.final_teardown(smash_config)
+
+
+def construct_device_map_manually(model: Any) -> dict:
+    """
+    Construct a device map manually for a model to enforce it is distributed across 2 GPUs even when it is very small.
+
+    Parameters
+    ----------
+    model : Any
+        The model to construct the device map for.
+
+    Returns
+    -------
+    device_map : dict
+        The device map for the model.
+    """
+    assert torch.cuda.device_count() > 1, "This test requires at least 2 GPUs"
+
+    if isinstance(model, Pipeline):
+        return construct_device_map_manually(model.model)
+
+    if isinstance(model, torch.nn.Module):
+        # even when requesting a balanced device map, some models might be too small to be distributed
+        # we force distribution by adjusting the max memory for each device
+        model_size = compute_module_sizes(model)[""]
+
+        return infer_auto_device_map(
+            model,
+            max_memory={0: model_size - EPS_MEMORY_SIZE, 1: model_size - EPS_MEMORY_SIZE},
+            no_split_module_classes=NO_SPLIT_MODULES_ACCELERATE,
+        )
+    else:
+        # make sure a pipelines components are distributed by putting the first half on GPU 0, second half on GPU 1
+        device_map = {}
+        components = list(filter(lambda x: isinstance(getattr(model, x), torch.nn.Module), model.components.keys()))
+        for i, component in enumerate(components):
+            device_map[component] = int(i > len(components) / 2)
+        return device_map
 
 
 def check_docstrings_content(file: str) -> None:

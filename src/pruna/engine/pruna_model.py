@@ -25,7 +25,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
 from pruna.engine.load import load_pruna_model, load_pruna_model_from_hub
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import get_nn_modules, move_to_device, set_to_eval
+from pruna.engine.utils import get_nn_modules, move_to_device, set_to_best_available_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -74,7 +74,9 @@ class PrunaModel:
             with torch.no_grad():
                 return self.model.__call__(*args, **kwargs)
 
-    def run_inference(self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str) -> Any:
+    def run_inference(
+        self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str | None = None
+    ) -> Any:
         """
         Run inference on the model.
 
@@ -82,14 +84,15 @@ class PrunaModel:
         ----------
         batch : Tuple[List[str] | torch.Tensor, ...]
             The batch to run inference on.
-        device : torch.device | str
-            The device to run inference on.
+        device : torch.device | str | None
+            The device to run inference on. If None, the best available device will be used.
 
         Returns
         -------
         Any
             The processed output.
         """
+        device = set_to_best_available_device(device)
         batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
         if prepared_inputs is not None:
@@ -98,6 +101,22 @@ class PrunaModel:
             outputs = self(**self.inference_handler.model_args)
         outputs = self.inference_handler.process_output(outputs)
         return outputs
+
+    def is_instance(self, instance_type: type) -> bool:
+        """
+        Compare the model to the given instance type.
+
+        Parameters
+        ----------
+        instance_type : type
+            The type to compare the model to.
+
+        Returns
+        -------
+        bool
+            True if the model is an instance of the given type, False otherwise.
+        """
+        return isinstance(self.model, instance_type)
 
     def __getattr__(self, attr: str) -> Any:
         """
@@ -118,6 +137,17 @@ class PrunaModel:
         else:
             return getattr(self.model, attr)
 
+    def __delattr__(self, attr: str) -> None:
+        """
+        Delete an attribute from the model.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute to delete.
+        """
+        delattr(self.model, attr)
+
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """
         Get the nn.Module instances in the model.
@@ -133,13 +163,13 @@ class PrunaModel:
         """Set the model to evaluation mode."""
         set_to_eval(self.model)
 
-    def move_to_device(self, device: str | torch.device) -> None:
+    def move_to_device(self, device: str) -> None:
         """
         Move the model to a specific device.
 
         Parameters
         ----------
-        device : str | torch.device
+        device : str
             The device to move the model to.
         """
         move_to_device(self.model, device)
@@ -211,7 +241,7 @@ class PrunaModel:
 
     @staticmethod
     @track_usage
-    def from_pretrained(model_path: str, verbose: bool = False, **kwargs: Any) -> Any:
+    def from_pretrained(model_path: str, verbose: bool = False, **kwargs: Any) -> PrunaModel:
         """
         Load a `PrunaModel` from the specified model path.
 
@@ -265,7 +295,7 @@ class PrunaModel:
         local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
         resume_download: Optional[bool] = None,
         **kwargs,
-    ) -> Any:
+    ) -> PrunaModel:
         """
         Load a `PrunaModel` from the specified repository.
 
@@ -343,7 +373,11 @@ class PrunaModel:
             local_dir_use_symlinks=local_dir_use_symlinks,
             resume_download=resume_download,
         )
-        return PrunaModel(model=model, smash_config=smash_config)
+        if not isinstance(model, PrunaModel):
+            model = PrunaModel(model=model, smash_config=smash_config)
+        else:
+            model.smash_config = smash_config
+        return model
 
     def destroy(self) -> None:
         """Destroy model."""

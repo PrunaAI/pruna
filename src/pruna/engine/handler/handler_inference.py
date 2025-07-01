@@ -33,7 +33,7 @@ class InferenceHandler(ABC):
         self.model_args: Dict[str, Any] = {}
 
     @abstractmethod
-    def prepare_inputs(self, batch: Tuple[Any, ...]) -> Any:
+    def prepare_inputs(self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]) -> Any:
         """
         Prepare the inputs for the model.
 

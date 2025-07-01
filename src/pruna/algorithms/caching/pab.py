@@ -28,7 +28,6 @@ from pruna.engine.model_checks import (
     is_mochi_pipeline,
     is_wan_pipeline,
 )
-from pruna.logging.logger import pruna_logger
 
 
 class PABCacher(PrunaCacher):
@@ -40,14 +39,16 @@ class PABCacher(PrunaCacher):
     reduces the number of tunable parameters by setting pipeline specific parameters according to https://github.com/huggingface/diffusers/pull/9562.
     """
 
-    algorithm_name = "pab"
-    references = {"Paper": "https://arxiv.org/abs/2408.12588", "HuggingFace": "https://huggingface.co/docs/diffusers/main/api/cache#pyramid-attention-broadcast"}
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    compatible_algorithms = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
+    algorithm_name: str = "pab"
+    references: dict[str, str] = {
+        "Paper": "https://arxiv.org/abs/2408.12588",
+        "HuggingFace": "https://huggingface.co/docs/diffusers/main/api/cache#pyramid-attention-broadcast",
+    }
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -90,7 +91,7 @@ class PABCacher(PrunaCacher):
             is_flux_pipeline,
             is_hunyuan_pipeline,
             is_mochi_pipeline,
-            is_wan_pipeline
+            is_wan_pipeline,
         ]
         return any(is_pipeline(model) for is_pipeline in pipeline_check_fns)
 
@@ -117,9 +118,15 @@ class PABCacher(PrunaCacher):
         spatial_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
         temporal_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
         cross_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
-        spatial_attention_block_identifiers: Tuple[str, ...] = ("blocks", "transformer_blocks",)
+        spatial_attention_block_identifiers: Tuple[str, ...] = (
+            "blocks",
+            "transformer_blocks",
+        )
         temporal_attention_block_identifiers: Tuple[str, ...] = ("temporal_transformer_blocks",)
-        cross_attention_block_identifiers: Tuple[str, ...] = ("blocks", "transformer_blocks",)
+        cross_attention_block_identifiers: Tuple[str, ...] = (
+            "blocks",
+            "transformer_blocks",
+        )
 
         # set configs according to https://github.com/huggingface/diffusers/pull/9562
         if is_allegro_pipeline(model):
@@ -130,9 +137,15 @@ class PABCacher(PrunaCacher):
             spatial_attention_block_identifiers = ("transformer_blocks",)
         elif is_flux_pipeline(model):
             spatial_attention_timestep_skip_range = (100, 950)
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
         elif is_hunyuan_pipeline(model):
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
         elif is_latte_pipeline(model):
             temporal_attention_block_skip_range = None
             cross_attention_block_skip_range = None
@@ -155,7 +168,7 @@ class PABCacher(PrunaCacher):
             spatial_attention_block_identifiers=spatial_attention_block_identifiers,
             temporal_attention_block_identifiers=temporal_attention_block_identifiers,
             cross_attention_block_identifiers=cross_attention_block_identifiers,
-            current_timestep_callback=lambda: model.current_timestep
+            current_timestep_callback=lambda: model.current_timestep,
         )
         model.transformer.enable_cache(pab_config)
         return model
@@ -169,13 +182,6 @@ class PABCacher(PrunaCacher):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            from diffusers import PyramidAttentionBroadcastConfig
-        except ModuleNotFoundError:
-            pruna_logger.error(
-                "You are trying to use PAB, but the PyramidAttentionBroadcastConfig can not be imported from diffusers. "
-                "This is likely because your diffusers version is too old."
-            )
-            raise
+        from diffusers import PyramidAttentionBroadcastConfig
 
         return dict(pab_config=PyramidAttentionBroadcastConfig)

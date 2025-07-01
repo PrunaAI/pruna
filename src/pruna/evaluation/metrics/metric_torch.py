@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from enum import Enum
 from functools import partial
 from typing import Any, Callable, List, Optional, Union
@@ -33,6 +34,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
 
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -218,6 +220,7 @@ class TorchMetricWrapper(StatefulMetric):
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 
+            kwargs.pop("device", None)
             return PairwiseClipScore(**kwargs)
         return super().__new__(cls)
 
@@ -232,11 +235,12 @@ class TorchMetricWrapper(StatefulMetric):
         """
         super().__init__()
         try:
-            if metric_name == "perplexity":
-                device = kwargs.pop("device", "cuda")
-                self.metric = TorchMetrics[metric_name](**kwargs).to(device)
-            else:
-                self.metric = TorchMetrics[metric_name](**kwargs)
+            device = kwargs.pop("device", None)
+            device = set_to_best_available_device(device=device)
+            self.metric = TorchMetrics[metric_name](**kwargs)
+            with suppress(AttributeError, TypeError):
+                self.metric = self.metric.to(device)
+
             # Get the specific update function for the metric, or use the default if not found.
             self.update_fn = TorchMetrics[metric_name].update_fn
         except KeyError:

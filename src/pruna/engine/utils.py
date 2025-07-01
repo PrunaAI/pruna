@@ -19,11 +19,15 @@ import gc
 import inspect
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 import torch
 import torch.nn as nn
+from accelerate import dispatch_model
+from accelerate.hooks import remove_hook_from_module
 from diffusers.models.modeling_utils import ModelMixin
+from transformers import Pipeline
 
 from pruna.logging.logger import pruna_logger
 
@@ -34,7 +38,7 @@ def safe_memory_cleanup() -> None:
     torch.cuda.empty_cache()
 
 
-def load_json_config(path: str, json_name: str) -> dict:
+def load_json_config(path: str | Path, json_name: str) -> dict:
     """
     Load and parse a JSON configuration file.
 
@@ -83,7 +87,28 @@ def get_nn_modules(model: Any) -> dict[str | None, torch.nn.Module]:
         }
 
 
-def move_to_device(model: Any, device: str | torch.device, raise_error: bool = False) -> None:
+def safe_is_instance(model: Any, instance_type: type) -> bool:
+    """
+    Safely check if the model is an instance of the given type.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    instance_type : type
+        The type to check against.
+
+    Returns
+    -------
+    bool
+        True if the model is an instance of the given type, False otherwise.
+    """
+    if hasattr(model, "is_instance"):
+        return model.is_instance(instance_type)
+    return isinstance(model, instance_type)
+
+
+def move_to_device(model: Any, device: str, raise_error: bool = False, device_map: dict[str, str] | None = None) -> None:
     """
     Move the model to a specific device.
 
@@ -95,10 +120,36 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
         The device to move the model to.
     raise_error : bool
         Whether to raise an error when the device movement fails.
+    device_map : dict[str, str] | None
+        The device map to use if the target device is "accelerate".
     """
-    if hasattr(model, "device") and check_model_already_on_device(model, device):
+    if isinstance(model, Pipeline):
+        move_to_device(model.model, device, raise_error, device_map)
+        # this is a workaround for a flaw in the transformers pipeline handling
+        # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
+        if device != "accelerate" and hasattr(model.model, "hf_device_map"):
+            delattr(model.model, "hf_device_map")
         return
-    if hasattr(model, "to"):
+
+    # sanity check for expected device types
+    if device not in ["cpu", "cuda", "mps", "accelerate"]:
+        raise ValueError("Device must be a string in [cpu, cuda, mps, accelerate].")
+
+    # do not cast if the model is already on the correct device
+    if get_device(model) == device:
+        return
+
+    if device == "accelerate":
+        if device_map is None:
+            raise ValueError("Device map is required when moving to accelerate.")
+        cast_model_to_accelerate_device_map(model, device_map)
+
+    else:
+        if get_device(model) == "accelerate":
+            remove_all_accelerate_hooks(model)
+            # transformers model maintain single-device models with a None map, diffusers does not
+            model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
+
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
@@ -110,32 +161,111 @@ def move_to_device(model: Any, device: str | torch.device, raise_error: bool = F
                 raise ValueError(f"Could not move model to device: {str(e)}")
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
-    elif hasattr(model, "task") and getattr(model, "task") == "automatic-speech-recognition":
-        model.model.to(device)
-    else:
-        if raise_error:
-            raise ValueError("Model does not support device movement.")
-        else:
-            pruna_logger.warning("Model does not support device movement.")
+    safe_memory_cleanup()
 
 
-def check_model_already_on_device(model: Any, device: str | torch.device) -> bool:
+def remove_all_accelerate_hooks(model: Any) -> None:
     """
-    Check if the model is already on the device.
+    Remove all hooks from the model.
+
+    This is a helper function to remove all hooks from the model.
+    It is used to avoid the RecursionError that occurs when the model is referencing itself.
 
     Parameters
     ----------
     model : Any
-        The model to check.
-    device : str | torch.device
-        The device to check.
+        The model to remove the hooks from.
+    """
+    if hasattr(model, "reset_device_map"):
+        # remove distributed device state to be able to use ".to" for diffusers models
+        try:
+            model.reset_device_map()
+        # inside reset device map, diffusers will attempt device casting and bnb is being difficult
+        except ValueError as e:
+            if "bitsandbytes" in str(e):
+                pass
+            else:
+                raise e
+
+    if safe_is_instance(model, torch.nn.Module):
+        # transformers models are all torch.nn.Module, which is what the hook removal expects
+        remove_hook_from_module(model, recurse=True)
+    elif hasattr(model, "components"):
+        # diffusers pipelines e.g. are not torch modules, so we need to find all attributes that are modules
+        # we only do this at the first level, recurse will take care of the rest
+        for attr in model.components:
+            if isinstance(getattr(model, attr), torch.nn.Module):
+                remove_hook_from_module(getattr(model, attr), recurse=True)
+    else:
+        pruna_logger.warning(
+            f"Could not remove hooks from {type(model)}, is not a torch.nn.Module and does not have 'components' "
+        )
+
+
+def cast_model_to_accelerate_device_map(model, device_map):
+    """
+    Cast a Transformers or Diffusers model to devices according to a given device_map.
+
+    Assumes:
+    - device_map only contains CUDA device indices as integers (e.g., 0, 1, 2, ...)
+    - device_map is the one created by accelerate/diffusers/transformers during from_pretrained
+    - No disk or CPU devices in device_map (raises ValueError if encountered)
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to cast.
+    device_map : dict
+        A dictionary mapping module names (str) to CUDA device indices (int).
+    """
+    if any(not isinstance(dev, int) for dev in device_map.values()):
+        raise ValueError("All devices in device_map must be CUDA device indices (integers).")
+
+    if not isinstance(model, torch.nn.Module):
+        for target, device in device_map.items():
+            dispatch_model(getattr(model, target), device_map={"": device}, force_hooks=True)
+    else:
+        dispatch_model(model, device_map=device_map, force_hooks=True)
+
+    model.hf_device_map = device_map.copy()
+
+
+def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, str]:
+    """
+    Get the device of the model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to get the device from.
+    return_device_map : bool
+        Whether to return the device map.
 
     Returns
     -------
-    bool
-        True if the model is already on the device, False otherwise.
+    str | dict[str, str]
+        The device or device map of the model.
     """
-    return model.device == device or model.device == torch.device(device)
+    if isinstance(model, Pipeline):
+        return get_device(model.model, return_device_map)
+
+    if not hasattr(model, "device"):
+        try:
+            model_device = next(model.parameters()).device
+        except StopIteration:
+            raise ValueError("Could not determine device of model, model has no device attribute.")
+    else:
+        model_device = model.device
+
+    if isinstance(model_device, torch.device):
+        model_device = model_device.type
+
+    # a device map that points the whole model to the same device (only key is "") is not considered distributed
+    # when casting a model like this with "to" the device map is not maintained, so we rely on the model.device attribute
+    if hasattr(model, "hf_device_map") and model.hf_device_map is not None and list(model.hf_device_map.keys()) != [""]:
+        model_device = model.hf_device_map if return_device_map else "accelerate"
+
+    return model_device
 
 
 def set_to_eval(model: Any) -> None:
@@ -244,9 +374,9 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
     return torch.float32
 
 
-def check_device_compatibility(device: str | torch.device | None) -> str:
+def set_to_best_available_device(device: str | torch.device | None) -> str:
     """
-    Validate if the specified device is available on the current system.
+    Set the device to the best available device.
 
     Supports 'cuda', 'mps', 'cpu' and other PyTorch devices.
     If device is None, the best available device will be returned.
@@ -262,25 +392,34 @@ def check_device_compatibility(device: str | torch.device | None) -> str:
         Best available device name.
     """
     if isinstance(device, torch.device):
-        device = str(device)
+        device = device.type
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-        pruna_logger.info(f"No device specified. Using best available device: '{device}'")
+        pruna_logger.info(f"Using best available device: '{device}'")
         return device
 
     if device == "cpu":
         return "cpu"
 
-    if device == "cuda" and not torch.cuda.is_available():
-        pruna_logger.warning("'cuda' requested but not available. Falling back to 'cpu'")
-        return "cpu"
+    if device == "accelerate":
+        if not torch.cuda.is_available() and not torch.backends.mps.is_available():
+            raise ValueError("'accelerate' requested but neither CUDA nor MPS is available.")
+        return "accelerate"
 
-    if device == "mps" and not torch.backends.mps.is_available():
-        pruna_logger.warning("'mps' requested but not available. Falling back to 'cpu'")
-        return "cpu"
+    if device == "cuda":
+        if not torch.cuda.is_available():
+            pruna_logger.warning("'cuda' requested but not available.")
+            return set_to_best_available_device(device=None)
+        return "cuda"
 
-    return device
+    if device == "mps":
+        if not torch.backends.mps.is_available():
+            pruna_logger.warning("'mps' requested but not available.")
+            return set_to_best_available_device(device=None)
+        return "mps"
+
+    raise ValueError(f"Device not supported: '{device}'")
 
 
 class ModelContext:

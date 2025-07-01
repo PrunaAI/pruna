@@ -57,8 +57,7 @@ class CTranslateCompiler(PrunaCompiler):
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True
     processor_required: bool = False
-    run_on_cpu: bool = False
-    run_on_cuda: bool = True
+    runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
     compatible_algorithms = dict(batcher=["whisper_s2t"], quantizer=["half"])
 
@@ -199,10 +198,9 @@ class CTranslateCompiler(PrunaCompiler):
         elif self.task_name == "whisper":
             optimized_model = imported_modules["Whisper"](temp_dir, device=smash_config["device"])
             optimized_model = WhisperWrapper(optimized_model, temp_dir, smash_config.processor)
-            optimized_model.config = model.config
         else:
             raise ValueError("Task not supported")
-
+        optimized_model.config = model.config
         return optimized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -522,14 +520,8 @@ class WhisperWrapper:
         torch.Tensor
             The generated sequence IDs representing the transcription.
         """
-        try:
-            from ctranslate2 import StorageView
-        except ImportError:
-            pruna_logger.error(
-                "CTranslate2 is not installed. Please install the full version of pruna with `pip install pruna[full] "
-                " --extra-index-url https://prunaai.pythonanywhere.com/`."
-            )
-            raise
+        from ctranslate2 import StorageView
+
         features = StorageView.from_array(features.cpu().numpy())
         # Detect the language.
         if kwargs.get("language"):

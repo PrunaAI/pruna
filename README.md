@@ -15,7 +15,7 @@
 
 ![GitHub License](https://img.shields.io/github/license/prunaai/pruna?style=flat-square)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/package_build.yaml?style=flat-square)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/internal_contributions_tests.yaml?label=tests&style=flat-square)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/prunaai/pruna/cpu_tests.yaml?label=tests&style=flat-square)
 ![GitHub Release](https://img.shields.io/github/v/release/prunaai/pruna?style=flat-square)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/PrunaAI/pruna?style=flat-square)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pruna?style=flat-square)
@@ -161,7 +161,8 @@ Since Pruna offers a broad range of optimization algorithms, the following table
 | `pruner`     | Removes less important or redundant connections and neurons, resulting in a sparser, more efficient network. | ✅    | ✅     | ❌      |
 | `recoverer`  | Restores the performance of a model after compression.                                       | ➖    | ➖     | ✅      |
 | `factorizer` | Factorization batches several small matrix multiplications into one large fused operation. | ✅ | ➖ | ➖ |
-| `enhancer`   | Enhances the model output by applying post-processing algorithms such as denoising or upscaling. | ❌ | - | ✅ |
+| `enhancer`   | Enhances the model output by applying post-processing algorithms such as denoising or upscaling. | ❌ | ➖ | ✅ |
+| `distributer`   | Distributes the inference, the model or certain calculations across multiple devices. | ✅ | ❌ | ➖ |
 
 ✅ (improves), ➖ (approx. the same), ❌ (worsens)
 
@@ -178,13 +179,9 @@ If you can not find an answer to your question or problem in our [documentation]
 ## <img src="./docs/assets/images/pruna_heart.png" alt="Pruna Heart" width=20></img> Contributors
 
 
-The Pruna package was made with 💜 by the Pruna AI team. [Contribute to the repository][docs-contributing] to become part of the Pruna family!
+The Pruna package was made with 💜 by the Pruna AI team and our amazing contributors. [Contribute to the repository][docs-contributing] to become part of the Pruna family!
 
-<a href="https://github.com/PrunaAI/pruna/graphs/contributors">
-  <img src="https://pruna-github-repository.s3.eu-central-1.amazonaws.com/contributors.png" width="500" />
-</a>
-
-Contributors are displayed in a random order to avoid any perceived ranking.
+[![Contributors](https://contrib.rocks/image?repo=PrunaAI/pruna)](https://github.com/PrunaAI/pruna/graphs/contributors)
 
 ## <img src="./docs/assets/images/pruna_emotional.png" alt="Pruna Emotional" width=20></img> Citation
 

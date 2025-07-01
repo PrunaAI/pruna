@@ -28,7 +28,6 @@ from pruna.engine.model_checks import (
     is_mochi_pipeline,
     is_wan_pipeline,
 )
-from pruna.logging.logger import pruna_logger
 
 
 class FasterCacheCacher(PrunaCacher):
@@ -44,14 +43,16 @@ class FasterCacheCacher(PrunaCacher):
     https://github.com/huggingface/diffusers/pull/9562.
     """
 
-    algorithm_name = "fastercache"
-    references = {"GitHub": "https://github.com/Vchitect/FasterCache", "Paper": "https://arxiv.org/abs/2410.19355"}
-    tokenizer_required = False
-    processor_required = False
-    dataset_required = False
-    run_on_cpu = True
-    run_on_cuda = True
-    compatible_algorithms = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
+    algorithm_name: str = "fastercache"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/Vchitect/FasterCache",
+        "Paper": "https://arxiv.org/abs/2410.19355",
+    }
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    dataset_required: bool = False
+    runs_on: list[str] = ["cpu", "cuda"]
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -126,7 +127,7 @@ class FasterCacheCacher(PrunaCacher):
         spatial_attention_block_identifiers: Tuple[str, ...] = (
             "blocks.*attn1",
             "transformer_blocks.*attn1",
-            "single_transformer_blocks.*attn1"
+            "single_transformer_blocks.*attn1",
         )
         temporal_attention_block_identifiers: Tuple[str, ...] = ("temporal_transformer_blocks.*attn1",)
         attention_weight_callback = lambda _: 0.5  # noqa: E731
@@ -143,12 +144,18 @@ class FasterCacheCacher(PrunaCacher):
             attention_weight_callback = lambda _: 0.3  # noqa: E731
         elif is_flux_pipeline(model):
             spatial_attention_timestep_skip_range = (-1, 961)
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
             tensor_format = "BCHW"
             is_guidance_distilled = True
         elif is_hunyuan_pipeline(model):
             spatial_attention_timestep_skip_range = (99, 941)
-            spatial_attention_block_identifiers = ("transformer_blocks", "single_transformer_blocks",)
+            spatial_attention_block_identifiers = (
+                "transformer_blocks",
+                "single_transformer_blocks",
+            )
             tensor_format = "BCFHW"
             is_guidance_distilled = True
         elif is_latte_pipeline(model):
@@ -200,13 +207,6 @@ class FasterCacheCacher(PrunaCacher):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            from diffusers import FasterCacheConfig
-        except ModuleNotFoundError:
-            pruna_logger.error(
-                "You are trying to use FasterCache, but the FasterCacheConfig can not be imported from diffusers. "
-                "This is likely because your diffusers version is too old."
-            )
-            raise
+        from diffusers import FasterCacheConfig
 
         return dict(FasterCacheConfig=FasterCacheConfig)

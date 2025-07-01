@@ -1,0 +1,43 @@
+name: Fast CPU Tests
+
+permissions:
+  contents: read
+  pull-requests: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: pruna-cpu
+
+    strategy:
+      matrix:
+        python-version: [ "3.10" ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: |
+          uv sync --extra tests
+
+      - name: Run tests
+        run: |
+          uv run pytest -m "cpu and not slow and not high_cpu"
+
+      

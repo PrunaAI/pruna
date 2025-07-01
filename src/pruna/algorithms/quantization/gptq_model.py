@@ -35,17 +35,16 @@ class GPTQQuantizer(PrunaQuantizer):
     advantage of the lower precision.
     """
 
-    algorithm_name = "gptq"
-    references = {"GitHub": "https://github.com/ModelCloud/GPTQModel"}
-    tokenizer_required = True
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = True
-    compatible_algorithms = dict(compiler=["torch_compile"])
-    required_install = (
+    algorithm_name: str = "gptq"
+    references: dict[str, str] = {"GitHub": "https://github.com/ModelCloud/GPTQModel"}
+    tokenizer_required: bool = True
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = True
+    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"])
+    required_install: str = (
         "You must first install the base package with ``pip install pruna`` "
-        "before installing the GPTQ extension with ``pip install pruna[gptq]``"
+        "before installing the GPTQ extension with ``pip install pruna[gptq] --extra-index-url https://prunaai.pythonanywhere.com/``"
     )
 
     def get_hyperparameters(self) -> list:
@@ -142,6 +141,9 @@ class GPTQQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        from gptqmodel import GPTQModel, QuantizeConfig
+        try:
+            from gptqmodel import GPTQModel, QuantizeConfig
+        except ImportError:
+            raise ImportError(f"gptqmodel is not installed. Please install it using {self.required_install}.")
 
         return dict(GPTQModel=GPTQModel, QuantizeConfig=QuantizeConfig)

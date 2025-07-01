@@ -39,13 +39,13 @@ SAVE_BEFORE_SMASH_CACHE_DIR = "save_before_smash"
 PIPELINE_INFO_FILE_NAME = "pipeline_info.json"
 
 
-def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
+def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig]:
     """
     Load a Pruna model from the given model path.
 
     Parameters
     ----------
-    model_path : str
+    model_path : str | Path
         The path to the model directory.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
@@ -73,10 +73,7 @@ def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
     if len(smash_config.load_fns) > 1:
         pruna_logger.error(f"Load functions not used: {smash_config.load_fns[1:]}")
 
-    model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, **kwargs)
-
-    if "device_map" not in kwargs and "device" not in kwargs:
-        move_to_device(model, smash_config.device)
+    model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, smash_config, **kwargs)
 
     # check if there are any algorithms to reapply
     if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
@@ -219,14 +216,16 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     return smash(model=model, smash_config=smash_config_subset)
 
 
-def load_transformers_model(path: str, **kwargs) -> Any:
+def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a transformers model or pipeline from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -243,24 +242,27 @@ def load_transformers_model(path: str, **kwargs) -> Any:
         with open(os.path.join(path, PIPELINE_INFO_FILE_NAME), "r") as f:
             pipeline_info = json.load(f)
         # transformers discards kwargs automatically, no need for filtering
-        return pipeline(pipeline_info["task"], path, **kwargs)
+        return pipeline(pipeline_info["task"], str(path), **kwargs)
     else:
         with open(os.path.join(path, "config.json"), "r") as f:
             config = json.load(f)
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
         # transformers discards kwargs automatically, no need for filtering
-        return cls.from_pretrained(path, **kwargs)
+        device_map = smash_config.device_map if smash_config.device == "accelerate" else smash_config.device
+        return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
-def load_diffusers_model(path: str, **kwargs) -> Any:
+def load_diffusers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -278,11 +280,11 @@ def load_diffusers_model(path: str, **kwargs) -> Any:
 
     # make loading of model backward compatible with older versions
     # in newer versions the dtype is always saved in the model_config.json file
-    dtype_info = load_json_config(path, "dtype_info.json")
     try:
+        dtype_info = load_json_config(path, "dtype_info.json")
         dtype = dtype_info["dtype"]
         dtype = getattr(torch, dtype)
-    except KeyError:
+    except (KeyError, FileNotFoundError):
         dtype = torch.float32
 
     # do not override user specified dtype
@@ -290,18 +292,23 @@ def load_diffusers_model(path: str, **kwargs) -> Any:
         kwargs["torch_dtype"] = dtype
 
     cls = getattr(diffusers, model_index["_class_name"])
-    # transformers discards kwargs automatically, no need for filtering
-    return cls.from_pretrained(path, **kwargs)
+    # diffusers discards kwargs automatically, no need for filtering
+    # diffusers does not support device_maps as dicts at the moment, we load on cpu and cast it ourselves
+    model = cls.from_pretrained(path, device_map=None, **kwargs)
+    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
+    return model
 
 
-def load_pickled(path: str, **kwargs) -> Any:
+def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a pickled model from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -310,19 +317,29 @@ def load_pickled(path: str, **kwargs) -> Any:
     Any
         The loaded pickled model.
     """
-    return torch.load(
-        os.path.join(path, PICKLED_FILE_NAME), weights_only=False, **filter_load_kwargs(torch.load, kwargs)
+    # torch load has a target device but no interface to reproduce an accelerate-distributed model, we first map to cpu
+    target_device = "cpu" if smash_config.device == "accelerate" else smash_config.device
+    model = torch.load(
+        os.path.join(path, PICKLED_FILE_NAME),
+        weights_only=False,
+        map_location=target_device,
+        **filter_load_kwargs(torch.load, kwargs),
     )
+    # for cpu/cuda this will just continue as its on the correct device, for accelerate it will now distribute / cast
+    move_to_device(model, target_device, device_map=smash_config.device_map)
+    return model
 
 
-def load_hqq(model_path: str, **kwargs) -> Any:
+def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a model quantized with HQQ from the given model path.
 
     Parameters
     ----------
-    model_path : str
+    model_path : str | Path
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -331,77 +348,34 @@ def load_hqq(model_path: str, **kwargs) -> Any:
     Any
         The loaded model.
     """
-    try:
-        from hqq.engine.hf import HQQModelForCausalLM
-        from hqq.models.hf.base import AutoHQQHFModel
-    except ImportError:
-        pruna_logger.error(
-            "HQQ is not installed. Please install the full version of pruna with `pip install pruna[full] "
-            " --extra-index-url https://prunaai.pythonanywhere.com/`."
-        )
-        raise
+    from pruna.algorithms.quantization.hqq import HQQQuantizer
+
+    algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
     try:  # Try to use pipeline for HF specific HQQ quantization
-        model = HQQModelForCausalLM.from_quantized(
-            model_path, **filter_load_kwargs(HQQModelForCausalLM.from_quantized, kwargs)
+        model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
+            model_path,
+            device=smash_config.device,
+            **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
         )
-    except Exception as e:  # Default to generic HQQ pipeline if it fails
-        pruna_logger.error(f"Error loading model using HQQ: {e}")
-        model = AutoHQQHFModel.from_quantized(model_path, **filter_load_kwargs(AutoHQQHFModel.from_quantized, kwargs))
-
-    return model
-
-
-def load_quantized(model_path: str, **kwargs) -> Any:
-    """
-    Load an AWQ quantized model from the given model path.
-
-    Parameters
-    ----------
-    model_path : str
-        The path to the model directory.
-    **kwargs : Any
-        Additional keyword arguments to pass to the model loading function.
-
-    Returns
-    -------
-    Any
-        The loaded model.
-    """
-    try:
-        from awq import AutoAWQForCausalLM
-    except ImportError:
-        pruna_logger.error(
-            "AWQ is not installed. Please install the full version of pruna with `pip install pruna[full] "
-            " --extra-index-url https://prunaai.pythonanywhere.com/`."
-        )
-        raise
-
-    model = AutoAWQForCausalLM.from_quantized(
-        model_path, **filter_load_kwargs(AutoAWQForCausalLM.from_quantized, kwargs)
-    )
-
-    # fused rotational embeddings introduce complex tensors that can not be saved afterwards
-    if any(param.dtype.is_complex for param in model.parameters()):
-        # free memory from previously loaded model
-        del model
-
-        # in case of complex tensors, do not fuse loaded model
-        kwargs["fuse_layers"] = False
-        model = AutoAWQForCausalLM.from_quantized(
-            model_path, **filter_load_kwargs(AutoAWQForCausalLM.from_quantized, kwargs)
+    except Exception:  # Default to generic HQQ pipeline if it fails
+        pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
+        model = algorithm_packages["AutoHQQHFModel"].from_quantized(
+            model_path,
+            device=smash_config.device,
+            **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
         )
 
     return model
 
 
-def load_torch_artifacts(model_path: str, **kwargs) -> None:
+def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
     """
     Load a torch artifacts from the given model path.
 
     Parameters
     ----------
-    model_path : str
+    model_path : str | Path
         The path to the model directory.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
@@ -412,14 +386,16 @@ def load_torch_artifacts(model_path: str, **kwargs) -> None:
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
-def load_hqq_diffusers(path: str, **kwargs) -> Any:
+def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -459,6 +435,8 @@ def load_hqq_diffusers(path: str, **kwargs) -> Any:
     else:
         # load the whole model if a pipeline wasn't saved
         model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
+    # HQQ does not support direct loading on the correct device, so we move it afterwards
+    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
 
 
@@ -467,8 +445,7 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     Enumeration of load functions for different model types.
 
     This enum provides callable functions for loading different types of models,
-    including transformers, diffusers, pickled models, IPEX LLM models, HQQ models,
-    and AWQ quantized models.
+    including transformers, diffusers, pickled models, IPEX LLM models, and HQQ models.
 
     Parameters
     ----------
@@ -496,7 +473,6 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     pickled = partial(load_pickled)
     hqq = partial(load_hqq)
     hqq_diffusers = partial(load_hqq_diffusers)
-    awq_quantized = partial(load_quantized)
     torch_artifacts = partial(load_torch_artifacts)
 
     def __call__(self, *args, **kwargs) -> Any:
@@ -524,6 +500,8 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
     """
     Filter out keyword arguments that cannot be passed to the given function.
 
+    Only filters if the function does not accept arbitrary keyword arguments.
+
     Parameters
     ----------
     func : Callable
@@ -538,9 +516,15 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
     """
     # Get the function's signature
     signature = inspect.signature(func)
-    valid_params = set(signature.parameters.keys())
 
-    # Filter valid and invalid kwargs
+    # Check if function accepts arbitrary kwargs
+    has_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
+
+    if has_kwargs:
+        return kwargs
+
+    # Only filter if function doesn't accept arbitrary kwargs
+    valid_params = set(signature.parameters.keys())
     valid_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
     invalid_kwargs = {k: v for k, v in kwargs.items() if k not in valid_params}
 

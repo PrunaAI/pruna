@@ -28,15 +28,14 @@ class StableFastCompiler(PrunaCompiler):
     into optimized kernels and converting diffusion pipelines into efficient TorchScript graphs.
     """
 
-    algorithm_name = "stable_fast"
-    references = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(cacher=["deepcache", "fora"], quantizer=["half"])
-    required_install = "``pip install pruna[stable-fast]``"
+    algorithm_name: str = "stable_fast"
+    references: dict[str, str] = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(cacher=["deepcache", "fora"], quantizer=["half"])
+    required_install: str = "``pip install pruna[stable-fast]``"
 
     def get_hyperparameters(self) -> list:
         """
@@ -97,17 +96,14 @@ class StableFastCompiler(PrunaCompiler):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            from sfast.compilers.diffusion_pipeline_compiler import (
-                CompilationConfig,
-                _build_lazy_trace,
-                _build_ts_compiler,
-            )
-            from sfast.compilers.diffusion_pipeline_compiler import compile as compile_stable_fast
-            from sfast.cuda.graphs import make_dynamic_graphed_callable
-            from sfast.jit.trace_helper import apply_auto_trace_compiler, lazy_trace
-        except ImportError:
-            raise ImportError(f"stable_fast is not installed. Please install it using {self.required_install}.")
+        from sfast.compilers.diffusion_pipeline_compiler import (
+            CompilationConfig,
+            _build_lazy_trace,
+            _build_ts_compiler,
+        )
+        from sfast.compilers.diffusion_pipeline_compiler import compile as compile_stable_fast
+        from sfast.cuda.graphs import make_dynamic_graphed_callable
+        from sfast.jit.trace_helper import apply_auto_trace_compiler, lazy_trace
 
         return dict(
             CompilationConfig=CompilationConfig,

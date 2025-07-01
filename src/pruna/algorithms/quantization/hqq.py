@@ -18,7 +18,7 @@ from typing import Any, Dict
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
-from transformers import AutoModelForCausalLM, HqqConfig
+from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -37,15 +37,17 @@ class HQQQuantizer(PrunaQuantizer):
     eliminating the need for calibration data.
     """
 
-    algorithm_name = "hqq"
-    references = {"GitHub": "https://github.com/mobiusml/hqq", "Article": "https://mobiusml.github.io/hqq_blog/"}
-    save_fn = SAVE_FUNCTIONS.hqq
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(compiler=["torch_compile"])
+    algorithm_name: str = "hqq"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/mobiusml/hqq",
+        "Article": "https://mobiusml.github.io/hqq_blog/",
+    }
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.hqq
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -126,8 +128,8 @@ class HQQQuantizer(PrunaQuantizer):
                 device=smash_config["device"],
                 compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
             )
-        except Exception as e:  # Default to generic HF quantization if it fails
-            pruna_logger.error(f"Error: {e}")
+        except Exception:  # Default to generic HF quantization if it fails
+            pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
             # Create a temporary directory in a specific location
             base_temp_dir = smash_config["cache_dir"]
             temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
@@ -162,21 +164,19 @@ class HQQQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            with SuppressOutput():
-                from hqq.core.quantize import BaseQuantizeConfig
-                from hqq.models.hf.base import AutoHQQHFModel
-                from hqq.utils.patching import prepare_for_inference
-        except ImportError:
-            pruna_logger.error(
-                "You are trying to use the HQQ quantizer, but hqq is not installed. "
-                "This is likely because you did not install hqq; try pip install hqq."
+        with SuppressOutput():
+            from hqq.core.quantize import BaseQuantizeConfig
+            from hqq.engine.hf import HQQModelForCausalLM
+            from hqq.models.hf.base import AutoHQQHFModel
+            from hqq.utils.patching import prepare_for_inference
+            from transformers import (
+                HqqConfig,  # we do isolate this because this statement will import HQQ (transformers' lazy import)
             )
-            raise
 
         return dict(
             BaseQuantizeConfig=BaseQuantizeConfig,
             AutoHQQHFModel=AutoHQQHFModel,
             prepare_for_inference=prepare_for_inference,
             HqqConfig=HqqConfig,
+            HQQModelForCausalLM=HQQModelForCausalLM,
         )

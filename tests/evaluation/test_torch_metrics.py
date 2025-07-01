@@ -31,6 +31,7 @@ def test_perplexity(dataloader_fixture: Any) -> None:
 def test_fid(dataloader_fixture: Any) -> None:
     """Test the fid."""
     metric = TorchMetricWrapper("fid")
+    metric.metric.to("cpu")
 
     dataloader_iter = iter(dataloader_fixture)
 

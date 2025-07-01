@@ -15,6 +15,8 @@
 from typing import Any, Dict, Type
 
 import torch
+import torch.nn as nn
+from accelerate import init_empty_weights
 from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
@@ -38,18 +40,18 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
     adapted for diffusers models.
     """
 
-    algorithm_name = "hqq_diffusers"
-    references = {"GitHub": "https://github.com/mobiusml/hqq", "Article": "https://mobiusml.github.io/hqq_blog/"}
-    save_fn = SAVE_FUNCTIONS.hqq_diffusers
-    tokenizer_required = False
-    processor_required = False
-    run_on_cpu = False
-    run_on_cuda = True
-    dataset_required = False
-    compatible_algorithms = dict(
-        factorizer=["qkv_diffusers"],
-        cacher=["deepcache", "fastercache", "fora", "pab"],
-        compiler=["torch_compile"],
+    algorithm_name: str = "hqq_diffusers"
+    references: dict[str, str] = {
+        "GitHub": "https://github.com/mobiusml/hqq",
+        "Article": "https://mobiusml.github.io/hqq_blog/",
+    }
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.hqq_diffusers
+    tokenizer_required: bool = False
+    processor_required: bool = False
+    runs_on: list[str] = ["cuda"]
+    dataset_required: bool = False
+    compatible_algorithms: dict[str, list[str]] = dict(
+        factorizer=["qkv_diffusers"], cacher=["deepcache", "fastercache", "fora", "pab"], compiler=["torch_compile"]
     )
 
     def get_hyperparameters(self) -> list:
@@ -126,16 +128,16 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
 
         if hasattr(model, "transformer"):
             # Collect all linear layers recursively
-            linear_layers = find_module_layers_type(model.transformer, imported_modules["nn"].Linear)
+            linear_layers = find_module_layers_type(model.transformer, nn.Linear)
             # put them in the transformer.layers for HQQ
             model.transformer.layers = linear_layers
             working_model = model.transformer
         elif hasattr(model, "unet"):
-            linear_layers = find_module_layers_type(model.unet, imported_modules["nn"].Linear)
+            linear_layers = find_module_layers_type(model.unet, nn.Linear)
             model.unet.layers = linear_layers
             working_model = model.unet
         else:
-            linear_layers = find_module_layers_type(model, imported_modules["nn"].Linear)
+            linear_layers = find_module_layers_type(model, nn.Linear)
             model.layers = linear_layers
             working_model = model
 
@@ -198,34 +200,19 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        try:
-            with SuppressOutput():
-                import json
-                import os
+        with SuppressOutput():
+            from hqq.core.quantize import BaseQuantizeConfig
+            from hqq.models.base import BaseHQQModel, BasePatch
+            from hqq.utils.patching import prepare_for_inference
 
-                import diffusers
-                import torch.nn as nn
-                from accelerate import init_empty_weights
-                from hqq.core.quantize import BaseQuantizeConfig
-                from hqq.models.base import BaseHQQModel, BasePatch
-                from hqq.utils.patching import prepare_for_inference
-        except ImportError:
-            pruna_logger.error(
-                "You are trying to use the HQQ quantizer, but hqq is not installed. "
-                "This is likely because you did not install hqq; try pip install hqq."
-            )
-            raise
+        import diffusers
 
         return dict(
             prepare_for_inference=prepare_for_inference,
             HqqConfig=BaseQuantizeConfig,
-            nn=nn,
             BaseHQQModel=BaseHQQModel,
             BasePatch=BasePatch,
-            init_empty_weights=init_empty_weights,
             diffusers=diffusers,
-            json=json,
-            os=os,
         )
 
 
@@ -281,7 +268,7 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
             """
             model_kwargs: Dict[str, Any] = {}
 
-            with imported_modules["init_empty_weights"]():
+            with init_empty_weights():
                 # recover class from save_dir
                 config = load_json_config(save_dir, "config.json")
                 model_class = getattr(imported_modules["diffusers"], config["_class_name"])

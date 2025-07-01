@@ -5,26 +5,16 @@ from pruna.algorithms.quantization.gptq_model import GPTQQuantizer
 from pruna.algorithms.quantization.half import HalfQuantizer
 from pruna.algorithms.quantization.hqq import HQQQuantizer
 from pruna.algorithms.quantization.hqq_diffusers import HQQDiffusersQuantizer
-from pruna.algorithms.quantization.huggingface_awq import AWQQuantizer
 from pruna.algorithms.quantization.huggingface_diffusers_int8 import (
     DiffusersInt8Quantizer,
 )
 from pruna.algorithms.quantization.huggingface_llm_int8 import LLMInt8Quantizer
+from pruna.algorithms.quantization.llm_compressor import LLMCompressorQuantizer
 from pruna.algorithms.quantization.quanto import QuantoQuantizer
 from pruna.algorithms.quantization.torch_dynamic import TorchDynamicQuantizer
-from pruna.algorithms.quantization.torch_static import TorchStaticQuantizer
 from pruna.algorithms.quantization.torchao import TorchaoQuantizer
 
 from .base_tester import AlgorithmTesterBase
-
-
-class TestTorchStatic(AlgorithmTesterBase):
-    """Test the torch static quantizer."""
-
-    models = ["noref_mobilenet_v2"]
-    reject_models = []
-    allow_pickle_files = False
-    algorithm_class = TorchStaticQuantizer
 
 
 class TestTorchDynamic(AlgorithmTesterBase):
@@ -93,8 +83,8 @@ class TestHalf(AlgorithmTesterBase):
 class TestTorchao(AlgorithmTesterBase):
     """Test the torchao quantizer."""
 
-    models = ["flux_tiny_random"]
-    reject_models = ["stable_diffusion_v1_4"]
+    models = ["flux_tiny_random", "stable_diffusion_v1_4"]
+    reject_models = ["dummy_lambda"]
     allow_pickle_files = False
     algorithm_class = TorchaoQuantizer
 
@@ -118,10 +108,10 @@ class TestGPTQ(AlgorithmTesterBase):
 
 
 @pytest.mark.slow
-class TestAWQ(AlgorithmTesterBase):
-    """Test the AWQ quantizer."""
+class TestLLMCompressor(AlgorithmTesterBase):
+    """Test the LLM Compressor quantizer."""
 
-    models = ["opt_125m"]
+    models = ["llama_3_2_1b"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
-    algorithm_class = AWQQuantizer
+    algorithm_class = LLMCompressorQuantizer

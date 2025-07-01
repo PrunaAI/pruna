@@ -14,17 +14,19 @@
 
 from __future__ import annotations
 
+import functools
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
+from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import SMASH_SPACE
 from pruna.engine.save import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
     SAVE_FUNCTIONS,
     save_pruna_model,
 )
+from pruna.logging.logger import pruna_logger
 
 
 class PrunaAlgorithmBase(ABC):
@@ -49,18 +51,34 @@ class PrunaAlgorithmBase(ABC):
             tokenizer_required=self.tokenizer_required,
             processor_required=self.processor_required,
         )
+        assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
-    @classmethod
-    def compatible_devices(cls) -> list[str]:
-        """Return the compatible devices for the algorithm."""
-        compatible_devices = []
-        if cls.run_on_cpu:  # type: ignore
-            compatible_devices.append("cpu")
-        if cls.run_on_cuda:  # type: ignore
-            compatible_devices.append("cuda")
-        if not compatible_devices:
-            raise ValueError(f"Algorithm {cls.algorithm_name} is not compatible with any device.")
-        return compatible_devices
+    def __init_subclass__(cls, **kwargs):
+        """Intercept the instantiation of subclasses of the PrunaAlgorithmBase class."""
+        super().__init_subclass__(**kwargs)
+
+        # skip if subclass stayed abstract
+        impl = cls.__dict__.get("import_algorithm_packages")
+        if impl is None:
+            return
+
+        # Skip if we already wrapped it (multiple inheritance chains, reloads, etc.)
+        if getattr(impl, "__wrapped__", None) is not None:
+            return
+
+        # Replace the function with the wrapped version
+        cls.import_algorithm_packages = wrap_handle_imports(impl)
+
+    def compatible_devices(self) -> list[str]:
+        """
+        Return the compatible devices for the algorithm.
+
+        Returns
+        -------
+        list[str]
+            The compatible devices for the algorithm.
+        """
+        return self.runs_on
 
     @property
     @abstractmethod
@@ -81,14 +99,8 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     @abstractmethod
-    def run_on_cpu(self) -> bool:
-        """Subclasses need to provide a boolean indicating if the algorithm can be applied on cpu."""
-        pass
-
-    @property
-    @abstractmethod
-    def run_on_cuda(self) -> bool:
-        """Subclasses need to provide a boolean indicating if the algorithm can be applied on cuda."""
+    def runs_on(self) -> list[str]:
+        """Subclasses need to provide a list of devices the algorithm can run on."""
         pass
 
     @property
@@ -144,15 +156,27 @@ class PrunaAlgorithmBase(ABC):
         """
         pass
 
-    @abstractmethod
     def import_algorithm_packages(self) -> Dict[str, Any]:
-        """Provide a algorithm packages for the algorithm."""
-        pass
+        """
+        Provide a algorithm packages for the algorithm.
 
-    @abstractmethod
+        Returns
+        -------
+        Dict[str, Any]
+            The algorithm packages.
+        """
+        return dict()
+
     def get_hyperparameters(self) -> list:
-        """Configure all algorithm-specific hyperparameters with ConfigSpace."""
-        pass
+        """
+        Configure all algorithm-specific hyperparameters with ConfigSpace.
+
+        Returns
+        -------
+        list
+            The hyperparameters for the algorithm.
+        """
+        return []
 
     @abstractmethod
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
@@ -190,3 +214,44 @@ class PrunaAlgorithmBase(ABC):
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         return self._apply(model, wrapped_config)
+
+
+def wrap_handle_imports(func):
+    """
+    Wrap the import_algorithm_packages method to handle import errors in a unified and user-friendly way.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to wrap.
+
+    Returns
+    -------
+    Callable
+        The wrapped function.
+    """
+
+    @functools.wraps(func)
+    def _wrapper(self, *args, **kwargs):
+        try:
+            result = func(self, *args, **kwargs)
+            return result
+        except Exception as e:
+            if self.required_install is not None:
+                pruna_logger.debug(str(e))
+                exception_message = (
+                    f"Could not import necessary packages for {self.algorithm_name}. ",
+                    f"To use {self.algorithm_name}, follow the installation instructions: {self.required_install}.",
+                )
+            else:
+                exception_message = str(e)
+                pruna_logger.error(
+                    (
+                        f"Could not import necessary packages for {self.algorithm_name}.",
+                        "Please verify your pruna installation.",
+                    )
+                )
+        raise ImportError(exception_message)
+
+    _wrapper.__wrapped__ = func  # mark the original (helps avoid double-wrapping)
+    return _wrapper
