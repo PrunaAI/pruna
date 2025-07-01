@@ -249,7 +249,8 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwarg
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
         # transformers discards kwargs automatically, no need for filtering
-        device_map = smash_config.device_map if smash_config.device == "accelerate" else smash_config.device
+        device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
+        device_map = smash_config.device_map if smash_config.device == "accelerate" else device
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
