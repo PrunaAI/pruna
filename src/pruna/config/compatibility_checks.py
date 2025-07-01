@@ -34,6 +34,7 @@ def ensure_device_consistency(model, smash_config):
     smash_config : SmashConfig
         The smash config to check for device consistency.
     """
+    _device_options = ["cpu", "cuda", "mps"]
     model_device = get_device(model)
 
     # model and smash config devices match
@@ -47,9 +48,8 @@ def ensure_device_consistency(model, smash_config):
                 raise ValueError("Device map indicates CPU offloading, this is not supported at this time.")
             else:
                 smash_config.device_map = hf_device_map
-
-    elif any(device in smash_config.device for device in ["cpu", "cuda", "mps"]) and any(
-        device in model_device for device in ["cpu", "cuda", "mps"]
+    elif any(device in smash_config.device for device in _device_options) and any(
+        device in model_device for device in _device_options
     ):
         pruna_logger.warning(
             (
