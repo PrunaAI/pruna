@@ -123,12 +123,13 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
             device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
             if hasattr(model, "transformer"):
                 working_model = model.transformer
-                device_map = {
-                    "": device if smash_config.device != "accelerate" else smash_config.device_map["transformer"]
-                }
+                device_map = (
+                    {"": device} if smash_config.device != "accelerate" else smash_config.device_map["transformer"]
+                )
+
             elif hasattr(model, "unet"):
                 working_model = model.unet
-                device_map = {"": device if smash_config.device != "accelerate" else smash_config.device_map["unet"]}
+                device_map = {"": device} if smash_config.device != "accelerate" else smash_config.device_map["unet"]
             else:
                 working_model = model
                 device_map = {"": device} if smash_config.device != "accelerate" else smash_config.device_map
