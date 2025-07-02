@@ -428,7 +428,6 @@ def causal_lm_or_janus_logic(model: Any, smash_config: SmashConfigPrefixWrapper)
             top_k=top_k,
             compile_mode=smash_config["mode"],
             compile_fullgraph=smash_config["fullgraph"],
-            device=smash_config["device"],
         )
     else:
         raise ValueError(f"Model {model} is not a causal language model or Janus LlamaGen AR model.")
