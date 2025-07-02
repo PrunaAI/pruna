@@ -574,8 +574,8 @@ class JanusGenerator:
         The compilation mode to use with torch.compile(). Options include 'reduce-overhead', 'max-autotune', etc.
     compile_fullgraph : bool, default=True
         Whether to compile the full computation graph or use partial graph compilation.
-    device : str, default='cuda'
-        The device to use for text generation.
+    compile_backend : str, default='inductor'
+        The backend to use for compilation. Options include 'inductor', 'cudagraphs', etc.
     """
 
     def __init__(
@@ -643,6 +643,43 @@ class JanusGenerator:
         generation_config.validate()
         self.model._validate_model_kwargs(model_kwargs.copy())
 
+    def prepare_inputs_tokens(self, inputs, generation_config, model_kwargs, attention_mask):
+        """
+        Prepare the input tokens and model kwargs.
+
+        Parameters
+        ----------
+        inputs : torch.Tensor
+            The input tokens.
+        generation_config : GenerationConfig
+            The generation config.
+        model_kwargs : dict
+            The model kwargs.
+        attention_mask : torch.Tensor | None
+            The attention mask.
+
+        Returns
+        -------
+        tuple[torch.Tensor, dict, torch.dtype, torch.device]
+            The input ids, model kwargs, dtype, and device.
+        """
+        input_ids, _, model_kwargs = self.model._prepare_model_inputs(
+            inputs, generation_config.bos_token_id, model_kwargs
+        )
+        dtype, device = input_ids.dtype, input_ids.device
+
+        if len(input_ids.shape) != 2:
+            raise ValueError(
+                f"Expected input ids of shape (batch_size, seq_len), but got {input_ids.shape}"
+                "Passing `inputs embeds` is not supported currently."
+            )
+
+        # Prepare special tokens which will be used generate internally.
+        kwargs_has_attention_mask = attention_mask is not None
+        self.model._prepare_special_tokens(generation_config, kwargs_has_attention_mask, device=input_ids.device)
+
+        return input_ids, model_kwargs, dtype, device
+
     def get_initial_cache_position(self, input_ids, model_kwargs):
         """
         Get the initial cache position for the model.
@@ -685,6 +722,60 @@ class JanusGenerator:
         model_kwargs["cache_position"] = cache_position
         return model_kwargs
 
+    def prepare_input_and_cache(self, input_ids, model_kwargs, attention_mask, generation_config, device):
+        """
+        Prepare the input tokens, inputs embeddings, model kwargs, batch size, and number of image tokens.
+
+        Parameters
+        ----------
+        input_ids : torch.Tensor
+            The input token ids that serve as the prompt.
+        model_kwargs : dict
+            The model kwargs.
+        attention_mask : torch.Tensor | None
+            The attention mask.
+        generation_config : GenerationConfig
+            The generation config.
+        device : torch.device
+            The device to use for the input tokens.
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor, dict, int, int]
+            The input tokens, inputs embeddings, model kwargs, batch size, and number of image tokens.
+        """
+        num_image_tokens = self.model.model.vision_model.config.num_image_tokens
+        batch_size, seq_len = input_ids.shape
+
+        input_tokens = input_ids.repeat(2, 1)  # Double batch size for conditional/unconditional logits
+        attention_mask = model_kwargs.pop("attention_mask", None)
+        attention_mask = attention_mask.repeat(2, 1)  # type: ignore
+        model_kwargs["attention_mask"] = attention_mask
+
+        # Mask all the tokens that are neither BOS nor BOI with pad token in the unconditional logits.
+        mask = (input_tokens[batch_size:, :] != generation_config.bos_token_id) & (
+            input_tokens[batch_size:, :] != generation_config.generation_kwargs["boi_token_id"]
+        )
+        input_tokens[batch_size:, :].masked_fill_(mask, generation_config.pad_token_id)
+
+        inputs_embeds = self.model.get_input_embeddings()(input_tokens)
+
+        model_kwargs = self.get_initial_cache_position(input_ids, model_kwargs)
+
+        if model_kwargs.get("past_key_values", None) is None:
+            # Prepare cache if not provided.
+            model_kwargs["past_key_values"] = self.model._get_cache(
+                cache_implementation=generation_config.cache_implementation or "static",
+                # batch_size should account for both conditional/unconditional input; hence multiplied by 2.
+                batch_size=batch_size * 2,
+                # we should have at least a cache len of seq_len + num_image_tokens.
+                max_cache_len=max(generation_config.max_length, num_image_tokens + seq_len),
+                device=device,
+                model_kwargs=model_kwargs,
+            )
+
+        return input_tokens, inputs_embeds, model_kwargs, batch_size, num_image_tokens
+
     def loop_over_latent_tokens(
         self,
         input_tokens,
@@ -722,6 +813,12 @@ class JanusGenerator:
         logits_processor : LogitsProcessorList
             The logits processor.
         generation_config : GenerationConfig
+            The generation config.
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+            The scores, hidden state, and outputs.
         """
         for i in range(num_image_tokens):
             model_inputs = self.model.prepare_inputs_for_generation(
@@ -854,20 +951,9 @@ class JanusGenerator:
         model_kwargs["guidance_scale"] = generation_config.guidance_scale
 
         # 3. Prepare model inputs
-        input_ids, model_input_name, model_kwargs = self.model._prepare_model_inputs(
-            inputs, generation_config.bos_token_id, model_kwargs
+        input_ids, model_kwargs, dtype, device = self.prepare_inputs_tokens(
+            inputs, generation_config, model_kwargs, attention_mask
         )
-        dtype, device = input_ids.dtype, input_ids.device
-
-        if len(input_ids.shape) != 2:
-            raise ValueError(
-                f"Expected input ids of shape (batch_size, seq_len), but got {input_ids.shape}"
-                "Passing `inputs embeds` is not supported currently."
-            )
-
-        # Prepare special tokens which will be used generate internally.
-        kwargs_has_attention_mask = attention_mask is not None
-        self.model._prepare_special_tokens(generation_config, kwargs_has_attention_mask, device=input_ids.device)
 
         # 4. Add CFG processor along with user passed logit processor.
         if generation_config.guidance_scale and generation_config.guidance_scale > 1:
@@ -893,35 +979,13 @@ class JanusGenerator:
         )
 
         # 7. Prepare input and model caches
-        num_image_tokens = self.model.model.vision_model.config.num_image_tokens
-        batch_size, seq_len = input_ids.shape
-
-        input_tokens = input_ids.repeat(2, 1)  # Double batch size for conditional/unconditional logits
-        attention_mask = model_kwargs.pop("attention_mask", None)
-        attention_mask = attention_mask.repeat(2, 1)  # type: ignore
-        model_kwargs["attention_mask"] = attention_mask
-
-        # Mask all the tokens that are neither BOS nor BOI with pad token in the unconditional logits.
-        mask = (input_tokens[batch_size:, :] != generation_config.bos_token_id) & (
-            input_tokens[batch_size:, :] != generation_config.generation_kwargs["boi_token_id"]
+        input_tokens, inputs_embeds, model_kwargs, batch_size, num_image_tokens = self.prepare_input_and_cache(
+            input_ids,
+            model_kwargs,
+            attention_mask,
+            generation_config,
+            device,
         )
-        input_tokens[batch_size:, :].masked_fill_(mask, generation_config.pad_token_id)
-
-        inputs_embeds = self.model.get_input_embeddings()(input_tokens)
-
-        model_kwargs = self.get_initial_cache_position(input_ids, model_kwargs)
-
-        if model_kwargs.get("past_key_values", None) is None:
-            # Prepare cache if not provided.
-            model_kwargs["past_key_values"] = self.model._get_cache(
-                cache_implementation=generation_config.cache_implementation or "static",
-                # batch_size should account for both conditional/unconditional input; hence multiplied by 2.
-                batch_size=batch_size * 2,
-                # we should have at least a cache len of seq_len + num_image_tokens.
-                max_cache_len=max(generation_config.max_length, num_image_tokens + seq_len),
-                device=device,
-                model_kwargs=model_kwargs,
-            )
 
         # Placeholder for generated tokens.
         generated_tokens = torch.zeros((batch_size, num_image_tokens), dtype=dtype, device=device)
@@ -938,6 +1002,7 @@ class JanusGenerator:
         decoder_hidden_states = () if (return_dict_in_generate and output_hidden_states) else None
         decoder_attentions = () if (return_dict_in_generate and output_attentions) else None
 
+        # 9. Loop over the latent tokens.
         scores, hidden_state, outputs = self.loop_over_latent_tokens(
             input_tokens,
             input_ids,
@@ -951,6 +1016,7 @@ class JanusGenerator:
             generation_config,
         )
 
+        # 10. Return the results.
         if return_dict_in_generate:
             if output_scores:
                 raw_scores = tuple(raw_scores) + (scores,) if raw_scores is not None else (scores,)
@@ -970,8 +1036,6 @@ class JanusGenerator:
                     if decoder_hidden_states is not None
                     else (outputs.hidden_states,)
                 )
-
-        if return_dict_in_generate:
             return GenerateDecoderOnlyOutput(
                 sequences=generated_tokens,  # type: ignore
                 scores=scores,  # type: ignore
