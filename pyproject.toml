@@ -58,8 +58,6 @@ dependencies = [
     "datasets>=0.34",
     "jsonschema",
     "numpy>=1.24.4",
-    "setuptools",
-    "packaging",
     "diffusers>=0.21.4",
     "platformdirs",
     "torch_pruning",
