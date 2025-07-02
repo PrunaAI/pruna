@@ -395,6 +395,8 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         cls = getattr(transformers, "JanusForConditionalGeneration")
         model = cls.from_pretrained(model_path, **kwargs)
         model.model.language_model = quantized_model.model
+        # some weights of the language_model are not on the correct device, so we move it afterwards.
+        move_to_device(model, smash_config.device)
         return model
     else:
         return quantized_model
