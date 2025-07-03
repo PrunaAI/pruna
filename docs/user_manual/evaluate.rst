@@ -106,8 +106,8 @@ The ``EvaluationAgent`` is the main class for evaluating model performance. It c
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             eval_agent = EvaluationAgent(
-                request=["accuracy", "perplexity"],
-                datamodule=PrunaDataModule.from_string('WikiText'),
+                request=["cmmd", "ssim"],
+                datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
 
@@ -122,8 +122,8 @@ The ``EvaluationAgent`` is the main class for evaluating model performance. It c
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             task = Task(
-                request=["accuracy", "perplexity"],
-                datamodule=PrunaDataModule.from_string('WikiText'),
+                request=["cmmd", "ssim"],
+                datamodule=PrunaDataModule.from_string('LAION256'),
                 device="cpu"
             )
             eval_agent = EvaluationAgent(task)
@@ -146,8 +146,8 @@ The ``Task`` class provides an alternative way to define evaluation configuratio
     from pruna.data.pruna_datamodule import PrunaDataModule
 
     task = Task(
-        request=["accuracy", "perplexity"],
-        datamodule=PrunaDataModule.from_string('WikiText'),
+        request=["cmmd", "ssim"],
+        datamodule=PrunaDataModule.from_string('LAION256'),
         device="cpu"
     )
 
@@ -306,7 +306,7 @@ The ``MetricResult`` class stores the metric's name, any associated parameters, 
 
 .. code-block:: python
 
-  # Example output
+    # Example output
     MetricResult(
         name="clip_score",
         params={"param1": "value1", "param2": "value2"},
@@ -336,7 +336,8 @@ The ``EvaluationAgent`` accepts ``PrunaDataModule`` in two different ways:
             from pruna.data.pruna_datamodule import PrunaDataModule
 
             # Load the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
+            tokenizer = AutoTokenizer.from_pretrained("NousResearch/Llama-3.2-1B")
+            tokenizer.pad_token = tokenizer.eos_token
 
             # Create the data Module
             datamodule = PrunaDataModule.from_string(
@@ -359,7 +360,8 @@ The ``EvaluationAgent`` accepts ``PrunaDataModule`` in two different ways:
             from pruna.data.utils import split_train_into_train_val_test
 
             # Load the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
+            tokenizer = AutoTokenizer.from_pretrained("NousResearch/Llama-3.2-1B")
+            tokenizer.pad_token = tokenizer.eos_token
 
             # Load custom datasets
             train_ds = load_dataset("SamuelYang/bookcorpus")["train"]
@@ -387,7 +389,8 @@ Lastly, you can limit the number of samples in the dataset by using the ``PrunaD
     from pruna.data.pruna_datamodule import PrunaDataModule
 
     # Create the data module
-    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
+    tokenizer = AutoTokenizer.from_pretrained("NousResearch/Llama-3.2-1B")
+    tokenizer.pad_token = tokenizer.eos_token
     datamodule = PrunaDataModule.from_string("WikiText", tokenizer=tokenizer)
 
     # Limit all splits to 100 samples

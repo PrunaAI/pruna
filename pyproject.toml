@@ -21,9 +21,13 @@ author = "- Pruna AI GmbH"
 [tool.mypy]
 ignore_missing_imports = true
 
+[tool.uv]
+index-url = "https://pypi.org/simple/"
+extra-index-url = ["https://prunaai.pythonanywhere.com/simple/"]
+
 [project]
 name = "pruna"
-version = "0.2.5"
+version = "0.2.6"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
@@ -104,7 +108,7 @@ gptq = [
     "threadpoolctl",
     "device-smi",
     "random-word",
-    "gptqmodel; sys_platform != 'darwin' or platform_machine != 'arm64'",
+    "gptqmodel==4.0.0.dev0+cu126torch2.7; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 full = [
@@ -120,16 +124,11 @@ dev = [
     "pyc-wheel",
     "ruff",
     "numpydoc-validation",
-]
-tests = [
     "pytest",
     "pytest-cov",
     "coverage",
     "docutils",
-    "jupyterlab",
-    "numpydoc-validation",
     "mypy",
-    "ruff",
     "types-PyYAML",
     "logbar",
 ]

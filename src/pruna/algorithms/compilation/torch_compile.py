@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import os
 from typing import Any, Callable, Dict
 
@@ -188,6 +189,11 @@ class TorchCompileCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
+        with contextlib.suppress(KeyError):
+            distributer_type = smash_config["distributer"]
+            if distributer_type in compilation_map:
+                return compilation_map[distributer_type](model, smash_config)
+
         cacher_type = smash_config["cacher"]
         if cacher_type in compilation_map:
             return compilation_map[cacher_type](model, smash_config)

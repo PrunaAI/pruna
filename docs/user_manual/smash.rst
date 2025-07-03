@@ -48,12 +48,15 @@ Let's see what that looks like in code.
 
     # Evaluate the model
     metrics = ["clip_score", "psnr"]
-    task = Task(metrics, datamodule=PrunaDataModule.from_string("LAION256"))
+    datamodule = PrunaDataModule.from_string("LAION256")
+    datamodule.limit_datasets(10) # You can limit the number of samples.
+    task = Task(metrics, datamodule=datamodule)
     eval_agent = EvaluationAgent(task)
     eval_agent.evaluate(optimized_model)
 
     # Run inference
     optimized_model.set_progress_bar_config(disable=True)
+    optimized_model.to("cuda")
     optimized_model("A serene landscape with mountains").images[0].save("output.png")
 
 Step-by-Step Optimisation Workflow
@@ -125,9 +128,11 @@ To evaluate the optimized model, we can use the same interface as the original m
 
     from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
+    from pruna.engine.pruna_model import PrunaModel
+    from pruna.evaluation.task import Task
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
+    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
 
     # Define metrics
     metrics = ['clip_score', 'psnr']
@@ -138,7 +143,8 @@ To evaluate the optimized model, we can use the same interface as the original m
     # Evaluate the model
     eval_agent = EvaluationAgent(task)
     results = eval_agent.evaluate(optimized_model)
-    print(results)
+    for result in results:
+        print(result)
 
 To understand how to run more complex evaluation workflows, see :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>`.
 
@@ -149,7 +155,7 @@ To run inference with the optimized model, we can use the same interface as the 
 
 .. code-block:: python
 
-    from pruna import PrunaModel
+    from pruna.engine.pruna_model import PrunaModel
 
     # Load the optimized model
     optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
@@ -178,7 +184,6 @@ Example 1: Diffusion Model Optimization
 
     # Create and configure SmashConfig
     smash_config = SmashConfig()
-    smash_config["compiler"] = "torch_compile"
     smash_config["quantizer"] = "hqq_diffusers"
 
     # Optimize the model
@@ -199,7 +204,7 @@ Example 2: Large Language Model Optimization
     from pruna import SmashConfig, smash
 
     # Load the model
-    model_id = "meta-llama/Llama-3.2-1b-Instruct"
+    model_id = "NousResearch/Llama-3.2-1B"
     pipe = pipeline("text-generation", model=model_id)
 
     # Create and configure SmashConfig
@@ -231,6 +236,7 @@ Example 3: Speech Recognition Optimization
     # Create and configure SmashConfig
     smash_config = SmashConfig()
     smash_config.add_processor(model_id)  # Required for Whisper
+    smash_config.add_tokenizer(model_id)
     smash_config["compiler"] = "c_whisper"
     smash_config["batcher"] = "whisper_s2t"
 

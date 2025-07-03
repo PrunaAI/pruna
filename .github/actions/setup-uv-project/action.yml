@@ -10,4 +10,4 @@ runs:
         enable-cache: true
 
     - shell: bash
-      run: uv sync --frozen --extra tests
+      run: uv sync --frozen --extra dev

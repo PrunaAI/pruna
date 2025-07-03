@@ -39,13 +39,13 @@ SAVE_BEFORE_SMASH_CACHE_DIR = "save_before_smash"
 PIPELINE_INFO_FILE_NAME = "pipeline_info.json"
 
 
-def load_pruna_model(model_path: str, **kwargs) -> tuple[Any, SmashConfig]:
+def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig]:
     """
     Load a Pruna model from the given model path.
 
     Parameters
     ----------
-    model_path : str
+    model_path : str | Path
         The path to the model directory.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
@@ -216,13 +216,13 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     return smash(model=model, smash_config=smash_config_subset)
 
 
-def load_transformers_model(path: str, smash_config: SmashConfig, **kwargs) -> Any:
+def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a transformers model or pipeline from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
         The SmashConfig object containing the device and device_map.
@@ -242,7 +242,7 @@ def load_transformers_model(path: str, smash_config: SmashConfig, **kwargs) -> A
         with open(os.path.join(path, PIPELINE_INFO_FILE_NAME), "r") as f:
             pipeline_info = json.load(f)
         # transformers discards kwargs automatically, no need for filtering
-        return pipeline(pipeline_info["task"], path, **kwargs)
+        return pipeline(pipeline_info["task"], str(path), **kwargs)
     else:
         with open(os.path.join(path, "config.json"), "r") as f:
             config = json.load(f)
@@ -253,13 +253,13 @@ def load_transformers_model(path: str, smash_config: SmashConfig, **kwargs) -> A
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
-def load_diffusers_model(path: str, smash_config: SmashConfig, **kwargs) -> Any:
+def load_diffusers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
         The SmashConfig object containing the device and device_map.
@@ -299,13 +299,13 @@ def load_diffusers_model(path: str, smash_config: SmashConfig, **kwargs) -> Any:
     return model
 
 
-def load_pickled(path: str, smash_config: SmashConfig, **kwargs) -> Any:
+def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a pickled model from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
         The SmashConfig object containing the device and device_map.
@@ -330,13 +330,13 @@ def load_pickled(path: str, smash_config: SmashConfig, **kwargs) -> Any:
     return model
 
 
-def load_hqq(model_path: str, smash_config: SmashConfig, **kwargs) -> Any:
+def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a model quantized with HQQ from the given model path.
 
     Parameters
     ----------
-    model_path : str
+    model_path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
         The SmashConfig object containing the device and device_map.
@@ -369,13 +369,13 @@ def load_hqq(model_path: str, smash_config: SmashConfig, **kwargs) -> Any:
     return model
 
 
-def load_torch_artifacts(model_path: str, **kwargs) -> None:
+def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
     """
     Load a torch artifacts from the given model path.
 
     Parameters
     ----------
-    model_path : str
+    model_path : str | Path
         The path to the model directory.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
@@ -386,13 +386,13 @@ def load_torch_artifacts(model_path: str, **kwargs) -> None:
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
-def load_hqq_diffusers(path: str, smash_config: SmashConfig, **kwargs) -> Any:
+def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
     Parameters
     ----------
-    path : str
+    path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
         The SmashConfig object containing the device and device_map.
