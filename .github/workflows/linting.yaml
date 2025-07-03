@@ -35,7 +35,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --extra tests
+          uv sync --extra dev
 
       - name: Run ruff on Pruna code
         uses: astral-sh/ruff-action@v3

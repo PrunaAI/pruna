@@ -12,6 +12,7 @@ from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.load import load_pruna_model
 from pruna.config.smash_config import SmashConfig
 from diffusers import DiffusionPipeline
+from pruna.engine.pruna_model import PrunaModel
 
 
 
@@ -137,9 +138,11 @@ def test_save_to_hub_path_types(tmp_path) -> None:
     config = SmashConfig()
     string_path = str(tmp_path / "string_test")
     pathlib_path = Path(tmp_path / "pathlib_test")
+    pruna_model = PrunaModel(dummy_model, config)
 
     with patch('pruna.engine.save.upload_large_folder') as mock_upload:
         save_pruna_model_to_hub(
+            instance=pruna_model,
             model=dummy_model,
             smash_config=config,
             repo_id="test/repo",
@@ -151,6 +154,7 @@ def test_save_to_hub_path_types(tmp_path) -> None:
         mock_upload.reset_mock()
 
         save_pruna_model_to_hub(
+            instance=pruna_model,
             model=dummy_model,
             smash_config=config,
             repo_id="test/repo2",
@@ -158,4 +162,3 @@ def test_save_to_hub_path_types(tmp_path) -> None:
             private=True
         )
         assert mock_upload.called
-
