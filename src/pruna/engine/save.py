@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 import json
 import os
 import shutil
@@ -34,7 +35,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers
-from pruna.engine.utils import determine_dtype
+from pruna.engine.utils import ModelContext, determine_dtype
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -318,10 +319,36 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
-    if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
-        model.save_quantized(model_path)
+    # we need to create a separate path for the quantized model
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        quantized_path = os.path.join(str(model_path), "hqq_language_model")
     else:
-        algorithm_packages["AutoHQQHFModel"].save_quantized(model, str(model_path))
+        quantized_path = str(model_path)
+
+    # save the quantized model only.
+    with ModelContext(model) as (pipeline, working_model, denoiser_type):
+        if isinstance(working_model, algorithm_packages["HQQModelForCausalLM"]):
+            working_model.save_quantized(quantized_path)
+        else:
+            algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(quantized_path))
+        # redefining the working_model breaks links with context manager
+        # so we need to re-define the working_model as an attribute of the model.
+        pipeline.working_model = working_model
+
+    # save the rest of the model, if it is a janus like model,
+    # and add a config file to the quantized model path.
+    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+        transformer_backup = model.model.language_model
+        model.model.language_model = None
+        model.save_pretrained(model_path)
+        # Create a copy to avoid modifying the original config
+        hqq_config = copy.deepcopy(model.config.text_config)
+        # for re-loading the model, hqq expects the architecture to be LlamaForCausalLM
+        hqq_config.architectures = ["LlamaForCausalLM"]
+        os.makedirs(quantized_path, exist_ok=True)
+        with open(os.path.join(quantized_path, "config.json"), "w") as f:
+            json.dump(hqq_config.to_dict(), f, indent=2)
+        model.model.language_model = transformer_backup
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
