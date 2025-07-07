@@ -83,7 +83,7 @@ def get_diffusers_model(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, S
     """Get a diffusers model for image generation."""
     # snapshot download of the model
     model_path = snapshot_download(model_id)
-    model = load_diffusers_model(model_path, **kwargs)
+    model = load_diffusers_model(model_path, smash_config=SmashConfig(device="cpu"), **kwargs)
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
     return model, smash_config
