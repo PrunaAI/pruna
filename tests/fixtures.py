@@ -4,18 +4,13 @@ from typing import Any, Callable
 
 import pytest
 import torch
-from diffusers import (
-    DDIMPipeline,
-    FluxPipeline,
-    SanaPipeline,
-    StableDiffusion3Pipeline,
-    StableDiffusionPipeline,
-)
+from huggingface_hub import snapshot_download
 from torchvision.models import get_model as torchvision_get_model
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from pruna import SmashConfig
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.engine.load import load_diffusers_model
 from pruna.engine.utils import safe_memory_cleanup
 
 HIGH_RESOURCE_FIXTURES = ["sana"]
@@ -60,13 +55,6 @@ def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
     return dm.val_dataloader()
 
 
-def stable_diffusion_v1_4_model() -> tuple[Any, SmashConfig]:
-    """Stable Diffusion model with unet for image generation."""
-    model, smash_config = get_diffusers_model(StableDiffusionPipeline, "CompVis/stable-diffusion-v1-4")
-    # add dummy tokenizer and processor for compatibility rejection tests
-    return model, smash_config
-
-
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
     source_model_id = "openai/whisper-tiny"
@@ -91,9 +79,11 @@ def dummy_model() -> tuple[Any, SmashConfig]:
     return dummy_model, smash_config
 
 
-def get_diffusers_model(cls: type[Any], model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
+def get_diffusers_model(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get a diffusers model for image generation."""
-    model = cls.from_pretrained(model_id, **kwargs)
+    # snapshot download of the model
+    model_path = snapshot_download(model_id)
+    model = load_diffusers_model(model_path, smash_config=SmashConfig(device="cpu"), **kwargs)
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
     return model, smash_config
@@ -136,21 +126,20 @@ MODEL_FACTORY: dict[str, Callable] = {
     "resnet_18": partial(get_torchvision_model, "resnet18"),
     "vit_b_16": partial(get_torchvision_model, "vit_b_16"),
     # image generation models
-    "stable_diffusion_v1_4": stable_diffusion_v1_4_model,
+    "stable_diffusion_v1_4": partial(get_diffusers_model, "CompVis/stable-diffusion-v1-4"),
     "stable_diffusion_3_medium_diffusers": partial(
-        get_diffusers_model, StableDiffusion3Pipeline, "stabilityai/stable-diffusion-3-medium-diffusers"
+        get_diffusers_model, "stabilityai/stable-diffusion-3-medium-diffusers"
     ),
-    "ddpm-cifar10": partial(get_diffusers_model, DDIMPipeline, "google/ddpm-cifar10-32"),
-    "sd_tiny_random": partial(get_diffusers_model, StableDiffusionPipeline, "dg845/tiny-random-stable-diffusion"),
+    "ddpm-cifar10": partial(get_diffusers_model, "google/ddpm-cifar10-32"),
+    "sd_tiny_random": partial(get_diffusers_model, "dg845/tiny-random-stable-diffusion"),
     "sana": partial(
         get_diffusers_model,
-        SanaPipeline,
         "Efficient-Large-Model/Sana_600M_512px_diffusers",
         variant="fp16",
         torch_dtype=torch.float16,
     ),
-    "sana_tiny_random": partial(get_diffusers_model, SanaPipeline, "katuni4ka/tiny-random-sana"),
-    "flux_tiny_random": partial(get_diffusers_model, FluxPipeline, "katuni4ka/tiny-random-flux"),
+    "sana_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-sana"),
+    "flux_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-flux"),
     # text generation models
     "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m"),
     "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
