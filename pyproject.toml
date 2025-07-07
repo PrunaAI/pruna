@@ -23,7 +23,6 @@ ignore_missing_imports = true
 
 [tool.uv]
 index-url = "https://pypi.org/simple/"
-extra-index-url = ["https://prunaai.pythonanywhere.com/simple/"]
 
 [project]
 name = "pruna"
@@ -125,6 +124,19 @@ dev = [
     "logbar",
 ]
 cpu = []
+
+[[tool.uv.index]]
+name = "internal"
+url = "https://prunaai.pythonanywhere.com/simple/"
+
+[tool.uv.sources]
+stable-fast-pruna = [
+  { index = "internal", extra = "full" },
+  { index = "internal", extra = "stable-fast" }
+]
+gptqmodel = [
+  { index = "internal", extra = "gptq" },
+]
 
 [build-system]
 requires = ["hatchling"]
