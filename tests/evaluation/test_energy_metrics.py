@@ -3,7 +3,9 @@ from typing import Any
 import pytest
 
 from pruna import PrunaModel, SmashConfig
-from pruna.evaluation.metrics.metric_energy import EnergyConsumedMetric, CO2EmissionsMetric
+from pruna.evaluation.metrics.metric_energy import EnergyConsumedMetric, CO2EmissionsMetric, ENERGY_CONSUMED, CO2_EMISSIONS
+from pruna.evaluation.metrics.registry import MetricRegistry
+
 
 @pytest.mark.parametrize(
     "model_fixture, device",
@@ -36,3 +38,29 @@ def test_co2_emissions_metric(model_fixture: tuple[Any, SmashConfig], device: st
     pruna_model = PrunaModel(model, smash_config=smash_config)
     results = metric.compute(pruna_model, smash_config.test_dataloader())
     assert results.result >= 0  # Assuming CO2 emissions should be non-negative
+
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    "device, metric",
+    [
+        ("cpu", CO2_EMISSIONS),
+        ("cpu", ENERGY_CONSUMED),
+        ("cuda", ENERGY_CONSUMED),
+        ("cuda", CO2_EMISSIONS),
+    ],
+)
+def test_energy_metric_device_validation(device: str, metric: str) -> None:
+    metric = MetricRegistry.get_metric(metric, device=device)
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    "metric",
+    [
+        ENERGY_CONSUMED,
+        CO2_EMISSIONS,
+    ],
+)
+def test_energy_metric_device_validation_error(metric: str) -> None:
+    with pytest.raises(ValueError):
+        MetricRegistry.get_metric(metric, device="accelerate")

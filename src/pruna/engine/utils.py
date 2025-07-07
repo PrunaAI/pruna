@@ -467,6 +467,8 @@ def set_to_best_available_device(
     ----------
     device : str | torch.device | None
         Device to validate (e.g. 'cuda', 'mps', 'cpu').
+    bytes_free_per_gpu : dict[int, int] | None
+        The number of bytes free per GPU.
 
     Returns
     -------
@@ -492,6 +494,7 @@ def set_to_best_available_device(
     elif kind == "mps":
         if not torch.backends.mps.is_available():
             pruna_logger.warning("'mps' requested but not available.")
+        return "mps"
     else:
         raise ValueError(f"Device not supported: '{device}'")
 
@@ -511,7 +514,7 @@ def device_to_string(device: str | torch.device) -> str:
         The device as a string.
     """
     if isinstance(device, torch.device):
-        return device.type
+        return f"{device.type}:{device.index}" if device.index is not None else device.type
     elif isinstance(device, str):
         return device
     else:
@@ -527,64 +530,7 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     device : str
         The device to split.
     strict : bool
-        Whether to raise an error if the device is not in allowed devices
-
-    Returns
-    -------
-    tuple[str, int | None]
-        The kind and index of the device.
-    """
-    device = device.lower()
-    if ":" in device:
-        kind, idx_str = device.split(":", 1)
-        if kind not in ("cuda", "mps") and strict:
-            raise ValueError(f"Unsupported device kind '{kind}'.")
-        try:
-            idx = int(idx_str)
-        except ValueError:
-            raise ValueError("Device index must be an integer.")
-        return kind, idx
-    if device in ("cuda", "mps"):
-        return device, 0  # treat bare cuda and mps as first device
-    if device in ("cpu", "accelerate"):
-        return device, None
-    if strict:
-        raise ValueError(f"Unsupported device: '{device}'.")
-    return device, None
-
-
-def device_to_string(device: str | torch.device) -> str:
-    """
-    Convert a device to a string.
-
-    Parameters
-    ----------
-    device : str | torch.device
-        The device to convert.
-
-    Returns
-    -------
-    str
-        The device as a string.
-    """
-    if isinstance(device, torch.device):
-        return device.type
-    elif isinstance(device, str):
-        return device
-    else:
-        raise ValueError(f"Unsupported device type: {type(device)}")
-
-
-def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
-    """
-    Split a device string into a kind and index.
-
-    Parameters
-    ----------
-    device : str
-        The device to split.
-    strict : bool
-        Whether to raise an error if the device is not in allowed devices
+        Whether to raise an error if the device is not in allowed devices.
 
     Returns
     -------

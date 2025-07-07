@@ -89,5 +89,5 @@ class InferenceHandler(ABC):
             The prepared inputs.
         """
         if isinstance(device, dict):
-            device = min(device.values())
+            device = min(device.values())  # If we have a device map, we should move to the first device.
         return move_batch_to_device(inputs, device)
