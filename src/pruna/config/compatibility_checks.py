@@ -14,12 +14,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pruna import SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.config.smash_space import SMASH_SPACE
-from pruna.engine.utils import get_device, get_device_map, move_to_device
+from pruna.engine.utils import get_device, get_device_map, move_to_device, split_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -35,12 +35,13 @@ def ensure_device_consistency(model, smash_config):
         The smash config to check for device consistency.
     """
     model_device = get_device(model)
+    model_device_kind = split_device(model_device)[0]
 
     # model and smash config devices match
-    if model_device == smash_config.device:
+    if model_device_kind == split_device(smash_config.device)[0]:
         pruna_logger.debug("Device consistency check passed.")
         # in case of accelerate, we need to store the device map
-        if model_device == "accelerate":
+        if model_device_kind == "accelerate":
             pruna_logger.debug("Device consistency check passed.")
             hf_device_map = get_device_map(model)
             if not all(isinstance(v, int) for v in hf_device_map.values()):
@@ -48,7 +49,7 @@ def ensure_device_consistency(model, smash_config):
             else:
                 smash_config.device_map = hf_device_map
 
-    elif smash_config.device in ["cpu", "cuda", "mps"] and model_device in ["cpu", "cuda", "mps"]:
+    elif split_device(smash_config.device)[0] in ["cpu", "cuda", "mps"] and model_device_kind in ["cpu", "cuda", "mps"]:
         pruna_logger.warning(
             (
                 f"Model and SmashConfig have different devices. Model: {model_device}, "
@@ -58,14 +59,14 @@ def ensure_device_consistency(model, smash_config):
         )
         move_to_device(model, smash_config.device)
 
-    elif smash_config.device == "accelerate" or model_device == "accelerate":
+    elif split_device(smash_config.device)[0] == "accelerate" or model_device_kind == "accelerate":
         pruna_logger.warning(
             (
                 f"Model and SmashConfig have different devices. Model: {model_device}, "
                 f"SmashConfig: {smash_config.device}. Updating SmashConfig to device='{model_device}'."
             )
         )
-        smash_config.device = model_device
+        smash_config.device = model_device_kind
     else:
         raise ValueError(f"Invalid device: {smash_config.device}")
 
@@ -103,7 +104,7 @@ def check_model_compatibility(
                 raise ValueError(
                     f"Model is not compatible with {algorithm_dict[current_group][algorithm].algorithm_name}"
                 )
-            if get_device(model) not in algorithm_dict[current_group][algorithm].runs_on:
+            if split_device(cast(str, get_device(model)))[0] not in algorithm_dict[current_group][algorithm].runs_on:
                 raise ValueError(
                     f"{algorithm} is not compatible with device {get_device(model)}, "
                     f"compatible devices are {algorithm_dict[current_group][algorithm].runs_on}"
