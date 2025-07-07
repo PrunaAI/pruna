@@ -291,7 +291,7 @@ def get_device_map(model: Any, subset_key: str | None = None) -> dict[str, str]:
         else:
             return model.hf_device_map[subset_key]
     else:
-        device = "cuda:0" if model_device == "cuda" else "cpu"
+        device = "cuda:0" if model_device == "cuda" else model_device
         return {"": device}
 
 
