@@ -230,7 +230,7 @@ def cast_model_to_accelerate_device_map(model, device_map):
     model.hf_device_map = device_map.copy()
 
 
-def get_device(model: Any) -> str | dict[str, str]:
+def get_device(model: Any) -> str:
     """
     Get the device of the model.
 
@@ -241,7 +241,7 @@ def get_device(model: Any) -> str | dict[str, str]:
 
     Returns
     -------
-    str | dict[str, str]
+    str
         The device or device map of the model.
     """
     if isinstance(model, Pipeline):
