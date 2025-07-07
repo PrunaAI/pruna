@@ -104,6 +104,8 @@ class GPUMemoryStats(BaseMetric):
         List of GPU indices to monitor. If None, all GPUs are assumed.
     """
 
+    runs_on: list[str] = ["cuda"]
+
     def __init__(self, mode: str = DISK_MEMORY, gpu_indices: Optional[List[int]] = None) -> None:
         """
         Initialize the GPUMemoryStats.
@@ -136,6 +138,9 @@ class GPUMemoryStats(BaseMetric):
         MetricResult
             The peak GPU memory usage in MB.
         """
+        model_device = model.get_device()
+        if not self.is_device_supported(model_device):
+            raise ValueError(f"Memory metrics does not support device {model_device}. Must be one of {self.runs_on}.")
         save_path = model.smash_config.cache_dir / "metrics_save"
         model_cls = model.__class__
         model_device_indices = self._detect_model_gpus(model)
@@ -366,6 +371,7 @@ class DiskMemoryMetric(BaseMetric):
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the DiskMemoryMetric."""
         self.metric = GPUMemoryStats(DISK_MEMORY, gpu_indices)
+        self.runs_on = self.metric.runs_on
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -404,6 +410,7 @@ class InferenceMemoryMetric(BaseMetric):
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the InferenceMemoryMetric."""
         self.metric = GPUMemoryStats(INFERENCE_MEMORY, gpu_indices)
+        self.runs_on = self.metric.runs_on
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -442,6 +449,7 @@ class TrainingMemoryMetric(BaseMetric):
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the TrainingMemoryMetric."""
         self.metric = GPUMemoryStats(TRAINING_MEMORY, gpu_indices)
+        self.runs_on = self.metric.runs_on
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """

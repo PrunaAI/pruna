@@ -576,6 +576,8 @@ def set_to_best_available_device(
     ----------
     device : str | torch.device | None
         Device to validate (e.g. 'cuda', 'mps', 'cpu').
+    bytes_free_per_gpu : dict[int, int] | None
+        The number of bytes free per GPU.
 
     Returns
     -------
@@ -621,7 +623,7 @@ def device_to_string(device: str | torch.device) -> str:
         The device as a string.
     """
     if isinstance(device, torch.device):
-        return device.type
+        return f"{device.type}:{device.index}" if device.index is not None else device.type
     elif isinstance(device, str):
         return device
     else:

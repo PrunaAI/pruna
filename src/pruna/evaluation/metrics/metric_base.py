@@ -17,9 +17,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
+import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.utils import device_to_string, split_device
 
 
 class BaseMetric(ABC):
@@ -28,7 +30,32 @@ class BaseMetric(ABC):
     metric_name: str
     metric_units: str
     higher_is_better: bool
-    device: str
+    runs_on: list[str] = ["cuda", "cpu", "mps"]
+
+    @property
+    def device(self) -> str:
+        """Return the current device."""
+        return getattr(self, "_device", "cpu")
+
+    @device.setter
+    def device(self, dvc: str | torch.device):
+        """Validate and store the device.
+
+        Parameters
+        ----------
+        value : str | torch.device
+            The device to set.
+        """
+        if not self.is_device_supported(dvc):
+            raise ValueError(
+                f"Metric {getattr(self, 'metric_name', self.__class__.__name__)} "
+                f"doesn't support device '{dvc}'. Must be one of {self.runs_on}."
+            )
+
+        object.__setattr__(self, "_device", dvc)
+
+        if hasattr(self, "metric"):  # For memory metrics that internally use the GPUMemoryStats.
+            object.__setattr__(self.metric, "_device", dvc)
 
     @abstractmethod
     def compute(
@@ -52,3 +79,20 @@ class BaseMetric(ABC):
             The computed metric value.
         """
         pass
+
+    def is_device_supported(self, device: str | torch.device) -> bool:
+        """
+        Check if the metric is compatible with the device.
+
+        Parameters
+        ----------
+        device : str | torch.device | None, optional
+            The device to check. If None, the metric is compatible with all devices.
+
+        Returns
+        -------
+        bool
+            True if the metric is compatible with the device, False otherwise.
+        """
+        dvc, _ = split_device(device_to_string(device))
+        return dvc in self.runs_on

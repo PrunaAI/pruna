@@ -88,33 +88,6 @@ class InferenceHandler(ABC):
         List[str] | torch.Tensor
             The prepared inputs.
         """
-        if isinstance(inputs, dict):
-            for key, value in inputs.items():
-                if isinstance(value, torch.Tensor):
-                    inputs[key] = value.to(device)
-        if isinstance(inputs, torch.Tensor):
-            return inputs.to(device)
-        elif isinstance(inputs, tuple):
-            return tuple(self.move_inputs_to_device(item, device) for item in inputs)  # type: ignore
-        else:
-            return inputs
-
-    def set_correct_dtype(
-        self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict, dtype: torch.dtype
-    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict:
-        """Set the correct dtype for the batch."""
-        if isinstance(batch, torch.Tensor):
-            return batch.to(dtype)
-
-        if isinstance(batch, list) and all(isinstance(x, str) for x in batch):
-            return batch  # don't touch list of strings
-
-        if isinstance(batch, tuple):
-            return tuple(self.set_correct_dtype(item, dtype) for item in batch)  # type: ignore
-
-        if isinstance(batch, dict):
-            return {
-                k: self.set_correct_dtype(v, dtype) if isinstance(v, (torch.Tensor, list, tuple, dict)) else v
-                for k, v in batch.items()
-            }
-        return batch
+        if isinstance(device, dict):
+            device = min(device.values())  # If we have a device map, we should move to the first device.
+        return move_batch_to_device(inputs, device)

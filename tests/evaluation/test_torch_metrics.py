@@ -6,11 +6,17 @@ import torch
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper, TorchMetrics
 from pruna.data.pruna_datamodule import PrunaDataModule
 
-@pytest.mark.cuda
-@pytest.mark.parametrize("datamodule_fixture", ["WikiText"], indirect=True)
-def test_perplexity(datamodule_fixture: PrunaDataModule) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device",
+    [
+        pytest.param("WikiText", "cpu", marks=pytest.mark.cpu),
+        pytest.param("WikiText", "cuda", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_perplexity(datamodule_fixture: PrunaDataModule, device: str) -> None:
     """Test the perplexity."""
-    metric = TorchMetricWrapper("perplexity")
+    metric = TorchMetricWrapper("perplexity", device=device)
     dataloader = datamodule_fixture.val_dataloader()
 
     _, gt = next(iter(dataloader))
@@ -27,11 +33,17 @@ def test_perplexity(datamodule_fixture: PrunaDataModule) -> None:
     assert result.result == 1.0
 
 
-@pytest.mark.cpu
-@pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
-def test_fid(datamodule_fixture: PrunaDataModule) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device",
+    [
+        pytest.param("LAION256", "cpu", marks=pytest.mark.cpu),
+        pytest.param("LAION256", "cuda", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_fid(datamodule_fixture: PrunaDataModule, device: str) -> None:
     """Test the fid."""
-    metric = TorchMetricWrapper("fid")
+    metric = TorchMetricWrapper("fid", device=device)
     dataloader = datamodule_fixture.val_dataloader()
     dataloader_iter = iter(dataloader)
 
@@ -42,11 +54,17 @@ def test_fid(datamodule_fixture: PrunaDataModule) -> None:
     assert metric.compute().result == pytest.approx(0.0, abs=1e-2)
 
 
-@pytest.mark.cpu
-@pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
-def test_clip_score(datamodule_fixture: PrunaDataModule) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device",
+    [
+        pytest.param("LAION256", "cpu", marks=pytest.mark.cpu),
+        pytest.param("LAION256", "cuda", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_clip_score(datamodule_fixture: PrunaDataModule, device: str) -> None:
     """Test the clip score."""
-    metric = TorchMetricWrapper("clip_score")
+    metric = TorchMetricWrapper("clip_score", device=device)
     dataloader = datamodule_fixture.val_dataloader()
     dataloader_iter = iter(dataloader)
 
@@ -66,12 +84,21 @@ def test_clipiqa(dataloader_fixture: Any) -> None:
     assert score.result > 0.0 and score.result < 1.0
 
 
-@pytest.mark.cpu
-@pytest.mark.parametrize("datamodule_fixture", ["ImageNet"], indirect=True)
-@pytest.mark.parametrize("metric", ["accuracy", "recall", "precision"])
-def test_torch_metrics(datamodule_fixture: PrunaDataModule, metric: str) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device, metric",
+    [
+        pytest.param("ImageNet", "cpu", "accuracy", marks=pytest.mark.cpu),
+        pytest.param("ImageNet", "cuda", "accuracy", marks=pytest.mark.cuda),
+        pytest.param("ImageNet", "cpu", "recall", marks=pytest.mark.cpu),
+        pytest.param("ImageNet", "cuda", "recall", marks=pytest.mark.cuda),
+        pytest.param("ImageNet", "cpu", "precision", marks=pytest.mark.cpu),
+        pytest.param("ImageNet", "cuda", "precision", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_torch_metrics(datamodule_fixture: PrunaDataModule, device: str, metric: str) -> None:
     """Test the torch metrics accuracy, recall, precision."""
-    metric = TorchMetricWrapper(metric, task="multiclass", num_classes=1000)
+    metric = TorchMetricWrapper(metric, task="multiclass", num_classes=1000, device=device)
     dataloader = datamodule_fixture.val_dataloader()
     dataloader_iter = iter(dataloader)
 

@@ -109,17 +109,20 @@ class MetricRegistry:
             raise ValueError(f"Metric '{name}' is not registered.")
 
         metric_cls = cls._registry[name]
+        device = kwargs.pop("device", None)
         inference_device = kwargs.pop("inference_device", None)
         stateful_metric_device = kwargs.pop("stateful_metric_device", None)
         if isinstance(metric_cls, partial) and "TorchMetricWrapper" in metric_cls.func.__name__:
-            kwargs["device"] = stateful_metric_device
+            kwargs["device"] = stateful_metric_device if stateful_metric_device else device
             return metric_cls(**kwargs)
         elif isclass(metric_cls):
             if issubclass(metric_cls, StatefulMetric):
-                kwargs["device"] = stateful_metric_device
+                kwargs["device"] = stateful_metric_device if stateful_metric_device else device
             elif issubclass(metric_cls, BaseMetric):
-                kwargs["device"] = inference_device
+                kwargs["device"] = inference_device if inference_device else device
             return metric_cls(**filter_load_kwargs(metric_cls, kwargs))
+        elif isinstance(metric_cls, partial):  # For the mock tests
+            return metric_cls(**kwargs)
         else:
             raise ValueError(f"Metric '{metric_cls}' dos not inherit from a valid metric class.")
 

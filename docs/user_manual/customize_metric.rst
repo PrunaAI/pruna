@@ -13,9 +13,11 @@ If anything is unclear or you want to discuss your contribution before opening a
 ------------------------------------
 
 |pruna|'s evaluation system supports two types of metrics, located under ``pruna/evaluation/metrics``: ``BaseMetric`` and ``StatefulMetric``.
+|pruna|'s evaluation system supports two types of metrics, located under ``pruna/evaluation/metrics``: ``BaseMetric`` and ``StatefulMetric``.
 
 These two types are designed to accommodate different use cases.
 
+- **BaseMetric**: Inherit from ``BaseMetric`` and compute values directly without maintaining state.
 - **BaseMetric**: Inherit from ``BaseMetric`` and compute values directly without maintaining state.
     - Used when isolated inference is required (e.g., ``latency``, ``disk_memory``, etc.)
 - **StatefulMetric**: Inherit from ``StatefulMetric`` and accumulate state across multiple batches.
@@ -30,6 +32,7 @@ These two types are designed to accommodate different use cases.
 Create a new file in ``pruna/evaluation/metrics`` with a descriptive name for your metric. (e.g, ``your_new_metric.py``)
 
 We use snake_case for the file names (e.g., ``your_new_metric.py``), PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation.
+We use snake_case for the file names (e.g., ``your_new_metric.py``), PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation.
 
 Both  ``BaseMetric`` and ``StatefulMetric`` return a ``MetricResult`` object, which contains the metric name, result value and other metadata.
 
@@ -43,12 +46,14 @@ Your metric should have a ``metric_name`` attribute and a ``higher_is_better`` a
 ``compute()`` takes two parameters: ``model`` and ``dataloader``.
 
 Inside ``compute()``, you are responsible for running inference manually.
+Inside ``compute()``, you are responsible for running inference manually.
 
 Your method should return a ``MetricResult`` object with the metric name, result value and other metadata. The result value should be a float or int.
 
 .. code-block:: python
 
     from pruna.evaluation.metrics.metric_base import BaseMetric
+    from pruna.evaluation.metrics.result import MetricResult
     from pruna.evaluation.metrics.result import MetricResult
 
     class YourNewMetric(BaseMetric):
@@ -107,6 +112,7 @@ Here's a complete example implementing a ``StatefulMetric`` with a single ``call
             self.param1 = param1
             self.param2 = param2
             self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type) # Call the correct helper function to get the correct call_type
+
 
             # Initialize state variables
             self.add_state("total", torch.zeros(1))
@@ -190,7 +196,9 @@ In this case, you can pass ``pairwise`` to the ``call_type`` parameter of the ``
 
     from pruna.evaluation.metrics.your_metric_file import YourNewStatefulMetric
 
+
     # Initialize your metric from the instance
+    YourNewStatefulMetric(param1='value1', param2='value2', call_type="pairwise")
     YourNewStatefulMetric(param1='value1', param2='value2', call_type="pairwise")
 
 If you have implemented your metric using the correct ``get_call_type_for_metric`` function and ``metric_data_processor`` function, this will work as expected.
@@ -243,6 +251,7 @@ Thanks to this registry system, everyone using |pruna| can now refer to your met
     from pruna.evaluation.metrics.your_metric_file import YourNewMetric
 
     # Classic way: Initialize your metric from the instance
+    YourNewMetric(param1='value1', param2='value2')
     YourNewMetric(param1='value1', param2='value2')
 
 .. code-block:: python
@@ -298,6 +307,7 @@ Once you've implemented your metric, everyone can use it in Pruna's evaluation p
 
     from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
     from pruna.evaluation.metrics.your_metric_file import YourNewMetric
+
 
     metrics = [
         'clip_score',

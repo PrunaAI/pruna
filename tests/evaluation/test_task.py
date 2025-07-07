@@ -97,3 +97,11 @@ def test_metric_device_adapts_to_task_device(inference_device: str, stateful_met
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
             else:
                 raise ValueError("Could not find device for metric.")
+
+@pytest.mark.cpu
+def test_task_from_string_request():
+    request = ["cmmd", "pairwise_clip_score", "psnr"]
+    task = Task(request=request, datamodule=PrunaDataModule.from_string("LAION256"), device = "cpu")
+    assert isinstance(task.metrics[0], CMMD)
+    assert isinstance(task.metrics[1], PairwiseClipScore)
+    assert isinstance(task.metrics[2], TorchMetricWrapper)
