@@ -26,7 +26,7 @@ from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
 )
-from pruna.engine.utils import determine_dtype, move_to_device
+from pruna.engine.utils import determine_dtype, get_device_map, move_to_device
 
 
 class DiffusersInt8Quantizer(PrunaQuantizer):
@@ -120,19 +120,16 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
         """
         with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
             # save the latent model (to be quantized) in a temp directory
-            device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
             if hasattr(model, "transformer"):
                 working_model = model.transformer
-                device_map = (
-                    {"": device} if smash_config.device != "accelerate" else smash_config.device_map["transformer"]
-                )
+                device_map = get_device_map(model, subset_key="transformer")
 
             elif hasattr(model, "unet"):
                 working_model = model.unet
-                device_map = {"": device} if smash_config.device != "accelerate" else smash_config.device_map["unet"]
+                device_map = get_device_map(model, subset_key="unet")
             else:
                 working_model = model
-                device_map = {"": device} if smash_config.device != "accelerate" else smash_config.device_map
+                device_map = get_device_map(model)
 
             move_to_device(working_model, "cpu")
             working_model.save_pretrained(temp_dir)
