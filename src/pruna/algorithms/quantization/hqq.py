@@ -78,6 +78,12 @@ class HQQQuantizer(PrunaQuantizer):
                 default_value="torch.float16",
                 meta=dict(desc="Compute dtype for quantization."),
             ),
+            CategoricalHyperparameter(
+                "patch_for_inference",
+                choices=[True, False],
+                default_value=True,
+                meta=dict(desc="Whether to patch the model for inference (with torchaoint4 kernels)."),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -152,7 +158,12 @@ class HQQQuantizer(PrunaQuantizer):
 
             # Prepare the model for fast inference
             try:
-                if weight_quantization_bits == 4:
+                if weight_quantization_bits == 4 and smash_config["patch_for_inference"]:
+                    pruna_logger.info(
+                        "Patching model for fast inference with torchaoint4 kernels. "
+                        "This operation makes the model incompatible with re-load. "
+                        "If you plan to save and re-load the model, set patch_for_inference to False."
+                    )
                     imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
             except Exception as e:
                 pruna_logger.error(f"Error: {e}")
