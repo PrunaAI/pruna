@@ -51,6 +51,10 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
     def __init__(self, **kwargs: Any) -> None:
         device = kwargs.pop("device", None)
         device = set_to_best_available_device(device)
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
         if "call_type" in kwargs:
             pruna_logger.error(f"Call type is not supported for {self.metric_name}. Using default call type {PAIRWISE}")
             kwargs.pop("call_type")
@@ -107,6 +111,10 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):
         device : str | torch.device
             The device to move the metric to.
         """
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
         self.to(device)
 
 

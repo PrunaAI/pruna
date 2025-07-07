@@ -109,7 +109,12 @@ class EvaluationAgent:
         pruna_logger.info("Evaluating isolated inference metrics.")
         results.extend(self.compute_stateless_metrics(model, stateless_metrics))
 
-        model.move_to_device("cpu")
+        # Move model back to the original device.
+        model.move_to_device(self.device, device_map=self.device_map)
+        pruna_logger.info(
+            f"Evaluation run has finished. Moved model to device {self.device} with device map {self.device_map}."
+        )
+
         safe_memory_cleanup()
         if self.evaluation_for_first_model:
             self.first_model_results = results
@@ -172,6 +177,7 @@ class EvaluationAgent:
 
         ensure_device_consistency(model, self.task)
         self.device = self.task.device
+        self.device_map = model.get_device(return_device_map=True) if self.device == "accelerate" else None
         return model
 
     def update_stateful_metrics(

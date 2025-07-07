@@ -21,6 +21,7 @@ from typing import Any, Dict, List
 import torch
 from torch import Tensor
 
+from pruna.engine.utils import device_to_string, split_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -36,6 +37,7 @@ class StatefulMetric(ABC):
 
     metric_name: str
     call_type: str
+    runs_on: list[str] = ["cuda", "cpu", "mps"]
 
     def __init__(self) -> None:
         """Initialize the StatefulMetric class."""
@@ -124,7 +126,8 @@ class StatefulMetric(ABC):
 
     @abstractmethod
     def move_to_device(self, device: str | torch.device) -> None:
-        """Move the metric to a specific device.
+        """
+        Move the metric to a specific device.
 
         Parameters
         ----------
@@ -132,3 +135,20 @@ class StatefulMetric(ABC):
             The device to move the metric to.
         """
         pass
+
+    def is_device_supported(self, device: str | torch.device) -> bool:
+        """
+        Check if the metric is compatible with the device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to check.
+
+        Returns
+        -------
+        bool
+            True if the metric is compatible with the device, False otherwise.
+        """
+        dvc, idx = split_device(device_to_string(device))
+        return dvc in self.runs_on

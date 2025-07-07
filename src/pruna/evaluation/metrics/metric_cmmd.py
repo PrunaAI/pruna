@@ -69,6 +69,10 @@ class CMMD(StatefulMetric):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.device = set_to_best_available_device(device)
+        if not self.is_device_supported(self.device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
         try:
             model_info(clip_model_name)
         except EntryNotFoundError:
@@ -193,6 +197,10 @@ class CMMD(StatefulMetric):
         device : str | torch.device
             The device to move the metric to.
         """
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
         self.device = device_to_string(device)
         self.clip_model = self.clip_model.to(device)
         self.ground_truth_embeddings = [embedding.to(device) for embedding in self.ground_truth_embeddings]
