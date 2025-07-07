@@ -167,9 +167,14 @@ class PrunaModel:
         """
         Get the device of the model.
 
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional keyword arguments to pass to the get_device function.
+
         Returns
         -------
-        str
+        str | dict[str, str]
             The device of the model.
         """
         return get_device(self.model, **filter_load_kwargs(get_device, kwargs))
@@ -189,7 +194,7 @@ class PrunaModel:
         """Set the model to evaluation mode."""
         set_to_eval(self.model)
 
-    def move_to_device(self, device: str) -> None:
+    def move_to_device(self, device: str, device_map: dict[str, str] | None = None, **kwargs: Any) -> None:
         """
         Move the model to a specific device.
 
@@ -197,8 +202,12 @@ class PrunaModel:
         ----------
         device : str
             The device to move the model to.
+        device_map : dict[str, str] | None
+            The device map to use to move the model to the device.
+        **kwargs : Any
+            Additional keyword arguments to pass to the move_to_device function.
         """
-        move_to_device(self.model, device)
+        move_to_device(self.model, device, device_map=device_map, **filter_load_kwargs(move_to_device, kwargs))
 
     def save_pretrained(self, model_path: str) -> None:
         """

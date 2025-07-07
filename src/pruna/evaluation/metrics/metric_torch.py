@@ -36,7 +36,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
 
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import device_to_string, set_to_best_available_device, split_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -255,6 +255,9 @@ class TorchMetricWrapper(StatefulMetric):
         try:
             device = kwargs.pop("device", None)
             device = set_to_best_available_device(device=device)
+            dvc, idx = split_device(device_to_string(device))
+            if not self.is_device_supported(device):
+                raise ValueError(f"Metric {metric_name} does not support device {dvc}. Must be one of {self.runs_on}.")
             self.metric = TorchMetrics[metric_name](**kwargs)
             with suppress(AttributeError, TypeError):
                 self.metric = self.metric.to(device)
@@ -364,6 +367,10 @@ class TorchMetricWrapper(StatefulMetric):
         device : str | torch.device
             The device to move the metric to.
         """
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
         self.metric = self.metric.to(device)
 
 

@@ -8,7 +8,7 @@ from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.task import Task
-
+from pruna.engine.utils import move_to_device
 @pytest.mark.parametrize(
     "model_fixture, device, clip_model",
     [
@@ -52,6 +52,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
 def test_task_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
     """Test CMMD pairwise."""
     model, _ = model_fixture
+    move_to_device(model, device)
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(10)
 

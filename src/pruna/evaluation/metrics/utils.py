@@ -18,8 +18,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
+    from pruna.engine.pruna_model import PrunaModel
     from pruna.evaluation.task import Task
-
 from collections import defaultdict
 from inspect import Signature, getmro, signature
 from typing import Callable, Dict, List, Tuple, Type
@@ -27,7 +27,7 @@ from typing import Callable, Dict, List, Tuple, Type
 import torch
 
 from pruna.data.utils import move_batch_to_device
-from pruna.engine.utils import get_device, move_to_device, split_device
+from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.logging.logger import pruna_logger
 
@@ -327,7 +327,7 @@ def get_call_type_for_single_metric(call_type_requested: str, default_call_type:
             raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
 
 
-def ensure_device_consistency(model: Any, task: Task) -> None:
+def ensure_device_consistency(model: PrunaModel, task: Task) -> None:
     """
     Ensure the model and the task agree on the device they will run on.
 
@@ -339,11 +339,9 @@ def ensure_device_consistency(model: Any, task: Task) -> None:
         The task to check.
     """
     # Preprocessing the devices
-    model_device_raw = cast(str, get_device(model))
-    if isinstance(task.device, torch.device):
-        task.device = task.device.type
+    model_device_raw = cast(str, model.get_device())
     model_device, idx_m = split_device(model_device_raw, strict=True)
-    task_device, idx_t = split_device(task.device, strict=True)
+    task_device, idx_t = split_device(device_to_string(task.device), strict=True)
 
     # Everything is fine scenario.
     if (model_device, idx_m) == (task_device, idx_t):
@@ -368,49 +366,31 @@ def ensure_device_consistency(model: Any, task: Task) -> None:
 
     # Only auto-resolve device mismatches when no device was provided.
     else:
-        # If one side uses accelerate, we trust the model to be on the correct device.
-        if "accelerate" in (model_device, task_device):
-            if model_device == "accelerate":
-                pruna_logger.warning(
-                    (
-                        f"Model and task have different devices. Model: {model_device}, "
-                        f"task: {task.device}. Updating task to device='{model_device}'."
-                        f"The inference for metric computations will be done on {model_device}."
-                    )
-                )
-                _check_offload(model)  # We want to make sure to catch if the model is offloaded to CPU.
-                task.device = model_device_raw
-                task.stateful_metric_device = "cpu"
-                # We update the inference device for the metrics in the task.
-                # Stateful metrics go to cpu until the evaluation agent is finished with the inference.
-                _update_metric_devices(
-                    task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device
-                )
-            # task side is accelerate. right now the auto device casting would not set the task device to accelerate.
-            # But for future proofing.
-            else:
-                pruna_logger.warning(
-                    (
-                        f"Model and task have different devices. Model: {model_device}, "
-                        f"task: {task.device}. Updating task to device='{model_device}'."
-                    )
-                )
-                task.device = model_device_raw
-                task.stateful_metric_device = model_device_raw
-                # We update all metric devices to the model device.
-                _update_metric_devices(
-                    task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device
-                )
-
-            return
-
         pruna_logger.warning(
-            f"Model on {model_device_raw}, task on {task.device}. "
-            f"Casting model to {task.device}. "
-            f"If undesired, call task(device='{model_device_raw}')."
+            (
+                f"Model and task have different devices. Model: {model_device}, "
+                f"task: {task.device}. Updating task to device='{model_device}'."
+            )
         )
-        move_to_device(model, task.device)
-        return
+        task.device = model_device_raw
+        if model_device in ["cuda", "mps", "accelerate"]:
+            if not task.low_memory:
+                free_bytes = find_bytes_free_per_gpu() if model_device == "accelerate" else None
+                # Return the best available device with them most free memory.
+                task.stateful_metric_device = set_to_best_available_device("cuda", free_bytes)
+            else:
+                task.stateful_metric_device = "cpu"
+            # We update the inference device for the metrics in the task.
+            _update_metric_devices(task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device)
+            if model_device == "accelerate":
+                _check_offload(model)  # We want to make sure to catch if the model is offloaded to CPU.
+        elif model_device == "cpu":
+            task.stateful_metric_device = "cpu"
+            _update_metric_devices(task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device)
+        else:
+            raise ValueError(
+                f"Invalid model device: {model_device}. Must be one of {['cuda', 'mps', 'accelerate', 'cpu']}."
+            )
 
 
 def _check_offload(model: Any) -> None:
@@ -422,9 +402,12 @@ def _check_offload(model: Any) -> None:
     model : Any
         The model to check.
     """
-    hf_device_map = cast(dict[str, str], get_device(model, return_device_map=True))
+    hf_device_map = cast(dict[str, str], model.get_device(return_device_map=True))
     if not all(isinstance(v, int) for v in hf_device_map.values()):
-        raise ValueError("Device map indicates CPU offloading; not supported at this time.")
+        raise ValueError(
+            "Device map indicates CPU offloading; not supported at this time. \n"
+            "Please initialize Task with `low_memory=True` to run stateful metrics on cpu."
+        )
 
 
 def _update_metric_devices(task: Task, inference_device: str, stateful_device: str) -> None:

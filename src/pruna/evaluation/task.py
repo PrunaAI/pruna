@@ -49,6 +49,10 @@ class Task:
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
+    low_memory : bool, optional
+        If True, we will run stateful metrics on cpu.
+        If False, we will run stateful metrics on the best available device.
+        Default is False.
     """
 
     def __init__(
@@ -56,12 +60,14 @@ class Task:
         request: str | List[str | BaseMetric | StatefulMetric],
         datamodule: PrunaDataModule,
         device: str | torch.device | None = None,
+        low_memory: bool = False,
     ) -> None:
         self.auto_device = device is None  # We set this for the compatibility checks later on.
+        self.low_memory = low_memory
         self.device = set_to_best_available_device(
             device
         )  # The inference device is set as the task device for evaluation agent and optimization agent.
-        self.stateful_metric_device = _set_stateful_metric_device_from_task_device(self.device)
+        self.stateful_metric_device = self._set_stateful_metric_device_from_task_device()
         self.metrics = _safe_build_metrics(request, self.device, self.stateful_metric_device)
 
         self.datamodule = datamodule
@@ -111,6 +117,29 @@ class Task:
         """
         return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
 
+    def _set_stateful_metric_device_from_task_device(self) -> str:
+        """
+        Return the device for stateful metrics based on the task device.
+
+        Parameters
+        ----------
+        low_memory : bool
+            If True, we will run stateful metrics on cpu.
+            If False, we will run stateful metrics on the best available device.
+
+        Returns
+        -------
+        str
+            The device for the stateful metrics.
+        """
+        if self.low_memory:
+            return "cpu"  # We will run stateful metrics on cpu
+        elif self.device == "accelerate":
+            bytes_free_per_gpu = find_bytes_free_per_gpu()
+            return set_to_best_available_device("cuda", bytes_free_per_gpu)
+        else:
+            return self.device  # for when we pass a specific cuda device, or cpu or mps.
+
 
 def _safe_build_metrics(
     request: str | List[str | BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
@@ -119,7 +148,10 @@ def _safe_build_metrics(
         return get_metrics(request, inference_device, stateful_metric_device)
     except torch.cuda.OutOfMemoryError as e:
         if stateful_metric_device == "cuda":
-            pruna_logger.error("Not enough GPU memory for metrics on %s. try `device='cpu'`.", stateful_metric_device)
+            pruna_logger.error(
+                "Not enough GPU memory for metrics on %s. Please try initializing task with `low_memory=True`.",
+                stateful_metric_device,
+            )
         raise e
 
 
@@ -224,13 +256,3 @@ def _process_single_request(
     else:
         pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
         raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
-
-
-def _set_stateful_metric_device_from_task_device(task_device: str) -> str:
-    if task_device == "accelerate":
-        return "cpu"  # We will move them to the device later after inference is done.
-    elif task_device == "cuda":
-        bytes_free_per_gpu = find_bytes_free_per_gpu()
-        return set_to_best_available_device("cuda", bytes_free_per_gpu)
-    else:
-        return task_device  # for when we pass a specific cuda device, or cpu or mps.

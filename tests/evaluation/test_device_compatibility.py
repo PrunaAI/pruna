@@ -11,21 +11,22 @@ from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.registry import MetricRegistry
 from typing import Any, List
 
 @pytest.mark.distributed
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="needs ≥2 GPUs to build a split model")
 @pytest.mark.parametrize(
-    "datamodule_fixture, model_fixture, evaluation_request",
+    "datamodule_fixture, model_fixture, evaluation_request, low_memory",
     [
-        ("LAION256",  "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score'))),
-        ("LAION256", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score'))),
+        ("LAION256",  "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score')), False),
+        ("LAION256", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score')), True),
     ],
     indirect=["datamodule_fixture", "model_fixture"],
 )
-def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDataModule, model_fixture: Any, evaluation_request: List[str]):
+def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDataModule, model_fixture: Any, evaluation_request: List[str], low_memory: bool):
 
-    task = Task(request=evaluation_request, datamodule=datamodule_fixture, device=None)
+    task = Task(request=evaluation_request, datamodule=datamodule_fixture, device=None, low_memory=low_memory)
     agent = EvaluationAgent(task)
 
     model, _ = model_fixture
@@ -36,7 +37,10 @@ def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDa
 
     assert split_device(device_to_string(model.get_device())) == split_device(device_to_string(agent.device))
     assert split_device(device_to_string(agent.device)) == split_device(device_to_string(task.device))
-    assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string("cpu"))
+    if not low_memory:
+        assert split_device(device_to_string(task.stateful_metric_device))[0] == split_device(device_to_string("cuda"))[0] # Task and stateful metrics can be on different indexes
+    else:
+        assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string("cpu"))
     for metric in task.metrics:
         if isinstance(metric, BaseMetric):
             assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
@@ -50,15 +54,16 @@ def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDa
 
 @pytest.mark.cuda
 @pytest.mark.parametrize(
-    "datamodule_fixture,model_device, model_fixture, evaluation_request",
+    "datamodule_fixture,model_device, model_fixture, evaluation_request, low_memory",
     [
-        ("LAION256", "cpu", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score'))),
-        ("LAION256", "cuda", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score'))),
+        ("LAION256", "cpu", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score')), False),
+        ("LAION256", "cuda", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score')), False),
+        ("LAION256", "cuda", "sd_tiny_random", list(('latency', 'cmmd', 'psnr', 'pairwise_clip_score')), True),
     ],
     indirect=["datamodule_fixture", "model_fixture"],
 )
-def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, model_device: str, model_fixture: Any, evaluation_request: List[str]):
-    task = Task(request=evaluation_request, datamodule=datamodule_fixture)
+def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, model_device: str, model_fixture: Any, evaluation_request: List[str], low_memory: bool):
+    task = Task(request=evaluation_request, datamodule=datamodule_fixture, device=None, low_memory=low_memory)
     agent = EvaluationAgent(task)
 
     model, _ = model_fixture
@@ -67,15 +72,18 @@ def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, m
 
     assert split_device(device_to_string(model.get_device())) == split_device(device_to_string(task.device))
     assert split_device(device_to_string(task.device)) == split_device(device_to_string(agent.device))
-    assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string(task.device))
+    if not low_memory:
+        assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string(task.device))
+    else:
+        assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string("cpu"))
     for metric in task.metrics:
         if isinstance(metric, BaseMetric):
             assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, "device"):
-                assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
+                assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
             elif hasattr(metric, "metric") and hasattr(metric.metric, "device"):
-                assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.device))
+                assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
             else:
                 raise ValueError("Could not find device for metric.")
 
@@ -86,6 +94,8 @@ def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, m
     [
         ("LAION256", "sd_tiny_random", "cuda", "cpu"),
         ("LAION256", "sd_tiny_random", "cpu", "cuda"),
+        ("LAION256", "sd_tiny_random", "accelerate", "cuda"),
+        ("LAION256", "sd_tiny_random", "accelerate", "cpu"),
     ],
     indirect=["datamodule_fixture", "model_fixture"],
 )
@@ -149,7 +159,7 @@ def test_mismatched_metric_instances_adapts_to_model(datamodule_fixture: PrunaDa
     model = agent.prepare_model(model)
     assert split_device(device_to_string(model.get_device())) == split_device(device_to_string(task.device))
     assert split_device(device_to_string(task.device)) == split_device(device_to_string(agent.device))
-    assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string("cpu"))
+    assert split_device(device_to_string(task.stateful_metric_device))[0] == split_device(device_to_string("cuda"))[0]
     for metric in task.metrics:
         if isinstance(metric, BaseMetric):
             assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
@@ -160,3 +170,16 @@ def test_mismatched_metric_instances_adapts_to_model(datamodule_fixture: PrunaDa
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
             else:
                 raise ValueError("Could not find device for metric.")
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    "metric_name",
+    [
+        "psnr",
+        "cmmd",
+        "pairwise_clip_score",
+    ],
+)
+def test_stateful_metric_raises_when_device_is_accelerate(metric_name:str):
+    with pytest.raises(ValueError):
+       MetricRegistry.get_metric(metric_name, device="accelerate")
