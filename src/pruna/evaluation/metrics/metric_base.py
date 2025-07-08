@@ -35,7 +35,7 @@ class BaseMetric(ABC):
     @property
     def device(self) -> str:
         """Return the current device."""
-        return getattr(self, "_device", "cpu")
+        return getattr(self, "_device", "cuda")
 
     @device.setter
     def device(self, dvc: str | torch.device):
@@ -46,6 +46,7 @@ class BaseMetric(ABC):
         value : str | torch.device
             The device to set.
         """
+        # To prevent the user from setting an unsupported device.
         if not self.is_device_supported(dvc):
             raise ValueError(
                 f"Metric {getattr(self, 'metric_name', self.__class__.__name__)} "
