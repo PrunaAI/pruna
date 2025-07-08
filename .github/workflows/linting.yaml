@@ -8,10 +8,17 @@ on:
   pull_request:
     branches:
       - main
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.repository }}-linting
+  cancel-in-progress: true
 
 jobs:
   linting:
     runs-on: ubuntu-22.04
+    outputs:
+      success: ${{ steps.lint-check.outputs.success }}
 
     strategy:
       matrix:
@@ -38,3 +45,7 @@ jobs:
 
       - name: Run docstring checks with pytest
         run: pytest -m "style"
+
+      - name: Set lint check output
+        id: lint-check
+        run: echo "success=true" >> $GITHUB_OUTPUT

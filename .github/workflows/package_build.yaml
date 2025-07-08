@@ -10,13 +10,21 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.repository }}-package-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  linting:
+    uses: ./.github/workflows/linting.yaml
+
   build:
     strategy:
       matrix:
         python-version: ["3.11"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
+    needs: linting
 
     steps:
       - name: Checkout repository
