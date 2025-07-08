@@ -152,7 +152,12 @@ def move_to_device(
         if get_device(model) == "accelerate":
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
-            model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
+            # Parse device index from device string for proper device mapping
+            if device_str.startswith("cuda:"):
+                device_index = int(device_str.split(":")[1])
+                model.hf_device_map = {"": device_index}
+            else:
+                model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
         try:
             model.to(device)
         except torch.cuda.OutOfMemoryError as e:
