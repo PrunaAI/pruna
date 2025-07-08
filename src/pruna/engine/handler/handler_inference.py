@@ -71,7 +71,8 @@ class InferenceHandler(ABC):
     def move_inputs_to_device(
         self,
         inputs: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...],
-        device: torch.device | str | dict[str, str],
+        device: torch.device | str,
+        device_map: dict[str, str] | None = None,
     ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]:
         """
         Recursively move inputs to device.
@@ -82,12 +83,17 @@ class InferenceHandler(ABC):
             The inputs to prepare.
         device : torch.device | str
             The device to move the inputs to.
+        device_map : dict[str, str] | None
+            The device map to use.
 
         Returns
         -------
         List[str] | torch.Tensor
             The prepared inputs.
         """
-        if isinstance(device, dict):
-            device = min(device.values())  # If we have a device map, we should move to the first device.
+        if device == "accelerate":
+            if device_map is None:
+                raise ValueError("Device map is required for accelerate device.")
+            device = min(device_map.values())  # If we have a device map, we should move to the first device
+        # Using the utility function from the data module
         return move_batch_to_device(inputs, device)
