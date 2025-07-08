@@ -84,6 +84,12 @@ class HQQQuantizer(PrunaQuantizer):
                 default_value=True,
                 meta=dict(desc="Whether to patch the model for inference (with torchaoint4 kernels)."),
             ),
+            CategoricalHyperparameter(
+                "default_to_hf",
+                choices=[True, False],
+                default_value=False,
+                meta=dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -132,14 +138,20 @@ class HQQQuantizer(PrunaQuantizer):
         safe_memory_cleanup()
         with ModelContext(model) as (pipeline, working_model, denoiser_type):
             try:  # Try to quantize the model using HQQ
+                if smash_config["default_to_hf"]:
+                    raise Exception(
+                        "AutoHQQHFModel is bypassed, defaulting to generic HF quantization. "
+                        "Set default_to_hf to False to (try to) use AutoHQQHFModel."
+                    )
                 working_model = imported_modules["AutoHQQHFModel"].quantize_model(
                     working_model,
                     quant_config=quant_config_hqq,
                     device=smash_config["device"],
                     compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
                 )
-            except Exception:  # Default to generic HF quantization if it fails
-                pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
+            except Exception:  # Default to generic HF quantization if it fails or if default_to_hf is True
+                if not smash_config["default_to_hf"]:
+                    pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
                 # Create a temporary directory in a specific location
                 base_temp_dir = smash_config["cache_dir"]
                 temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
