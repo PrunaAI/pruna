@@ -19,6 +19,12 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
 
       Compress with ``hqq`` quantization and ``torch_compile`` compilation and evaluate with ``elapsed_time`` and ``perplexity``.
 
+   .. grid-item-card:: Compress and Evaluate Video Generation Models
+      :text-align: center
+      :link: ./video_generation.ipynb
+
+      Compress with a ``pab``, and evaluate with ``total time`` and ``latency``.
+
    .. grid-item-card:: Transcribe 2 hour of audio in 2 minutes with Whisper
       :text-align: center
       :link: ./asr_tutorial.ipynb
