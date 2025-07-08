@@ -27,7 +27,13 @@ from typing import Callable, Dict, List, Tuple, Type
 import torch
 
 from pruna.data.utils import move_batch_to_device
-from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
+from pruna.engine.utils import (
+    device_to_string,
+    find_bytes_free_per_gpu,
+    get_device_map,
+    set_to_best_available_device,
+    split_device,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.logging.logger import pruna_logger
 
@@ -365,6 +371,7 @@ def ensure_device_consistency(model: PrunaModel, task: Task) -> None:
         )
 
     # Only auto-resolve device mismatches when no device was provided.
+    # We take model's device as the default device for the task in this case.
     else:
         pruna_logger.warning(
             (
@@ -402,7 +409,7 @@ def _check_offload(model: Any) -> None:
     model : Any
         The model to check.
     """
-    hf_device_map = cast(dict[str, str], model.get_device(return_device_map=True))
+    hf_device_map = model.get_device_map() if hasattr(model, "smash_config") else get_device_map(model)
     if not all(isinstance(v, int) for v in hf_device_map.values()):
         raise ValueError(
             "Device map indicates CPU offloading; not supported at this time. \n"

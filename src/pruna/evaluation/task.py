@@ -19,7 +19,7 @@ from typing import Any, List, cast
 import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device
+from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -63,7 +63,7 @@ class Task:
         low_memory: bool = False,
     ) -> None:
         self.auto_device = device is None  # We set this for the compatibility checks later on.
-        self.low_memory = low_memory
+        self.low_memory = low_memory  # When we wish to be memory efficient on stateful metrics.
         self.device = set_to_best_available_device(
             device
         )  # The inference device is set as the task device for evaluation agent and optimization agent.
@@ -211,8 +211,10 @@ def _process_metric_instances(
             for child in metric.__class__.__subclasses__():
                 child = cast(type[BaseMetric], child)
                 hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
-                if (
-                    "device" in hyperparameters and hyperparameters["device"] != inference_device
+                if "device" in hyperparameters and split_device(
+                    device_to_string(hyperparameters["device"])
+                ) != split_device(
+                    inference_device
                 ):  # We check with inference device because everything in PARENT_METRICS is a BaseMetric.
                     pruna_logger.warning(
                         f"The task is requested to run on {inference_device}, but the metric {metric.metric_name} "
@@ -223,7 +225,7 @@ def _process_metric_instances(
                 new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
         else:
             if isinstance(metric, BaseMetric):
-                metric.device = device_to_string(inference_device)
+                metric.device = inference_device
             else:
                 metric.move_to_device(stateful_metric_device)
             new_request_metrics.append(cast(BaseMetric | StatefulMetric, metric))
