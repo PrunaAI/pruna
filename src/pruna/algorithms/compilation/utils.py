@@ -643,9 +643,48 @@ class JanusGenerator:
         generation_config.validate()
         self.model._validate_model_kwargs(model_kwargs.copy())
 
+    def prepare_logits_processor(self, generation_config, input_ids, device, logits_processor):
+        """
+        Prepare (and merge) the logits processor.
+
+        Parameters
+        ----------
+        generation_config : GenerationConfig
+            The generation config.
+        input_ids : torch.Tensor
+            The input token ids that serve as the prompt.
+        device : torch.device
+            The device to use for the input tokens.
+        logits_processor : LogitsProcessorList | None
+            The logits processor for the input tokens.
+
+        Returns
+        -------
+        LogitsProcessorList
+            The logits processor.
+        """
+        # Initialize logit processors
+        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
+
+        # Add CFG processor along with user passed logit processor.
+        if generation_config.guidance_scale and generation_config.guidance_scale > 1:
+            logits_processor.append(ClassifierFreeGuidanceLogitsProcessor(generation_config.guidance_scale))
+            generation_config.guidance_scale = None  # Reset to prevent processor duplication.
+
+        # Prepare and merge logits processor
+        logits_processor = self.model._get_logits_processor(
+            generation_config=generation_config,
+            input_ids_seq_length=input_ids.shape[1],
+            encoder_input_ids=input_ids,
+            prefix_allowed_tokens_fn=None,
+            logits_processor=logits_processor,
+            device=device,
+        )
+        return logits_processor
+
     def prepare_inputs_tokens(self, inputs, generation_config, model_kwargs, attention_mask):
         """
-        Prepare the input tokens and model kwargs.
+        Check inputs shapes, and setup special tokens and model kwargs.
 
         Parameters
         ----------
@@ -677,6 +716,14 @@ class JanusGenerator:
         # Prepare special tokens which will be used generate internally.
         kwargs_has_attention_mask = attention_mask is not None
         self.model._prepare_special_tokens(generation_config, kwargs_has_attention_mask, device=input_ids.device)
+
+        # Expand inputs for multiple image generations per prompt.
+        input_ids, model_kwargs = self.model._expand_inputs_for_generation(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            expand_size=generation_config.num_return_sequences,
+            **model_kwargs,
+        )
 
         return input_ids, model_kwargs, dtype, device
 
@@ -724,7 +771,10 @@ class JanusGenerator:
 
     def prepare_input_and_cache(self, input_ids, model_kwargs, attention_mask, generation_config, device):
         """
-        Prepare the input tokens, inputs embeddings, model kwargs, batch size, and number of image tokens.
+        Setup input tokens, mask and cache.
+
+        Prepare the input tokens, inputs embeddings, model kwargs, batch size, the number of image tokens,
+        and setup the KV cache.
 
         Parameters
         ----------
@@ -938,9 +988,6 @@ class JanusGenerator:
         # Validate the configuration and model kwargs
         self.validate_config_and_model_kwargs(generation_config, model_kwargs)
 
-        # 2. Initialize logit processors
-        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
-
         # Set `use_cache=True` as we will be using input embeds for generation.
         model_kwargs["use_cache"] = True
 
@@ -950,35 +997,15 @@ class JanusGenerator:
             generation_config.guidance_scale = 5
         model_kwargs["guidance_scale"] = generation_config.guidance_scale
 
-        # 3. Prepare model inputs
+        # 2. Prepare model inputs shapes, and check special tokens.
         input_ids, model_kwargs, dtype, device = self.prepare_inputs_tokens(
             inputs, generation_config, model_kwargs, attention_mask
         )
 
-        # 4. Add CFG processor along with user passed logit processor.
-        if generation_config.guidance_scale and generation_config.guidance_scale > 1:
-            logits_processor.append(ClassifierFreeGuidanceLogitsProcessor(generation_config.guidance_scale))
-            generation_config.guidance_scale = None  # Reset to prevent processor duplication.
+        # 3. Prepare logits processor
+        logits_processor = self.prepare_logits_processor(generation_config, input_ids, device, logits_processor)
 
-        # 5. Prepare logits processor
-        logits_processor = self.model._get_logits_processor(
-            generation_config=generation_config,
-            input_ids_seq_length=input_ids.shape[1],
-            encoder_input_ids=input_ids,
-            prefix_allowed_tokens_fn=None,
-            logits_processor=logits_processor,
-            device=device,
-        )
-
-        # 6. Expand inputs for multiple image generations per prompt.
-        input_ids, model_kwargs = self.model._expand_inputs_for_generation(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            expand_size=generation_config.num_return_sequences,
-            **model_kwargs,
-        )
-
-        # 7. Prepare input and model caches
+        # 4. Prepare input and model caches
         input_tokens, inputs_embeds, model_kwargs, batch_size, num_image_tokens = self.prepare_input_and_cache(
             input_ids,
             model_kwargs,
@@ -990,7 +1017,7 @@ class JanusGenerator:
         # Placeholder for generated tokens.
         generated_tokens = torch.zeros((batch_size, num_image_tokens), dtype=dtype, device=device)
 
-        # 8. init attention / hidden states / scores tuples
+        # 5. init attention / hidden states / scores tuples
         output_attentions = generation_config.output_attentions
         output_hidden_states = generation_config.output_hidden_states
         output_scores = generation_config.output_scores
@@ -1002,7 +1029,7 @@ class JanusGenerator:
         decoder_hidden_states = () if (return_dict_in_generate and output_hidden_states) else None
         decoder_attentions = () if (return_dict_in_generate and output_attentions) else None
 
-        # 9. Loop over the latent tokens.
+        # 6. Loop over the latent tokens.
         scores, hidden_state, outputs = self.loop_over_latent_tokens(
             input_tokens,
             input_ids,
@@ -1016,7 +1043,7 @@ class JanusGenerator:
             generation_config,
         )
 
-        # 10. Return the results.
+        # 7. Return the results.
         if return_dict_in_generate:
             if output_scores:
                 raw_scores = tuple(raw_scores) + (scores,) if raw_scores is not None else (scores,)
