@@ -6,7 +6,7 @@ import pytest
 import torch
 from huggingface_hub import snapshot_download
 from torchvision.models import get_model as torchvision_get_model
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, JanusForConditionalGeneration, pipeline
 
 from pruna import SmashConfig
 from pruna.data.pruna_datamodule import PrunaDataModule
@@ -117,6 +117,13 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
     return model, smash_config
 
 
+def get_janus_model(model_id: str) -> tuple[Any, SmashConfig]:
+    """Get a Janus model for image generation."""
+    model = JanusForConditionalGeneration.from_pretrained(model_id)
+    smash_config = SmashConfig()
+    return model, smash_config
+
+
 MODEL_FACTORY: dict[str, Callable] = {
     # whisper models
     "whisper_tiny_random": whisper_tiny_random_model,
@@ -148,4 +155,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     "llama_3_1_8b": partial(get_automodel_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
     "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
     "dummy_lambda": dummy_model,
+
+    # image generation AR models
+    "tiny_janus_pro": partial(get_janus_model, "loulou2/tiny_janus"),
 }
