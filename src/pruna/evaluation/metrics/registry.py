@@ -109,6 +109,7 @@ class MetricRegistry:
             raise ValueError(f"Metric '{name}' is not registered.")
 
         metric_cls = cls._registry[name]
+        # We collect all device related arguments that could be passed to the metric.
         device = kwargs.pop("device", None)
         inference_device = kwargs.pop("inference_device", None)
         stateful_metric_device = kwargs.pop("stateful_metric_device", None)

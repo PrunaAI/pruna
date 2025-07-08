@@ -36,10 +36,13 @@ def ensure_device_consistency(model, smash_config):
     """
     _device_options = ["cpu", "cuda", "mps"]
     model_device = get_device(model)
-    model_device_kind = split_device(model_device)[0]
+
+    # to handle the device cases like "cuda:0 and cuda, cuda:1"
+    model_device_kind, model_device_index = split_device(model_device)
+    smash_config_device_kind, smash_config_device_index = split_device(smash_config.device)
 
     # model and smash config devices match
-    if model_device_kind == split_device(smash_config.device)[0]:
+    if (model_device_kind == smash_config_device_kind) and (model_device_index == smash_config_device_index):
         pruna_logger.debug("Device consistency check passed.")
         # in case of accelerate, we need to store the device map
         if model_device_kind == "accelerate":
@@ -50,7 +53,7 @@ def ensure_device_consistency(model, smash_config):
             else:
                 smash_config.device_map = hf_device_map
     # Check if the device or device index (e.g., 'cuda:0', 'cpu:1', 'mps:0') matches any of the valid device options
-    elif split_device(smash_config.device)[0] in _device_options and model_device_kind in _device_options:
+    elif smash_config_device_kind in _device_options and model_device_kind in _device_options:
         pruna_logger.warning(
             (
                 f"Model and SmashConfig have different devices. Model: {model_device}, "
@@ -60,14 +63,14 @@ def ensure_device_consistency(model, smash_config):
         )
         move_to_device(model, smash_config.device)
 
-    elif split_device(smash_config.device)[0] == "accelerate" or model_device_kind == "accelerate":
+    elif (smash_config_device_kind == "accelerate") or (model_device_kind == "accelerate"):
         pruna_logger.warning(
             (
                 f"Model and SmashConfig have different devices. Model: {model_device}, "
                 f"SmashConfig: {smash_config.device}. Updating SmashConfig to device='{model_device}'."
             )
         )
-        smash_config.device = model_device_kind
+        smash_config.device = model_device
     else:
         raise ValueError(f"Invalid device: {smash_config.device}")
 

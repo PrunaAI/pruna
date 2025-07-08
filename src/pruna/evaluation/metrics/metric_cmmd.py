@@ -69,6 +69,8 @@ class CMMD(StatefulMetric):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.device = set_to_best_available_device(device)
+        # For stateful metrics we can't have a device a general device property,
+        # because of wrapper metrics. We check case by case.
         if not self.is_device_supported(self.device):
             raise ValueError(
                 f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
