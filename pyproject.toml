@@ -45,17 +45,6 @@ testpaths = [
     "src/pruna/tests",
 ]
 
-markers = [
-    "cpu: mark test to run on CPU",
-    "cuda: mark test to run only on GPU machines",
-    "distributed: mark test to run only on multi-GPU machines",
-    "high: mark test to run only on large GPUs",
-    "high_cpu: mark test to run only on large CPU systems",
-    "slow: mark test that run rather long",
-    "style: mark test that only check style",
-    "integration: mark test that is an integration test",
-]
-
 [tool.uv]
 index-url = "https://pypi.org/simple/"
 extra-index-url = ["https://prunaai.pythonanywhere.com/simple/"]
