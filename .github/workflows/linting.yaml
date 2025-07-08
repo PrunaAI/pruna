@@ -11,8 +11,8 @@ on:
   workflow_call:
 
 concurrency:
-  group: ci-${{ github.repository }}-linting
-  cancel-in-progress: true
+  group: ci-${{ github.repository }}-linting-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   linting:
