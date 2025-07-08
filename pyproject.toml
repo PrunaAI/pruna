@@ -95,7 +95,7 @@ dependencies = [
     "pynvml",
     "thop",
     "timm",
-    "bitsandbytes",
+    "bitsandbytes; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "optimum-quanto>=0.2.5",
     "optimum",
     "ctranslate2==4.6.0",
