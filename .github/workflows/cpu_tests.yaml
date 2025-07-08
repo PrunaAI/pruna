@@ -17,12 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linting:
-    uses: ./.github/workflows/linting.yaml
-
   test:
     runs-on: pruna-cpu
-    needs: linting
     strategy:
       matrix:
         python-version: ["3.10"]

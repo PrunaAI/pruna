@@ -15,12 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linting:
-    uses: ./.github/workflows/linting.yaml
-
   installation:
     runs-on: ${{ matrix.os }}
-    needs: linting
     strategy:
       fail-fast: false
       matrix:

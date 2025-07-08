@@ -15,12 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linting:
-    uses: ./.github/workflows/linting.yaml
-
   generate-docs:
     runs-on: ubuntu-22.04
-    needs: linting
     strategy:
       matrix:
         python-version: ["3.11"]
