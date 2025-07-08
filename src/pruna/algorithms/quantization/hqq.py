@@ -151,7 +151,9 @@ class HQQQuantizer(PrunaQuantizer):
                 )
             except Exception:  # Default to generic HF quantization if it fails or if default_to_hf is True
                 if not smash_config["default_to_hf"]:
-                    pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
+                    pruna_logger.info(
+                        "Could not quantize model using specialized HQQ pipeline, trying generic interface..."
+                    )
                 # Create a temporary directory in a specific location
                 base_temp_dir = smash_config["cache_dir"]
                 temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
@@ -173,7 +175,7 @@ class HQQQuantizer(PrunaQuantizer):
                 if weight_quantization_bits == 4 and smash_config["patch_for_inference"]:
                     pruna_logger.info(
                         "Patching model for fast inference with torchaoint4 kernels. "
-                        "This operation makes the model incompatible with re-load. "
+                        "This operation can make the model incompatible with re-load. "
                         "If you plan to save and re-load the model, set patch_for_inference to False."
                     )
                     imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
