@@ -26,7 +26,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
 from pruna.engine.load import filter_load_kwargs, load_pruna_model, load_pruna_model_from_pretrained
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import get_device, get_nn_modules, move_to_device, set_to_eval
+from pruna.engine.utils import get_device, get_device_map, get_nn_modules, move_to_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -163,7 +163,7 @@ class PrunaModel:
         """
         delattr(self.model, attr)
 
-    def get_device(self, **kwargs: Any) -> str | dict[str, str]:
+    def get_device(self, **kwargs: Any) -> str:
         """
         Get the device of the model.
 
@@ -177,7 +177,25 @@ class PrunaModel:
         str | dict[str, str]
             The device of the model.
         """
+        # Passing kwargs here just in case the utility function changes later on.
         return get_device(self.model, **filter_load_kwargs(get_device, kwargs))
+
+    def get_device_map(self, **kwargs: Any) -> dict[str, str]:
+        """
+        Get the device map of the model.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional keyword arguments to pass to the get_device_map function.
+
+        Returns
+        -------
+        dict[str, str]
+            The device map of the model.
+        """
+        # Passing kwargs here just in case the utility function changes later on.
+        return get_device_map(self.model, **filter_load_kwargs(get_device_map, kwargs))
 
     def get_nn_modules(self) -> dict[str | None, torch.nn.Module]:
         """
@@ -207,6 +225,7 @@ class PrunaModel:
         **kwargs : Any
             Additional keyword arguments to pass to the move_to_device function.
         """
+        # Passing kwargs here just in case the utility function changes later on.
         move_to_device(self.model, device, device_map=device_map, **filter_load_kwargs(move_to_device, kwargs))
 
     def save_pretrained(self, model_path: str) -> None:

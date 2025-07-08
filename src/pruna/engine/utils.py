@@ -142,13 +142,14 @@ def move_to_device(
         return
 
     device = device_to_string(device)
+    # To handle the device cases like "cuda:0, cuda:1"
     kind, idx = split_device(device)
 
     # sanity check for expected device types
     if device == "accelerate":
         pass  # Handle accelerate separately
     elif kind in ["cpu", "cuda", "mps"]:
-        device = torch.device(f"{kind}:{idx}" if idx is not None else kind)
+        device = f"{kind}:{idx}" if idx is not None else kind
     else:
         raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
 
@@ -371,6 +372,7 @@ def get_device(model: Any) -> str:
         except StopIteration:
             raise ValueError("Could not determine device of model, model has no device attribute.")
 
+    # model_device.type ignores the device index. Added a new function to convert to string.
     model_device = device_to_string(model_device)
 
     return model_device
@@ -533,6 +535,8 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
 
+    # When we have a dict of available GPUs and space on them,
+    # we set the device to the one with the most free memory.
     if bytes_free_per_gpu is not None:
         if idx != 0:  # Not the default device
             pruna_logger.warning(

@@ -93,7 +93,7 @@ class InferenceTimeStats(BaseMetric):
         c = 0
         while c < iterations:
             for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, model.get_device(return_device_map=True))
+                batch = model.inference_handler.move_inputs_to_device(batch, model.get_device(), model.get_device_map())
                 x = model.inference_handler.prepare_inputs(batch)
                 measure_fn(model, x)
                 c += 1
@@ -113,7 +113,7 @@ class InferenceTimeStats(BaseMetric):
         if device_type == "cuda":
             torch.cuda.synchronize(device_idx)
         elif device_type == "accelerate":
-            device_map = cast(Dict[str, str], model.get_device(return_device_map=True))
+            device_map = model.get_device_map()
             for device in device_map.values():
                 torch.cuda.synchronize(device)
         else:

@@ -29,7 +29,7 @@ from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import ensure_device_consistency, group_metrics_by_inheritance
+from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device_map, group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -177,7 +177,8 @@ class EvaluationAgent:
 
         ensure_device_consistency(model, self.task)
         self.device = self.task.device
-        self.device_map = model.get_device(return_device_map=True) if self.device == "accelerate" else None
+        # Keeping the device map to move model back to the original device, when the agent is finished.
+        self.device_map = get_device_map(model)
         return model
 
     def update_stateful_metrics(
@@ -205,7 +206,7 @@ class EvaluationAgent:
         if not single_stateful_metrics and not pairwise_metrics:
             return
 
-        model.move_to_device(self.device)
+        model.move_to_device(self.device, self.device_map)
         for batch_idx, batch in enumerate(tqdm(self.task.dataloader, desc="Processing batches", unit="batch")):
             processed_outputs = model.run_inference(batch)
 

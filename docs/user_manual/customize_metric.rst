@@ -13,11 +13,9 @@ If anything is unclear or you want to discuss your contribution before opening a
 ------------------------------------
 
 |pruna|'s evaluation system supports two types of metrics, located under ``pruna/evaluation/metrics``: ``BaseMetric`` and ``StatefulMetric``.
-|pruna|'s evaluation system supports two types of metrics, located under ``pruna/evaluation/metrics``: ``BaseMetric`` and ``StatefulMetric``.
 
 These two types are designed to accommodate different use cases.
 
-- **BaseMetric**: Inherit from ``BaseMetric`` and compute values directly without maintaining state.
 - **BaseMetric**: Inherit from ``BaseMetric`` and compute values directly without maintaining state.
     - Used when isolated inference is required (e.g., ``latency``, ``disk_memory``, etc.)
 - **StatefulMetric**: Inherit from ``StatefulMetric`` and accumulate state across multiple batches.
@@ -32,7 +30,6 @@ These two types are designed to accommodate different use cases.
 Create a new file in ``pruna/evaluation/metrics`` with a descriptive name for your metric. (e.g, ``your_new_metric.py``)
 
 We use snake_case for the file names (e.g., ``your_new_metric.py``), PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation.
-We use snake_case for the file names (e.g., ``your_new_metric.py``), PascalCase for the class names (e.g, ``YourNewMetric``) and NumPy style docstrings for documentation.
 
 Both  ``BaseMetric`` and ``StatefulMetric`` return a ``MetricResult`` object, which contains the metric name, result value and other metadata.
 
@@ -41,11 +38,14 @@ Implementing a ``BaseMetric``
 
 Create a new class that inherits from ``BaseMetric`` and implements the ``compute()`` method.
 
-Your metric should have a ``metric_name`` attribute and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
+Your metric should have a ``metric_name`` and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
+
+Every metric has a ``runs_on`` attribute that should be a list that contains the device(s) the metric can run on. For base metrics it is by default ``["cuda", "cpu", "mps"]``.
+
+Please update the ``runs_on`` if you want to change the default devices.
 
 ``compute()`` takes two parameters: ``model`` and ``dataloader``.
 
-Inside ``compute()``, you are responsible for running inference manually.
 Inside ``compute()``, you are responsible for running inference manually.
 
 Your method should return a ``MetricResult`` object with the metric name, result value and other metadata. The result value should be a float or int.
@@ -54,13 +54,13 @@ Your method should return a ``MetricResult`` object with the metric name, result
 
     from pruna.evaluation.metrics.metric_base import BaseMetric
     from pruna.evaluation.metrics.result import MetricResult
-    from pruna.evaluation.metrics.result import MetricResult
 
     class YourNewMetric(BaseMetric):
         '''Your metric description'''
 
         metric_name = "your_metric_name"
         higher_is_better = True # or False
+        runs_on = ["cuda", "cpu"] # This is optional. Only change if your metric runs on different devices than the default ones.
 
         def __init__(self):
             super().__init__()
@@ -79,13 +79,19 @@ Implementing a ``StatefulMetric``
 
 To implement a ``StatefulMetric``, create a class that inherits from ``StatefulMetric``. These metrics are designed to accumulate state across multiple batches and can share inference with other metrics.
 
-Your metric should have a ``metric_name`` attribute and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
+Your metric should have a ``metric_name`` and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
+
+Every metric has a ``runs_on`` attribute that should be a list that contains the device(s) the metric can run on. For base metrics it is by default ``["cuda", "cpu", "mps"]``.
+
+Please update the ``runs_on`` if you want to change the default devices.
 
 Use ``add_state()`` method to define internal state variables that will accumulate data across batches. For example, you might track totals and counts to compute an average.
 
 The ``update()`` method processes each batch of data, updating the state variables based on the current batch. It takes three parameters: ``inputs``, ``ground_truths`` and ``predictions``.
 
 The ``compute()`` method is called after all batches are processed and returns a ``MetricResult`` object, which contains the final metric value calculated from the accumulated state.
+
+The ``move_to_device()`` method is used to move the metric and necessary attributes and variables of the metric to the specified device.
 
 Metrics can operate in both single-model and pairwise modes, determined by the ``call_type`` parameter. Common ``call_types`` include ``y_gt``, ``gt_y``, ``x_gt``, ``gt_x``, ``pairwise_y_gt``, and ``pairwise_gt_y``. For more details, see the :ref:`Understanding Call Types <understanding-call-types>` section.
 
@@ -106,7 +112,7 @@ Here's a complete example implementing a ``StatefulMetric`` with a single ``call
         default_call_type = "y_gt"
         metric_name = "your_metric_name"
         higher_is_better = True # or False
-
+        runs_on = ["cuda", "cpu"]
         def __init__(self, param1='default1', param2='default2', call_type=SINGLE): # Since we picked a single call_type for default, we can use it as a default value
             super().__init__()
             self.param1 = param1
@@ -132,6 +138,12 @@ Here's a complete example implementing a ``StatefulMetric`` with a single ``call
                 return 0
             return MetricResult(self.metric_name, self.__dict__.copy(), self.total / self.count)
 
+        def move_to_device(self, device: str | torch.device):
+            # Move the metric and necessary attributes and variables of the metric to the specified device
+            self.device = device
+            self.total = self.total.to(device)
+            self.count = self.count.to(device)
+
 .. _understanding-call-types:
 
 Understanding Call Types
@@ -156,9 +168,10 @@ Understanding Call Types
 | `pairwise_y_gt`    | Base model's output first, then subsequent model's output   |
 +--------------------+-------------------------------------------------------------+
 | `pairwise_gt_y`    | Subsequent model's output first, then base model's output   |
-+--------------------+-------------------------------------------------------------+
++--------------------+-------------------------------------------------------------+ 
 | `y`                | Only the output is used, the metric has an internal dataset |
 +--------------------+-------------------------------------------------------------+
+
 
 You need to decide on the default ``call_type`` based on the metric you are implementing.
 
@@ -198,7 +211,6 @@ In this case, you can pass ``pairwise`` to the ``call_type`` parameter of the ``
 
 
     # Initialize your metric from the instance
-    YourNewStatefulMetric(param1='value1', param2='value2', call_type="pairwise")
     YourNewStatefulMetric(param1='value1', param2='value2', call_type="pairwise")
 
 If you have implemented your metric using the correct ``get_call_type_for_metric`` function and ``metric_data_processor`` function, this will work as expected.
@@ -251,7 +263,6 @@ Thanks to this registry system, everyone using |pruna| can now refer to your met
     from pruna.evaluation.metrics.your_metric_file import YourNewMetric
 
     # Classic way: Initialize your metric from the instance
-    YourNewMetric(param1='value1', param2='value2')
     YourNewMetric(param1='value1', param2='value2')
 
 .. code-block:: python

@@ -79,6 +79,7 @@ def test_task_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str,
 def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
     """Test CMMD pairwise using direct parameters to EvaluationAgent."""
     model, _ = model_fixture
+    move_to_device(model, device)
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(10)
 
