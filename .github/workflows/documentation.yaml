@@ -32,15 +32,8 @@ jobs:
 
       - uses: ./.github/actions/setup-uv-project
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[cpu]
-
-      - name: Remove .so files
-        run: find . -name "*.so" -delete
-
       - name: Run generation script
-        run: uv run docs/utils/gen_docs.py
+        run: python docs/utils/gen_docs.py
 
       - name: Verify generated file exists
         run: |
