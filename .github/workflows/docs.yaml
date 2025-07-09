@@ -11,7 +11,7 @@ on:
       - main
 
 concurrency:
-  group: ci-${{ github.repository }}-documentation-${{ github.ref }}
+  group: ci-${{ github.repository }}-docs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,11 +36,8 @@ jobs:
         run: |
           pip install -e .[cpu]
 
-      - name: Remove .so files
-        run: find . -name "*.so" -delete
-
       - name: Run generation script
-        run: uv run docs/utils/gen_docs.py
+        run: python docs/utils/gen_docs.py
 
       - name: Verify generated file exists
         run: |
