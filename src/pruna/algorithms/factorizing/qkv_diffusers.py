@@ -37,7 +37,7 @@ class QKVDiffusers(PrunaFactorizer):
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
-    runs_on: list[str] = ["cpu", "cuda"]
+    runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(
         quantizer=["diffusers_int8", "hqq_diffusers", "quanto", "torchao"],

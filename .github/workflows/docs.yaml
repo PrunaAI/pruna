@@ -32,10 +32,6 @@ jobs:
 
       - uses: ./.github/actions/setup-uv-project
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[cpu]
-
       - name: Run generation script
         run: python docs/utils/gen_docs.py
 

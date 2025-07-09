@@ -37,7 +37,7 @@ class DeepCacheCacher(PrunaCacher):
     tokenizer_required: bool = False
     processor_required: bool = False
     dataset_required: bool = False
-    runs_on: list[str] = ["cpu", "cuda"]
+    runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     compatible_algorithms: dict[str, list[str]] = dict(
         factorizer=["qkv_diffusers"],
         compiler=["stable_fast", "torch_compile"],
