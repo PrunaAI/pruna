@@ -19,6 +19,7 @@ import gc
 import inspect
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -37,7 +38,7 @@ def safe_memory_cleanup() -> None:
     torch.cuda.empty_cache()
 
 
-def load_json_config(path: str, json_name: str) -> dict:
+def load_json_config(path: str | Path, json_name: str) -> dict:
     """
     Load and parse a JSON configuration file.
 
@@ -229,7 +230,7 @@ def cast_model_to_accelerate_device_map(model, device_map):
     model.hf_device_map = device_map.copy()
 
 
-def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, str]:
+def get_device(model: Any) -> str:
     """
     Get the device of the model.
 
@@ -237,34 +238,61 @@ def get_device(model: Any, return_device_map: bool = False) -> str | dict[str, s
     ----------
     model : Any
         The model to get the device from.
-    return_device_map : bool
-        Whether to return the device map.
 
     Returns
     -------
-    str | dict[str, str]
+    str
         The device or device map of the model.
     """
     if isinstance(model, Pipeline):
-        return get_device(model.model, return_device_map)
-
-    if not hasattr(model, "device"):
-        try:
-            model_device = next(model.parameters()).device
-        except StopIteration:
-            raise ValueError("Could not determine device of model, model has no device attribute.")
-    else:
-        model_device = model.device
-
-    if isinstance(model_device, torch.device):
-        model_device = model_device.type
+        return get_device(model.model)
 
     # a device map that points the whole model to the same device (only key is "") is not considered distributed
     # when casting a model like this with "to" the device map is not maintained, so we rely on the model.device attribute
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None and list(model.hf_device_map.keys()) != [""]:
-        model_device = model.hf_device_map if return_device_map else "accelerate"
+        model_device = "accelerate"
+
+    elif hasattr(model, "device"):
+        model_device = model.device
+
+    else:
+        try:
+            model_device = next(model.parameters()).device
+        except StopIteration:
+            raise ValueError("Could not determine device of model, model has no device attribute.")
+
+    if isinstance(model_device, torch.device):
+        model_device = model_device.type
 
     return model_device
+
+
+def get_device_map(model: Any, subset_key: str | None = None) -> dict[str, str]:
+    """
+    Get the device map of the model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to get the device map from.
+    subset_key : str | None
+        The key of a submodule for which to get the device map. This only applies in the case of accelerate-distributed
+        models, in all other cases the mapping will just be {"": device} which is applicable also for submodules.
+
+    Returns
+    -------
+    dict[str, str]
+        The device map of the model.
+    """
+    model_device = get_device(model)
+    if model_device == "accelerate":
+        if subset_key is None:
+            return model.hf_device_map
+        else:
+            return model.hf_device_map[subset_key]
+    else:
+        device = "cuda:0" if model_device == "cuda" else model_device
+        return {"": device}
 
 
 def set_to_eval(model: Any) -> None:
@@ -461,6 +489,9 @@ class ModelContext:
         elif hasattr(self.pipeline, "unet"):
             self.working_model = self.pipeline.unet
             self.denoiser_type = "unet"
+        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
+            self.working_model = self.pipeline.model.language_model
+            self.denoiser_type = "language_model"
         else:
             self.working_model = self.pipeline
             self.denoiser_type = None  # type: ignore [assignment]
@@ -483,6 +514,8 @@ class ModelContext:
             self.pipeline.transformer = self.pipeline.working_model
         elif hasattr(self.pipeline, "unet"):
             self.pipeline.unet = self.pipeline.working_model
+        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
+            self.pipeline.model.language_model = self.pipeline.working_model
         else:
             self.pipeline = self.pipeline.working_model
         del self.pipeline.working_model

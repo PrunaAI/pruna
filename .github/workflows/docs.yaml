@@ -10,10 +10,13 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.repository }}-documentation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   generate-docs:
     runs-on: ubuntu-22.04
-
     strategy:
       matrix:
         python-version: ["3.11"]
