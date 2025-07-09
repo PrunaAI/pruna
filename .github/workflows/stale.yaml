@@ -1,0 +1,15 @@
+name: 'Mark stale PRs'
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-pr-stale: 10
+          stale-pr-message: 'This PR has been inactive for 10 days and is now marked as stale.'
