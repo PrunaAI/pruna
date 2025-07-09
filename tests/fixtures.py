@@ -89,7 +89,7 @@ def get_diffusers_model(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, S
     return model, smash_config
 
 
-def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
+def get_automodel_causallm_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get an AutoModelForCausalLM model for text generation."""
     model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
     smash_config = SmashConfig()
@@ -117,8 +117,12 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
     return model, smash_config
 
 
-def get_janus_model(model_id: str) -> tuple[Any, SmashConfig]:
-    """Get a Janus model for image generation."""
+def get_automodel_image_text_to_text_transformers(model_id: str) -> tuple[Any, SmashConfig]:
+    """
+    Get an AutoModelForImageTextToText model.
+
+    This multi-modal model is not only for text generation, but also for AR image generation.
+    """
     model = AutoModelForImageTextToText.from_pretrained(model_id)
     smash_config = SmashConfig()
     return model, smash_config
@@ -148,13 +152,13 @@ MODEL_FACTORY: dict[str, Callable] = {
     "sana_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-sana"),
     "flux_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-flux"),
     # text generation models
-    "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m"),
-    "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
-    "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
-    "llama_3_2_1b": partial(get_automodel_transformers, "NousResearch/Llama-3.2-1B"),
-    "llama_3_1_8b": partial(get_automodel_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
-    "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
+    "opt_125m": partial(get_automodel_causallm_transformers, "facebook/opt-125m"),
+    "opt_tiny_random": partial(get_automodel_causallm_transformers, "yujiepan/opt-tiny-random"),
+    "smollm_135m": partial(get_automodel_causallm_transformers, "HuggingFaceTB/SmolLM2-135M"),
+    "llama_3_2_1b": partial(get_automodel_causallm_transformers, "NousResearch/Llama-3.2-1B"),
+    "llama_3_1_8b": partial(get_automodel_causallm_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
+    "llama_3_tiny_random": partial(get_automodel_causallm_transformers, "llamafactory/tiny-random-Llama-3"),
     "dummy_lambda": dummy_model,
     # image generation AR models
-    "tiny_janus_pro": partial(get_janus_model, "loulou2/tiny_janus"),
+    "tiny_janus_pro": partial(get_automodel_image_text_to_text_transformers, "loulou2/tiny_janus"),
 }
