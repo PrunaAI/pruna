@@ -33,7 +33,3 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - uses: ./.github/actions/setup-uv-project
-
-      - name: Install dependencies
-        run: |
-          pip install -e .
