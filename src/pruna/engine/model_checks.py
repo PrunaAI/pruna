@@ -570,3 +570,20 @@ def is_opt_model(model: Any) -> bool:
     """
     opt_mapping = {k: v for k, v in MODEL_FOR_CAUSAL_LM_MAPPING.items() if "opt" in str(k).lower()}
     return isinstance(model, tuple(opt_mapping.values()))
+
+
+def is_janus_llamagen_ar(model: Any) -> bool:
+    """
+    Check if the model is a Janus LlamaGen AR model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a Janus LlamaGen AR model, False otherwise.
+    """
+    return model.__class__.__name__ == "JanusForConditionalGeneration"

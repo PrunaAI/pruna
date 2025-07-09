@@ -10,6 +10,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.repository }}-installation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   installation:
     runs-on: ${{ matrix.os }}
@@ -28,12 +32,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -e .
+      - uses: ./.github/actions/setup-uv-project

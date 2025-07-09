@@ -19,7 +19,7 @@ from typing import Any
 from pruna import SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.config.smash_space import SMASH_SPACE
-from pruna.engine.utils import get_device, move_to_device
+from pruna.engine.utils import get_device, get_device_map, move_to_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -42,7 +42,7 @@ def ensure_device_consistency(model, smash_config):
         # in case of accelerate, we need to store the device map
         if model_device == "accelerate":
             pruna_logger.debug("Device consistency check passed.")
-            hf_device_map = get_device(model, return_device_map=True)
+            hf_device_map = get_device_map(model)
             if not all(isinstance(v, int) for v in hf_device_map.values()):
                 raise ValueError("Device map indicates CPU offloading, this is not supported at this time.")
             else:

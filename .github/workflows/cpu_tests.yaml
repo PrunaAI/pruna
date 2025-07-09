@@ -12,13 +12,16 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.repository }}-cpu-tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: pruna-cpu
-
     strategy:
       matrix:
-        python-version: [ "3.10" ]
+        python-version: ["3.10"]
 
     steps:
       - name: Checkout code
@@ -29,13 +32,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - name: Install dependencies
-        run: |
-          uv sync --extra dev
+      - uses: ./.github/actions/setup-uv-project
 
       - name: Run tests
         run: |
-          uv run pytest -m "cpu and not slow and not high_cpu"
+          pytest -m "cpu and not slow and not high_cpu"
