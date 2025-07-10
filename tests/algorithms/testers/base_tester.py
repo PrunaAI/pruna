@@ -5,6 +5,7 @@ import shutil
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
+from contextlib import suppress
 from typing import Any
 
 from pruna import PrunaModel, SmashConfig, smash
@@ -108,14 +109,19 @@ class AlgorithmTesterBase:
             if hasattr(metric, "n_iterations"):
                 metric.n_warmup_iterations = 1
                 metric.n_iterations = 1
-            if hasattr(metric, "device"):
-                try:
-                    metric.device = device
-                except Exception:
-                    try:
-                        metric.to(device)
-                    except Exception:
-                        pruna_logger.warning(f"Failed to move metric {metric} to device {device}")
+            # Try setting device or calling .to(device)
+            with suppress(Exception):
+                metric.device = device
+            with suppress(Exception):
+                metric.to(device)
+
+            # Handle nested metric.metric if exists
+            wrapped = getattr(metric, "metric", None)
+            if wrapped is not None:
+                with suppress(Exception):
+                    wrapped.device = device
+                with suppress(Exception):
+                    wrapped.to(device)
         return metric_instances
 
     def post_smash_hook(self, model: PrunaModel) -> None:

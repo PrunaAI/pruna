@@ -454,6 +454,11 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
 
     path = Path(path)
     backbone_path = path / "backbone_quantized"
+    if "compute_dtype" not in kwargs and os.path.exists(os.path.join(path, "dtype_info.json")):
+        dtype = getattr(torch, load_json_config(path, "dtype_info.json")["dtype"])
+        kwargs["compute_dtype"] = dtype
+        kwargs.setdefault("torch_dtype", dtype)
+
     # If a pipeline was saved, load the backbone and the rest of the pipeline separately
     if backbone_path.exists():
         # load the backbone

@@ -21,6 +21,7 @@ from torch import Tensor
 
 from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
@@ -196,6 +197,8 @@ class EvaluationAgent:
         for batch_idx, batch in enumerate(self.task.dataloader):
             processed_outputs = model.run_inference(batch, self.device)
 
+            batch = move_batch_to_device(batch, self.device)
+            processed_outputs = move_batch_to_device(processed_outputs, self.device)
             (x, gt) = batch
             # Non-pairwise (aka single) metrics have regular update.
             for stateful_metric in single_stateful_metrics:
