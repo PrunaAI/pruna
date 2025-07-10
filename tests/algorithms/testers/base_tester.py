@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 from abc import abstractmethod
-from pathlib import Path
 from contextlib import suppress
+from pathlib import Path
 from typing import Any
 
 from pruna import PrunaModel, SmashConfig, smash

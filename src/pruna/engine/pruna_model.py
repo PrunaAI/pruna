@@ -25,7 +25,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
 from pruna.engine.load import load_pruna_model, load_pruna_model_from_hub
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import determine_dtype, get_nn_modules, move_to_device, set_to_best_available_device, set_to_eval
+from pruna.engine.utils import get_nn_modules, move_to_device, set_to_best_available_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -97,7 +97,6 @@ class PrunaModel:
 
         if not isinstance(batch, tuple):
             batch = (batch, {})
-        batch = self.inference_handler.set_correct_dtype(batch, determine_dtype(self.model))  # type: ignore
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
 
         if prepared_inputs is None:

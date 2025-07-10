@@ -124,7 +124,6 @@ def get_automodel_image_text_to_text_transformers(model_id: str) -> tuple[Any, S
     """
     model = AutoModelForImageTextToText.from_pretrained(model_id)
     smash_config = SmashConfig()
-    smash_config.add_data("WikiText")
     return model, smash_config
 
 

@@ -383,7 +383,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
 
-    with open(os.path.join(model_path, "dtype_info.json"), "w") as f:
+    with (model_path / "dtype_info.json").open("w") as f:
         json.dump({"dtype": str(model.dtype).split(".")[-1]}, f)
 
     if hasattr(model, "transformer"):

@@ -19,11 +19,6 @@ EPS_MEMORY_SIZE = 1000
 NO_SPLIT_MODULES_ACCELERATE = ["OPTDecoderLayer"]
 
 
-def _has_multi_gpu() -> bool:
-    """True if the host can actually run >1 GPU processes."""
-    return torch.cuda.device_count() > 1
-
-
 def device_parametrized(cls: Any) -> Any:
     """Decorator that adds device parameterization to all test methods in the AlgorithmTesterBase."""
     return pytest.mark.parametrize(
@@ -32,13 +27,7 @@ def device_parametrized(cls: Any) -> Any:
             pytest.param("cuda", marks=pytest.mark.cuda),
             pytest.param(
                 "accelerate",
-                marks=[
-                    pytest.mark.distributed,
-                    pytest.mark.skipif(
-                        not _has_multi_gpu(),
-                        reason="`accelerate` tests need at least 2 GPUs",
-                    ),
-                ],
+                marks=pytest.mark.distributed,
             ),
             pytest.param("cpu", marks=pytest.mark.cpu),
         ],
