@@ -19,13 +19,27 @@ EPS_MEMORY_SIZE = 1000
 NO_SPLIT_MODULES_ACCELERATE = ["OPTDecoderLayer"]
 
 
+def _has_multi_gpu() -> bool:
+    """True if the host can actually run >1 GPU processes."""
+    return torch.cuda.device_count() > 1
+
+
 def device_parametrized(cls: Any) -> Any:
     """Decorator that adds device parameterization to all test methods in the AlgorithmTesterBase."""
     return pytest.mark.parametrize(
         "device",
         [
             pytest.param("cuda", marks=pytest.mark.cuda),
-            pytest.param("accelerate", marks=pytest.mark.distributed),
+            pytest.param(
+                "accelerate",
+                marks=[
+                    pytest.mark.distributed,
+                    pytest.mark.skipif(
+                        not _has_multi_gpu(),
+                        reason="`accelerate` tests need at least 2 GPUs",
+                    ),
+                ],
+            ),
             pytest.param("cpu", marks=pytest.mark.cpu),
         ],
     )(cls)
@@ -81,7 +95,8 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         algorithm_tester.execute_evaluation(smashed_model, smash_config.data, smash_config["device"])
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
-        algorithm_tester.execute_load()
+        reloaded_model = algorithm_tester.execute_load()
+        algorithm_tester.execute_evaluation(reloaded_model, smash_config.data, smash_config["device"])
     finally:
         algorithm_tester.final_teardown(smash_config)
 

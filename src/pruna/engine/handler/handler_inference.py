@@ -96,3 +96,23 @@ class InferenceHandler(ABC):
             return tuple(self.move_inputs_to_device(item, device) for item in inputs)  # type: ignore
         else:
             return inputs
+
+    def set_correct_dtype(
+        self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict, dtype: torch.dtype
+    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict:
+        """Set the correct dtype for the batch."""
+        if isinstance(batch, torch.Tensor):
+            return batch.to(dtype)
+
+        if isinstance(batch, list) and all(isinstance(x, str) for x in batch):
+            return batch  # don't touch list of strings
+
+        if isinstance(batch, tuple):
+            return tuple(self.set_correct_dtype(item, dtype) for item in batch)
+
+        if isinstance(batch, dict):
+            return {
+                k: self.set_correct_dtype(v, dtype) if isinstance(v, (torch.Tensor, list, tuple, dict)) else v
+                for k, v in batch.items()
+            }
+        return batch
