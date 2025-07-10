@@ -88,7 +88,7 @@ First, load any pre-trained model. Here's an example using Stable Diffusion:
 
 ```python
 from diffusers import StableDiffusionPipeline
-base_model = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4")
+base_model = StableDiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 ```
 
 Then, use Pruna's `smash` function to optimize your model. Pruna provides a variety of different optimization algorithms, allowing you to combine different algorithms to get the best possible results. You can customize the optimization process using `SmashConfig`:
@@ -118,7 +118,9 @@ from pruna.evaluation.task import Task
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.data.pruna_datamodule import PrunaDataModule
 
-task = Task("image_generation_quality", datamodule=PrunaDataModule.from_string("LAION256"))
+datamodule = PrunaDataModule.from_string("LAION256")
+datamodule.limit_datasets(10)
+task = Task("image_generation_quality", datamodule=datamodule)
 eval_agent = EvaluationAgent(task)
 eval_agent.evaluate(smashed_model)
 ```
