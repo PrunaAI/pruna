@@ -27,6 +27,7 @@ from warnings import warn
 import numpy as np
 import torch
 from ConfigSpace import Configuration, ConfigurationSpace
+from importlib_metadata import version
 from transformers import AutoProcessor, AutoTokenizer
 from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
@@ -44,6 +45,7 @@ ADDITIONAL_ARGS = [
     "save_fns",
     "load_fns",
     "reapply_after_load",
+    "_pruna_version",
 ]
 
 TOKENIZER_SAVE_PATH = "tokenizer/"
@@ -55,6 +57,10 @@ SUPPORTED_DEVICES = ["cpu", "cuda", "mps", "accelerate"]
 class SmashConfig:
     """
     Wrapper class to hold a ConfigSpace Configuration object as a Smash configuration.
+
+    The SmashConfig automatically tracks which version of the pruna library was used for smashing
+    the model. This information is stored in the `_pruna_version` field and is used to warn
+    about potential compatibility issues when loading models smashed with different versions.
 
     Parameters
     ----------
@@ -108,6 +114,9 @@ class SmashConfig:
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
 
+        # Track the pruna version used for smashing
+        self._pruna_version: str = version("pruna")
+
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
         self._prepare_saving = True
 
@@ -134,6 +143,7 @@ class SmashConfig:
             and self.save_fns == other.save_fns
             and self.load_fns == other.load_fns
             and self.reapply_after_load == other.reapply_after_load
+            and self._pruna_version == other._pruna_version
         )
 
     def cleanup_cache_dir(self) -> None:
@@ -146,16 +156,35 @@ class SmashConfig:
         self.cleanup_cache_dir()
         self.cache_dir = tempfile.mkdtemp(dir=self.cache_dir_prefix)
 
-    def load_from_json(self, path: str | Path) -> None:
+    @classmethod
+    def load_from_json(cls, path: str | Path) -> "SmashConfig":
         """
-        Load a SmashConfig from a JSON file.
+        Backwards compatible classmethod to load a SmashConfig from a JSON file.
 
         Parameters
         ----------
         path : str| Path
             The file path to the JSON file containing the configuration.
+
+        Returns
+        -------
+        SmashConfig
+            The loaded SmashConfig instance.
         """
-        with open(os.path.join(path, SMASH_CONFIG_FILE_NAME), "r") as f:
+        instance = cls()
+        instance._load_from_json_impl(path)
+        return instance
+
+    def _load_from_json_impl(self, path: str | Path) -> None:
+        """
+        Internal implementation for loading a SmashConfig from a JSON file.
+
+        Used by the classmethod and for backwards compatibility with the old instance method.
+        """
+        if not str(path).endswith(".json"):
+            path = os.path.join(path, SMASH_CONFIG_FILE_NAME)
+
+        with open(path, "r") as f:
             json_string = f.read()
             config_dict = json.loads(json_string)
 
@@ -171,6 +200,24 @@ class SmashConfig:
         # support deprecated max batch size argument
         if "max_batch_size" in config_dict:
             config_dict["batch_size"] = config_dict.pop("max_batch_size")
+
+        # Check for version mismatch and warn if necessary
+        if "_pruna_version" in config_dict:
+            saved_version = config_dict["_pruna_version"]
+            current_version = version("pruna")
+            if saved_version != current_version:
+                pruna_logger.warning(
+                    f"Version mismatch detected. The model was smashed with pruna version {saved_version}, "
+                    f"but you are currently using pruna version {current_version}. "
+                    f"This may cause compatibility issues. Consider using the same version of pruna "
+                    f"that was used to smash the model, or test the model thoroughly."
+                )
+        else:
+            # If no version was saved, this is likely an older model
+            pruna_logger.info(
+                "No pruna version information found in the saved configuration. "
+                "We introduced version tracking in pruna 0.2.7, so this is likely an older model."
+            )
 
         for name in ADDITIONAL_ARGS:
             if name not in config_dict:
@@ -220,6 +267,20 @@ class SmashConfig:
         if os.path.exists(os.path.join(path, PROCESSOR_SAVE_PATH)):
             self.processor = AutoProcessor.from_pretrained(os.path.join(path, PROCESSOR_SAVE_PATH))
 
+    # For backwards compatibility: allow instance method usage
+    def load_from_json(self, path: str | Path) -> None:  # type: ignore  # noqa:  F811
+        """
+        Instance method for loading a SmashConfig from a JSON file.
+
+        Deprecated: Prefer using SmashConfig.load_from_json(path) as a classmethod.
+
+        Parameters
+        ----------
+        path : str| Path
+            The file path to the JSON file containing the configuration.
+        """
+        self._load_from_json_impl(path)
+
     def save_to_json(self, path: str | Path) -> None:
         """
         Save the SmashConfig to a JSON file, including additional keys.
@@ -241,7 +302,15 @@ class SmashConfig:
             del config_dict["cache_dir"]
 
         # Save the updated dictionary back to a JSON file
-        with open(os.path.join(path, SMASH_CONFIG_FILE_NAME), "w") as f:
+        if str(path).endswith(".json"):
+            json_path = path
+            dir_path = os.path.dirname(json_path)
+        else:
+            json_path = os.path.join(path, SMASH_CONFIG_FILE_NAME)
+            dir_path = str(path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
+        with open(json_path, "w") as f:
             json.dump(config_dict, f, indent=4)
 
         if self.tokenizer:
@@ -307,6 +376,9 @@ class SmashConfig:
 
         # reset potentially previously used cache directory
         self.reset_cache_dir()
+
+        # update version to current version when flushing
+        self._pruna_version = version("pruna")
 
     def __get_dataloader(self, dataloader_name: str, **kwargs) -> torch.utils.data.DataLoader | None:
         if self.data is None:
