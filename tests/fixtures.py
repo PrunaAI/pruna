@@ -137,13 +137,12 @@ MODEL_FACTORY: dict[str, Callable] = {
     "resnet_18": partial(get_torchvision_model, "resnet18"),
     "vit_b_16": partial(get_torchvision_model, "vit_b_16"),
     # image generation models
-    "tiny_sd": partial(get_diffusers_model, "segmind/tiny-sd"),
     "stable_diffusion_v1_4": partial(get_diffusers_model, "CompVis/stable-diffusion-v1-4"),
     "stable_diffusion_3_medium_diffusers": partial(
         get_diffusers_model, "stabilityai/stable-diffusion-3-medium-diffusers"
     ),
     "ddpm-cifar10": partial(get_diffusers_model, "google/ddpm-cifar10-32"),
-    "sd_tiny_random": partial(get_diffusers_model, "dg845/tiny-random-stable-diffusion"),
+    "sd_tiny_random": partial(get_diffusers_model, "optimum-internal-testing/tiny-random-stable-diffusion-3"),
     "sana": partial(
         get_diffusers_model,
         "Efficient-Large-Model/Sana_600M_512px_diffusers",

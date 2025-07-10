@@ -25,7 +25,7 @@ def test_latency_metric(model_fixture: tuple[Any, SmashConfig], device: str) -> 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("tiny_sd", "cuda", marks=pytest.mark.cuda),
+        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
@@ -41,7 +41,7 @@ def test_throughput_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("tiny_sd", "cuda", marks=pytest.mark.cuda),
+        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
@@ -57,7 +57,7 @@ def test_total_time_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("tiny_sd", "cuda", marks=pytest.mark.cuda),
+        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
     ],
     indirect=["model_fixture"],
 )

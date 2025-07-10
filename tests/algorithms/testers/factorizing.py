@@ -6,7 +6,7 @@ from .base_tester import AlgorithmTesterBase
 class TestQKVDiffusers(AlgorithmTesterBase):
     """Test the qkv factorizing algorithm."""
 
-    models = ["tiny_sd"]
+    models = ["sd_tiny_random"]
     reject_models = ["opt_125m"]
     allow_pickle_files = False
     algorithm_class = QKVDiffusers
