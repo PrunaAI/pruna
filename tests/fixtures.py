@@ -121,7 +121,6 @@ def get_janus_model(model_id: str) -> tuple[Any, SmashConfig]:
     """Get a Janus model for image generation."""
     model = JanusForConditionalGeneration.from_pretrained(model_id)
     smash_config = SmashConfig()
-    smash_config.add_data("WikiText")
     return model, smash_config
 
 
