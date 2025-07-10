@@ -21,7 +21,6 @@ from pruna.engine.handler.handler_diffuser import DiffuserHandler
 from pruna.engine.handler.handler_inference import InferenceHandler
 from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
-from pruna.logging.logger import pruna_logger
 
 HANDLER_EXCEPTIONS: dict[type[InferenceHandler], list[str]] = {
     TransformerHandler: ["AutoHQQHFModel", "TranslatorWrapper", "GeneratorWrapper", "GPTQ"],
@@ -48,9 +47,11 @@ def register_inference_handler(model: Any) -> InferenceHandler:
     if handler is not None:
         return handler
 
-    if "diffusers" in model.__module__:
+    model_module = model._orig_mod.__module__ if hasattr(model, "_orig_mod") else model.__module__
+
+    if "diffusers" in model_module:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
-    elif "transformers" in model.__module__:
+    elif "transformers" in model_module:
         return TransformerHandler()
     else:
         return StandardHandler()
@@ -75,13 +76,7 @@ def scan_for_exceptions(model: Any) -> InferenceHandler | None:
     for handler, model_classes in HANDLER_EXCEPTIONS.items():
         for model_class in model_classes:
             if model.__class__.__name__ == "OptimizedModule":  # torch_compile abstracts over the model class.
-                if hasattr(model, "_orig_mod"):
-                    name = model._orig_mod.__class__.__name__
-                else:
-                    pruna_logger.warning(
-                        "Cannot find the original model class for the wrapped model.\n"
-                        "Inference may not work as expected."
-                    )
+                name = model._orig_mod.__class__.__name__
             else:
                 name = model.__class__.__name__
             if model_class in name:
