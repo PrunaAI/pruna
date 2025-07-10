@@ -37,6 +37,7 @@ addopts = [
     "--cov=src/pruna",
     "--cov-report=term-missing",
     "--cov-config=pyproject.toml",
+    "--durations=0"
 ]
 
 python_files = "test_*.py"
