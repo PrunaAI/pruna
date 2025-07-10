@@ -57,7 +57,6 @@ def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
-    source_model_id = "openai/whisper-tiny"
     model_id = "yujiepan/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
@@ -67,8 +66,9 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
         device_map="cpu",
     )
     smash_config = SmashConfig()
-    smash_config.add_tokenizer(source_model_id)
-    smash_config.add_processor(source_model_id)
+    smash_config.add_data("AIPodcast")
+    smash_config.add_tokenizer(model_id)
+    smash_config.add_processor(model_id)
     return model, smash_config
 
 
@@ -155,7 +155,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     "llama_3_1_8b": partial(get_automodel_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
     "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
     "dummy_lambda": dummy_model,
-
     # image generation AR models
     "tiny_janus_pro": partial(get_janus_model, "loulou2/tiny_janus"),
 }
