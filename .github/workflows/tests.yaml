@@ -46,7 +46,7 @@ jobs:
         run: mypy --show-traceback src/pruna
 
       - name: Run docstring checks with pytest
-        run: pytest -m "style" -n auto
+        run: pytest -m "style"
 
       - name: Set lint check output
         id: lint-check
