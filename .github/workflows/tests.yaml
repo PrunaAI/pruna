@@ -69,6 +69,11 @@ jobs:
 
       - uses: ./.github/actions/setup-uv-project
 
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+
       - name: Run tests
         run: |
           pytest -m "cpu and not slow and not high_cpu"
