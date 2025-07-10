@@ -24,7 +24,7 @@ def test_energy_consumed_metric(model_fixture: tuple[Any, SmashConfig], device: 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("tiny_sd", "cuda", marks=pytest.mark.cuda),
+        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
@@ -40,7 +40,7 @@ def test_co2_emissions_metric(model_fixture: tuple[Any, SmashConfig], device: st
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("tiny_sd", "cuda", marks=pytest.mark.cuda),
+        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
     ],
     indirect=["model_fixture"],
 )
