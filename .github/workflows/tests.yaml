@@ -71,6 +71,7 @@ jobs:
 
       - name: Cache models
         uses: actions/cache@v4
+        key: huggingface
         with:
           path: ~/.cache/huggingface
 
