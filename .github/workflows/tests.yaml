@@ -46,7 +46,7 @@ jobs:
         run: mypy --show-traceback src/pruna
 
       - name: Run docstring checks with pytest
-        run: pytest -m "style"
+        run: pytest -m "style" -n auto
 
       - name: Set lint check output
         id: lint-check
@@ -71,4 +71,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "cpu and not slow and not high_cpu"
+          pytest -m "cpu and not slow and not high_cpu" -n auto
