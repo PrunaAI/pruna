@@ -71,4 +71,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "cpu and not slow and not high_cpu"
+          pytest -n 2 -m "cpu and not slow and not high_cpu"
