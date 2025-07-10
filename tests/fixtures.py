@@ -155,7 +155,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     "llama_3_1_8b": partial(get_automodel_transformers, "NousResearch/Hermes-3-Llama-3.1-8B"),
     "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
     "dummy_lambda": dummy_model,
-
     # image generation AR models
     "tiny_janus_pro": partial(get_janus_model, "loulou2/tiny_janus"),
 }
