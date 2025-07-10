@@ -231,7 +231,7 @@ This means, we can use the same tokenizers and processors as the ones used in th
           smash_config = SmashConfig()
 
           # Load a tokenizer directly from the Hugging Face Hub
-          tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1b-Instruct")
+          tokenizer = AutoTokenizer.from_pretrained("NousResearch/Llama-3.2-1B")
           smash_config.add_tokenizer(tokenizer)
 
           # Load a processor directly from the Hugging Face Hub
