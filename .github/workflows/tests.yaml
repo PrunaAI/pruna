@@ -69,6 +69,9 @@ jobs:
 
       - uses: ./.github/actions/setup-uv-project
 
+      - name: Set test worker count
+        run: echo "PYTEST_WORKERS=$(( $(nproc) - 1 ))" >> "$GITHUB_ENV" # leave 1 for the system process
+
       - name: Run tests
         run: |
-          pytest -n 2 -m "cpu and not slow and not high_cpu"
+          pytest -n ${{ env.PYTEST_WORKERS }} -m "cpu and not slow and not high_cpu"
