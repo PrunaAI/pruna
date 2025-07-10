@@ -156,7 +156,7 @@ dev = [
     "numpydoc-validation",
     "pytest",
     "pytest-cov",
-    "pytest-asyncio",
+    "pytest-xdist",
     "coverage",
     "docutils",
     "mypy",
