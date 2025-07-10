@@ -38,6 +38,7 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.logging.logger import pruna_logger
 
 ADDITIONAL_ARGS = [
+    "_pruna_version",
     "batch_size",
     "device",
     "device_map",
@@ -45,7 +46,6 @@ ADDITIONAL_ARGS = [
     "save_fns",
     "load_fns",
     "reapply_after_load",
-    "_pruna_version",
 ]
 
 TOKENIZER_SAVE_PATH = "tokenizer/"
