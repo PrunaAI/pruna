@@ -82,8 +82,6 @@ def dummy_model() -> tuple[Any, SmashConfig]:
 def get_diffusers_model(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get a diffusers model for image generation."""
     # snapshot download of the model
-    # TODO: is there a hugging face credential that we can use?
-    # TODO: how stupid is to download the model once and put them somewhere alongside the code 🤔?
     model_path = snapshot_download(model_id)
     model = load_diffusers_model(model_path, smash_config=SmashConfig(device="cpu"), **kwargs)
     smash_config = SmashConfig()
