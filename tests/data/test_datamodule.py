@@ -5,6 +5,9 @@ from transformers import AutoTokenizer
 
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
+from datasets import Dataset
+import torch
+from torch.utils.data import TensorDataset
 
 bert_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
@@ -61,3 +64,45 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
 
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
+@pytest.mark.cpu
+@pytest.mark.parametrize("limit_len", [2, (2, 3, 1), (10, 10, 10)])
+@pytest.mark.parametrize("ds_type", ["hf", "torch"])
+def test_limit_datasets(ds_type: str, limit_len: int | tuple[int, int, int]) -> None:
+    """Test the `limit_datasets` method of PrunaDataModule with various dataset types and limits."""
+
+    # Create small datasets
+    if ds_type == "hf":
+        data = {"text": ["a", "b", "c", "d", "e"]}
+        train_ds = val_ds = test_ds = Dataset.from_dict(data)
+    elif ds_type == "torch":
+        x = torch.arange(5).float().unsqueeze(1)
+        y = torch.arange(5)
+        train_ds = val_ds = test_ds = TensorDataset(x, y)
+    else:
+        raise ValueError("Unsupported dataset type")
+
+    def dummy_collate(batch):
+        return batch
+
+    datamodule = PrunaDataModule(
+        train_ds=train_ds,
+        val_ds=val_ds,
+        test_ds=test_ds,
+        collate_fn=dummy_collate,
+        dataloader_args={"batch_size": 1},
+    )
+
+    original_len = len(train_ds)
+    datamodule.limit_datasets(limit_len)
+
+    train_len = len(datamodule.train_dataset)
+    val_len = len(datamodule.val_dataset)
+    test_len = len(datamodule.test_dataset)
+
+    if isinstance(limit_len, int):
+        expected = min(original_len, limit_len)
+        assert train_len == val_len == test_len == expected
+    else:
+        assert train_len == min(original_len, limit_len[0])
+        assert val_len == min(original_len, limit_len[1])
+        assert test_len == min(original_len, limit_len[2])
