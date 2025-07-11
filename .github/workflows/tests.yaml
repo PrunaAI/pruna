@@ -58,6 +58,9 @@ jobs:
       matrix:
         python-version: ["3.10"]
 
+    env:
+      HF_ENDPOINT: https://hf-mirror.com
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
