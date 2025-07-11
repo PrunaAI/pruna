@@ -107,8 +107,8 @@ def test_accelerate_autocausallm_casting(target_device: str | torch.device, mode
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
 def test_accelerate_diffusers_model_casting(target_device: str | torch.device) -> None:
     """Test that a diffusers model can be cast to the target device."""
-    model = FluxTransformer2DModel.from_pretrained("optimum-internal-testing/tiny-random-flux", subfolder="transformer", device_map="balanced")
-    full_pipe = FluxPipeline.from_pretrained("optimum-internal-testing/tiny-random-flux", device_map="balanced", transformer=None)
+    model = FluxTransformer2DModel.from_pretrained("black-forest-labs/FLUX.1-dev", subfolder="transformer", device_map="balanced")
+    full_pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", device_map="balanced", transformer=None)
 
     device_map_model = model.hf_device_map.copy()
     device_map_full_pipe = full_pipe.hf_device_map.copy()
