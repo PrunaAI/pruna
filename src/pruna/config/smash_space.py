@@ -16,17 +16,19 @@ from __future__ import annotations
 
 import copy
 import itertools
-from typing import Any, Union
+from typing import Any, Callable, List, Optional, Type, Union
 
 from ConfigSpace import (
     CategoricalHyperparameter,
     ConfigurationSpace,
+    Constant,
     EqualsCondition,
     ForbiddenAndConjunction,
     ForbiddenEqualsClause,
     OrConjunction,
 )
 from ConfigSpace.hyperparameters.hyperparameter import Hyperparameter
+from typing_extensions import override
 
 QUANTIZER = "quantizer"
 PRUNER = "pruner"
@@ -59,6 +61,43 @@ class Boolean(CategoricalHyperparameter):
     def __new__(cls, name: str, default: bool = False, meta: Any = None) -> CategoricalHyperparameter:  # type: ignore
         """Create a new boolean hyperparameter."""
         return CategoricalHyperparameter(name, choices=[True, False], default_value=default, meta=meta)
+
+
+class UserEditableConstant(Constant):
+    """
+    Represents a hyperparameter that is freely set by the user within a pre-specified type.
+
+    Parameters
+    ----------
+    name : str
+        The name of the hyperparameter.
+    default_value : Any
+        The default value of the hyperparameter.
+    enforced_type : Optional[Type]
+        The type that the value must be of. If None, no type checking is performed.
+    meta : Any
+        The metadata for the hyperparameter.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        default_value: Any = None,
+        enforced_type: Optional[Type] = None,
+        to_hyperparameters: Optional['Callable[[UserEditableConstant], List[Hyperparameter]]'] = None,
+        meta: Any = None
+    ) -> None:
+        self._enforced_type = enforced_type
+        super().__init__(name, default_value, meta)
+
+    @override
+    def legal_value(self, value):
+        if self._enforced_type is not None and not isinstance(value, self._enforced_type):
+            return False
+        # edit the internal state of the Constant to allow for the new value
+        self._contains_sequence_as_value = isinstance(value, (list, tuple))
+        self._transformer.value = value
+        return super().legal_value(value)
 
 
 class IsTrueCondition(EqualsCondition):
