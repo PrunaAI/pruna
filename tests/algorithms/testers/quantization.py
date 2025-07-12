@@ -90,6 +90,7 @@ class TestTorchao(AlgorithmTesterBase):
 
 
 @pytest.mark.slow
+@pytest.mark.high
 class TestGPTQ(AlgorithmTesterBase):
     """Test the GPTQ quantizer."""
 
@@ -111,7 +112,7 @@ class TestGPTQ(AlgorithmTesterBase):
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 
-    models = ["llama_3_2_1b"]
+    models = ["noref_llama_3_2_1b"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMCompressorQuantizer

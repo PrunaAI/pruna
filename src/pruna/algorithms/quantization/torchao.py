@@ -84,6 +84,7 @@ class TorchaoQuantizer(PrunaQuantizer):
         cacher=["fora"],
         compiler=["torch_compile"],
         factorizer=["qkv_diffusers"],
+        pruner=["torch_structured"],
     )
 
     def get_hyperparameters(self) -> list:

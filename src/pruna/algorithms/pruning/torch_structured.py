@@ -13,30 +13,29 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+import re
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
-from ConfigSpace import (
-    CategoricalHyperparameter,
-    UniformFloatHyperparameter,
-    UniformIntegerHyperparameter,
-)
+from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter, UniformIntegerHyperparameter
 from transformers.modeling_outputs import ImageClassifierOutput
-from transformers.models.llama.modeling_llama import LlamaAttention, LlamaRotaryEmbedding
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
-from transformers.models.opt.modeling_opt import OPTAttention
 from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
-from transformers.models.vit.modeling_vit import ViTForImageClassification as ViT
-from transformers.models.vit.modeling_vit import ViTSelfAttention
 
 from pruna.algorithms.pruning import PrunaPruner
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
-from pruna.engine.model_checks import is_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.logging.logger import pruna_logger
 
-is_gradient_based = ["TaylorImportance", "HessianImportance"]
+_QKV_PAT = re.compile(r"(q|k|v).*proj|query|key|value", re.I)  # To capture all QKV layers
+_Q_HEAD_ATTRS = ("num_attention_heads", "num_heads", "n_heads")  # To capture all Q head attributes
+_KV_HEAD_ATTRS = ("num_key_value_heads",)  # To capture all KV head attributes
+_HEAD_DIM_ATTRS = ("head_dim", "attention_head_size")  # To capture all head dimension attributes
+_EMBED_DIM_ATTRS = ("all_head_size", "embed_dim", "hidden_size")  # To capture all embed dimension attributes
+
+is_gradient_based = {"TaylorImportance", "HessianImportance"}
 
 
 class TorchStructuredPruner(PrunaPruner):
@@ -45,6 +44,10 @@ class TorchStructuredPruner(PrunaPruner):
 
     Structured pruning removes entire units like neurons, channels, or filters from a network, leading to a more compact
     and computationally efficient model while preserving a regular structure that standard hardware can easily optimize.
+
+    Note: If you would like to prune a target module,
+    you can by setting the target_module parameter in the smash config.
+    Please set the experimental flag to True to use this feature.
     """
 
     algorithm_name: str = "torch_structured"
@@ -55,7 +58,7 @@ class TorchStructuredPruner(PrunaPruner):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = True
-    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half"])
+    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half", "torchao", "hqq"], compiler=["torch_compile"])
 
     def get_hyperparameters(self) -> list:
         """
@@ -93,7 +96,6 @@ class TorchStructuredPruner(PrunaPruner):
                 "sparsity",
                 lower=0.0,
                 upper=1.0,
-                log=False,
                 default_value=0.1,
                 meta=dict(desc="Sparsity level up to which to prune."),
             ),
@@ -101,7 +103,6 @@ class TorchStructuredPruner(PrunaPruner):
                 "head_sparsity",
                 lower=0.0,
                 upper=1.0,
-                log=False,
                 default_value=0.0,
                 meta=dict(desc="Sparsity level up to which to prune heads."),
             ),
@@ -116,7 +117,7 @@ class TorchStructuredPruner(PrunaPruner):
 
     def model_check_fn(self, model: Any) -> bool:
         """
-        Check if the model is a torch.nn.Module.
+        Check if the model is supported by the pruner.
 
         Parameters
         ----------
@@ -126,17 +127,17 @@ class TorchStructuredPruner(PrunaPruner):
         Returns
         -------
         bool
-            True if the model is a torch.nn.Module, False otherwise.
+            True if the model is supported, False otherwise.
         """
-        # Torch structured pruning is currently broken for LLMs, to be fixed
-        if is_causal_lm(model):
-            return False
         imported_modules = self.import_algorithm_packages()
-        if isinstance(model, (Opt, Llama, ViT)):
+        # Simple heuristics – extend as needed
+        if isinstance(model, (imported_modules["Opt"], imported_modules["ViT"])):
             return True
         if isinstance(model, imported_modules["timm"].models.convnext.ConvNeXt):
             return True
         if isinstance(model, imported_modules["torchvision"].models.resnet.ResNet):
+            return True
+        if isinstance(model, imported_modules["GLiNER"]):
             return True
         return isinstance(model, imported_modules["timm"].models.resnet.ResNet)
 
@@ -156,7 +157,7 @@ class TorchStructuredPruner(PrunaPruner):
         Any
             The pruned model.
         """
-        imported_modules = self.import_algorithm_packages()
+        imported = self.import_algorithm_packages()
 
         device = smash_config["device"]
         model = model.to(device)
@@ -167,28 +168,50 @@ class TorchStructuredPruner(PrunaPruner):
             model.float()
 
         # Retrieve the importance function or class from the mapping based on the pruning type
-        importance_function = getattr(imported_modules["tp"].importance, smash_config["type"])
+        importance_function = getattr(imported["tp"].importance, smash_config["type"])
 
-        ch_groups, num_heads, ignored_layers = get_prunable_layers(model, smash_config, imported_modules)
+        # Get the example input and move to device correctly if it's a dict
+        batch = next(iter(smash_config.train_dataloader()))[0]
+        if isinstance(batch, dict):
+            for k, v in batch.items():
+                if isinstance(v, torch.Tensor):
+                    batch[k] = v.to(device)
+            example_input = batch
+        else:
+            # PrunaDataModule always returns a tuple of two tensors, the first is the input.
+            example_input = batch[:1, :].to(device)  # type: ignore[arg-type]
 
-        # Initialize a pruner
-        example_input = next(iter(smash_config.train_dataloader()))[0][:1, :].to(device)  # type: ignore[arg-type]
+        # Get the target module to prune, and it's boundary and exterior
+
+        target_module = get_target_module(model, imported, smash_config)
+        dependency_graph = (
+            imported["tp"]
+            .DependencyGraph()
+            .build_dependency(model, example_input, output_transform=safe_output_transform)
+        )
+        boundary, exterior = get_boundary_and_exterior(target_module, model, dependency_graph)
+
+        # Get the ignored layers
+        ignored_layers = get_ignored_layers(boundary, exterior, model, imported)
+
+        # Get the number of heads
+        num_heads = get_qkv_head_counts(target_module)
+
         iterative_steps = smash_config["it_steps"]
 
-        pruner = imported_modules["tp"].pruner.MetaPruner(
+        pruner = imported["tp"].pruner.MetaPruner(
             model,
             example_input,
             importance=importance_function(),
             iterative_steps=iterative_steps,
             pruning_ratio=smash_config["sparsity"],
             ignored_layers=ignored_layers,
-            out_channel_groups=ch_groups,
             num_heads=num_heads,
             prune_head_dims=smash_config["prune_head_dims"],
             prune_num_heads=smash_config["prune_num_heads"],
             head_pruning_ratio=smash_config["head_sparsity"],
             global_pruning=smash_config["global_pruning"],
-            round_to=64,
+            output_transform=safe_output_transform,
         )
 
         for _ in range(iterative_steps):
@@ -203,10 +226,10 @@ class TorchStructuredPruner(PrunaPruner):
                 )
             pruner.step()
 
-        model.eval()
         for p in model.parameters():
             p.requires_grad = False
-        model = update_dimensions_post_pruning(model, pruner, imported_modules)
+
+        model = update_heads_attribute(model, pruner.num_heads)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -218,151 +241,324 @@ class TorchStructuredPruner(PrunaPruner):
         Dict[str, Any]
             The algorithm packages.
         """
-        import timm
-        import torch_pruning as tp
-        import torchvision
-        from timm.models.mvitv2 import MultiScaleAttention
-        from timm.models.mvitv2 import MultiScaleVit as MViT
+        try:
+            import timm
+            import torch_pruning as tp
+            import torchvision
+            from gliner import GLiNER
+            from timm.models.mvitv2 import MultiScaleAttention
+            from timm.models.mvitv2 import MultiScaleVit as MViT
+            from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
+            from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
+            from transformers.models.vit.modeling_vit import ViTForImageClassification as ViT
+        except ImportError:
+            pruna_logger.error("TorchStructuredPruner: You need the GPU version of Pruna (timm, torchvision).")
+            raise
+        return dict(
+            timm=timm,
+            torchvision=torchvision,
+            Opt=Opt,
+            Llama=Llama,
+            MultiScaleAttention=MultiScaleAttention,
+            MViT=MViT,
+            tp=tp,
+            ViT=ViT,
+            GLiNER=GLiNER,
+        )
 
-        return dict(timm=timm, torchvision=torchvision, MultiScaleAttention=MultiScaleAttention, MViT=MViT, tp=tp)
 
-
-def get_prunable_layers(
-    model: nn.Module, smash_config: SmashConfigPrefixWrapper, imported_modules: Dict
-) -> Tuple[Dict, Dict, List]:
+def get_boundary_and_exterior(target_module, model, dependency_graph):
     """
-    Get the parameters for performing tensor pruning on the given model.
+    Get the boundary and exterior for a target module.
+
+    Returns (boundary, exterior) where
+       - boundary: modules inside target_module that exchange tensors
+                    with modules outside target_module
+       - exterior: modules that are NOT in the target_module subtree
+
+    Parameters
+    ----------
+    target_module : nn.Module
+        The target module to prune.
+    model : nn.Module
+        The full model.
+    dependency_graph : tp.DependencyGraph
+        The dependency graph of the model.
+
+    Returns
+    -------
+    Tuple[Set[nn.Module], Set[nn.Module]]
+        The boundary and exterior modules.
+    """
+    if target_module == model:  # If we are pruning the entire model, there is no boundary or exterior
+        return set(), set()
+
+    real_nodes = (
+        dependency_graph.module2node
+    )  # includes all modules, parameters, buffers, even internals like autograd nodes
+    name_of = dependency_graph._module2name  # modules and parameter with actual names
+    # We only want the modules and parameters that have actual names
+    real_named = set(real_nodes.keys()) & set(name_of.keys())
+
+    # Get the modules and parameters that are inside the target module
+    inside_prms = set(target_module.parameters())
+    inside_modules = set(target_module.modules())
+    inside = inside_prms | inside_modules  # We want both the parameters and the modules
+
+    interior = real_named & inside  # interior is intersection of entire model and target module
+    exterior = real_named - interior  # exterior is the rest of the modules
+
+    def touches_exterior(node):
+        """
+        Check if the module has any inputs or outputs that are in the exterior.
+
+        This would mean that the module is on the boundary of the pruning scope.
+        """
+        stack, seen = node.inputs + node.outputs, set()
+        while stack:
+            n = stack.pop()
+            if n not in seen:
+                seen.add(n)
+                mod = n.module
+                # We don't want the auxiliary nodes like autograd nodes
+                # So we only want the modules that have actual names
+                if mod in real_named:
+                    return (
+                        mod in exterior
+                    )  # If the input or output is in the exterior, then the module touches the exterior
+                stack.extend(n.inputs)
+                stack.extend(n.outputs)
+        return False
+
+    boundary = {m for m in interior if touches_exterior(real_nodes[m])}
+
+    return boundary, exterior
+
+
+def _pick_attr(module: nn.Module, names: Tuple[str, ...], default: Optional[int] = None) -> Optional[Any]:
+    """
+    Return the first attribute (or config attribute) from the possible candidates that exists.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The module to pick the attribute from.
+    names : Tuple[str, ...]
+        The ordered list of candidate names.
+    default : value to return if nothing is found
+
+    Returns
+    -------
+    Optional[Any]
+        The first attribute that exists.
+    """
+    for name in names:
+        if hasattr(module, name):
+            return getattr(module, name)
+        cfg = getattr(module, "config", None)  # Huggingface models
+        if cfg is not None and hasattr(cfg, name):
+            return getattr(cfg, name)
+    return default
+
+
+def get_num_q_heads(module: nn.Module) -> int | None:
+    """
+    Return the number of Q heads for the module.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The module to get the Q heads for.
+
+    Returns
+    -------
+    Optional[int]
+        The number of Q heads.
+    """
+    return _pick_attr(module, _Q_HEAD_ATTRS)
+
+
+def get_num_kv_heads(module: nn.Module) -> int | None:
+    """
+    Return the number of KV heads for the module.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The module to get the KV heads for.
+
+    Returns
+    -------
+    Optional[int]
+        The number of KV heads.
+    """
+    return _pick_attr(module, _KV_HEAD_ATTRS)
+
+
+def _infer_qkv_linears(module: nn.Module) -> List[Tuple[str, nn.Linear]]:
+    """
+    Infer the QKV layers from the module.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The module to infer the QKV layers from.
+
+    Returns
+    -------
+    List[Tuple[str, nn.Linear]]
+        The QKV name and layer pairs.
+    """
+    return [
+        (name, sub) for name, sub in module.named_children() if isinstance(sub, nn.Linear) and _QKV_PAT.fullmatch(name)
+    ]
+
+
+def get_qkv_head_counts(module: nn.Module) -> dict[nn.Linear, int]:
+    """
+    Return the projection to head_count map.
+
+    Any module that exposes a head‑count and contains three QKV layers
+    is treated as an attention block.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The model to find the attention blocks in.
+
+    Returns
+    -------
+    Dict[nn.Linear, int]
+        The projection to head_count map.
+    """
+    mapping: Dict[nn.Linear, int] = {}
+    for m in module.modules():
+        # Is m an attention block? Keep going if not.
+        if (num_q_heads := get_num_q_heads(m)) is not None:
+            # Do we have a separate KV head count?
+            num_kv_heads = get_num_kv_heads(m)
+            # Get the QKV layers.
+            qkv = _infer_qkv_linears(m)
+            if len(qkv) >= 3:
+                # Map every projection to the original head count
+                for name, proj in qkv:
+                    is_kv = name.lower().startswith(("k", "v"))
+                    mapping[proj] = num_kv_heads if is_kv and num_kv_heads is not None else num_q_heads
+    return mapping
+
+
+def update_heads_attribute(model: nn.Module, new_num_heads_map: Dict[nn.Linear, int]):
+    """
+    Update head count attributes and derived sizes after pruning.
 
     Parameters
     ----------
     model : nn.Module
-        The model object to perform tensor pruning on.
-    smash_config : SmashConfigPrefixWrapper
-        A dictionary containing the pruning parameters.
-    imported_modules : Dict
-        Dictionary containing the imported modules.
+        The model to patch the heads for.
+    new_num_heads_map : Dict[nn.Linear, int]
+        The new head count map.
 
     Returns
     -------
-    tuple
-        A tuple containing:
-        - ch_groups (dict): Channel groups.
-        - num_heads (dict): Number of attention heads.
-        - ignored_layers (list): Ignored layers during pruning.
+    nn.Module
+        The patched model.
     """
-    if isinstance(model, Opt):
-        ch_groups, num_heads, ignored_layers = get_opt_params(model, smash_config)
-
-    elif isinstance(model, Llama):
-        ch_groups, num_heads, ignored_layers = get_llama_params(model, smash_config)
-
-    elif isinstance(model, ViT):
-        ch_groups, num_heads, ignored_layers = get_vit_params(model, smash_config)
-
-    elif isinstance(model, imported_modules["timm"].models.convnext.ConvNeXt):
-        ignored_layers = [model.stem, model.head]
-        ch_groups, num_heads = dict(), dict()
-
-    elif isinstance(
-        model, (imported_modules["torchvision"].models.resnet.ResNet, imported_modules["timm"].models.resnet.ResNet)
-    ):
-        ignored_layers = [model.conv1, model.bn1, model.fc]
-        ch_groups, num_heads = dict(), dict()
-    else:
-        ch_groups, num_heads, ignored_layers = dict(), dict(), []
-
-    return ch_groups, num_heads, ignored_layers
-
-
-def get_opt_params(model: nn.Module, smash_config: SmashConfigPrefixWrapper) -> Tuple[Dict, Dict, List]:
-    """
-    Get the optimization parameters for the Opt model.
-
-    Parameters
-    ----------
-    model : nn.Module
-        The Opt model to extract optimization parameters from.
-    smash_config : SmashConfigPrefixWrapper
-        A dictionary containing pruning parameters.
-
-    Returns
-    -------
-    tuple
-        A tuple containing:
-        - params (dict): A dictionary of optimization parameters.
-        - num_heads (dict): A dictionary mapping attention projection layers to the number of heads.
-        - ignored_layers (list): A list of ignored layers during pruning.
-    """
-    num_heads = dict()
     for m in model.modules():
-        if isinstance(m, OPTAttention):
-            num_heads[m.q_proj] = m.num_heads
-            num_heads[m.k_proj] = m.num_heads
-            num_heads[m.v_proj] = m.num_heads
+        if get_num_q_heads(m) is not None:
+            q_proj = getattr(m, "q_proj", None) or getattr(m, "query", None) or getattr(m, "query_proj", None)
+            if q_proj in new_num_heads_map:
+                new_num_head = new_num_heads_map[q_proj]
+                new_num_out_features = q_proj.out_features  # type: ignore[union-attr]
+                new_num_head_dim = new_num_out_features // new_num_head
 
-    ignored_layers = [model.lm_head]
-    return dict(), num_heads, ignored_layers
+                # Update head count.
+                for attr in _Q_HEAD_ATTRS:
+                    if hasattr(m, attr):
+                        setattr(m, attr, new_num_head)
+
+                # Update head_dim
+                for attr in _HEAD_DIM_ATTRS:
+                    if hasattr(m, attr):
+                        setattr(m, attr, new_num_head_dim)
+
+                # Update embed_dim
+                for attr in _EMBED_DIM_ATTRS:
+                    if hasattr(m, attr):
+                        setattr(m, attr, new_num_out_features)
+
+                # Update num_key_value_heads
+                if hasattr(m, "num_key_value_heads"):
+                    k_proj = getattr(m, "k_proj", None) or getattr(m, "key", None) or getattr(m, "key_proj", None)
+                    if k_proj in new_num_heads_map:
+                        new_num_kv_head = new_num_heads_map[k_proj]
+                        setattr(m, "num_key_value_heads", new_num_kv_head)
+
+    return model
 
 
-def get_llama_params(model: nn.Module, smash_config: SmashConfigPrefixWrapper) -> Tuple[Dict, Dict, List]:
+def get_target_module(model: Any, imported: Dict[str, Any], smash_config: SmashConfigPrefixWrapper) -> nn.Module:
     """
-    Get the parameters related to the LlamaAttention module in the model.
+    Return the target submodule of a model to be used for pruning.
+
+    If a target module is explicitly provided via the Smash config (experimental mode), it is returned directly.
+
+    Otherwise, the function attempts to select a meaningful submodule based on the model type.
+    If no known model type is detected, the entire model is returned.
 
     Parameters
     ----------
-    model : nn.Module
-        The model containing the LlamaAttention module.
+    model : Any
+        The model to prune.
+    imported : Dict[str, Any]
+        The imported modules.
     smash_config : SmashConfigPrefixWrapper
-        A dictionary containing pruning parameters.
+        The Smash config.
 
     Returns
     -------
-    tuple
-        A tuple containing:
-        - params (dict): An empty dictionary.
-        - num_heads (dict): A dictionary mapping the projection layers to the number of heads.
-        - ignored_layers (list): A list of layers to be ignored during pruning.
+    nn.Module
+        The target module to prune.
     """
-    num_heads = dict()
-    for m in model.modules():
-        if isinstance(m, LlamaAttention):
-            num_heads[m.q_proj] = m.num_heads
-            num_heads[m.k_proj] = m.num_key_value_heads
-            num_heads[m.v_proj] = m.num_key_value_heads
+    if smash_config._target_module is not None:
+        return smash_config._target_module
+    if isinstance(model, imported["timm"].models.convnext.ConvNeXt):
+        return model.stages
+    if isinstance(model, imported["ViT"]):
+        return model.vit.embeddings
+    if isinstance(model, imported["GLiNER"]):
+        return model.model.token_rep_layer.bert_layer
+    return model
 
-    ignored_layers = [model.lm_head]
-    return dict(), num_heads, ignored_layers
 
-
-def get_vit_params(model: ViT, smash_config: SmashConfigPrefixWrapper) -> Tuple[Dict, Dict, List]:
+def get_ignored_layers(boundary, exterior, model, imported: Dict[str, Any]) -> List[nn.Module]:
     """
-    Get the parameters related to the Vision Transformer (ViT) model.
+    Return a list of layers to ignore during pruning.
+
+    Combines the boundary and exterior of the target module into the ignored set.
+    In a few model-specific cases, key layers are also added.
 
     Parameters
     ----------
+    boundary : Set[nn.Module]
+        Modules at the boundary of the pruning scope.
+    exterior : Set[nn.Module]
+        Modules explicitly outside the pruning target scope.
     model : nn.Module
-        The Vision Transformer model.
-    smash_config : SmashConfigPrefixWrapper
-        A dictionary containing pruning parameters.
+        The full model from which ignored layers are determined.
+    imported : Dict[str, Any]
+        Dictionary of imported model references used for type checking.
 
     Returns
     -------
-    tuple
-        A tuple containing:
-        - ch_groups (dict): Channel groups mapped to corresponding layers.
-        - num_heads (dict): Attention heads mapped to corresponding layers.
-        - ignored_layers (list): Layers to be ignored during pruning.
+    List[nn.Module]
+        A list of layers that should be ignored during pruning.
     """
-    ch_groups: Dict[Any, Any] = dict()
-    num_heads: Dict[Any, Any] = dict()
-    ignored_layers: List[Any] = [model.vit.embeddings, model.classifier]
-    for m in model.modules():
-        if isinstance(m, ViTSelfAttention):
-            num_heads[m.query] = m.num_attention_heads
-            num_heads[m.key] = m.num_attention_heads
-            num_heads[m.value] = m.num_attention_heads
-
-    return ch_groups, num_heads, ignored_layers
+    ignored_layers = boundary.union(exterior)
+    if isinstance(model, (imported["torchvision"].models.resnet.ResNet, imported["timm"].models.resnet.ResNet)):
+        return ignored_layers.union([model.conv1, model.bn1, model.fc])
+    if isinstance(model, (imported["Opt"], imported["Llama"])):
+        return ignored_layers.union([model.lm_head])
+    return ignored_layers
 
 
 def add_grad_checkpointing(model: Union[Opt, Llama], pruning_device: torch.device) -> Union[Opt, Llama]:
@@ -445,82 +641,28 @@ def compute_loss_and_accumulate_gradients(
     return model
 
 
-def update_dimensions_post_pruning(model: nn.Module, pruner: Any, imported_modules: Dict) -> nn.Module:
+def safe_output_transform(output) -> torch.Tensor:
     """
-    Update the pruned model by updating the attention parameters based on the pruner's configuration.
+    Extract a tensor from the model output.
 
     Parameters
     ----------
-    model : nn.Module
-        The pruned model.
-    pruner : Any
-        The pruner object containing the configuration for pruning.
-    imported_modules : Dict
-        The imported modules.
+    output : Any
+        The model output.
 
     Returns
     -------
-    nn.Module
-        The postprocessed pruned model with updated attention parameters.
+    torch.Tensor
+        The tensor from the model output.
     """
-    if isinstance(model, imported_modules["MViT"]):
-        for m in model.modules():
-            if isinstance(m, imported_modules["MultiScaleAttention"]):
-                m.num_heads = pruner.num_heads[m.qkv]
-
-    elif isinstance(model, ViT):
-        for m in model.modules():
-            if isinstance(m, ViTSelfAttention):
-                m.num_attention_heads = pruner.num_heads[m.query]
-                m.attention_head_size = m.query.out_features // m.num_attention_heads
-                m.all_head_size = m.query.out_features
-
-    elif isinstance(model, Opt):
-        for m in model.modules():
-            if isinstance(m, OPTAttention):
-                m.num_heads = pruner.num_heads[m.q_proj]
-                m.head_dim = m.q_proj.out_features // m.num_heads
-                m.embed_dim = m.head_dim * m.num_heads
-
-    elif isinstance(model, Llama):
-        for n, m in model.named_modules():
-            if isinstance(m, LlamaAttention):
-                # override attention parameters to handle pruned model
-                # handles both prune_num_heads and prune_head_dims
-                m.num_heads = cast(int, pruner.num_heads[m.q_proj])  # type: ignore[assignment]
-                m.num_key_value_heads = pruner.num_heads[m.k_proj]
-                m.head_dim = m.q_proj.out_features // cast(int, m.num_heads)
-                m.hidden_size = m.head_dim * torch.tensor(cast(int, m.num_heads))
-
-            elif isinstance(m, LlamaRotaryEmbedding):
-                # override forward function to handle pruned head dimension
-                m.forward = llama_rotary_embedding_forward.__get__(m, LlamaRotaryEmbedding)
-    return model
-
-
-def llama_rotary_embedding_forward(
-    self: Any, x: torch.Tensor, seq_len: Optional[int] = None
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Compute the llama_rotary_embedding_forward.
-
-    Parameters
-    ----------
-    x : torch.Tensor
-        The input tensor of shape [bs, num_attention_heads, seq_len, head_size].
-    seq_len : int, optional
-        The length of the sequence. If None, the length is determined from the input tensor.
-
-    Returns
-    -------
-    tuple
-        A tuple containing:
-        - cos_cached (torch.Tensor): Cosine tensor of shape [seq_len, head_size].
-        - sin_cached (torch.Tensor): Sine tensor of shape [seq_len, head_size].
-    """
-    if seq_len > self.max_seq_len_cached:
-        self._set_cos_sin_cache(seq_len=seq_len, device=x.device, dtype=x.dtype)
-    return (
-        self.cos_cached[:seq_len, : x.shape[-1]].to(dtype=x.dtype),
-        self.sin_cached[:seq_len, : x.shape[-1]].to(dtype=x.dtype),
-    )
+    if isinstance(output, torch.Tensor):
+        return output
+    if hasattr(output, "logits"):  # Huggingface models
+        return output.logits
+    if isinstance(output, dict) and "logits" in output:  # Huggingface models
+        return output["logits"]
+    if isinstance(output, (tuple, list)):  # Huggingface models
+        for o in output:
+            if isinstance(o, torch.Tensor):
+                return o
+    raise ValueError("Could not extract a tensor from model output for dependency tracing.")

@@ -107,7 +107,7 @@ class SmashConfig:
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
-
+        self._target_module: Any | None = None
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
         self._prepare_saving = True
 
@@ -451,6 +451,23 @@ class SmashConfig:
             self.processor = AutoProcessor.from_pretrained(processor)
         else:
             self.processor = processor
+
+    def add_target_module(self, target_module: Any) -> None:
+        """
+        Add a target module to prune to the SmashConfig.
+
+        Parameters
+        ----------
+        target_module : Any
+            The target module to prune.
+        """
+        if self["pruner"] is None:
+            pruna_logger.error("No pruner selected, target module is only supported by torch_structured pruner.")
+            raise
+        elif self["pruner"] != "torch_structured":
+            pruna_logger.error("Target module is only supported for torch_structured pruner.")
+            raise
+        self._target_module = target_module
 
     def get_tokenizer_name(self) -> str | None:
         """

@@ -37,6 +37,7 @@ addopts = [
     "--cov=src/pruna",
     "--cov-report=term-missing",
     "--cov-config=pyproject.toml",
+    "--durations=0"
 ]
 
 python_files = "test_*.py"
@@ -88,7 +89,7 @@ dependencies = [
     "transformers",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
-    "datasets>=0.34",
+    "datasets<=3.5.0",
     "numpy>=1.24.4",
     "diffusers>=0.21.4",
     "torch_pruning",
@@ -114,6 +115,8 @@ dependencies = [
     "hqq==0.2.6",
     "torchao",
     "llmcompressor",
+    "gliner; python_version >= '3.10'"
+
 ]
 
 [project.optional-dependencies]

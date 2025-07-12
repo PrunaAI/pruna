@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import torch
 from huggingface_hub import constants
@@ -75,14 +75,14 @@ class PrunaModel:
                 return self.model.__call__(*args, **kwargs)
 
     def run_inference(
-        self, batch: Tuple[List[str] | torch.Tensor, ...], device: torch.device | str | None = None
+        self, batch: Any, device: torch.device | str | None = None
     ) -> Any:
         """
         Run inference on the model.
 
         Parameters
         ----------
-        batch : Tuple[List[str] | torch.Tensor, ...]
+        batch : Any
             The batch to run inference on.
         device : torch.device | str | None
             The device to run inference on. If None, the best available device will be used.
@@ -94,11 +94,17 @@ class PrunaModel:
         """
         device = set_to_best_available_device(device)
         batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
+
+        if not isinstance(batch, tuple):
+            batch = (batch, {})
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
-        if prepared_inputs is not None:
-            outputs = self(prepared_inputs, **self.inference_handler.model_args)
-        else:
+
+        if prepared_inputs is None:
             outputs = self(**self.inference_handler.model_args)
+        elif isinstance(prepared_inputs, dict):
+            outputs = self(**prepared_inputs, **self.inference_handler.model_args)
+        else:
+            outputs = self(prepared_inputs, **self.inference_handler.model_args)
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 

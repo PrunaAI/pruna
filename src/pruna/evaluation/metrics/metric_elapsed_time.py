@@ -116,7 +116,7 @@ class InferenceTimeStats(BaseMetric):
         """
         if self.timing_type == "async" or self.device == "cpu":
             startevent_time = time.time()
-            _ = model(x, **model.inference_handler.model_args)
+            model.run_inference(x)
             endevent_time = time.time()
             return (endevent_time - startevent_time) * 1000  # in ms
         elif self.timing_type == "sync":
@@ -127,7 +127,10 @@ class InferenceTimeStats(BaseMetric):
             startevent = torch_device_attr.Event(enable_timing=True)
             endevent = torch_device_attr.Event(enable_timing=True)
             startevent.record()
-            _ = model(x, **model.inference_handler.model_args)
+            if isinstance(x, dict):
+                _ = model(**x, **model.inference_handler.model_args)
+            else:
+                _ = model(x, **model.inference_handler.model_args)
             endevent.record()
             torch_device_attr.synchronize()
             return startevent.elapsed_time(endevent)  # in ms
@@ -158,7 +161,16 @@ class InferenceTimeStats(BaseMetric):
         model.move_to_device(self.device)
 
         # Warmup
-        self._measure(model, dataloader, self.n_warmup_iterations, lambda m, x: m(x, **m.inference_handler.model_args))
+        self._measure(
+            model,
+            dataloader,
+            self.n_warmup_iterations,
+            lambda m, x: (
+                m(**x, **m.inference_handler.model_args)  # x is a dict
+                if isinstance(x, dict)
+                else m(x, **m.inference_handler.model_args)  # x is tensor/list
+            ),
+        )
 
         # Measurement
         list_elapsed_times = []
