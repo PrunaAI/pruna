@@ -215,7 +215,7 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     return smash(model=model, smash_config=smash_config_subset)
 
 
-def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+def load_transformers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
     """
     Load a transformers model or pipeline from the given model path.
 
@@ -251,12 +251,16 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwarg
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
         # transformers discards kwargs automatically, no need for filtering
-        device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
-        device_map = smash_config.device_map if smash_config.device == "accelerate" else device
+        if smash_config is not None:
+            device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
+            device_map = smash_config.device_map if smash_config.device == "accelerate" else device
+        else:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            device_map = "auto"
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
-def load_diffusers_model(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
 
@@ -302,7 +306,8 @@ def load_diffusers_model(path: str | Path, smash_config: SmashConfig, **kwargs) 
     # diffusers discards kwargs automatically, no need for filtering
     # diffusers does not support device_maps as dicts at the moment, we load on cpu and cast it ourselves
     model = cls.from_pretrained(path, device_map=None, **kwargs)
-    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
+    if smash_config is not None:
+        move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
 
 
