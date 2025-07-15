@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 from abc import abstractmethod
 from typing import Any
 
@@ -11,6 +12,10 @@ from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
 class AlgorithmTesterBase:
     """Base class for testing algorithms."""
 
+    # TODO: this is causing the issue; since we sahre this value with all test cases.
+    # when we have a test case parametrized each of them might run on a separate process
+    # then we can't proceed with this approach.
+    # change this and also the final_teardown
     saving_path: str = "saved_model/"
 
     @property
