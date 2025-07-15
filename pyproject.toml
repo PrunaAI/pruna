@@ -42,7 +42,7 @@ addopts = [
 python_files = "test_*.py"
 
 testpaths = [
-    "src/pruna/tests",
+    "tests/",
 ]
 
 [[tool.uv.index]]
