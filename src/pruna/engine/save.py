@@ -56,8 +56,9 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
+    model_path = Path(model_path)
+    if not model_path.exists():
+        model_path.mkdir(parents=True, exist_ok=True)
 
     if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
         save_torch_artifacts(model, model_path, smash_config)
@@ -247,10 +248,10 @@ def save_pipeline_info(pipeline_obj: Any, save_directory: str | Path) -> None:
         "task": pipeline_obj.task,
     }
 
-    filepath = os.path.join(save_directory, PIPELINE_INFO_FILE_NAME)
+    filepath = Path(save_directory) / PIPELINE_INFO_FILE_NAME
 
-    with open(filepath, "w") as f:
-        json.dump(info, f)
+    with filepath.open("w") as fp:
+        json.dump(info, fp)
 
 
 def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -266,19 +267,22 @@ def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashCon
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
+    save_dir = Path(smash_config.cache_dir) / SAVE_BEFORE_SMASH_CACHE_DIR
 
     # load old smash config to get load_fn assigned previously
     # load json directly from file
-    with open(os.path.join(save_dir, SMASH_CONFIG_FILE_NAME), "r") as f:
+    smash_config_path = save_dir / SMASH_CONFIG_FILE_NAME
+    with smash_config_path.open("r") as f:
         old_smash_config = json.load(f)
+
     smash_config.load_fns.extend(old_smash_config["load_fns"])
     smash_config.load_fns = list(set(smash_config.load_fns))
     del old_smash_config
 
     # move files in save dir into model path
-    for file in os.listdir(save_dir):
-        shutil.move(os.path.join(save_dir, file), os.path.join(model_path, file))
+    for file in save_dir.iterdir():
+        # TODO: do I need to conver these to str?
+        shutil.move(file, Path(model_path) / file.name)
 
 
 def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -298,7 +302,7 @@ def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) 
     smash_helpers = get_helpers(model)
     for helper in smash_helpers:
         getattr(model, helper).disable()
-    torch.save(model, os.path.join(model_path, PICKLED_FILE_NAME))
+    torch.save(model, Path(model_path) / PICKLED_FILE_NAME)
     smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 import functools
 import os
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict
 
 from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
@@ -200,7 +201,7 @@ class PrunaAlgorithmBase(ABC):
             The model after the algorithm has been applied.
         """
         if self.save_fn == SAVE_FUNCTIONS.save_before_apply and smash_config._prepare_saving:
-            save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
+            save_dir = Path(smash_config.cache_dir) / SAVE_BEFORE_SMASH_CACHE_DIR
             save_pruna_model(model, save_dir, smash_config)
 
         # save algorithms to reapply after loading

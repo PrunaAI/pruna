@@ -6,7 +6,7 @@ import pytest
 
 from ..common import convert_notebook_to_script, run_script_successfully
 
-TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
+TUTORIAL_PATH = Path(__file__).parent.parent.parent / "docs"
 
 
 @pytest.mark.parametrize(

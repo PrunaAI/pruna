@@ -6,7 +6,7 @@ import pytest
 
 from ..common import extract_python_code_blocks, run_script_successfully
 
-TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
+TUTORIAL_PATH = Path(__file__).parent.parent.parent / "docs"
 
 @pytest.mark.parametrize(
     "rst_path",

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import urllib.request
 import zipfile
 from functools import partial
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 from datasets import Dataset, config, load_dataset
@@ -80,22 +80,22 @@ def setup_coco_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         The COCO dataset.
     """
     # original license Creative Commons Attribution 4.0 License (CC BY 4.0)
-    directory_dataset = os.path.join(config.HF_DATASETS_CACHE, "coco")
-    if not os.path.exists(directory_dataset):
-        os.makedirs(directory_dataset)
+    directory_dataset = Path(config.HF_DATASETS_CACHE) / "coco"
+    if not directory_dataset.exists():
+        directory_dataset.mkdir(parents=True)
         pruna_logger.info(f"Downloading COCO dataset to {directory_dataset}...")
         pruna_logger.info("Downloading COCO can take up to 15 minutes...")
 
         url = "http://images.cocodataset.org/zips/"
         for target in ["train2017.zip", "val2017.zip"]:
-            zip_path = os.path.join(directory_dataset, target)
+            zip_path = directory_dataset / target
             urllib.request.urlretrieve(url + target, zip_path)
 
             # Unzip the files
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(directory_dataset)
 
-            os.remove(zip_path)
+            zip_path.unlink()
 
     dataset = load_dataset("phiyodr/coco2017", trust_remote_code=True)
 
@@ -115,7 +115,7 @@ def setup_coco_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         Dict[str, Any]
             The processed example.
         """
-        image_path = os.path.join(directory_dataset, example["file_name"])
+        image_path = Path(directory_dataset) / example["file_name"]
         example["image"] = Image.open(image_path)
         example["text"] = example["captions"][0]
         return example

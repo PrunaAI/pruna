@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import shutil
 from typing import Any, Dict, List, Union
 
@@ -135,12 +136,12 @@ class WS2TBatcher(PrunaBatcher):
         elif task == "whisper_ct" and hasattr(processor.tokenizer, "name_or_path"):
             # this requires a little trick, a transformers tokenizer can not be directly converted
             # we can either go via a download or via a file and then parsing out the Tokenizer
-            if os.path.exists(processor.tokenizer.name_or_path):
+            if Path(processor.tokenizer.name_or_path):
                 processor = AutoTokenizer.from_pretrained(processor.tokenizer.name_or_path, use_fast=True)
                 processor = processor.backend_tokenizer
             else:
                 processor = Tokenizer.from_pretrained(processor.tokenizer.name_or_path)
-            processor.save(os.path.join(model.output_dir, "tokenizer.json"))
+            processor.save(Path(model.output_dir) / "tokenizer.json")
         else:
             pruna_logger.error("Please pass a Huggingface Whisper Processor.")
 

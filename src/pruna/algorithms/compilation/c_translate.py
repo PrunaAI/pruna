@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import sys
 from argparse import Namespace
 from typing import TYPE_CHECKING, Any, Dict, List
@@ -153,9 +154,8 @@ class CTranslateCompiler(PrunaCompiler):
             model = model.model
 
         # Create outfile directory
-        out_dir = os.path.join(smash_config["cache_dir"], "outputs")
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+        out_dir = Path(smash_config["cache_dir"]) / "outputs"
+        out_dir.mkdir(exist_ok=True)
 
         model.save_pretrained(out_dir)
         # we can ignore mypy warnings here because we ensure beforehand that processor and tokenizer are not None
@@ -164,8 +164,8 @@ class CTranslateCompiler(PrunaCompiler):
         elif self.tokenizer_required:
             smash_config.tokenizer.save_pretrained(out_dir)  # type: ignore[attr-defined]
 
-        temp_dir = os.path.join(out_dir, "temp")
-        os.mkdir(temp_dir)
+        temp_dir = Path(out_dir, "temp")
+        temp_dir.mkdir(exist_ok=True)
         args = Namespace(
             output_dir=temp_dir,
             vocab_mapping=None,
@@ -212,9 +212,9 @@ class CTranslateCompiler(PrunaCompiler):
         Dict[str, Any]
             The algorithm packages.
         """
-        cudnn_path = os.path.join(
-            os.path.dirname(sys.executable).strip("bin"),
-            f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib",
+        cudnn_path = (
+            Path(sys.executable).parent.parent
+            / f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib"
         )
         ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
 
