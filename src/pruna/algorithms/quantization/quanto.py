@@ -18,8 +18,8 @@ import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
