@@ -30,6 +30,7 @@ from torchmetrics.image import (
     PeakSignalNoiseRatio,
     StructuralSimilarityIndexMeasure,
 )
+from torchmetrics.multimodal.clip_iqa import CLIPImageQualityAssessment
 from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
@@ -163,6 +164,7 @@ class TorchMetrics(Enum):
     psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
     ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
+    clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
 
     def __init__(self, *args, **kwargs) -> None:
         self.tm = self.value[0]
@@ -271,7 +273,7 @@ class TorchMetricWrapper(StatefulMetric):
         outputs : Any
             The output data.
         """
-        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        metric_inputs = metric_data_processor(x, gt, outputs, self.call_type, self.metric.device)
         self.update_fn(self.metric, *metric_inputs)
 
     def add_state(
@@ -324,10 +326,17 @@ class TorchMetricWrapper(StatefulMetric):
             The computed metric value.
         """
         result = self.metric.compute()
+
+        # Normally we have a single score for each metric for the entire dataset.
+        # For IQA metrics we have a single score per image, so we need to convert the tensor to a list.
+        if isinstance(result, Tensor):
+            result_value = result.item() if result.numel() == 1 else result.tolist()
+        else:
+            result_value = result
         return MetricResult(
             self.metric_name,
             self.__dict__.copy(),
-            result.item() if isinstance(result, Tensor) else result,
+            result_value,
         )
 
 
