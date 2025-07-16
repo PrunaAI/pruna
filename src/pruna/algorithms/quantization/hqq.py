@@ -21,8 +21,8 @@ from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparamet
 from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext, move_to_device, safe_memory_cleanup

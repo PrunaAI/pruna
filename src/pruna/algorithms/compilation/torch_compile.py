@@ -21,8 +21,8 @@ from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.algorithms.compilation.utils import CausalLMGenerator, JanusGenerator
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,

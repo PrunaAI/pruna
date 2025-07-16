@@ -18,8 +18,8 @@ from typing import Any, Dict
 from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.data.utils import recover_text_from_dataloader
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import safe_memory_cleanup

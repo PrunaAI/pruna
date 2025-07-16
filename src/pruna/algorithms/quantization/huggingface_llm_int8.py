@@ -20,8 +20,8 @@ from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparamet
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
 from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import get_device_map, move_to_device
 

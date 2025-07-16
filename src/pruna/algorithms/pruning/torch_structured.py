@@ -24,8 +24,8 @@ from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
 from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
 
 from pruna.algorithms.pruning import PrunaPruner
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
