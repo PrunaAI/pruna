@@ -47,9 +47,11 @@ def register_inference_handler(model: Any) -> InferenceHandler:
     if handler is not None:
         return handler
 
-    if "diffusers" in model.__module__:
+    model_module = model._orig_mod.__module__ if hasattr(model, "_orig_mod") else model.__module__
+
+    if "diffusers" in model_module:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
-    elif "transformers" in model.__module__:
+    elif "transformers" in model_module:
         return TransformerHandler()
     else:
         return StandardHandler()
@@ -73,6 +75,10 @@ def scan_for_exceptions(model: Any) -> InferenceHandler | None:
     # this avoids directly importing external packages
     for handler, model_classes in HANDLER_EXCEPTIONS.items():
         for model_class in model_classes:
-            if model_class in model.__class__.__name__:
+            if model.__class__.__name__ == "OptimizedModule":  # torch_compile abstracts over the model class.
+                name = model._orig_mod.__class__.__name__
+            else:
+                name = model.__class__.__name__
+            if model_class in name:
                 return handler()
     return None
