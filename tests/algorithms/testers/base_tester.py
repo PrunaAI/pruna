@@ -12,7 +12,6 @@ from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
 class AlgorithmTesterBase:
     """Base class for testing algorithms."""
 
-    # Each instance gets its own temp saving path to avoid conflicts in parallel tests.
     def __init__(self):
         self._saving_path = tempfile.mkdtemp(prefix="pruna_saved_model")
 
