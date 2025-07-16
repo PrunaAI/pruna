@@ -12,11 +12,9 @@ from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
 class AlgorithmTesterBase:
     """Base class for testing algorithms."""
 
-    # TODO: this is causing the issue; since we sahre this value with all test cases.
-    # when we have a test case parametrized each of them might run on a separate process
-    # then we can't proceed with this approach.
-    # change this and also the final_teardown
-    saving_path: str = "saved_model/"
+    # Each instance gets its own temp saving path to avoid conflicts in parallel tests.
+    def __init__(self):
+        self._saving_path = tempfile.mkdtemp(prefix="pruna_saved_model")
 
     @property
     @abstractmethod
@@ -42,33 +40,28 @@ class AlgorithmTesterBase:
         """The algorithm class to test."""
         pass
 
-    @classmethod
-    def final_teardown(cls, smash_config: SmashConfig) -> None:
+    def final_teardown(self, smash_config: SmashConfig) -> None:
         """Teardown the test, remove the saved model and clean up the files in any case."""
         # reset this smash config cache dir, this should not be shared across runs
         smash_config.cleanup_cache_dir()
 
-        # remove the saved model
-        model_path = "saved_model/"
-        if os.path.exists(model_path):
-            shutil.rmtree(model_path)
+        if os.path.exists(self._saving_path):
+            shutil.rmtree(self._saving_path)
 
         # clean up the leftovers
         safe_memory_cleanup()
 
-    @classmethod
-    def execute_save(cls, smashed_model: PrunaModel) -> None:
+    def execute_save(self, smashed_model: PrunaModel) -> None:
         """Save the smashed model."""
-        smashed_model.save_pretrained(cls.saving_path)
-        assert len(os.listdir(cls.saving_path)) > 0
-        if cls.allow_pickle_files:
-            cls.assert_no_pickle_files()
+        smashed_model.save_pretrained(self._saving_path)
+        assert len(os.listdir(self._saving_path)) > 0
+        if self.allow_pickle_files:
+            self.assert_no_pickle_files()
         move_to_device(smashed_model, "cpu")
 
-    @classmethod
-    def assert_no_pickle_files(cls) -> None:
+    def assert_no_pickle_files(self) -> None:
         """Check for pickle files in the saving path if pickle files are not expected."""
-        for file in os.listdir(cls.saving_path):
+        for file in os.listdir(self._saving_path):
             assert not file.endswith(".pkl"), "Pickle files found in directory"
 
     @classmethod
@@ -96,10 +89,11 @@ class AlgorithmTesterBase:
 
     def execute_load(self) -> PrunaModel:
         """Load the smashed model."""
-        model = PrunaModel.from_pretrained(self.saving_path)
+        model = PrunaModel.from_pretrained(self._saving_path)
         assert isinstance(model, PrunaModel)
         self.post_smash_hook(model)
         assert model.smash_config.device == get_device(model)
+        return model
 
     def execute_smash(self, model: Any, smash_config: SmashConfig) -> PrunaModel:
         """Execute the smash operation."""
