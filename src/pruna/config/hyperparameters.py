@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ConfigSpace import CategoricalHyperparameter
+from ConfigSpace import CategoricalHyperparameter, Constant
+from typing_extensions import override
 
 
 class Boolean(CategoricalHyperparameter):
@@ -39,3 +40,33 @@ class Boolean(CategoricalHyperparameter):
     def __new__(cls, name: str, default: bool = False, meta: Any = None) -> CategoricalHyperparameter:  # type: ignore
         """Create a new boolean hyperparameter."""
         return CategoricalHyperparameter(name, choices=[True, False], default_value=default, meta=meta)
+
+
+class UserEditable(Constant):
+    """
+    Represents a hyperparameter that is freely set by the user within a pre-specified type.
+
+    Parameters
+    ----------
+    name : str
+        The name of the hyperparameter.
+    default_value : Any
+        The default value of the hyperparameter.
+    meta : Any
+        The metadata for the hyperparameter.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        default_value: Any = None,
+        meta: Any = None,
+    ) -> None:
+        super().__init__(name, default_value, meta)
+
+    @override
+    def legal_value(self, value):
+        # edit the internal state of the Constant to allow for the new value
+        self._contains_sequence_as_value = isinstance(value, (list, tuple))
+        self._transformer.value = value
+        return super().legal_value(value)
