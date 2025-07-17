@@ -214,7 +214,7 @@ def original_save_fn(model: Any, model_path: str | Path, smash_config: SmashConf
         dtype = determine_dtype(model)
         # save dtype
         dtype_info_path = Path(model_path) / "dtype_info.json"
-        with dtype_info_path.opne("w") as f:
+        with dtype_info_path.open("w") as f:
             json.dump({"dtype": str(dtype).split(".")[-1]}, f)
 
     elif "transformers" in model.__module__:
