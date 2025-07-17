@@ -221,17 +221,17 @@ class CTranslateCompiler(PrunaCompiler):
         # Update LD_LIBRARY_PATH for the current process
         os.environ["LD_LIBRARY_PATH"] = f"{cudnn_path}:{ld_library_path}"
 
-        if not os.path.exists(cudnn_path):
+        if not cudnn_path.exists():
             # Try to find cudnn in alternative locations
             possible_paths = [
-                "/usr/local/cuda/lib64",
-                "/usr/lib/x86_64-linux-gnu",
-                "/usr/lib/cuda/lib64",
-                os.path.join(os.path.dirname(sys.executable), "lib"),
+                Path("/usr/local/cuda/lib64"),
+                Path("/usr/lib/x86_64-linux-gnu"),
+                Path("/usr/lib/cuda/lib64"),
+                Path(sys.executable).parent / "lib",
             ]
 
             for path in possible_paths:
-                if os.path.exists(path) and any(f.startswith("libcudnn") for f in os.listdir(path)):
+                if path.exists() and any(f.startswith("libcudnn") for f in path.iterdir()):
                     os.environ["LD_LIBRARY_PATH"] = f"{path}:{os.environ['LD_LIBRARY_PATH']}"
                     break
 

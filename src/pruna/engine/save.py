@@ -213,7 +213,8 @@ def original_save_fn(model: Any, model_path: str | Path, smash_config: SmashConf
         # save dtype of the model as diffusers does not provide this at the moment
         dtype = determine_dtype(model)
         # save dtype
-        with open(os.path.join(model_path, "dtype_info.json"), "w") as f:
+        dtype_info_path = Path(model_path) / "dtype_info.json"
+        with dtype_info_path.opne("w") as f:
             json.dump({"dtype": str(dtype).split(".")[-1]}, f)
 
     elif "transformers" in model.__module__:
@@ -325,9 +326,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     # we need to create a separate path for the quantized model
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        quantized_path = os.path.join(str(model_path), "hqq_language_model")
+        quantized_path = Path(model_path) / "hqq_language_model"
     else:
-        quantized_path = str(model_path)
+        quantized_path = Path(model_path)
 
     # save the quantized model only.
     with ModelContext(model) as (pipeline, working_model, denoiser_type):
@@ -349,9 +350,13 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         hqq_config = copy.deepcopy(model.config.text_config)
         # for re-loading the model, hqq expects the architecture to be LlamaForCausalLM
         hqq_config.architectures = ["LlamaForCausalLM"]
-        os.makedirs(quantized_path, exist_ok=True)
-        with open(os.path.join(quantized_path, "config.json"), "w") as f:
+
+        quantized_path.mkdir(parents=True, exist_ok=True)
+
+        config_path = quantized_path / "config.json"
+        with config_path.open("w") as f:
             json.dump(hqq_config.to_dict(), f, indent=2)
+
         model.model.language_model = transformer_backup
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
@@ -375,11 +380,13 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         construct_base_class,
     )
 
+    model_path = Path(model_path)
+
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
     if hasattr(model, "transformer"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, model_path / "backbone_quantized")
         transformer_backup = model.transformer
         model.transformer = None
         # save the rest of the pipeline
@@ -387,7 +394,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(model.unet, model_path / "backbone_quantized")
         unet_backup = model.unet
         model.unet = None
         # save the rest of the pipeline
@@ -422,8 +429,8 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
             "Model has not been run before. Please run the model before saving to construct the compilation graph."
         )
 
-    with open(os.path.join(model_path, "artifact_bytes.bin"), "wb") as f:
-        f.write(artifact_bytes)
+    artifact_path = Path(model_path) / "artifact_bytes.bin"
+    artifact_path.write_bytes(artifact_bytes)
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
 
