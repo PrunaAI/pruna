@@ -1,6 +1,7 @@
 import importlib.util
 import inspect
 import os
+from pathlib import Path
 import subprocess
 from typing import Any, Callable
 
@@ -173,29 +174,27 @@ def get_all_imports(package: str) -> set[str]:
 
     # Loop over all directories associated with the package (in case of namespace packages)
     for location in spec.submodule_search_locations:
-        for root, _, files in os.walk(location):
-            for file in files:
-                if file.endswith(".py"):
-                    file_path = os.path.join(root, file)
-                    # Get the relative path from the package location
-                    relative_path = os.path.relpath(file_path, location)
-                    # Remove the .py extension
-                    module_path = relative_path[:-3]
-                    # Replace OS-specific path separators with dots to form the import string
-                    module_name = module_path.replace(os.sep, ".")
+        pkg_path = Path(location)
+        for file_path in pkg_path.rglob("*py"):
+            relative_path = file_path.relative_to(pkg_path)
+            module_name = str(relative_path.with_suffix("")).replace(os.sep, ".")
 
-                    # ignore __init__.py at the root of the package
-                    if module_name == "__init__":
-                        continue
+            # NOTE: I'm changing the order here as this seems like a bug to me.
+            if file_path.name == "__init__.py":
+                module_name = str(relative_path.parent)
+                if module_name == ".":
+                    module_name = ""
+                # Combine the base package name with the module path
+                full_import = f"{package}.{module_name}" if module_name else package
+                imports.add(full_import)
 
-                    # Handle __init__.py: its module is the package (or subpackage) itself.
-                    if file == "__init__.py":
-                        module_name = module_name.rsplit(".", 1)[0]  # Remove the trailing '__init__'
+            # ignore __init__.py at the root of the package
+            # NOTE: not sure what this line does! this before the previous if which does not make sense.
+            if module_name == "__init__":
+                continue
 
-                    # Combine the base package name with the module path.
-                    # If module_name is empty (i.e. __init__.py at the root), just use the package name.
-                    full_import = f"{package}.{module_name}" if module_name else package
-                    imports.add(full_import)
+            full_import = f"{package}.{module_name}" if module_name else package
+            imports.add(full_import)
     return imports
 
 
@@ -223,20 +222,18 @@ def convert_notebook_to_script(notebook_file: str, expected_script_file: str) ->
     )
 
     # Handle possible incorrect extension
-    generated_script = notebook_file.replace(".ipynb", ".txt")
-    if os.path.exists(generated_script):
-        os.rename(generated_script, expected_script_file)
-    elif not os.path.exists(expected_script_file):
+    expected_script_file = Path(expected_script_file)
+    generated_script = Path(notebook_file).with_suffix("txt")
+    if generated_script.exists():
+        generated_script.rename(expected_script_file)
+    elif not expected_script_file.exists():
         raise FileNotFoundError("Converted script not found!")
 
     # Read the script, filter out lines starting with '!'
-    with open(expected_script_file, "r") as file:
-        lines = file.readlines()
+    content = expected_script_file.read_text()
+    filtered_lines = [line for line in content.splitlines() if not line.lstrip().startswith(("!", "get_ipython"))]
 
-    with open(expected_script_file, "w") as file:
-        for line in lines:
-            if not line.lstrip().startswith("get_ipython") and not line.lstrip().startswith("!"):
-                file.write(line)
+    expected_script_file.write_text("\n".join(filtered_lines) + "\n")
 
 
 def run_ruff_linting(file_path: str) -> None:
