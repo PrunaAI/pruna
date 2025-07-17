@@ -14,9 +14,8 @@
 
 import importlib
 import inspect
-from pathlib import Path
-import os
 import pkgutil
+from pathlib import Path
 from typing import Any, Dict
 
 import pruna.algorithms as algorithms

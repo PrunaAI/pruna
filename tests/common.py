@@ -1,8 +1,8 @@
 import importlib.util
 import inspect
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import Any, Callable
 
 import numpydoc_validation

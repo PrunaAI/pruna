@@ -13,9 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 from typing import Any, Dict, List, Union
 
 from tokenizers import Tokenizer
