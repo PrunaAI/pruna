@@ -281,7 +281,6 @@ def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashCon
 
     # move files in save dir into model path
     for file in save_dir.iterdir():
-        # TODO: do I need to conver these to str?
         shutil.move(file, Path(model_path) / file.name)
 
 
