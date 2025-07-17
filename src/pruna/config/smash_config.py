@@ -144,7 +144,7 @@ class SmashConfig:
     def reset_cache_dir(self) -> None:
         """Reset the cache directory."""
         self.cleanup_cache_dir()
-        self.cache_dir = tempfile.mkdtemp(dir=self.cache_dir_prefix)
+        self.cache_dir = Path(tempfile.mkdtemp(dir=self.cache_dir_prefix))
 
     def load_from_json(self, path: str | Path) -> None:
         """

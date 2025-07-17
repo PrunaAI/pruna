@@ -31,7 +31,7 @@ for algorithm_group in ALGORITHM_GROUPS:
 for finder, algorithm_types, ispkg in pkgutil.iter_modules(algorithms.__path__):
     if ispkg:
         # iterate through all algorithms within an algorithm type
-        for _finder, sub_name, _ispkg in pkgutil.iter_modules([Path(algorithms.__path__[0]) / algorithm_types]):
+        for _finder, sub_name, _ispkg in pkgutil.iter_modules([str(Path(algorithms.__path__[0]) / algorithm_types)]):
             module = importlib.import_module(f"{algorithms.__name__}.{algorithm_types}.{sub_name}")
             # discover the algorithm class in the file
             for obj_name, obj in inspect.getmembers(module, inspect.isclass):

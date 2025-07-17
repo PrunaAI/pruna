@@ -120,7 +120,7 @@ def setup_coco_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         example["text"] = example["captions"][0]
         return example
 
-    train_dataset = dataset["train"].map(partial(_process_example, directory_dataset=directory_dataset))
-    val_dataset = dataset["validation"].map(partial(_process_example, directory_dataset=directory_dataset))
+    train_dataset = dataset["train"].map(partial(_process_example, directory_dataset=str(directory_dataset)))
+    val_dataset = dataset["validation"].map(partial(_process_example, directory_dataset=str(directory_dataset)))
     val_dataset, test_dataset = split_val_into_val_test(val_dataset, seed)
     return train_dataset, val_dataset, test_dataset

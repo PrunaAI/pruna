@@ -154,13 +154,13 @@ class GPUMemoryStats(BaseMetric):
         MetricResult
             The peak GPU memory usage in MB.
         """
-        save_path = model.smash_config.cache_dir + "/metrics_save"
+        save_path = model.smash_config.cache_dir / "metrics_save"
         model_cls = model.__class__
         model_device_indices = self._detect_model_gpus(model)
         if not model_device_indices:
             pruna_logger.warning("No GPUs found.")
             raise ValueError("No GPUs detected for the model. Memory metric is designed to measure the GPU usage.")
-        model.save_pretrained(save_path)
+        model.save_pretrained(str(save_path))
         model.move_to_device("cpu")
 
         gpu_manager = GPUManager(self.gpu_indices)
@@ -169,7 +169,7 @@ class GPUMemoryStats(BaseMetric):
             memory_before_load = gpu_manager.get_memory_usage()
 
             # Load and prepare the model
-            metric_model = self._load_and_prepare_model(save_path, model_cls)
+            metric_model = self._load_and_prepare_model(str(save_path), model_cls)
 
             memory_after_load = gpu_manager.get_memory_usage()
 
