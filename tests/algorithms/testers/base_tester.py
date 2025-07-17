@@ -13,7 +13,7 @@ class AlgorithmTesterBase:
     """Base class for testing algorithms."""
 
     def __init__(self):
-        self._saving_path = tempfile.mkdtemp(prefix="pruna_saved_model")
+        self._saving_path = tempfile.mkdtemp(prefix="pruna_saved_model_")
 
     @property
     @abstractmethod
