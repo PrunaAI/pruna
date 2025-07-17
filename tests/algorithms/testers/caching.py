@@ -43,8 +43,7 @@ class TestFasterCache(AlgorithmTesterBase):
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
-        if hasattr(model, "transformer"):
-            assert model.transformer.is_cache_enabled
+        assert model.transformer.is_cache_enabled
 
 
 class TestPAB(AlgorithmTesterBase):
