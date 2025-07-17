@@ -342,9 +342,7 @@ class GPUMemoryStats(BaseMetric):
         PrunaModel
             The loaded and prepared model.
         """
-        model = model_cls.from_pretrained(
-            model_path,
-        )
+        model = model_cls.from_pretrained(model_path)
         model.move_to_device(set_to_best_available_device(None))
         if self.mode in {DISK_MEMORY, INFERENCE_MEMORY}:
             model.set_to_eval()

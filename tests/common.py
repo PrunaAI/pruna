@@ -175,26 +175,16 @@ def get_all_imports(package: str) -> set[str]:
     # Loop over all directories associated with the package (in case of namespace packages)
     for location in spec.submodule_search_locations:
         pkg_path = Path(location)
-        for file_path in pkg_path.rglob("*py"):
-            relative_path = file_path.relative_to(pkg_path)
-            module_name = str(relative_path.with_suffix("")).replace(os.sep, ".")
-
-            # NOTE: I'm changing the order here as this seems like a bug to me.
+        for file_path in pkg_path.rglob("*.py"):
             if file_path.name == "__init__.py":
-                module_name = str(relative_path.parent)
-                if module_name == ".":
-                    module_name = ""
-                # Combine the base package name with the module path
-                full_import = f"{package}.{module_name}" if module_name else package
+                rel_parent = file_path.parent.relative_to(pkg_path)
+                if rel_parent == Path("."):  # Root package __init__.py
+                    full_import = package
+                else:  # Subpackage __init__.py
+                    module_name = ".".join(rel_parent.parts)
+                    full_import = f"{package}.{module_name}"
                 imports.add(full_import)
 
-            # ignore __init__.py at the root of the package
-            # NOTE: not sure what this line does! this before the previous if which does not make sense.
-            if module_name == "__init__":
-                continue
-
-            full_import = f"{package}.{module_name}" if module_name else package
-            imports.add(full_import)
     return imports
 
 
