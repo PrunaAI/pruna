@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import shutil
 import tempfile
 from enum import Enum
@@ -56,8 +55,9 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    if not os.path.exists(model_path):
-        os.makedirs(model_path, exist_ok=True)
+    model_path = Path(model_path)
+    if not model_path.exists():
+        model_path.mkdir(parents=True, exist_ok=True)
 
     if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
         save_torch_artifacts(model, model_path, smash_config)
@@ -212,7 +212,8 @@ def original_save_fn(model: Any, model_path: str | Path, smash_config: SmashConf
         # save dtype of the model as diffusers does not provide this at the moment
         dtype = determine_dtype(model)
         # save dtype
-        with open(os.path.join(model_path, "dtype_info.json"), "w") as f:
+        dtype_info_path = Path(model_path) / "dtype_info.json"
+        with dtype_info_path.open("w") as f:
             json.dump({"dtype": str(dtype).split(".")[-1]}, f)
 
     elif "transformers" in model.__module__:
@@ -247,10 +248,10 @@ def save_pipeline_info(pipeline_obj: Any, save_directory: str | Path) -> None:
         "task": pipeline_obj.task,
     }
 
-    filepath = os.path.join(save_directory, PIPELINE_INFO_FILE_NAME)
+    filepath = Path(save_directory) / PIPELINE_INFO_FILE_NAME
 
-    with open(filepath, "w") as f:
-        json.dump(info, f)
+    with filepath.open("w") as fp:
+        json.dump(info, fp)
 
 
 def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -266,19 +267,21 @@ def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashCon
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
+    save_dir = Path(smash_config.cache_dir) / SAVE_BEFORE_SMASH_CACHE_DIR
 
     # load old smash config to get load_fn assigned previously
     # load json directly from file
-    with open(os.path.join(save_dir, SMASH_CONFIG_FILE_NAME), "r") as f:
+    smash_config_path = save_dir / SMASH_CONFIG_FILE_NAME
+    with smash_config_path.open("r") as f:
         old_smash_config = json.load(f)
+
     smash_config.load_fns.extend(old_smash_config["load_fns"])
     smash_config.load_fns = list(set(smash_config.load_fns))
     del old_smash_config
 
     # move files in save dir into model path
-    for file in os.listdir(save_dir):
-        shutil.move(os.path.join(save_dir, file), os.path.join(model_path, file))
+    for file in save_dir.iterdir():
+        shutil.move(file, Path(model_path) / file.name)
 
 
 def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -298,7 +301,7 @@ def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) 
     smash_helpers = get_helpers(model)
     for helper in smash_helpers:
         getattr(model, helper).disable()
-    torch.save(model, os.path.join(model_path, PICKLED_FILE_NAME))
+    torch.save(model, Path(model_path) / PICKLED_FILE_NAME)
     smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 
@@ -321,9 +324,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     # we need to create a separate path for the quantized model
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        quantized_path = os.path.join(str(model_path), "hqq_language_model")
+        quantized_path = Path(model_path) / "hqq_language_model"
     else:
-        quantized_path = str(model_path)
+        quantized_path = Path(model_path)
 
     # save the quantized model only.
     with ModelContext(model) as (pipeline, working_model, denoiser_type):
@@ -345,9 +348,13 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         hqq_config = copy.deepcopy(model.config.text_config)
         # for re-loading the model, hqq expects the architecture to be LlamaForCausalLM
         hqq_config.architectures = ["LlamaForCausalLM"]
-        os.makedirs(quantized_path, exist_ok=True)
-        with open(os.path.join(quantized_path, "config.json"), "w") as f:
+
+        quantized_path.mkdir(parents=True, exist_ok=True)
+
+        config_path = quantized_path / "config.json"
+        with config_path.open("w") as f:
             json.dump(hqq_config.to_dict(), f, indent=2)
+
         model.model.language_model = transformer_backup
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
@@ -371,11 +378,13 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         construct_base_class,
     )
 
+    model_path = Path(model_path)
+
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
     if hasattr(model, "transformer"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, model_path / "backbone_quantized")
         transformer_backup = model.transformer
         model.transformer = None
         # save the rest of the pipeline
@@ -383,7 +392,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(model.unet, model_path / "backbone_quantized")
         unet_backup = model.unet
         model.unet = None
         # save the rest of the pipeline
@@ -418,8 +427,8 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
             "Model has not been run before. Please run the model before saving to construct the compilation graph."
         )
 
-    with open(os.path.join(model_path, "artifact_bytes.bin"), "wb") as f:
-        f.write(artifact_bytes)
+    artifact_path = Path(model_path) / "artifact_bytes.bin"
+    artifact_path.write_bytes(artifact_bytes)
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
 

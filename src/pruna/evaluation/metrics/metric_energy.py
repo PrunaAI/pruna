@@ -84,8 +84,8 @@ class EnvironmentalImpactStats(BaseMetric):
             The CO2 emissions and energy consumption of the model.
         """
         # Saving the model to disk to measure loading energy later
-        save_path = model.smash_config.cache_dir + "/metrics_save"
-        model.save_pretrained(save_path)
+        save_path = model.smash_config.cache_dir / "metrics_save"
+        model.save_pretrained(str(save_path))
 
         tracker = EmissionsTracker(project_name="pruna", measure_power_secs=0.1)
         tracker.start()
@@ -93,7 +93,7 @@ class EnvironmentalImpactStats(BaseMetric):
         # Measure the loading energy
         tracker.start_task("Loading model")
         temp_model = model.__class__.from_pretrained(
-            save_path,
+            str(save_path),
         )
         tracker.stop_task()
         del temp_model
