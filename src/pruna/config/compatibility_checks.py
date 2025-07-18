@@ -34,6 +34,7 @@ def ensure_device_consistency(model, smash_config):
     smash_config : SmashConfig
         The smash config to check for device consistency.
     """
+    _device_options = ["cpu", "cuda", "mps"]
     model_device = get_device(model)
 
     # model and smash config devices match
@@ -47,8 +48,9 @@ def ensure_device_consistency(model, smash_config):
                 raise ValueError("Device map indicates CPU offloading, this is not supported at this time.")
             else:
                 smash_config.device_map = hf_device_map
-
-    elif smash_config.device in ["cpu", "cuda", "mps"] and model_device in ["cpu", "cuda", "mps"]:
+    elif any(device in smash_config.device for device in _device_options) and any(
+        device in model_device for device in _device_options
+    ):
         pruna_logger.warning(
             (
                 f"Model and SmashConfig have different devices. Model: {model_device}, "
@@ -103,7 +105,7 @@ def check_model_compatibility(
                 raise ValueError(
                     f"Model is not compatible with {algorithm_dict[current_group][algorithm].algorithm_name}"
                 )
-            if get_device(model) not in algorithm_dict[current_group][algorithm].runs_on:
+            if not any(device in get_device(model) for device in algorithm_dict[current_group][algorithm].runs_on):
                 raise ValueError(
                     f"{algorithm} is not compatible with device {get_device(model)}, "
                     f"compatible devices are {algorithm_dict[current_group][algorithm].runs_on}"
