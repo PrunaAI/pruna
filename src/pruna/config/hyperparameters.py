@@ -65,7 +65,7 @@ class UserEditable(Constant):
         super().__init__(name, default_value, meta)
 
     @override
-    def legal_value(self, value):
+    def legal_value(self, value):  # numpydoc ignore=GL08
         # edit the internal state of the Constant to allow for the new value
         self._contains_sequence_as_value = isinstance(value, (list, tuple))
         self._transformer.value = value
