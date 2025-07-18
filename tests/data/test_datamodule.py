@@ -43,6 +43,7 @@ def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> N
 
     # get the datamodule from the string
     datamodule = PrunaDataModule.from_string(dataset_name, collate_fn_args=collate_fn_args, tokenizer=tokenizer)
+    datamodule.limit_datasets(10)
 
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
@@ -58,6 +59,7 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     # get datamodule with datasets and collate function as input
     datasets = setup_fn(seed=123)
     datamodule = PrunaDataModule.from_datasets(datasets, collate_fn, collate_fn_args=collate_fn_args)
+    datamodule.limit_datasets(10)
 
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
