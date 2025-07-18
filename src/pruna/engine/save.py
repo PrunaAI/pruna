@@ -57,7 +57,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
         The SmashConfig object containing the save and load functions.
     """
     if not os.path.exists(model_path):
-        os.makedirs(model_path)
+        os.makedirs(model_path, exist_ok=True)
 
     if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
         save_torch_artifacts(model, model_path, smash_config)
