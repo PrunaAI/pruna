@@ -20,8 +20,8 @@ from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparamet
 from diffusers import BitsAndBytesConfig as DiffusersBitsAndBytesConfig
 
 from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
