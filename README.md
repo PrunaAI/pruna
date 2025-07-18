@@ -190,12 +190,12 @@ The Pruna package was made with 💜 by the Pruna AI team and our amazing contri
 If you use Pruna in your research, feel free to cite the project! 💜
 
 ```
-    @misc{pruna,
+@misc{pruna,
     title = {Efficient Machine Learning with Pruna},
     year = {2023},
     note = {Software available from pruna.ai},
     url={https://www.pruna.ai/}
-    }
+}
 ```
 
 <br>
