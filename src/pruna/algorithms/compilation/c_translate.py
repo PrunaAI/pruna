@@ -188,16 +188,18 @@ class CTranslateCompiler(PrunaCompiler):
             load_as_float16=True,
         )
 
+        temp_dir_str = str(temp_dir)
+
         converter.convert_from_args(args)
         if self.task_name == "translate":
-            optimized_model = imported_modules["Translator"](str(temp_dir), device=smash_config["device"])
-            optimized_model = TranslatorWrapper(optimized_model, str(temp_dir), smash_config.tokenizer)
+            optimized_model = imported_modules["Translator"](temp_dir_str, device=smash_config["device"])
+            optimized_model = TranslatorWrapper(optimized_model, temp_dir_str, smash_config.tokenizer)
         elif self.task_name == "generate":
-            optimized_model = imported_modules["Generator"](str(temp_dir), device=smash_config["device"])
-            optimized_model = GeneratorWrapper(optimized_model, str(temp_dir), smash_config.tokenizer)
+            optimized_model = imported_modules["Generator"](temp_dir_str, device=smash_config["device"])
+            optimized_model = GeneratorWrapper(optimized_model, temp_dir_str, smash_config.tokenizer)
         elif self.task_name == "whisper":
-            optimized_model = imported_modules["Whisper"](str(temp_dir), device=smash_config["device"])
-            optimized_model = WhisperWrapper(optimized_model, str(temp_dir), smash_config.processor)
+            optimized_model = imported_modules["Whisper"](temp_dir_str, device=smash_config["device"])
+            optimized_model = WhisperWrapper(optimized_model, temp_dir_str, smash_config.processor)
         else:
             raise ValueError("Task not supported")
         optimized_model.config = model.config
