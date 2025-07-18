@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 import torch
 
-from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper, TorchMetrics
 
 
 @pytest.mark.cuda
@@ -62,3 +62,31 @@ def test_torch_metrics(dataloader_fixture: Any, metric: str) -> None:
     _, gt = next(iter(dataloader_fixture))
     metric.update(gt, gt, gt)
     assert metric.compute().result == 1.0
+
+@pytest.mark.cpu
+@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
+def test_arniqa(dataloader_fixture: Any) -> None:
+    """Test arniqa."""
+    metric = TorchMetricWrapper("arniqa")
+    x, gt = next(iter(dataloader_fixture))
+    metric.update(x, gt, gt)
+
+@pytest.mark.cpu
+@pytest.mark.parametrize("metric", TorchMetrics.__members__.keys())
+@pytest.mark.parametrize("call_type", ["single", "pairwise"])
+def test_check_call_type(metric: str, call_type: str):
+    """Check the call type of the metric."""
+    kwargs = {}
+    if metric in ['accuracy', 'recall', 'precision']:
+        kwargs = {"task": "multiclass", "num_classes": 1000}
+    if metric == "arniqa" and call_type == "pairwise":
+        with pytest.raises(Exception):
+            TorchMetricWrapper(metric, call_type=call_type, **kwargs)
+        return
+    metric = TorchMetricWrapper(metric, call_type=call_type, **kwargs)
+    if call_type == "pairwise" and metric.metric_name != "arniqa":
+        assert metric.call_type.startswith("pairwise")
+    elif metric.metric_name == "arniqa":
+        assert metric.call_type == "y"
+    else:
+        assert not metric.call_type.startswith("pairwise")

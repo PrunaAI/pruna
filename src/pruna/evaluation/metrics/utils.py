@@ -22,6 +22,7 @@ from warnings import warn
 
 import torch
 
+from pruna.data.utils import move_batch_to_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.logging.logger import pruna_logger
 
@@ -31,7 +32,11 @@ CALL_TYPES = (SINGLE, PAIRWISE)
 
 
 def metric_data_processor(
-    x: List[Any] | torch.Tensor, gt: List[Any] | torch.Tensor, outputs: Any, call_type: str
+    x: List[Any] | torch.Tensor,
+    gt: List[Any] | torch.Tensor,
+    outputs: Any,
+    call_type: str,
+    device: torch.device | str | None = None,
 ) -> List[Any]:
     """
     Arrange metric inputs based on the specified configuration call type.
@@ -57,6 +62,8 @@ def metric_data_processor(
         The model outputs or predictions.
     call_type : str
         The type of call to be made to the metric.
+    device : torch.device | str | None
+        The device to be used for the metric.
 
     Returns
     -------
@@ -74,6 +81,10 @@ def metric_data_processor(
     >>> inputs = metric_data_processor(x_data, ground_truth, model_outputs, call_type)
     >>> # Returns [ground_truth, model_outputs]
     """
+    if device is not None:
+        x = move_batch_to_device(x, device)
+        gt = move_batch_to_device(gt, device)
+        outputs = move_batch_to_device(outputs, device)
     if call_type == "x_y":
         return [x, outputs]
     elif call_type == "gt_y":
@@ -86,6 +97,8 @@ def metric_data_processor(
         return [gt, outputs]
     elif call_type == "pairwise_y_gt":
         return [outputs, gt]
+    elif call_type == "y":  # IQA metrics that have an internal dataset
+        return [outputs]
     else:
         raise ValueError(f"Invalid call type: {call_type}")
 
@@ -185,6 +198,9 @@ def get_pairwise_pairing(call_type: str) -> str:
     str
         The pairwise pairing for the call type.
     """
+    if call_type == "y":
+        pruna_logger.error("IQA metrics cannot be used with pairwise call type")
+        raise Exception
     if call_type.startswith("y_"):
         return "pairwise_y_gt"
     else:

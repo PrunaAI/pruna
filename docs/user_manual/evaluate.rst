@@ -216,9 +216,10 @@ The ``EvaluationAgent`` accepts ``Metrics`` in three ways:
 Metric Call Types
 ~~~~~~~~~~~~~~~~~
 
-|pruna| metrics can operate in both single-model and pairwise modes.
+Stateful metrics can generally be evaluated in single-model and pariwise modes.
+Single-mode allows to compare a mode against ground-truth data, while pairwise mode allows to compare the fidelity of model against another model.
 
-- **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated.
+- **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated. IQA metrics are only supported in single-model mode.
 - **Pairwise mode**: Metrics compare a subsequent model against the first model evaluated by the agent and produce a single comparison score.
 
 Underneath the hood, the ``StatefulMetric`` class uses the ``call_type`` parameter to determine the order of the inputs.
@@ -288,6 +289,10 @@ This is what's happening under the hood when you pass ``call_type="single"`` or 
    * - ``pairwise_gt_y``
      - Subsequent model's output first, then base model's output
      - ``psnr``, ``ssim``, ``lpips``, ``cmmd``
+
+   * - ``y``
+     - Only the output is used, the metric has an internal dataset
+     - ``arniqa``
 
 Metric Results
 ~~~~~~~~~~~~~~~
@@ -488,7 +493,7 @@ Let's see how this works in code.
             # Optional: tweak model generation parameters for benchmarking
             inference_arguments = {"num_inference_steps": 1, "guidance_scale": 0.0}
             wrapped_pipe.inference_handler.model_args.update(inference_arguments)
-            wrapped_pipe.inference_handler.update_model(wrapped_pipe)
+
 
             # Evaluate base model first (cached for comparison)
             first_results = eval_agent.evaluate(pipe)
