@@ -128,6 +128,7 @@ class IFWBatcher(PrunaBatcher):
                 else {"attn_implementation": "sdpa"}
             ),
             device=smash_config["device"],
+            ignore_warning=True,
         )
         return pipe
 
