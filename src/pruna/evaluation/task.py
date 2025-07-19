@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from typing import Any, List, cast
-from warnings import warn
 
 import torch
 
@@ -23,10 +22,6 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
-from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TOTAL_TIME
-from pruna.evaluation.metrics.metric_energy import CO2_EMISSIONS, ENERGY_CONSUMED
-from pruna.evaluation.metrics.metric_memory import DISK_MEMORY
-from pruna.evaluation.metrics.metric_model_architecture import TOTAL_MACS, TOTAL_PARAMS
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -39,12 +34,6 @@ PARENT_METRICS = (
     "InferenceTimeStats",
     "EnvironmentalImpactStats",
 )
-DEPRECATION_TO_NEW_MAP = {
-    "elapsed_time": [LATENCY, THROUGHPUT, TOTAL_TIME],
-    "gpu_memory": [DISK_MEMORY],
-    "energy": [ENERGY_CONSUMED, CO2_EMISSIONS],
-    "model_architecture": [TOTAL_MACS, TOTAL_PARAMS],
-}
 
 
 class Task:
@@ -178,17 +167,7 @@ def _process_metric_names(request: List[str], device: str | torch.device | None)
     new_requests: List[str] = []
     for metric_name in request:
         metric_name = cast(str, metric_name)
-        if metric_name in DEPRECATION_TO_NEW_MAP:
-            warn(
-                f"Metric {metric_name} is deprecated and will be removed in 'v0.2.8' release. "
-                f"Use {DEPRECATION_TO_NEW_MAP[metric_name]} instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            for new_metric in DEPRECATION_TO_NEW_MAP[metric_name]:
-                new_requests.append(cast(str, new_metric))
-        else:
-            new_requests.append(cast(str, metric_name))
+        new_requests.append(cast(str, metric_name))
     return MetricRegistry.get_metrics(names=new_requests, device=device)
 
 

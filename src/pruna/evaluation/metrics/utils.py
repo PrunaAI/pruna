@@ -18,7 +18,6 @@ from __future__ import annotations
 from collections import defaultdict
 from inspect import Signature, getmro, signature
 from typing import Any, Callable, Dict, List, Tuple, Type, cast
-from warnings import warn
 
 import torch
 
@@ -265,18 +264,8 @@ def get_call_type_for_pairwise_metric(call_type_requested: str, default_call_typ
     elif call_type_requested == SINGLE:
         return get_single_pairing(default_call_type)
     else:
-        if call_type_requested == default_call_type or call_type_requested == get_single_pairing(default_call_type):
-            warn(
-                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
-                f"Use {SINGLE} or {PAIRWISE} instead. \n"
-                f"Using default call type {default_call_type}.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return default_call_type
-        else:
-            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
-            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+        pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+        raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
 
 
 def get_call_type_for_single_metric(call_type_requested: str, default_call_type: str) -> str:
@@ -300,15 +289,5 @@ def get_call_type_for_single_metric(call_type_requested: str, default_call_type:
     elif call_type_requested == SINGLE:
         return default_call_type
     else:
-        if call_type_requested == default_call_type or call_type_requested == get_pairwise_pairing(default_call_type):
-            warn(
-                f"Calling metric with its call type is deprecated and will be removed in 'v0.2.8' release. \n"
-                f"Use {SINGLE} or {PAIRWISE} instead. \n"
-                f"Using default call type {default_call_type}.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return default_call_type
-        else:
-            pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
-            raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+        pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+        raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
