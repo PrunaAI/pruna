@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import inspect
 from typing import Any, Dict, List, Tuple, cast
-from warnings import warn
 
 import thop
 import torch
@@ -263,28 +262,3 @@ class TotalParamsMetric(ModelArchitectureStats):
         # Use EvaluationAgent to share computation across model architecture metrics.
         results = super().compute(model, dataloader)
         return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], results))
-
-
-class ModelArchitectureMetric:
-    """
-    Deprecated class.
-
-    Parameters
-    ----------
-    *args : Any
-        Arguments for ModelArchitectureStats.
-    **kwargs : Any
-        Keyword arguments for ModelArchitectureStats.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        """Forwards to ModelArchitectureStats."""
-        warn(
-            "ModelArchitectureMetric is deprecated and will be removed in 'v0.2.8' release. \n"
-            "It has been replaced by ModelArchitectureStats, \n"
-            "which is a shared parent class for 'TotalMACsMetric' and 'TotalParamsMetric'. \n"
-            "In the future, please use 'TotalMACsMetric' or 'TotalParamsMetric' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return ModelArchitectureStats(*args, **kwargs)
