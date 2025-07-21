@@ -79,13 +79,13 @@ class HQQQuantizer(PrunaQuantizer):
                 meta=dict(desc="Compute dtype for quantization."),
             ),
             CategoricalHyperparameter(
-                "patch_for_inference",
+                "use_torchao_kernels",
                 choices=[True, False],
                 default_value=True,
-                meta=dict(desc="Whether to patch the model for inference (with torchaoint4 kernels)."),
+                meta=dict(desc="Whether to use the torchaoint4 kernels for inference."),
             ),
             CategoricalHyperparameter(
-                "default_to_hf",
+                "force_hf_implementation",
                 choices=[True, False],
                 default_value=False,
                 meta=dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
@@ -138,10 +138,10 @@ class HQQQuantizer(PrunaQuantizer):
         safe_memory_cleanup()
         with ModelContext(model) as (pipeline, working_model, denoiser_type):
             try:  # Try to quantize the model using HQQ
-                if smash_config["default_to_hf"]:
+                if smash_config["force_hf_implementation"]:
                     raise Exception(
                         "AutoHQQHFModel is bypassed, defaulting to generic HF quantization. "
-                        "Set default_to_hf to False to (try to) use AutoHQQHFModel."
+                        "Set force_hf_implementation to False to (try to) use AutoHQQHFModel."
                     )
                 working_model = imported_modules["AutoHQQHFModel"].quantize_model(
                     working_model,
@@ -150,9 +150,10 @@ class HQQQuantizer(PrunaQuantizer):
                     compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
                 )
             except Exception:  # Default to generic HF quantization if it fails or if default_to_hf is True
-                if not smash_config["default_to_hf"]:
+                if not smash_config["force_hf_implementation"]:
                     pruna_logger.info(
-                        "Could not quantize model using specialized HQQ pipeline, trying generic interface..."
+                        "Could not quantize model using specialized HQQ pipeline, "
+                        "trying implementation from transformers library..."
                     )
                 # Create a temporary directory in a specific location
                 base_temp_dir = smash_config["cache_dir"]
@@ -172,11 +173,11 @@ class HQQQuantizer(PrunaQuantizer):
 
             # Prepare the model for fast inference
             try:
-                if weight_quantization_bits == 4 and smash_config["patch_for_inference"]:
+                if weight_quantization_bits == 4 and smash_config["use_torchao_kernels"]:
                     pruna_logger.info(
                         "Patching model for fast inference with torchaoint4 kernels. "
                         "This operation can make the model incompatible with re-load. "
-                        "If you plan to save and re-load the model, set patch_for_inference to False."
+                        "If you plan to save and re-load the model, set use_torchao_kernels to False."
                     )
                     imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
             except Exception as e:
