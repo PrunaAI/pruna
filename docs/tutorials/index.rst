@@ -11,7 +11,7 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :text-align: center
       :link: ./image_generation.ipynb
 
-      Compress with a ``hq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
+      Compress with a ``hqq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
 
    .. grid-item-card:: Compress and Evaluate Large Language Models
       :text-align: center
