@@ -1,18 +1,20 @@
 Customize Datasets
 ==================
 
-Our interface makes it easy to add :doc:`your own dataset <../user_manual/dataset>`.
-Additionally, we provide a variety of :doc:`preconfigured datasets <../user_manual/dataset>` that can be readily used in SmashConfig for calibration or evaluation.
+Our interface makes it easy to add :ref:`your own dataset <customize-dataset>`.
+Additionally, we provide a variety of :ref:`preconfigured datasets <configure-datasets>` that can be readily used in SmashConfig for calibration or evaluation.
 
 If you’d like to contribute a new dataset to our supported list, follow these two quick steps.
 If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/Tun8YgzxZ9>`_ anytime!
 If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
 
+.. _customize-dataset:
+
 Add a Custom Dataset
 --------------------
 
 Step 1. Define the Dataset Setup
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 First, create a setup method to prepare the training, validation, and test splits.
 This usually involves downloading or generating the dataset.
@@ -62,7 +64,7 @@ with the matching collate function and any defaults (e.g. the default image size
 
     base_datasets["NewDataset"] = (setup_new_dataset, "text_generation_collate", {})
 
-Ensure the dataset follows the expected format specified in the :doc:`collate function <../user_manual/dataset>`.
+Ensure the dataset follows the expected format specified in the :ref:`collate function <customize-dataset>`.
 The collate function aggregates several samples into a batch and converts them to the expected format.
 
 Now, users can add the dataset like this:

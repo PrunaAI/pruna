@@ -1,5 +1,5 @@
 How to Contribute ? 💜
-====================
+======================
 
 Since you landed on this part of the documentation, we want to first of all say thank you! 💜
 Contributions from the community are essential to improving |pruna|, we appreciate your effort in making the repository better for everyone!

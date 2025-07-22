@@ -5,7 +5,7 @@ This guide provides a quick introduction to saving and loading optimized AI mode
 
 You will learn how to save and load a ``PrunaModel`` after smashing a model using |pruna|.
 
-Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/smash>` to learn how to do that.
 
 Basic Save and Load Workflow
 ----------------------------

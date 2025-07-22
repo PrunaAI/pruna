@@ -6,7 +6,7 @@ This guide provides an introduction to evaluating models with |pruna|.
 Evaluation helps you understand how compression affects your models across different dimensions - from output quality to resource requirements.
 This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs.
 
-Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/smash>` to learn how to do that.
 
 Basic Evaluation Workflow
 -------------------------
@@ -90,7 +90,7 @@ The |pruna| package provides a variety of evaluation metrics to assess your mode
 In this section, we'll introduce the evaluation metrics you can use.
 
 EvaluationAgent Initialization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``EvaluationAgent`` is the main class for evaluating model performance. It can be initialized using two approaches:
 
