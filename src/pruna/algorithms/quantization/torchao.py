@@ -66,7 +66,7 @@ class TorchaoQuantizer(PrunaQuantizer):
     Implement quantization using torchao.
 
     This replaces each nn.Linear in-place with a low-precision Tensor subclass via
-    torchao.quantization.quantize_. It uses per-channel uniform affine
+    ``torchao.quantization.quantize``. It uses per-channel uniform affine
     (“linear”) quantization for weights (e.g. symmetric int8 or int4) and dynamic
     per-tensor affine quantization for activations (8-bit at runtime). When combined
     with torch.compile, this can yield substantial inference speedups over
