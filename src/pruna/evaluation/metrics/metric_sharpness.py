@@ -19,7 +19,6 @@ from typing import Any, List, cast
 import cv2
 import numpy as np
 import torch
-import torchvision.transforms.functional as transforms_functional
 from torch import Tensor
 
 from pruna.engine.utils import set_to_best_available_device
@@ -83,8 +82,10 @@ class SharpnessMetric(StatefulMetric):
         """
         Accumulate the sharpness scores for each batch.
 
-        This metric computes sharpness only on the grayscale (luminance) version of each image.
-        If the input is RGB, it is converted to grayscale before sharpness is measured.
+        This metric computes sharpness for each image in the batch using the variance of the Laplacian.
+        Higher Laplacian variance indicates higher sharpness (more edge information).
+        If the input is a color image (3 channels), the Laplacian variance is computed for each channel
+        and the mean is taken. If the input is grayscale (1 channel), the Laplacian variance is computed directly.
 
         Parameters
         ----------
@@ -106,7 +107,7 @@ class SharpnessMetric(StatefulMetric):
             pruna_logger.error(f"Expected 4‑D tensor (B, C, H, W); got shape {tuple(images.shape)}")
             raise
 
-        # Move to CPU OpenCV only works on numpy
+        # Move to CPU - OpenCV only works on numpy
         imgs = images.detach().cpu()
 
         # If range is 0‑1 → scale to 0‑255 for uint8
@@ -116,21 +117,32 @@ class SharpnessMetric(StatefulMetric):
         imgs = imgs.to(torch.uint8)
 
         for img in imgs:
-            # Always convert to grayscale before sharpness calculation.
-            # If the image has 3 channels (RGB), convert to grayscale.
+            # If the image has 3 channels (RGB), compute Laplacian variance for each channel and average.
             if img.shape[0] == 3:
-                img_gray = transforms_functional.rgb_to_grayscale(img.float()).squeeze(0).numpy().astype(np.uint8)
+                laplacian_variance_per_channel = []
+                for c in range(3):
+                    channel_img = img[c, :, :].numpy().astype(np.uint8)
+                    lap = cv2.Laplacian(channel_img, cv2.CV_64F, ksize=self.kernel_size)
+                    laplacian_variance_per_channel.append(lap.var())
+                avg_laplacian_variance = float(np.mean(laplacian_variance_per_channel))
+
+                # Higher Laplacian variance = higher sharpness
+                sharpness_score = avg_laplacian_variance
+
             # If the image has 1 channel, use as grayscale.
             elif img.shape[0] == 1:
                 img_gray = img.squeeze(0).numpy().astype(np.uint8)
+                lap = cv2.Laplacian(img_gray, cv2.CV_64F, ksize=self.kernel_size)
+                laplacian_variance = float(lap.var())
+
+                # Higher Laplacian variance = higher sharpness
+                sharpness_score = laplacian_variance
+
             else:
                 pruna_logger.error("SharpnessMetric: unsupported channel count")
                 raise
 
-            # Compute the Laplacian of the grayscale image to measure sharpness.
-            lap = cv2.Laplacian(img_gray, cv2.CV_64F, ksize=self.kernel_size)
-            sharp = float(lap.var())
-            self.scores.append(sharp)
+            self.scores.append(sharpness_score)
 
     def compute(self) -> MetricResult:
         """
