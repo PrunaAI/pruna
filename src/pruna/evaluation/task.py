@@ -25,6 +25,7 @@ from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TOTAL_TIME
 from pruna.evaluation.metrics.metric_energy import CO2_EMISSIONS, ENERGY_CONSUMED
+from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 from pruna.evaluation.metrics.metric_memory import DISK_MEMORY
 from pruna.evaluation.metrics.metric_model_architecture import TOTAL_MACS, TOTAL_PARAMS
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -199,6 +200,7 @@ def _process_single_request(request: str, device: str | torch.device | None) -> 
             TorchMetricWrapper("clip_score"),
             TorchMetricWrapper("clip_score", call_type="pairwise"),
             CMMD(device=device),
+            ImageRewardMetric(device=device),
         ]
     else:
         pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")

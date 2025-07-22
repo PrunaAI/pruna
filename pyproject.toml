@@ -115,8 +115,9 @@ dependencies = [
     "hqq==0.2.6",
     "torchao",
     "llmcompressor",
-    "gliner; python_version >= '3.10'"
-
+    "gliner; python_version >= '3.10'",
+    "image-reward", # Ima
+    "clip",
 ]
 
 [project.optional-dependencies]
