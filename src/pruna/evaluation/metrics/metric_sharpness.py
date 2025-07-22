@@ -37,14 +37,26 @@ class SharpnessMetric(StatefulMetric):
     """
     Laplacian‑variance image‑sharpness metric.
 
+    The sharpness metric is calculated as the variance of the Laplacian of the image.
+    The Laplacian is a second-order derivative operator that measures the rate of change of the gradient of the image.
+    The variance of the Laplacian is a measure of the amount of edges in the image.
+    The higher the variance, the sharper the image.
+
+    Reference
+    ----------
+    - https://www.semanticscholar.org/paper/Analysis-of-focus-measure-operators-for-Pertuz-Puig/8c675bf5b542b98bf81dcf70bd869ab52ab8aae9?p2df
+
     Parameters
     ----------
     *args : Any
         Additional arguments.
     kernel_size : int
-        The size of the kernel for the Laplacian operator. Default is 3.
+        The size of the kernel used by the Laplacian operator.
+        Larger values make the sharpness metric less sensitive to fine details and noise,
+        while smaller values increase sensitivity to small edges.
+        Default is 3.
     call_type : str
-        The type of call to use for the metric. IQA metrics are only supported for single mode.
+        The type of call to use for the metric. IQA metrics, like sharpness, are only supported for single mode.
     **kwargs : Any
         Additional keyword arguments.
     """
@@ -71,6 +83,9 @@ class SharpnessMetric(StatefulMetric):
         """
         Accumulate the sharpness scores for each batch.
 
+        This metric computes sharpness only on the grayscale (luminance) version of each image.
+        If the input is RGB, it is converted to grayscale before sharpness is measured.
+
         Parameters
         ----------
         x : List[Any] | torch.Tensor
@@ -95,19 +110,24 @@ class SharpnessMetric(StatefulMetric):
         imgs = images.detach().cpu()
 
         # If range is 0‑1 → scale to 0‑255 for uint8
-        if imgs.max() <= 1.0:
+        # Only scale if the image is not all 0s or all 1s, and max is <= 1.0
+        if imgs.max() <= 1.0 and (imgs.min() != imgs.max()):
             imgs = imgs * 255.0
         imgs = imgs.to(torch.uint8)
 
         for img in imgs:
+            # Always convert to grayscale before sharpness calculation.
+            # If the image has 3 channels (RGB), convert to grayscale.
             if img.shape[0] == 3:
                 img_gray = transforms_functional.rgb_to_grayscale(img.float()).squeeze(0).numpy().astype(np.uint8)
+            # If the image has 1 channel, use as grayscale.
             elif img.shape[0] == 1:
                 img_gray = img.squeeze(0).numpy().astype(np.uint8)
             else:
                 pruna_logger.error("SharpnessMetric: unsupported channel count")
                 raise
 
+            # Compute the Laplacian of the grayscale image to measure sharpness.
             lap = cv2.Laplacian(img_gray, cv2.CV_64F, ksize=self.kernel_size)
             sharp = float(lap.var())
             self.scores.append(sharp)
@@ -121,8 +141,11 @@ class SharpnessMetric(StatefulMetric):
         MetricResult
             The sharpness metric result.
         """
+        # If no sharpness scores have been accumulated (e.g., update() was never called),
+        # we return a default value of 0.0 to indicate no sharpness could be computed.
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
 
+        # Otherwise, compute the mean sharpness score over all accumulated samples.
         mean_val = float(np.mean(self.scores))
         return MetricResult(self.metric_name, self.__dict__, mean_val)
