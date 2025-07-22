@@ -15,29 +15,34 @@
 import pytest
 import torch
 from PIL import Image
-
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_reward import (
-    ImageRewardMetric,
-    HPSMetric,
-    HPSv2Metric,
-    IMAGE_REWARD,
     HPS_REWARD,
+    IMAGE_REWARD,
+    VQA_REWARD,
+    HPSMetric,
     HPSv2_REWARD,
+    HPSv2Metric,
+    ImageRewardMetric,
+    VQAMetric,
 )
 
 METRIC_CLASSES_AND_NAMES = [
-    (ImageRewardMetric, IMAGE_REWARD),
-    (HPSMetric, HPS_REWARD),
-    (HPSv2Metric, HPSv2_REWARD),
+    (ImageRewardMetric, IMAGE_REWARD, {}),
+    (HPSMetric, HPS_REWARD, {}),
+    (HPSv2Metric, HPSv2_REWARD, {"hps_version": "v2.1"}),
+    (VQAMetric, VQA_REWARD, {"model": "clip-flant5-xl"}),
 ]
+
 
 @pytest.fixture(scope="class", autouse=True)
 def reward_metrics(request):
     # Initialize each metric once and store in a dict
     metrics = {}
     for metric_cls, metric_name in METRIC_CLASSES_AND_NAMES:
-        metrics[metric_name] = metric_cls(device="cpu")
+        metrics[metric_name] = metric_cls(device=set_to_best_available_device(device=None))
     request.cls._reward_metrics = metrics
+
 
 @pytest.mark.usefixtures("reward_metrics")
 @pytest.mark.parametrize(
@@ -53,7 +58,11 @@ class TestRewardMetrics:
         """Test that the metric is properly registered."""
         from pruna.evaluation.metrics.registry import MetricRegistry
 
-        metric = MetricRegistry.get_metric(metric_name, device="cpu")
+        metric = MetricRegistry.get_metric(
+            metric_name,
+            device=set_to_best_available_device(device=None),
+            call_type="y",
+        )
         assert isinstance(metric, metric_cls)
 
     def test_extract_prompts(self, metric_cls, metric_name):
@@ -81,7 +90,9 @@ class TestRewardMetrics:
 
         # Convert to PIL Image properly
         image = image.clamp(0, 1)  # Ensure values are in [0, 1]
-        pil_image = Image.fromarray((image.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+        pil_image = Image.fromarray(
+            (image.permute(1, 2, 0).cpu().numpy() * 255).astype("uint8")
+        )
 
         score = metric._score_image(prompt, pil_image)
         assert isinstance(score, float)
