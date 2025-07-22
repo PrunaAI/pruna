@@ -61,6 +61,7 @@ gptqmodel = [
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
 image-reward = { git = "https://github.com/PrunaAI/ImageReward" }
+hpsv2 = { git = "https://github.com/PrunaAI/HPSv2" }
 
 [project]
 name = "pruna"
@@ -121,6 +122,7 @@ dependencies = [
     "image-reward",
     "piq",
     "clip",
+    "hpsv2",
 ]
 
 [project.optional-dependencies]
