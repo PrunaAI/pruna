@@ -20,14 +20,7 @@ from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyCon
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
-from pruna.evaluation.metrics.metric_reward import (
-    HPS_REWARD,
-    IMAGE_REWARD,
-    HPSMetric,
-    HPSv2_REWARD,
-    HPSv2Metric,
-    ImageRewardMetric,
-)
+from pruna.evaluation.metrics.metric_reward import HPSMetric, HPSv2Metric, ImageRewardMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 
 __all__ = [
@@ -48,7 +41,4 @@ __all__ = [
     "ImageRewardMetric",
     "HPSMetric",
     "HPSv2Metric",
-    "HPS_REWARD",
-    "HPSv2_REWARD",
-    "IMAGE_REWARD",
 ]
