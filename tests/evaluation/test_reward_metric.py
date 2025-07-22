@@ -39,8 +39,11 @@ METRIC_CLASSES_AND_NAMES = [
 def reward_metrics(request):
     # Initialize each metric once and store in a dict
     metrics = {}
-    for metric_cls, metric_name in METRIC_CLASSES_AND_NAMES:
-        metrics[metric_name] = metric_cls(device=set_to_best_available_device(device=None))
+    for metric_cls, metric_name, model_load_kwargs in METRIC_CLASSES_AND_NAMES:
+        metrics[metric_name] = metric_cls(
+            device=set_to_best_available_device(device=None),
+            **model_load_kwargs,
+        )
     request.cls._reward_metrics = metrics
 
 
