@@ -42,14 +42,14 @@ def reward_metrics(request):
     for metric_cls, metric_name, model_load_kwargs in METRIC_CLASSES_AND_NAMES:
         metrics[metric_name] = metric_cls(
             device=set_to_best_available_device(device=None),
-            **model_load_kwargs,
+            model_load_kwargs=model_load_kwargs,
         )
     request.cls._reward_metrics = metrics
 
 
 @pytest.mark.usefixtures("reward_metrics")
 @pytest.mark.parametrize(
-    "metric_cls, metric_name",
+    "metric_cls, metric_name, model_load_kwargs",
     METRIC_CLASSES_AND_NAMES,
 )
 class TestRewardMetrics:
@@ -57,7 +57,7 @@ class TestRewardMetrics:
         # Always return the pre-initialized metric instance
         return self._reward_metrics[metric_name]
 
-    def test_metric_registration(self, metric_cls, metric_name):
+    def test_metric_registration(self, metric_cls, metric_name, model_load_kwargs):
         """Test that the metric is properly registered."""
         from pruna.evaluation.metrics.registry import MetricRegistry
 
@@ -65,10 +65,11 @@ class TestRewardMetrics:
             metric_name,
             device=set_to_best_available_device(device=None),
             call_type="y",
+            **model_load_kwargs,
         )
         assert isinstance(metric, metric_cls)
 
-    def test_extract_prompts(self, metric_cls, metric_name):
+    def test_extract_prompts(self, metric_cls, metric_name, model_load_kwargs):
         """Test prompt extraction from different input types."""
         metric = self.get_metric(metric_cls, metric_name)
 
@@ -83,7 +84,7 @@ class TestRewardMetrics:
         assert len(extracted) == 2
         assert all(prompt.startswith("prompt_") for prompt in extracted)
 
-    def test_score_image(self, metric_cls, metric_name):
+    def test_score_image(self, metric_cls, metric_name, model_load_kwargs):
         """Test image scoring functionality."""
         metric = self.get_metric(metric_cls, metric_name)
 
@@ -102,7 +103,7 @@ class TestRewardMetrics:
         # Score should be a reasonable value (ImageReward/HPS typically outputs scores around 0-10)
         assert -10 <= score <= 10
 
-    def test_update_and_compute(self, metric_cls, metric_name):
+    def test_update_and_compute(self, metric_cls, metric_name, model_load_kwargs):
         """Test the update and compute methods."""
         metric = self.get_metric(metric_cls, metric_name)
 
@@ -122,7 +123,7 @@ class TestRewardMetrics:
         result = metric.compute()
         assert isinstance(result, float) or hasattr(result, "result")
 
-    def test_error_handling(self, metric_cls, metric_name):
+    def test_error_handling(self, metric_cls, metric_name, model_load_kwargs):
         """Test error handling for invalid inputs."""
         metric = self.get_metric(metric_cls, metric_name)
 
