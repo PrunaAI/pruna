@@ -1386,7 +1386,7 @@ wheels = [
 [[package]]
 name = "image-reward"
 version = "1.5"
-source = { git = "https://github.com/THUDM/ImageReward#c1392c6dd0fd6ecd6d416c96959ab744a6d0a8fb" }
+source = { git = "https://github.com/PrunaAI/ImageReward#c1392c6dd0fd6ecd6d416c96959ab744a6d0a8fb" }
 dependencies = [
     { name = "accelerate" },
     { name = "clip" },
@@ -3602,7 +3602,7 @@ requires-dist = [
     { name = "gptqmodel", marker = "(platform_machine != 'arm64' and extra == 'gptq') or (sys_platform != 'darwin' and extra == 'gptq')", specifier = "==4.0.0.dev0+cu126torch2.7", index = "https://prunaai.pythonanywhere.com/simple/" },
     { name = "hqq", specifier = "==0.2.6" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.30.0" },
-    { name = "image-reward", git = "https://github.com/THUDM/ImageReward" },
+    { name = "image-reward", git = "https://github.com/PrunaAI/ImageReward" },
     { name = "ipykernel", marker = "extra == 'dev'" },
     { name = "jsonschema", marker = "extra == 'dev'" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
@@ -3640,7 +3640,6 @@ requires-dist = [
     { name = "thop" },
     { name = "threadpoolctl", marker = "extra == 'gptq'" },
     { name = "timm" },
-    { name = "timm", specifier = ">=1.0.0" },
     { name = "tokenicer", marker = "extra == 'gptq'" },
     { name = "torch", specifier = "==2.7.0" },
     { name = "torch-pruning" },

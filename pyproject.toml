@@ -60,7 +60,7 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
-image-reward = { git = "https://github.com/THUDM/ImageReward" }
+image-reward = { git = "https://github.com/PrunaAI/ImageReward" }
 
 [project]
 name = "pruna"
@@ -119,7 +119,6 @@ dependencies = [
     "gliner; python_version >= '3.10'",
     "image-reward",
     "clip",
-    "timm>=1.0.0",
 ]
 
 [project.optional-dependencies]
