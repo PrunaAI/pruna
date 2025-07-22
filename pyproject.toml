@@ -43,7 +43,7 @@ addopts = [
 python_files = "test_*.py"
 
 testpaths = [
-    "src/pruna/tests",
+    "tests/",
 ]
 
 [[tool.uv.index]]
@@ -161,6 +161,7 @@ dev = [
     "mypy",
     "types-PyYAML",
     "logbar",
+    "pytest-xdist>=3.8.0",
 ]
 cpu = []
 

@@ -83,7 +83,7 @@ class TestHalf(AlgorithmTesterBase):
 class TestTorchao(AlgorithmTesterBase):
     """Test the torchao quantizer."""
 
-    models = ["flux_tiny_random", "stable_diffusion_v1_4"]
+    models = ["flux_tiny_random", "sd_tiny_random"]
     reject_models = ["dummy_lambda"]
     allow_pickle_files = False
     algorithm_class = TorchaoQuantizer
@@ -112,7 +112,7 @@ class TestGPTQ(AlgorithmTesterBase):
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 
-    models = ["noref_llama_3_2_1b"]
+    models = ["llama_3_tiny_random"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMCompressorQuantizer

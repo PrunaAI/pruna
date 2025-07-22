@@ -98,7 +98,7 @@ class SmashConfig:
 
         self.cache_dir_prefix = cache_dir_prefix
         if not os.path.exists(cache_dir_prefix):
-            os.makedirs(cache_dir_prefix)
+            os.makedirs(cache_dir_prefix, exist_ok=True)
         self.cache_dir = tempfile.mkdtemp(dir=cache_dir_prefix)
 
         self.save_fns: list[str] = []
