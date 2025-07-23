@@ -62,7 +62,6 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     model = pipeline(
         "automatic-speech-recognition",
         model=model_id,
-        chunk_length_s=30,
         torch_dtype=torch.float16,
         device_map="cpu",
     )
