@@ -52,6 +52,16 @@ def test_clip_score(dataloader_fixture: Any) -> None:
     score = metric.compute()
     assert score.result > 0.0 and score.result < 100.0
 
+@pytest.mark.cpu
+@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
+def test_clipiqa(dataloader_fixture: Any) -> None:
+    """Test the clipiqa."""
+    metric = TorchMetricWrapper("clipiqa")
+    x, gt = next(iter(dataloader_fixture))
+    metric.update(x, gt, gt)
+    score = metric.compute()
+    assert score.result > 0.0 and score.result < 1.0
+
 
 @pytest.mark.cpu
 @pytest.mark.parametrize("dataloader_fixture", ["ImageNet"], indirect=True)
@@ -79,14 +89,14 @@ def test_check_call_type(metric: str, call_type: str):
     kwargs = {}
     if metric in ['accuracy', 'recall', 'precision']:
         kwargs = {"task": "multiclass", "num_classes": 1000}
-    if metric == "arniqa" and call_type == "pairwise":
+    if metric in ["arniqa", "clipiqa"] and call_type == "pairwise":
         with pytest.raises(Exception):
             TorchMetricWrapper(metric, call_type=call_type, **kwargs)
         return
     metric = TorchMetricWrapper(metric, call_type=call_type, **kwargs)
-    if call_type == "pairwise" and metric.metric_name != "arniqa":
+    if call_type == "pairwise" and metric.metric_name not in ["arniqa", "clipiqa"]:
         assert metric.call_type.startswith("pairwise")
-    elif metric.metric_name == "arniqa":
+    elif metric.metric_name in ["arniqa", "clipiqa"]:
         assert metric.call_type == "y"
     else:
         assert not metric.call_type.startswith("pairwise")
