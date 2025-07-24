@@ -17,12 +17,12 @@ from __future__ import annotations
 from typing import Any, List, cast
 
 import torch
+from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
-from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
