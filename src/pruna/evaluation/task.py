@@ -22,6 +22,7 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -62,7 +63,9 @@ class Task:
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
         if device not in ["cpu", "mps"] and not device.startswith("cuda"):
-            raise ValueError(f"Unsupported device: {device}. Must be one of: cuda, cpu, mps.")
+            raise ValueError(
+                f"Unsupported device: {device}. Must be one of: cuda, cpu, mps."
+            )
         self.device = device
 
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
@@ -74,7 +77,11 @@ class Task:
         List[StatefulMetric]
             The stateful metrics.
         """
-        return [metric for metric in self.metrics if isinstance(metric, StatefulMetric) and not metric.is_pairwise()]
+        return [
+            metric
+            for metric in self.metrics
+            if isinstance(metric, StatefulMetric) and not metric.is_pairwise()
+        ]
 
     def get_pairwise_stateful_metrics(self) -> List[StatefulMetric]:
         """
@@ -85,7 +92,11 @@ class Task:
         List[StatefulMetric]
             The pairwise metrics.
         """
-        return [metric for metric in self.metrics if isinstance(metric, StatefulMetric) and metric.is_pairwise()]
+        return [
+            metric
+            for metric in self.metrics
+            if isinstance(metric, StatefulMetric) and metric.is_pairwise()
+        ]
 
     def get_stateless_metrics(self) -> List[Any]:
         """
@@ -96,7 +107,9 @@ class Task:
         List[Any]
             The stateless metrics.
         """
-        return [metric for metric in self.metrics if not isinstance(metric, StatefulMetric)]
+        return [
+            metric for metric in self.metrics if not isinstance(metric, StatefulMetric)
+        ]
 
     def is_pairwise_evaluation(self) -> bool:
         """
@@ -107,11 +120,16 @@ class Task:
         bool
             True if the task is pairwise, False otherwise.
         """
-        return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
+        return any(
+            metric.is_pairwise()
+            for metric in self.metrics
+            if isinstance(metric, StatefulMetric)
+        )
 
 
 def get_metrics(
-    request: str | List[str | BaseMetric | StatefulMetric], device: str | torch.device | None = None
+    request: str | List[str | BaseMetric | StatefulMetric],
+    device: str | torch.device | None = None,
 ) -> List[BaseMetric | StatefulMetric]:
     """
     Convert user requests into a list of metrics.
@@ -138,17 +156,27 @@ def get_metrics(
     """
     if isinstance(request, List):
         if all(isinstance(item, BaseMetric | StatefulMetric) for item in request):
-            return _process_metric_instances(request=cast(List[BaseMetric | StatefulMetric], request))
+            return _process_metric_instances(
+                request=cast(List[BaseMetric | StatefulMetric], request)
+            )
         elif all(isinstance(item, str) for item in request):
-            return _process_metric_names(request=cast(List[str], request), device=device)
+            return _process_metric_names(
+                request=cast(List[str], request), device=device
+            )
         else:
-            pruna_logger.error("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
-            raise ValueError("List must contain either all strings or all [BaseMetric | StatefulMetric] instances.")
+            pruna_logger.error(
+                "List must contain either all strings or all [BaseMetric | StatefulMetric] instances."
+            )
+            raise ValueError(
+                "List must contain either all strings or all [BaseMetric | StatefulMetric] instances."
+            )
     else:
         return _process_single_request(request, device)
 
 
-def _process_metric_instances(request: List[BaseMetric | StatefulMetric]) -> List[BaseMetric | StatefulMetric]:
+def _process_metric_instances(
+    request: List[BaseMetric | StatefulMetric],
+) -> List[BaseMetric | StatefulMetric]:
     pruna_logger.info("Using provided list of metric instances.")
     new_request_metrics: List[BaseMetric | StatefulMetric] = []
     for metric in request:
@@ -156,13 +184,17 @@ def _process_metric_instances(request: List[BaseMetric | StatefulMetric]) -> Lis
             for child in metric.__class__.__subclasses__():
                 child = cast(type[BaseMetric], child)
                 hyperparameters = get_hyperparameters(metric, metric.__class__.__init__)
-                new_request_metrics.append(MetricRegistry.get_metric(child.metric_name, **hyperparameters))
+                new_request_metrics.append(
+                    MetricRegistry.get_metric(child.metric_name, **hyperparameters)
+                )
         else:
             new_request_metrics.append(cast(BaseMetric | StatefulMetric, metric))
     return new_request_metrics
 
 
-def _process_metric_names(request: List[str], device: str | torch.device | None) -> List[BaseMetric | StatefulMetric]:
+def _process_metric_names(
+    request: List[str], device: str | torch.device | None
+) -> List[BaseMetric | StatefulMetric]:
     pruna_logger.info(f"Creating metrics from names: {request}")
     new_requests: List[str] = []
     for metric_name in request:
@@ -171,14 +203,23 @@ def _process_metric_names(request: List[str], device: str | torch.device | None)
     return MetricRegistry.get_metrics(names=new_requests, device=device)
 
 
-def _process_single_request(request: str, device: str | torch.device | None) -> List[BaseMetric | StatefulMetric]:
+def _process_single_request(
+    request: str, device: str | torch.device | None
+) -> List[BaseMetric | StatefulMetric]:
     if request == "image_generation_quality":
-        pruna_logger.info("An evaluation task for image generation quality is being created.")
+        pruna_logger.info(
+            "An evaluation task for image generation quality is being created."
+        )
         return [
             TorchMetricWrapper("clip_score"),
             TorchMetricWrapper("clip_score", call_type="pairwise"),
             CMMD(device=device),
+            ImageRewardMetric(device=device),
         ]
     else:
-        pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
-        raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
+        pruna_logger.error(
+            f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
+        )
+        raise ValueError(
+            f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
+        )

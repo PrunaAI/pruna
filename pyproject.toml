@@ -118,8 +118,9 @@ dependencies = [
     "piq",
     "opencv-python",
     "kernels",
-    "aenum"
-
+    "aenum",
+    "image-reward",
+    "clip",
 ]
 
 [project.optional-dependencies]
