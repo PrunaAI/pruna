@@ -343,9 +343,11 @@ class HPSv2Metric(BaseModelRewardMetric):
     metric_name: str = HPSv2_REWARD
 
     def _load(self, **kwargs: Any) -> None:
+        from functools import partial
+
         import hpsv2
 
-        self.model = hpsv2
+        self.model = partial(hpsv2.score, hps_version=kwargs.get("hps_version", "v2.1"))
 
     def _score_image(self, prompt: str, image: PIL.Image.Image) -> float:
         """
@@ -363,7 +365,7 @@ class HPSv2Metric(BaseModelRewardMetric):
         float
             The score of the image.
         """
-        score = self.model.score(imgs_path=image, prompt=prompt, hps_version="v2.1")
+        score = self.model(imgs_path=image, prompt=prompt)
         # Handle case where score might be a list or array
         if isinstance(score, (list, tuple)):
             return float(score[0])
