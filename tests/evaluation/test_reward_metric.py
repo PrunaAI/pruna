@@ -31,7 +31,7 @@ METRIC_CLASSES_AND_NAMES = [
     (ImageRewardMetric, IMAGE_REWARD, {}),
     (HPSMetric, HPS_REWARD, {}),
     (HPSv2Metric, HPSv2_REWARD, {"hps_version": "v2.1"}),
-    (VQAMetric, VQA_REWARD, {"model": "clip-flant5-xl"}),
+    # (VQAMetric, VQA_REWARD, {"model": "clip-flant5-xl"}), # custom very large architecture
 ]
 
 
@@ -65,7 +65,7 @@ class TestRewardMetrics:
             metric_name,
             device=set_to_best_available_device(device=None),
             call_type="y",
-            **model_load_kwargs,
+            model_load_kwargs=model_load_kwargs,
         )
         assert isinstance(metric, metric_cls)
 
