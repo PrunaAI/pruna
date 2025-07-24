@@ -18,6 +18,7 @@ from typing import Any, List, cast
 from warnings import warn
 
 import torch
+from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import set_to_best_available_device
@@ -25,7 +26,6 @@ from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import LATENCY, THROUGHPUT, TOTAL_TIME
 from pruna.evaluation.metrics.metric_energy import CO2_EMISSIONS, ENERGY_CONSUMED
-from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 from pruna.evaluation.metrics.metric_memory import DISK_MEMORY
 from pruna.evaluation.metrics.metric_model_architecture import TOTAL_MACS, TOTAL_PARAMS
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
