@@ -14,12 +14,10 @@
 
 import inspect
 from types import ModuleType
-from typing import Any, Dict, List, Type
+from typing import Any, List
 
 import diffusers
 import diffusers.models.transformers as diffusers_transformers
-from transformers.configuration_utils import PretrainedConfig
-from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING,
@@ -41,7 +39,14 @@ def is_causal_lm(model: Any) -> bool:
     bool
         True if the model is a causal LM, False otherwise.
     """
-    return isinstance(model, tuple(MODEL_FOR_CAUSAL_LM_MAPPING.values()))
+    for model_class in MODEL_FOR_CAUSAL_LM_MAPPING.values():
+        if isinstance(model_class, tuple):
+            for cls in model_class:
+                if cls is not None and isinstance(model, cls):
+                    return True
+        elif model_class is not None and isinstance(model, model_class):
+            return True
+    return False
 
 
 def is_translation_model(model: Any) -> bool:
@@ -58,8 +63,15 @@ def is_translation_model(model: Any) -> bool:
     bool
         True if the model is a translation model, False otherwise.
     """
-    seq2seq_mapping: Dict[str, Type[PreTrainedModel]] = MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING
-    return isinstance(model, tuple(seq2seq_mapping.values()))
+    seq2seq_mapping = MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING
+    for model_class in seq2seq_mapping.values():
+        if isinstance(model_class, tuple):
+            for cls in model_class:
+                if cls is not None and isinstance(model, cls):
+                    return True
+        elif model_class is not None and isinstance(model, model_class):
+            return True
+    return False
 
 
 def is_speech_seq2seq_model(model: Any) -> bool:
@@ -76,8 +88,15 @@ def is_speech_seq2seq_model(model: Any) -> bool:
     bool
         True if the model is a speech seq2seq model, False otherwise.
     """
-    speech_seq2seq_mapping: Dict[Type[PretrainedConfig], Type[PreTrainedModel]] = MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING
-    return isinstance(model, tuple(speech_seq2seq_mapping.values()))
+    speech_seq2seq_mapping = MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING
+    for model_class in speech_seq2seq_mapping.values():
+        if isinstance(model_class, tuple):
+            for cls in model_class:
+                if cls is not None and isinstance(model, cls):
+                    return True
+        elif model_class is not None and isinstance(model, model_class):
+            return True
+    return False
 
 
 def is_diffusers_pipeline(model: Any, include_video: bool = False) -> bool:
@@ -527,12 +546,16 @@ def check_fused_attention_processor(model: Any) -> bool:
     """
     if not hasattr(model, "attn_processors"):
         return False
-    fusing_possible_list = [
-        processor_name.replace("Fused", "")
-        for processor_name in dir(diffusers.models.attention_processor)
-        if "Fused" in processor_name
-    ]
-    return any(processor.__class__.__name__ in fusing_possible_list for processor in model.attn_processors.values())
+    try:
+        attention_processor_module = diffusers.models.attention_processor  # type: ignore
+        fusing_possible_list = [
+            processor_name.replace("Fused", "")
+            for processor_name in dir(attention_processor_module)
+            if "Fused" in processor_name
+        ]
+        return any(processor.__class__.__name__ in fusing_possible_list for processor in model.attn_processors.values())
+    except AttributeError:
+        return False
 
 
 def has_fused_attention_processor(pipeline: Any) -> bool:
@@ -569,7 +592,14 @@ def is_opt_model(model: Any) -> bool:
         True if the model is an OPT model, False otherwise.
     """
     opt_mapping = {k: v for k, v in MODEL_FOR_CAUSAL_LM_MAPPING.items() if "opt" in str(k).lower()}
-    return isinstance(model, tuple(opt_mapping.values()))
+    for model_class in opt_mapping.values():
+        if isinstance(model_class, tuple):
+            for cls in model_class:
+                if cls is not None and isinstance(model, cls):
+                    return True
+        elif model_class is not None and isinstance(model, model_class):
+            return True
+    return False
 
 
 def is_janus_llamagen_ar(model: Any) -> bool:
