@@ -135,7 +135,7 @@ class WS2TBatcher(PrunaBatcher):
         elif task == "whisper_ct" and hasattr(processor.tokenizer, "name_or_path"):
             # this requires a little trick, a transformers tokenizer can not be directly converted
             # we can either go via a download or via a file and then parsing out the Tokenizer
-            if Path(processor.tokenizer.name_or_path):
+            if Path(processor.tokenizer.name_or_path).exists():
                 processor = AutoTokenizer.from_pretrained(processor.tokenizer.name_or_path, use_fast=True)
                 processor = processor.backend_tokenizer
             else:

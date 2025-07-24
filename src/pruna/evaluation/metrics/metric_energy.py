@@ -92,9 +92,7 @@ class EnvironmentalImpactStats(BaseMetric):
 
         # Measure the loading energy
         tracker.start_task("Loading model")
-        temp_model = model.__class__.from_pretrained(
-            str(save_path),
-        )
+        temp_model = model.__class__.from_pretrained(save_path)
         tracker.stop_task()
         del temp_model
 
