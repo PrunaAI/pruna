@@ -107,7 +107,6 @@ dependencies = [
     "codecarbon",
     "pynvml",
     "thop",
-    "timm",
     "bitsandbytes; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "optimum-quanto>=0.2.5",
     "ctranslate2==4.6.0",
