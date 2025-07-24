@@ -7,7 +7,7 @@ Model optimization configuration relies on the ``SmashConfig`` class.
 The ``SmashConfig`` class provides a flexible dictionary-like interface for configuring model optimization strategies.
 It manages algorithms, hyperparameters, and additional components like tokenizers, processors and datasets.
 
-Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/smash>` to learn how to do that.
 
 Basic Configuration Workflow
 ----------------------------
@@ -239,6 +239,8 @@ This means, we can use the same tokenizers and processors as the ones used in th
           smash_config.add_processor(processor)
 
 Now we've set up the tokenizer and processor, we can use them to process our data.
+
+.. _configure-datasets:
 
 Configure Datasets
 ^^^^^^^^^^^^^^^^^^
