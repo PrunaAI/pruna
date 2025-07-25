@@ -61,7 +61,7 @@ class AlgorithmTesterBase:
     def assert_no_pickle_files(self) -> None:
         """Check for pickle files in the saving path if pickle files are not expected."""
         for file in self._saving_path.iterdir():
-            assert not file.endswith(".pkl"), "Pickle files found in directory"
+            assert file.suffix != ".pkl", "Pickle files found in directory"
 
     @classmethod
     def compatible_devices(cls) -> list[str]:
