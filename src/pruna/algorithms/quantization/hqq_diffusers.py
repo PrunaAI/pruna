@@ -380,6 +380,8 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
             """
             # Call the parent from_quantized method
             model = super(AutoHQQHFDiffusersModel, cls).from_quantized(save_dir, **kwargs)
+            if "torch_dtype" in kwargs:
+                model.to(kwargs["torch_dtype"])
 
             # Load and restore additional parameters that HQQ didn't handle
             qmodel_path = os.path.join(save_dir, "qmodel.pt")

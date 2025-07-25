@@ -485,13 +485,9 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         # If the pipeline has a transformer, load the transformer
         if "transformer" in model_index:
             model = cls.from_pretrained(path, transformer=loaded_backbone, **kwargs)
-            if "torch_dtype" in kwargs:
-                model.transformer.to(kwargs["torch_dtype"])
         # If the pipeline has a unet, load the unet
         elif "unet" in model_index:
             model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
-            if "torch_dtype" in kwargs:
-                model.unet.to(kwargs["torch_dtype"])
             # If the unet has up_blocks, we need to change the upsampler name to conv
             for layer in model.unet.up_blocks:
                 if layer.upsamplers is not None:
