@@ -18,10 +18,10 @@ TUTORIAL_PATH = Path(__file__).parent.parent.parent / "docs"
 )
 def test_notebook_execution(notebook_name: str) -> None:
     """Test to ensure the notebook runs without errors."""
-    NOTEBOOK_FILE = str(TUTORIAL_PATH / "tutorials" / notebook_name)
+    NOTEBOOK_FILE = TUTORIAL_PATH / "tutorials" / notebook_name
     COPY_NOTEBOOK_FILE = f"{notebook_name}.ipynb"
     EXPECTED_SCRIPT_FILE = f"{notebook_name}.py"
-    shutil.copy(NOTEBOOK_FILE, COPY_NOTEBOOK_FILE)
+    shutil.copy(str(NOTEBOOK_FILE), COPY_NOTEBOOK_FILE)
 
     convert_notebook_to_script(COPY_NOTEBOOK_FILE, EXPECTED_SCRIPT_FILE)
     run_script_successfully(EXPECTED_SCRIPT_FILE)

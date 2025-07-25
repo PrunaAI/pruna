@@ -1,6 +1,5 @@
 import importlib.util
 import inspect
-import os
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -178,7 +177,7 @@ def get_all_imports(package: str) -> set[str]:
         for file_path in pkg_path.rglob("*.py"):
             if file_path.name == "__init__.py":
                 rel_parent = file_path.parent.relative_to(pkg_path)
-                if rel_parent == Path("."):  # Root package __init__.py
+                if rel_parent == Path():  # Root package __init__.py
                     full_import = package
                 else:  # Subpackage __init__.py
                     module_name = ".".join(rel_parent.parts)
@@ -188,16 +187,16 @@ def get_all_imports(package: str) -> set[str]:
     return imports
 
 
-def run_script_successfully(script_file: str) -> None:
+def run_script_successfully(script_file: Path) -> None:
     """Run the script and return the result."""
-    result = subprocess.run(["python", script_file], capture_output=True, text=True)
+    result = subprocess.run(["python", str(script_file)], capture_output=True, text=True)
     run_ruff_linting(script_file)
-    os.remove(script_file)
+    script_file.unlink()
 
     assert result.returncode == 0, f"Notebook failed with error:\n{result.stderr}"
 
 
-def convert_notebook_to_script(notebook_file: str, expected_script_file: str) -> None:
+def convert_notebook_to_script(notebook_file: Path, expected_script_file: Path) -> None:
     """Convert the notebook to a Python script."""
     subprocess.run(
         [
@@ -206,14 +205,14 @@ def convert_notebook_to_script(notebook_file: str, expected_script_file: str) ->
             "--to",
             "script",
             "--TemplateExporter.exclude_raw=True",
-            notebook_file,
+            str(notebook_file),
         ],
         check=True,
     )
 
     # Handle possible incorrect extension
-    expected_script_file = Path(expected_script_file)
-    generated_script = Path(notebook_file).with_suffix("txt")
+    expected_script_file = expected_script_file
+    generated_script = notebook_file.with_suffix(".txt")
     if generated_script.exists():
         generated_script.rename(expected_script_file)
     elif not expected_script_file.exists():
@@ -245,21 +244,20 @@ def run_ruff_linting(file_path: str) -> None:
         raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
 
 
-def extract_python_code_blocks(rst_file_path: str, output_dir: str) -> None:
+def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
     """Extract code blocks from first-level sections of an rst file, skipping blocks with the `noextract` class."""
     # Read the content of the .rst file
-    with open(rst_file_path, "r") as file:
-        rst_content = file.read()
+    rst_content = rst_file_path.read_text()
 
     # Parse the content into a document tree
     document = publish_doctree(rst_content)
 
     # Create the output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
-        section_code_file = os.path.join(output_dir, f"{section_name}_code.py")
-        with open(section_code_file, "w") as code_file:
+        section_code_file = output_dir / f"{section_name}_code.py"
+        with open(str(section_code_file), "w") as code_file:
             for block in node.traverse(literal_block):
                 # Skip code blocks marked with the 'noextract' class
                 if "noextract" in block.attributes.get("classes", []):

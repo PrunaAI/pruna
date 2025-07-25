@@ -1,7 +1,7 @@
-import os
 import shutil
 import tempfile
 from abc import abstractmethod
+from pathlib import Path
 from typing import Any
 
 from pruna import PrunaModel, SmashConfig, smash
@@ -13,7 +13,7 @@ class AlgorithmTesterBase:
     """Base class for testing algorithms."""
 
     def __init__(self):
-        self._saving_path = tempfile.mkdtemp(prefix="pruna_saved_model_")
+        self._saving_path = Path(tempfile.mkdtemp(prefix="pruna_saved_model_"))
 
     @property
     @abstractmethod
@@ -44,7 +44,7 @@ class AlgorithmTesterBase:
         # reset this smash config cache dir, this should not be shared across runs
         smash_config.cleanup_cache_dir()
 
-        if os.path.exists(self._saving_path):
+        if self._saving_path.exists():
             shutil.rmtree(self._saving_path)
 
         # clean up the leftovers
@@ -53,14 +53,14 @@ class AlgorithmTesterBase:
     def execute_save(self, smashed_model: PrunaModel) -> None:
         """Save the smashed model."""
         smashed_model.save_pretrained(self._saving_path)
-        assert len(os.listdir(self._saving_path)) > 0
+        assert len(list(self._saving_path.iterdir())) > 0
         if self.allow_pickle_files:
             self.assert_no_pickle_files()
         move_to_device(smashed_model, "cpu")
 
     def assert_no_pickle_files(self) -> None:
         """Check for pickle files in the saving path if pickle files are not expected."""
-        for file in os.listdir(self._saving_path):
+        for file in self._saving_path.iterdir():
             assert not file.endswith(".pkl"), "Pickle files found in directory"
 
     @classmethod
