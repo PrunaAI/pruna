@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import atexit
 import json
-import os
 import shutil
 import tempfile
 from functools import singledispatchmethod
@@ -50,6 +49,7 @@ TOKENIZER_SAVE_PATH = "tokenizer/"
 PROCESSOR_SAVE_PATH = "processor/"
 SMASH_CONFIG_FILE_NAME = "smash_config.json"
 SUPPORTED_DEVICES = ["cpu", "cuda", "mps", "accelerate"]
+DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pruna"
 
 
 class SmashConfig:
@@ -76,7 +76,7 @@ class SmashConfig:
         max_batch_size: int | None = None,
         batch_size: int = 1,
         device: str | torch.device | None = None,
-        cache_dir_prefix: str = os.path.join(os.path.expanduser("~"), ".cache", "pruna"),
+        cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
         configuration: Configuration | None = None,
     ) -> None:
         SMASH_SPACE.gather_algorithm_buffer()
@@ -96,10 +96,10 @@ class SmashConfig:
         self.device = set_to_best_available_device(device)
         self.device_map = None
 
-        self.cache_dir_prefix = cache_dir_prefix
-        if not os.path.exists(cache_dir_prefix):
-            os.makedirs(cache_dir_prefix, exist_ok=True)
-        self.cache_dir = tempfile.mkdtemp(dir=cache_dir_prefix)
+        self.cache_dir_prefix = Path(cache_dir_prefix)
+        if not self.cache_dir_prefix.exists():
+            self.cache_dir_prefix.mkdir(parents=True, exist_ok=True)
+        self.cache_dir = Path(tempfile.mkdtemp(dir=cache_dir_prefix))
 
         self.save_fns: list[str] = []
         self.load_fns: list[str] = []
@@ -138,13 +138,13 @@ class SmashConfig:
 
     def cleanup_cache_dir(self) -> None:
         """Clean up the cache directory."""
-        if os.path.exists(self.cache_dir):
+        if self.cache_dir.exists():
             shutil.rmtree(self.cache_dir)
 
     def reset_cache_dir(self) -> None:
         """Reset the cache directory."""
         self.cleanup_cache_dir()
-        self.cache_dir = tempfile.mkdtemp(dir=self.cache_dir_prefix)
+        self.cache_dir = Path(tempfile.mkdtemp(dir=self.cache_dir_prefix))
 
     def load_from_json(self, path: str | Path) -> None:
         """
@@ -155,9 +155,9 @@ class SmashConfig:
         path : str| Path
             The file path to the JSON file containing the configuration.
         """
-        with open(os.path.join(path, SMASH_CONFIG_FILE_NAME), "r") as f:
-            json_string = f.read()
-            config_dict = json.loads(json_string)
+        config_path = Path(path) / SMASH_CONFIG_FILE_NAME
+        json_string = config_path.read_text()
+        config_dict = json.loads(json_string)
 
         # check device compatibility
         if "device" in config_dict:
@@ -214,11 +214,13 @@ class SmashConfig:
 
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
 
-        if os.path.exists(os.path.join(path, TOKENIZER_SAVE_PATH)):
-            self.tokenizer = AutoTokenizer.from_pretrained(os.path.join(path, TOKENIZER_SAVE_PATH))
+        tokenizer_path = Path(path) / TOKENIZER_SAVE_PATH
+        if tokenizer_path.exists():
+            self.tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path))
 
-        if os.path.exists(os.path.join(path, PROCESSOR_SAVE_PATH)):
-            self.processor = AutoProcessor.from_pretrained(os.path.join(path, PROCESSOR_SAVE_PATH))
+        processor_path = Path(path) / PROCESSOR_SAVE_PATH
+        if processor_path.exists():
+            self.processor = AutoProcessor.from_pretrained(str(processor_path))
 
     def save_to_json(self, path: str | Path) -> None:
         """
@@ -241,13 +243,13 @@ class SmashConfig:
             del config_dict["cache_dir"]
 
         # Save the updated dictionary back to a JSON file
-        with open(os.path.join(path, SMASH_CONFIG_FILE_NAME), "w") as f:
-            json.dump(config_dict, f, indent=4)
+        config_path = Path(path) / SMASH_CONFIG_FILE_NAME
+        config_path.write_text(json.dumps(config_dict, indent=4))
 
         if self.tokenizer:
-            self.tokenizer.save_pretrained(os.path.join(path, TOKENIZER_SAVE_PATH))
+            self.tokenizer.save_pretrained(str(Path(path) / TOKENIZER_SAVE_PATH))
         if self.processor:
-            self.processor.save_pretrained(os.path.join(path, PROCESSOR_SAVE_PATH))
+            self.processor.save_pretrained(str(Path(path) / PROCESSOR_SAVE_PATH))
         if self.data is not None:
             pruna_logger.info("Data detected in smash config, this will be detached and not reloaded...")
 

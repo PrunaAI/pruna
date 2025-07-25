@@ -1,7 +1,7 @@
 import importlib.util
 import inspect
-import os
 import subprocess
+from pathlib import Path
 from typing import Any, Callable
 
 import numpydoc_validation
@@ -173,42 +173,30 @@ def get_all_imports(package: str) -> set[str]:
 
     # Loop over all directories associated with the package (in case of namespace packages)
     for location in spec.submodule_search_locations:
-        for root, _, files in os.walk(location):
-            for file in files:
-                if file.endswith(".py"):
-                    file_path = os.path.join(root, file)
-                    # Get the relative path from the package location
-                    relative_path = os.path.relpath(file_path, location)
-                    # Remove the .py extension
-                    module_path = relative_path[:-3]
-                    # Replace OS-specific path separators with dots to form the import string
-                    module_name = module_path.replace(os.sep, ".")
+        pkg_path = Path(location)
+        for file_path in pkg_path.rglob("*.py"):
+            if file_path.name == "__init__.py":
+                rel_parent = file_path.parent.relative_to(pkg_path)
+                if rel_parent == Path():  # Root package __init__.py
+                    full_import = package
+                else:  # Subpackage __init__.py
+                    module_name = ".".join(rel_parent.parts)
+                    full_import = f"{package}.{module_name}"
+                imports.add(full_import)
 
-                    # ignore __init__.py at the root of the package
-                    if module_name == "__init__":
-                        continue
-
-                    # Handle __init__.py: its module is the package (or subpackage) itself.
-                    if file == "__init__.py":
-                        module_name = module_name.rsplit(".", 1)[0]  # Remove the trailing '__init__'
-
-                    # Combine the base package name with the module path.
-                    # If module_name is empty (i.e. __init__.py at the root), just use the package name.
-                    full_import = f"{package}.{module_name}" if module_name else package
-                    imports.add(full_import)
     return imports
 
 
-def run_script_successfully(script_file: str) -> None:
+def run_script_successfully(script_file: Path) -> None:
     """Run the script and return the result."""
-    result = subprocess.run(["python", script_file], capture_output=True, text=True)
+    result = subprocess.run(["python", str(script_file)], capture_output=True, text=True)
     run_ruff_linting(script_file)
-    os.remove(script_file)
+    script_file.unlink()
 
     assert result.returncode == 0, f"Notebook failed with error:\n{result.stderr}"
 
 
-def convert_notebook_to_script(notebook_file: str, expected_script_file: str) -> None:
+def convert_notebook_to_script(notebook_file: Path, expected_script_file: Path) -> None:
     """Convert the notebook to a Python script."""
     subprocess.run(
         [
@@ -217,26 +205,24 @@ def convert_notebook_to_script(notebook_file: str, expected_script_file: str) ->
             "--to",
             "script",
             "--TemplateExporter.exclude_raw=True",
-            notebook_file,
+            str(notebook_file),
         ],
         check=True,
     )
 
     # Handle possible incorrect extension
-    generated_script = notebook_file.replace(".ipynb", ".txt")
-    if os.path.exists(generated_script):
-        os.rename(generated_script, expected_script_file)
-    elif not os.path.exists(expected_script_file):
+    expected_script_file = expected_script_file
+    generated_script = notebook_file.with_suffix(".txt")
+    if generated_script.exists():
+        generated_script.rename(expected_script_file)
+    elif not expected_script_file.exists():
         raise FileNotFoundError("Converted script not found!")
 
     # Read the script, filter out lines starting with '!'
-    with open(expected_script_file, "r") as file:
-        lines = file.readlines()
+    content = expected_script_file.read_text()
+    filtered_lines = [line for line in content.splitlines() if not line.lstrip().startswith(("!", "get_ipython"))]
 
-    with open(expected_script_file, "w") as file:
-        for line in lines:
-            if not line.lstrip().startswith("get_ipython") and not line.lstrip().startswith("!"):
-                file.write(line)
+    expected_script_file.write_text("\n".join(filtered_lines) + "\n")
 
 
 def run_ruff_linting(file_path: str) -> None:
@@ -258,21 +244,20 @@ def run_ruff_linting(file_path: str) -> None:
         raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
 
 
-def extract_python_code_blocks(rst_file_path: str, output_dir: str) -> None:
+def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
     """Extract code blocks from first-level sections of an rst file, skipping blocks with the `noextract` class."""
     # Read the content of the .rst file
-    with open(rst_file_path, "r") as file:
-        rst_content = file.read()
+    rst_content = rst_file_path.read_text()
 
     # Parse the content into a document tree
     document = publish_doctree(rst_content)
 
     # Create the output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
-        section_code_file = os.path.join(output_dir, f"{section_name}_code.py")
-        with open(section_code_file, "w") as code_file:
+        section_code_file = output_dir / f"{section_name}_code.py"
+        with open(str(section_code_file), "w") as code_file:
             for block in node.traverse(literal_block):
                 # Skip code blocks marked with the 'noextract' class
                 if "noextract" in block.attributes.get("classes", []):

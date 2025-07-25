@@ -18,7 +18,6 @@ import contextlib
 import gc
 import inspect
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -54,8 +53,9 @@ def load_json_config(path: str | Path, json_name: str) -> dict:
     dict
         Parsed JSON configuration as a dictionary.
     """
-    with open(os.path.join(path, json_name), "r") as f:
-        model_index = json.load(f)
+    file_path = Path(path) / json_name
+    with file_path.open("r") as fp:
+        model_index = json.load(fp)
     return model_index
 
 
