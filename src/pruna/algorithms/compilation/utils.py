@@ -136,9 +136,26 @@ class CausalLMGenerator:
         None
             This method initializes the static cache for the model but does not return a value.
         """
-        self.past_key_values = StaticCache(
-            self.model.config, self.batch_size, self.cache_size, self.model.device, self.model.dtype
-        )
+        try:
+            # Try the newer signature first (transformers >= 4.44)
+            self.past_key_values = StaticCache(
+                config=self.model.config,
+                max_batch_size=self.batch_size,
+                max_cache_len=self.cache_size,
+                device=self.model.device,
+                dtype=self.model.dtype,
+            )
+        except TypeError:
+            # Fallback to older signature if the new one fails
+            try:
+                self.past_key_values = StaticCache(
+                    self.model.config, self.batch_size, self.cache_size, self.model.device, self.model.dtype
+                )
+            except TypeError:
+                # If both fail, try minimal signature
+                self.past_key_values = StaticCache(
+                    self.model.config, self.batch_size, self.cache_size, self.model.device
+                )
 
     @torch.no_grad()
     def reset_cache(self):
