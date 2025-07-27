@@ -3,7 +3,7 @@ import torch
 from pathlib import Path
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.load import LOAD_FUNCTIONS, load_pruna_model, filter_load_kwargs
+from pruna.engine.load import LOAD_FUNCTIONS, filter_load_kwargs
 from pruna.config.smash_config import SmashConfig
 
 
