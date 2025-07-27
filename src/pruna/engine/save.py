@@ -159,7 +159,7 @@ def save_pruna_model_to_hub(
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
         smashed_model_card_data = base_model_card.data
-        smashed_model_card_data["tags"].append(f"{pruna_library}-ai")
+        smashed_model_card_data["tags"] = [f"{pruna_library}-ai", "safetensors"]
         model_card = ModelCard.from_template(
             card_data=smashed_model_card_data,
             template_path=str(template_path),
