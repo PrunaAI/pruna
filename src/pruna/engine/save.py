@@ -172,9 +172,6 @@ def save_pruna_model_to_hub(
             },
         )
         model_card.save(model_path_pathlib / "README.md")
-        import pdb
-
-        pdb.set_trace()
 
         # Upload the contents of the temporary directory to the specified repository on the hub
         upload_large_folder(
