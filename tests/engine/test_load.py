@@ -12,7 +12,7 @@ from pruna.config.smash_config import SmashConfig
     [
         ("PrunaAI/test-load-tiny-random-llama4-smashed", "PrunaModel", False, "from_hub"),
         ("PrunaAI/test-load-tiny-stable-diffusion-pipe-smashed", "PrunaModel", False, "from_pretrained"),
-        ("NonExistentRepo/model", None, True),
+        ("NonExistentRepo/model", None, True, "from_pretrained"),
     ],
 )
 @pytest.mark.cpu
