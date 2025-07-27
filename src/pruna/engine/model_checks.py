@@ -506,8 +506,11 @@ def get_diffusers_unet_models() -> list:
     list
         The unet models.
     """
-    unet_models = dir(diffusers.models.unets)
-    unet_models = [getattr(diffusers.models.unets, x) for x in unet_models if "UNet" in x]
+    import importlib
+
+    unets_module = importlib.import_module("diffusers.models.unets")
+    unet_models = dir(unets_module)
+    unet_models = [getattr(unets_module, x) for x in unet_models if "UNet" in x]
     return unet_models
 
 
