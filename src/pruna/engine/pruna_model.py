@@ -203,6 +203,7 @@ class PrunaModel:
         num_workers: int | None = None,
         print_report: bool = False,
         print_report_every: int = 0,
+        token: str | None = None,
     ) -> None:
         """
         Push the model to the specified repository.
@@ -228,6 +229,8 @@ class PrunaModel:
             Whether to print the report of the pushed model.
         print_report_every : int
             The number of steps to print the report of the pushed model.
+        token : str | None
+            The Hugging Face token to use for authentication to push models to the Hub.
         """
         self.save_to_hub(
             repo_id=repo_id,
@@ -239,6 +242,7 @@ class PrunaModel:
             num_workers=num_workers,
             print_report=print_report,
             print_report_every=print_report_every,
+            token=token,
         )
 
     def save_to_hub(
@@ -253,6 +257,7 @@ class PrunaModel:
         num_workers: int | None = None,
         print_report: bool = False,
         print_report_every: int = 0,
+        token: str | None = None,
     ) -> None:
         """
         Save the model to the specified repository.
@@ -278,6 +283,8 @@ class PrunaModel:
             Whether to print the report of the saved model.
         print_report_every : int
             The number of steps to print the report of the saved model.
+        token : str | None
+            The Hugging Face token to use for authentication to push models to the Hub.
         """
         save_pruna_model_to_hub(
             instance=self,
@@ -292,6 +299,7 @@ class PrunaModel:
             num_workers=num_workers,
             print_report=print_report,
             print_report_every=print_report_every,
+            token=token,
         )
         increment_counter("save_to_hub", success=True, smash_config=repr(self.smash_config))
 
