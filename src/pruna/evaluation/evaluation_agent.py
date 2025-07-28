@@ -110,9 +110,7 @@ class EvaluationAgent:
 
         # Move model back to the original device.
         model.move_to_device(self.device, device_map=self.device_map)
-        pruna_logger.info(
-            f"Evaluation run has finished. Moved model to device {self.device} with device map {self.device_map}."
-        )
+        pruna_logger.info(f"Evaluation run has finished. Moved model to {self.device}")
 
         safe_memory_cleanup()
         if self.evaluation_for_first_model:

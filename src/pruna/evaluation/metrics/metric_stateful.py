@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 import torch
 from torch import Tensor
 
-from pruna.engine.utils import device_to_string, split_device
+from pruna.engine.utils import device_to_string, set_to_best_available_device, split_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -39,9 +39,14 @@ class StatefulMetric(ABC):
     call_type: str
     runs_on: list[str] = ["cuda", "cpu", "mps"]
 
-    def __init__(self) -> None:
+    def __init__(self, device: str | torch.device | None = None, **kwargs) -> None:
         """Initialize the StatefulMetric class."""
         super().__init__()
+        self.device = set_to_best_available_device(device)
+        if not self.is_device_supported(self.device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {self.device}. Must be one of {self.runs_on}."
+            )
         self._defaults: Dict[str, List | Tensor] = {}
 
     def add_state(self, name: str, default: List | Tensor) -> None:
