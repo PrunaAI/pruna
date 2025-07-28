@@ -42,7 +42,7 @@ Your metric should have a ``metric_name`` and a ``higher_is_better`` attribute. 
 
 Every metric has a ``runs_on`` attribute that should be a list that contains the device(s) the metric can run on. For base metrics it is by default ``["cuda", "cpu", "mps"]``.
 
-Please update the ``runs_on`` if you want to change the default devices.
+Please update the ``runs_on`` if you want to change the default devices. For instance, you can also include ``accelerate`` if your metric logic works on multiple devices. Inference with ``accelerate`` should work out of the box, and some of |pruna|'s metrics already use it!
 
 ``compute()`` takes two parameters: ``model`` and ``dataloader``.
 

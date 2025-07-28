@@ -22,7 +22,14 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import device_to_string, get_device, set_to_best_available_device, split_device
+from pruna.engine.utils import (
+    device_to_string,
+    get_device,
+    get_device_map,
+    move_to_device,
+    set_to_best_available_device,
+    split_device,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -117,7 +124,7 @@ class InferenceTimeStats(BaseMetric):
         if device_type == "cuda":
             torch.cuda.synchronize(device_idx)  # block until all work on this GPU is done
         elif device_type == "accelerate":
-            device_map = model.get_device_map()
+            device_map = get_device_map(model)
             for device in device_map.values():  # iterate over all devices
                 torch.cuda.synchronize(device)
         else:
@@ -174,7 +181,7 @@ class InferenceTimeStats(BaseMetric):
             pruna_logger.warning("Async timing is not supported on CPU. Using sync timing instead.")
 
         model.set_to_eval()
-        model.move_to_device(self.device)
+        move_to_device(model, self.device)
 
         # Warmup
         self._measure(

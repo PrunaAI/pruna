@@ -23,6 +23,7 @@ def test_latency_metric(model_fixture: tuple[Any, SmashConfig], device: str) -> 
     model, smash_config = model_fixture
     metric = LatencyMetric(n_iterations=5, n_warmup_iterations=5, device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
+    move_to_device(pruna_model, device)
     results = metric.compute(pruna_model, smash_config.test_dataloader())
     assert results.result > 0  # Assuming latency should be positive
 
@@ -89,6 +90,7 @@ def test_throughput_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
     model, smash_config = model_fixture
     metric = ThroughputMetric(n_iterations=5, n_warmup_iterations=5, device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
+    move_to_device(pruna_model, device)
     results = metric.compute(pruna_model, smash_config.test_dataloader())
     assert results.result > 0  # Assuming throughput should be positive
 
@@ -105,5 +107,6 @@ def test_total_time_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
     model, smash_config = model_fixture
     metric = TotalTimeMetric(n_iterations=5, n_warmup_iterations=5, device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
+    move_to_device(pruna_model, device)
     results = metric.compute(pruna_model, smash_config.test_dataloader())
     assert results.result > 0  # Assuming total time should be positive

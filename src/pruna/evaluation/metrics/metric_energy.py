@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import move_to_device, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -98,7 +98,7 @@ class EnvironmentalImpactStats(BaseMetric):
         del temp_model
 
         model.set_to_eval()
-        model.move_to_device(self.device)
+        move_to_device(model, self.device)
 
         batch = next(iter(dataloader))
         batch = model.inference_handler.move_inputs_to_device(batch, self.device)
