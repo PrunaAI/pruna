@@ -24,7 +24,7 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
+from pruna.engine.utils import move_to_device, safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
@@ -109,7 +109,7 @@ class EvaluationAgent:
         results.extend(self.compute_stateless_metrics(model, stateless_metrics))
 
         # Move model back to the original device.
-        model.move_to_device(self.device, device_map=self.device_map)
+        move_to_device(model, self.device, device_map=self.device_map)
         pruna_logger.info(f"Evaluation run has finished. Moved model to {self.device}")
 
         safe_memory_cleanup()
@@ -203,7 +203,7 @@ class EvaluationAgent:
         if not single_stateful_metrics and not pairwise_metrics:
             return
 
-        model.move_to_device(self.device, self.device_map)
+        move_to_device(model, self.device, device_map=self.device_map)
         for batch_idx, batch in enumerate(self.task.dataloader):
             processed_outputs = model.run_inference(batch)
 
