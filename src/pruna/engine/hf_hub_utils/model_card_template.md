@@ -31,7 +31,7 @@ loaded_model = {{ pruna_model_class }}.from_pretrained(
 
 {% if base_repo_id and library_name %}
 For inference, you can use the inference methods of the original model like shown in [the original model card](https://huggingface.co/{{ base_repo_id }}?library={{ library_name }}).
-{% endif %} Alternatively, you can visit [the Pruna documentation](https://pruna.readthedocs.io/en/latest/index.html) for more information.
+{% endif %} Alternatively, you can visit [the Pruna documentation](https://docs.pruna.ai/en/stable/) for more information.
 
 ## Smash Configuration
 
