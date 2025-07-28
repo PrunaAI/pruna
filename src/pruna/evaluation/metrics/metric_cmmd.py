@@ -21,7 +21,7 @@ from huggingface_hub import model_info
 from huggingface_hub.utils import EntryNotFoundError
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
-from pruna.engine.utils import device_to_string, set_to_best_available_device
+from pruna.engine.utils import device_to_string
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -67,14 +67,7 @@ class CMMD(StatefulMetric):
         call_type: str = SINGLE,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
-        self.device = set_to_best_available_device(device)
-        # For stateful metrics we can't have a device a general device property,
-        # because of wrapper metrics. We check case by case.
-        if not self.is_device_supported(self.device):
-            raise ValueError(
-                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
-            )
+        super().__init__(device=device)
         try:
             model_info(clip_model_name)
         except EntryNotFoundError:
