@@ -21,7 +21,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
     model, smash_config = model_fixture
     smash_config.device = device
     pruna_model = PrunaModel(model, smash_config=smash_config)
-
+    move_to_device(pruna_model, device)
     metric = CMMD(clip_model_name=clip_model, device=device)
 
     batch = next(iter(smash_config.test_dataloader()))
