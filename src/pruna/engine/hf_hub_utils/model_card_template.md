@@ -29,7 +29,9 @@ loaded_model = {{ pruna_model_class }}.from_pretrained(
 # we can then run inference using the methods supported by the base model
 ```
 
-For inference, you can use the inference methods of the original model like shown in [the original model card](https://huggingface.co/{{ base_repo_id | default("base_repo_id", true) }}?library={{ library_name | default("library_name", true) }}). Alternatively, you can visit [the Pruna documentation](https://pruna.readthedocs.io/en/latest/index.html) for more information.
+{% if base_repo_id and library_name %}
+For inference, you can use the inference methods of the original model like shown in [the original model card](https://huggingface.co/{{ base_repo_id }}?library={{ library_name }}).
+{% endif %} Alternatively, you can visit [the Pruna documentation](https://pruna.readthedocs.io/en/latest/index.html) for more information.
 
 ## Smash Configuration
 
