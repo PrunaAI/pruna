@@ -67,7 +67,7 @@ class Task:
         self.device = set_to_best_available_device(
             device
         )  # The inference device is set as the task device for evaluation agent and optimization agent.
-        self.stateful_metric_device = self._set_stateful_metric_device_from_task_device()
+        self.stateful_metric_device = self._get_stateful_metric_device_from_task_device()
         self.metrics = _safe_build_metrics(request, self.device, self.stateful_metric_device)
 
         self.datamodule = datamodule
@@ -117,7 +117,7 @@ class Task:
         """
         return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
 
-    def _set_stateful_metric_device_from_task_device(self) -> str:
+    def _get_stateful_metric_device_from_task_device(self) -> str:
         """
         Return the device for stateful metrics based on the task device.
 

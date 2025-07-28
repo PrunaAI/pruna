@@ -5,7 +5,7 @@ from ..common import construct_device_map_manually
 from pruna.evaluation.task import Task
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.engine.utils import move_to_device, split_device, device_to_string
+from pruna.engine.utils import move_to_device, split_device, device_to_string, get_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric
@@ -35,7 +35,7 @@ def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDa
 
     model = agent.prepare_model(model)
 
-    assert split_device(device_to_string(model.get_device())) == split_device(device_to_string(agent.device))
+    assert split_device(device_to_string(get_device(model))) == split_device(device_to_string(agent.device))
     assert split_device(device_to_string(agent.device)) == split_device(device_to_string(task.device))
     if not low_memory:
         assert split_device(device_to_string(task.stateful_metric_device))[0] == split_device(device_to_string("cuda"))[0] # Task and stateful metrics can be on different indexes
@@ -47,9 +47,9 @@ def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDa
         elif isinstance(metric, StatefulMetric): # Stateful metrics should not be moved
             if hasattr(metric, "device"):
                 assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            elif hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
+            if hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            else:
+            if not hasattr(metric, "device") and not hasattr(metric.metric, "device"):
                 raise ValueError("Could not find device for metric.")
 
 @pytest.mark.cuda
@@ -70,7 +70,7 @@ def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, m
     move_to_device(model, model_device)
     model = agent.prepare_model(model)
 
-    assert split_device(device_to_string(model.get_device())) == split_device(device_to_string(task.device))
+    assert split_device(device_to_string(get_device(model))) == split_device(device_to_string(task.device))
     assert split_device(device_to_string(task.device)) == split_device(device_to_string(agent.device))
     if not low_memory:
         assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string(task.device))
@@ -82,9 +82,9 @@ def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, m
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, "device"):
                 assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            elif hasattr(metric, "metric") and hasattr(metric.metric, "device"):
+            if hasattr(metric, "metric") and hasattr(metric.metric, "device"):
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            else:
+            if not hasattr(metric, "device") and not hasattr(metric.metric, "device"):
                 raise ValueError("Could not find device for metric.")
 
 
@@ -157,7 +157,7 @@ def test_mismatched_metric_instances_adapts_to_model(datamodule_fixture: PrunaDa
     move_to_device(model, "accelerate", device_map=device_map)
 
     model = agent.prepare_model(model)
-    assert split_device(device_to_string(model.get_device())) == split_device(device_to_string(task.device))
+    assert split_device(device_to_string(get_device(model))) == split_device(device_to_string(task.device))
     assert split_device(device_to_string(task.device)) == split_device(device_to_string(agent.device))
     assert split_device(device_to_string(task.stateful_metric_device))[0] == split_device(device_to_string("cuda"))[0]
     for metric in task.metrics:
@@ -166,9 +166,9 @@ def test_mismatched_metric_instances_adapts_to_model(datamodule_fixture: PrunaDa
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, "device"):
                 assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            elif hasattr(metric, "metric") and hasattr(metric.metric, "device"):
+            if hasattr(metric, "metric") and hasattr(metric.metric, "device"):
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            else:
+            if not hasattr(metric, "device") and not hasattr(metric.metric, "device"):
                 raise ValueError("Could not find device for metric.")
 
 @pytest.mark.cpu

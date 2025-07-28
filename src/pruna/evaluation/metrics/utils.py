@@ -30,6 +30,7 @@ from pruna.data.utils import move_batch_to_device
 from pruna.engine.utils import (
     device_to_string,
     find_bytes_free_per_gpu,
+    get_device,
     get_device_map,
     set_to_best_available_device,
     split_device,
@@ -96,35 +97,18 @@ def metric_data_processor(
         x = move_batch_to_device(x, device)
         gt = move_batch_to_device(gt, device)
         outputs = move_batch_to_device(outputs, device)
+
     if call_type == "x_y":
-        if device is not None:
-            x = move_batch_to_device(x, device)
-            outputs = move_batch_to_device(outputs, device)
         return [x, outputs]
     elif call_type == "gt_y":
-        if device is not None:
-            gt = move_batch_to_device(gt, device)
-            outputs = move_batch_to_device(outputs, device)
         return [gt, outputs]
     elif call_type == "y_x":
-        if device is not None:
-            outputs = move_batch_to_device(outputs, device)
-            x = move_batch_to_device(x, device)
         return [outputs, x]
     elif call_type == "y_gt":
-        if device is not None:
-            outputs = move_batch_to_device(outputs, device)
-            gt = move_batch_to_device(gt, device)
         return [outputs, gt]
     elif call_type == "pairwise_gt_y":
-        if device is not None:
-            gt = move_batch_to_device(gt, device)
-            outputs = move_batch_to_device(outputs, device)
         return [gt, outputs]
     elif call_type == "pairwise_y_gt":
-        if device is not None:
-            outputs = move_batch_to_device(outputs, device)
-            gt = move_batch_to_device(gt, device)
         return [outputs, gt]
     elif call_type == "y":  # IQA metrics that have an internal dataset
         return [outputs]
@@ -345,7 +329,7 @@ def ensure_device_consistency(model: PrunaModel, task: Task) -> None:
         The task to check.
     """
     # Preprocessing the devices
-    model_device_raw = cast(str, model.get_device())
+    model_device_raw = cast(str, get_device(model))
     model_device, idx_m = split_device(model_device_raw, strict=True)
     task_device, idx_t = split_device(device_to_string(task.device), strict=True)
 
@@ -409,7 +393,7 @@ def _check_offload(model: Any) -> None:
     model : Any
         The model to check.
     """
-    hf_device_map = model.get_device_map() if hasattr(model, "smash_config") else get_device_map(model)
+    hf_device_map = get_device_map(model)
     if not all(isinstance(v, int) for v in hf_device_map.values()):
         raise ValueError(
             "Device map indicates CPU offloading; not supported at this time. \n"
