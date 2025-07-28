@@ -51,8 +51,7 @@ def test_device_is_set_correctly_for_metrics(device:str):
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, 'metric'):
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            else:
-                assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+            assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
 
 
 @pytest.mark.cuda
@@ -93,9 +92,9 @@ def test_metric_device_adapts_to_task_device(inference_device: str, stateful_met
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, "device"):
                 assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            elif hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
+            if hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
                 assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            else:
+            if not hasattr(metric, "device") and not hasattr(metric.metric, "device"):
                 raise ValueError("Could not find device for metric.")
 
 @pytest.mark.cpu

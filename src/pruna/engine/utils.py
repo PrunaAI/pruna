@@ -130,10 +130,7 @@ def move_to_device(
     device_map : dict[str, str] | None
         The device map to use if the target device is "accelerate".
     """
-    # Convert string device to torch.device for consistent handling
-    device_str = str(device)
-
-    if isinstance(model, Pipeline):
+    if safe_is_instance(model, Pipeline):
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
@@ -143,13 +140,13 @@ def move_to_device(
 
     device = device_to_string(device)
     # To handle the device cases like "cuda:0, cuda:1"
-    kind, idx = split_device(device)
+    device_type, device_index = split_device(device)
 
     # sanity check for expected device types
-    if device == "accelerate":
+    if device_type in ["cpu", "cuda", "mps"]:
+        device = f"{device_type}:{device_index}" if device_index is not None else device_type
+    elif device_type == "accelerate":
         pass  # Handle accelerate separately
-    elif kind in ["cpu", "cuda", "mps"]:
-        device = f"{kind}:{idx}" if idx is not None else kind
     else:
         raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
 
@@ -357,7 +354,7 @@ def get_device(model: Any) -> str:
     str
         The device or device map of the model.
     """
-    if isinstance(model, Pipeline):
+    if safe_is_instance(model, Pipeline):
         return get_device(model.model)
 
     # a device map that points the whole model to the same device (only key is "") is not considered distributed
@@ -530,7 +527,7 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
     str
         Valid CUDA device string
     """
-    kind, idx = split_device(device)
+    device_type, device_index = split_device(device)
     if not torch.cuda.is_available():
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
@@ -538,7 +535,7 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
     # When we have a dict of available GPUs and space on them,
     # we set the device to the one with the most free memory.
     if bytes_free_per_gpu is not None:
-        if idx != 0:  # Not the default device
+        if device_index != 0:  # Not the default device
             pruna_logger.warning(
                 "You're requesting a specific CUDA device, "
                 "but the function will return the device with the most free memory."
@@ -546,10 +543,10 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
         biggest_free_gpu = max(bytes_free_per_gpu, key=lambda x: bytes_free_per_gpu[x])
         return f"cuda:{biggest_free_gpu}"
 
-    if idx is None or idx >= torch.cuda.device_count():
-        pruna_logger.warning(f"CUDA device {idx} not available, using device 0")
-        idx = 0
-    return f"cuda:{idx}"
+    if device_index is None or device_index >= torch.cuda.device_count():
+        pruna_logger.warning(f"CUDA device {device_index} not available, using device 0")
+        device_index = 0
+    return f"cuda:{device_index}"
 
 
 def find_bytes_free_per_gpu() -> dict[int, int]:
@@ -594,17 +591,17 @@ def set_to_best_available_device(
         return device
 
     device = device_to_string(device)
-    kind, idx = split_device(device)
+    device_type, device_index = split_device(device)
 
-    if kind == "cpu":
+    if device_type == "cpu":
         return "cpu"
-    elif kind == "accelerate":
+    elif device_type == "accelerate":
         if not torch.cuda.is_available() and not torch.backends.mps.is_available():
             raise ValueError("'accelerate' requested but neither CUDA nor MPS is available.")
         return "accelerate"
-    elif kind == "cuda":
-        return _resolve_cuda_device(f"cuda:{idx}" if idx is not None else "cuda", bytes_free_per_gpu)
-    elif kind == "mps":
+    elif device_type == "cuda":
+        return _resolve_cuda_device(f"cuda:{device_index}" if device_index is not None else "cuda", bytes_free_per_gpu)
+    elif device_type == "mps":
         if not torch.backends.mps.is_available():
             pruna_logger.warning("'mps' requested but not available.")
             return set_to_best_available_device(device=None)
@@ -627,7 +624,7 @@ def device_to_string(device: str | torch.device) -> str:
         The device as a string.
     """
     if isinstance(device, torch.device):
-        return f"{device.type}:{device.index}" if device.index is not None else device.type
+        return str(device)
     elif isinstance(device, str):
         return device
     else:
@@ -636,7 +633,7 @@ def device_to_string(device: str | torch.device) -> str:
 
 def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     """
-    Split a device string into a kind and index.
+    Split a device string into a type and index.
 
     Parameters
     ----------
@@ -648,18 +645,18 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     Returns
     -------
     tuple[str, int | None]
-        The kind and index of the device.
+        The type and index of the device.
     """
     device = device.lower()
     if ":" in device:
-        kind, idx_str = device.split(":", 1)
-        if kind not in ("cuda", "mps") and strict:
-            raise ValueError(f"Unsupported device kind '{kind}'.")
+        device_type, device_index_str = device.split(":", 1)
+        if device_type not in ("cuda", "mps") and strict:
+            raise ValueError(f"Unsupported device type '{device_type}'.")
         try:
-            idx = int(idx_str)
+            device_index = int(device_index_str)
         except ValueError:
             raise ValueError("Device index must be an integer.")
-        return kind, idx
+        return device_type, device_index
     if device in ("cuda", "mps"):
         return device, 0  # treat bare cuda and mps as first device
     if device in ("cpu", "accelerate"):

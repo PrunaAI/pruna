@@ -22,7 +22,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device, set_to_train
+from pruna.engine.utils import get_device, safe_memory_cleanup, set_to_best_available_device, set_to_train
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -138,7 +138,7 @@ class GPUMemoryStats(BaseMetric):
         MetricResult
             The peak GPU memory usage in MB.
         """
-        model_device = model.get_device()
+        model_device = get_device(model)
         if not self.is_device_supported(model_device):
             raise ValueError(f"Memory metrics does not support device {model_device}. Must be one of {self.runs_on}.")
         save_path = model.smash_config.cache_dir / "metrics_save"

@@ -46,8 +46,8 @@ def test_latency_metric_distributed(model_fixture: tuple[Any, SmashConfig]):
     pruna_model = PrunaModel(model, smash_config=smash_config)
     results = metric.compute(pruna_model, smash_config.test_dataloader())
 
-    assert pruna_model.get_device() == "accelerate"
-    assert pruna_model.get_device_map() == device_map
+    assert get_device(model) == "accelerate"
+    assert get_device_map(model) == device_map
     assert results.result > 0  # Assuming latency should be positive
 
 @pytest.mark.distributed

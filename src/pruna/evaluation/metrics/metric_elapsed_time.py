@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import _resolve_cuda_device, device_to_string, set_to_best_available_device, split_device
+from pruna.engine.utils import device_to_string, get_device, set_to_best_available_device, split_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -93,7 +93,7 @@ class InferenceTimeStats(BaseMetric):
         c = 0
         while c < iterations:
             for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, model.get_device(), model.get_device_map())
+                batch = model.inference_handler.move_inputs_to_device(batch, get_device(model))
                 x = model.inference_handler.prepare_inputs(batch)
                 measure_fn(model, x)
                 c += 1
@@ -104,6 +104,10 @@ class InferenceTimeStats(BaseMetric):
         """
         Synchronize all devices.
 
+        Force the host to wait until all CUDA work already enqueued on the target device(s) is done.
+        This is crucial for accurate timing; without a sync, it would measure only how
+        fast kernels were queued, not how long they actually took to execute.
+
         Parameters
         ----------
         model : PrunaModel
@@ -111,10 +115,10 @@ class InferenceTimeStats(BaseMetric):
         """
         device_type, device_idx = split_device(device_to_string(self.device))
         if device_type == "cuda":
-            torch.cuda.synchronize(device_idx)
+            torch.cuda.synchronize(device_idx)  # block until all work on this GPU is done
         elif device_type == "accelerate":
             device_map = model.get_device_map()
-            for device in device_map.values():
+            for device in device_map.values():  # iterate over all devices
                 torch.cuda.synchronize(device)
         else:
             raise ValueError(f"Device {self.device} not supported for sync timing.")
