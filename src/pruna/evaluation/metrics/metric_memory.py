@@ -22,7 +22,13 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import get_device, safe_memory_cleanup, set_to_best_available_device, set_to_train
+from pruna.engine.utils import (
+    get_device,
+    move_to_device,
+    safe_memory_cleanup,
+    set_to_best_available_device,
+    set_to_train,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -148,7 +154,7 @@ class GPUMemoryStats(BaseMetric):
             pruna_logger.warning("No GPUs found.")
             raise ValueError("No GPUs detected for the model. Memory metric is designed to measure the GPU usage.")
         model.save_pretrained(str(save_path))
-        model.move_to_device("cpu")
+        move_to_device(model, "cpu")
 
         gpu_manager = GPUManager(self.gpu_indices)
         with gpu_manager.manage_resources():
@@ -330,7 +336,7 @@ class GPUMemoryStats(BaseMetric):
             The loaded and prepared model.
         """
         model = model_cls.from_pretrained(model_path)
-        model.move_to_device(set_to_best_available_device(None))
+        move_to_device(model, set_to_best_available_device(None))
         if self.mode in {DISK_MEMORY, INFERENCE_MEMORY}:
             model.set_to_eval()
         elif self.mode == TRAINING_MEMORY:
