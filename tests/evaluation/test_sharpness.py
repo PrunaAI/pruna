@@ -10,6 +10,7 @@ from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.task import Task
+from pruna.engine.utils import move_to_device
 
 
 @pytest.mark.parametrize(
@@ -25,13 +26,14 @@ def test_sharpness(model_fixture: tuple[Any, SmashConfig], device: str, kernel_s
     model, smash_config = model_fixture
     smash_config.device = device
     pruna_model = PrunaModel(model, smash_config=smash_config)
+    move_to_device(pruna_model, device)
 
 
     metric = SharpnessMetric(kernel_size=kernel_size, device=device)
 
     batch = next(iter(smash_config.test_dataloader()))
     x, gt = batch
-    outputs = pruna_model.run_inference(batch, device)
+    outputs = pruna_model.run_inference(batch)
 
     # Calculate sharpness for model outputs
     metric.update(x, gt, outputs)
@@ -96,6 +98,7 @@ def test_sharpness_blurry_vs_sharp():
 def test_task_sharpness_from_instance(model_fixture: tuple[Any, SmashConfig], device: str, kernel_size: int):
     """Test EvaluationAgent with SharpnessMetric instance."""
     model, _ = model_fixture
+    move_to_device(model, device)
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(10)
 
@@ -126,6 +129,7 @@ def test_task_sharpness_from_instance(model_fixture: tuple[Any, SmashConfig], de
 def test_task_sharpness_from_string(model_fixture: tuple[Any, SmashConfig], device: str):
     """Test EvaluationAgent with sharpness metric specified as string."""
     model, _ = model_fixture
+    move_to_device(model, device)
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(10)
 
