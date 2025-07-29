@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import device_to_string
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -67,15 +67,7 @@ class SharpnessMetric(StatefulMetric):
     runs_on: List[str] = ["cpu", "cuda"]
 
     def __init__(self, *args, kernel_size: int = 3, call_type: str = SINGLE, **kwargs) -> None:
-        device = kwargs.pop("device", None)
-        if device is not None and str(device).split(":")[0] not in self.runs_on:
-            msg = f"SharpnessMetric: device {device} not supported. Supported devices: {self.runs_on}"
-            pruna_logger.error(msg)
-            # Repeating the message here since inside an if block we can only raise with a message
-            # or we get a RuntimeError.
-            raise ValueError(msg)
-        super().__init__(*args, **kwargs)
-        self.device = set_to_best_available_device(device)
+        super().__init__(device=kwargs.pop("device", None))
         self.kernel_size = kernel_size
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])
@@ -164,3 +156,18 @@ class SharpnessMetric(StatefulMetric):
         # Otherwise, compute the mean sharpness score over all accumulated samples.
         mean_val = float(np.mean(self.scores))
         return MetricResult(self.metric_name, self.__dict__, mean_val)
+
+    def move_to_device(self, device: str | torch.device) -> None:
+        """
+        Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
+        self.device = device_to_string(device)

@@ -78,11 +78,14 @@ def test_clip_score(datamodule_fixture: PrunaDataModule, device: str) -> None:
     assert score.result > 0.0 and score.result < 100.0
 
 @pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
-def test_clipiqa(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
+def test_clipiqa(datamodule_fixture: PrunaDataModule) -> None:
     """Test the clipiqa."""
-    metric = TorchMetricWrapper("clipiqa")
-    x, gt = next(iter(dataloader_fixture))
+    metric = TorchMetricWrapper("clipiqa", device="cpu")
+
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
+    x, gt = next(dataloader_iter)
     metric.update(x, gt, gt)
     score = metric.compute()
     assert score.result > 0.0 and score.result < 1.0
@@ -111,11 +114,13 @@ def test_torch_metrics(datamodule_fixture: PrunaDataModule, device: str, metric:
     assert metric.compute().result == 1.0
 
 @pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
-def test_arniqa(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
+def test_arniqa(datamodule_fixture: PrunaDataModule) -> None:
     """Test arniqa."""
-    metric = TorchMetricWrapper("arniqa")
-    x, gt = next(iter(dataloader_fixture))
+    metric = TorchMetricWrapper("arniqa", device="cpu")
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
+    x, gt = next(dataloader_iter)
     metric.update(x, gt, gt)
 
 @pytest.mark.cpu

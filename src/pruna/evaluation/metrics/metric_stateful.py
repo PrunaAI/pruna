@@ -33,6 +33,13 @@ class StatefulMetric(ABC):
     across multiple batches or iterations. Unlike simple metrics that compute values
     independently for each input, stateful metrics track running statistics or
     aggregated values over time.
+
+    Parameters
+    ----------
+    device : str | torch.device | None
+        The device to move the metric to.
+    **kwargs : Any
+        Additional keyword arguments.
     """
 
     metric_name: str
