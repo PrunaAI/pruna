@@ -1,5 +1,5 @@
 Customize a Metric
-===============================
+==================
 
 This guide will walk you through the process of adding a new metric to Pruna's evaluation system.
 
@@ -168,7 +168,7 @@ Understanding Call Types
 | `pairwise_y_gt`    | Base model's output first, then subsequent model's output   |
 +--------------------+-------------------------------------------------------------+
 | `pairwise_gt_y`    | Subsequent model's output first, then base model's output   |
-+--------------------+-------------------------------------------------------------+ 
++--------------------+-------------------------------------------------------------+
 | `y`                | Only the output is used, the metric has an internal dataset |
 +--------------------+-------------------------------------------------------------+
 

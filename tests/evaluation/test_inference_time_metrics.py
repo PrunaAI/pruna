@@ -7,7 +7,7 @@ from ..common import construct_device_map_manually
 from pruna import SmashConfig
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import move_to_device, get_device, get_device_map
-from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
+from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric, LATENCY
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 
 @pytest.mark.parametrize(
