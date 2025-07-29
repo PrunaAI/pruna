@@ -108,7 +108,7 @@ def save_pruna_model_to_hub(
     num_workers: int | None = None,
     print_report: bool = True,
     print_report_every: int = 60,
-    token: str | None = None,
+    hf_token: str | None = None,
 ) -> None:
     """
     Save the model to the Hugging Face Hub.
@@ -139,7 +139,7 @@ def save_pruna_model_to_hub(
         Whether to print the report.
     print_report_every : int, optional
         The print report every.
-    token : str | None
+    hf_token : str | None
         The Hugging Face token to use for authentication to push models to the Hub.
     """
     # Create a temporary directory within the specified folder path to store the model files
@@ -158,7 +158,7 @@ def save_pruna_model_to_hub(
         # Load the base model card if repo exists on Hub
         model_name_or_path = getattr(model, "name_or_path", None)
         if repo_exists(repo_id=str(model_name_or_path), repo_type="model") and model_name_or_path is not None:
-            model_card_data = ModelCard.load(repo_id_or_path=model.name_or_path, repo_type="model", token=token).data
+            model_card_data = ModelCard.load(repo_id_or_path=model.name_or_path, repo_type="model", token=hf_token).data
         else:
             model_card_data = ModelCardData()
             if "diffusers" in model.__module__:
@@ -192,8 +192,8 @@ def save_pruna_model_to_hub(
         model_card.save(model_path_pathlib / "README.md")
 
         # Upload the contents of the temporary directory to the specified repository on the hub
-        if token:
-            login(token=token)
+        if hf_token:
+            login(token=hf_token)
         upload_large_folder(
             repo_id=repo_id,
             folder_path=model_path_pathlib,
