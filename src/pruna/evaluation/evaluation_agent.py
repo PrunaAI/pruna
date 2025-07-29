@@ -148,6 +148,7 @@ class EvaluationAgent:
         else:
             model = PrunaModel(model)
             pruna_logger.info("Evaluating a base model.")
+            is_base = True
 
         model.inference_handler.log_model_info()
         if (

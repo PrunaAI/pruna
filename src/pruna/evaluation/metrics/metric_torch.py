@@ -341,7 +341,7 @@ class TorchMetricWrapper(StatefulMetric):
         # Normally we have a single score for each metric for the entire dataset.
         # For IQA metrics we have a single score per image, so we need to convert the tensor to a list.
         if isinstance(result, Tensor):
-            result_value = result.item() if result.numel() == 1 else result.tolist()
+            result_value = result.item() if result.numel() == 1 else result.mean().item()
         else:
             result_value = result
         return MetricResult(
