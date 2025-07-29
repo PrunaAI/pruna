@@ -1,5 +1,5 @@
 Customize a Metric
-===============================
+==================
 
 This guide will walk you through the process of adding a new metric to Pruna's evaluation system.
 
@@ -166,29 +166,21 @@ Understanding Call Types
 | `pairwise_y_gt`    | Base model's output first, then subsequent model's output   |
 +--------------------+-------------------------------------------------------------+
 | `pairwise_gt_y`    | Subsequent model's output first, then base model's output   |
-<<<<<<< HEAD
-+--------------------+-------------------------------------------------------------+ 
++--------------------+-------------------------------------------------------------+
 | `y`                | Only the output is used, the metric has an internal dataset |
-+--------------------+-------------------------------------------------------------+ 
-
-=======
 +--------------------+-------------------------------------------------------------+
 
 
->>>>>>> 1faf44b (test: add distributed latency test, doc updates, comments)
 You need to decide on the default ``call_type`` based on the metric you are implementing.
 
 For example, if you are implementing a metric that compares two models, you should use the ``pairwise_y_gt`` call type. Examples from |pruna| include ``psnr``, ``ssim``, ``lpips``.
 
 If you are implementing an alignment metric comparing model's output with the input, you should use the ``x_gt`` or ``gt_x`` call type. Examples from |pruna| include ``clip_score``.
 
-<<<<<<< HEAD
 If you are implementing a metric that compares the model's output with the ground truth, you should use the ``y_gt`` or ``gt_y`` call type. Examples from |pruna| include ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``.
 
 If you are wrapping an Image Quality Assessment (IQA) metric, that has an internal dataset, you should use the ``y`` call type. Examples from |pruna| include ``arniqa``.
 
-=======
->>>>>>> 1faf44b (test: add distributed latency test, doc updates, comments)
 You may want to switch the mode of the metric despite your default ``call_type``. For instance you may want to use ``fid`` in pairwise mode to get a single comparison score for two models.
 
 In this case, you can pass ``pairwise`` to the ``call_type`` parameter of the ``StatefulMetric`` constructor.
