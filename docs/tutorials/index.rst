@@ -23,7 +23,7 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :text-align: center
       :link: ./video_generation.ipynb
 
-      Compress with a ``pab``, and evaluate with ``total time``, ``latency``, ``throughput``, ``co2_emissions``, and ``energy_consumed``.
+      Compress with a ``torchao`` ``quantizer`` and a ``torch_compile`` ``compiler``, and evaluate with ``total time``, ``latency``, ``throughput``, ``co2_emissions``, and ``energy_consumed``.
 
    .. grid-item-card:: Transcribe 2 hour of audio in 2 minutes with Whisper
       :text-align: center
