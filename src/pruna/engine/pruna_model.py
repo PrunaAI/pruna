@@ -91,10 +91,12 @@ class PrunaModel:
         """
         if self.model is None:
             raise ValueError("No more model available, this model is likely destroyed.")
+
         # Rather than giving a device to the inference call,
         # we should run the inference on the device of the model.
         model_device = get_device(self.model)
-        batch = self.inference_handler.move_inputs_to_device(batch, model_device)  # type: ignore
+        batch = self.inference_handler.move_inputs_to_device(batch, model_device)
+
         if not isinstance(batch, tuple):
             batch = (batch, {})
         prepared_inputs = self.inference_handler.prepare_inputs(batch)

@@ -94,4 +94,7 @@ class InferenceHandler(ABC):
         if device == "accelerate":
             device = set_to_best_available_device(None)
         # Using the utility function from the data module
-        return move_batch_to_device(inputs, device)
+        try:
+            return move_batch_to_device(inputs, device)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e

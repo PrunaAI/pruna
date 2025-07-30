@@ -31,7 +31,7 @@ from pruna.logging.logger import pruna_logger
 
 
 @MetricRegistry.register("pairwise_clip_score")
-class PairwiseClipScore(CLIPScore, StatefulMetric):
+class PairwiseClipScore(CLIPScore, StatefulMetric):  # type: ignore[misc]
     """
     Pairwise CLIP Score metric.
 

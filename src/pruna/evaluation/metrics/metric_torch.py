@@ -36,6 +36,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
 
+from pruna.engine.utils import device_to_string
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -365,7 +366,7 @@ class TorchMetricWrapper(StatefulMetric):
             raise ValueError(
                 f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
             )
-        self.device = device
+        self.device = device_to_string(device)
         self.metric = self.metric.to(device)
 
 
