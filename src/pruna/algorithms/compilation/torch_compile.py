@@ -81,7 +81,7 @@ class TorchCompileCompiler(PrunaCompiler):
             ),
             Boolean(
                 "fullgraph",
-                default=True,
+                default=False,
                 meta=dict(desc="Whether to discover compilable subgraphs or compile the full input graph."),
             ),
             CategoricalHyperparameter(

@@ -108,7 +108,7 @@ class InferenceHandler(ABC):
             return batch  # don't touch list of strings
 
         if isinstance(batch, tuple):
-            return tuple(self.set_correct_dtype(item, dtype) for item in batch)
+            return tuple(self.set_correct_dtype(item, dtype) for item in batch)  # type: ignore
 
         if isinstance(batch, dict):
             return {

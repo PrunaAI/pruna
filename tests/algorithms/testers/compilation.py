@@ -14,7 +14,6 @@ class TestTorchCompile(AlgorithmTesterBase):
     allow_pickle_files = False
     algorithm_class = TorchCompileCompiler
     metrics = ["latency"]
-    hyperparameters = {"torch_compile_fullgraph": False}
 
 
 class TestStableFast(AlgorithmTesterBase):
