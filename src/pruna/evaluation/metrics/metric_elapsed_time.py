@@ -21,7 +21,14 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import (
+    device_to_string,
+    get_device,
+    get_device_map,
+    move_to_device,
+    set_to_best_available_device,
+    split_device,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -61,6 +68,8 @@ class InferenceTimeStats(BaseMetric):
         The type of timing to use.
     """
 
+    runs_on: list[str] = ["accelerate", "cuda", "cpu"]
+
     def __init__(
         self,
         n_iterations: int = 100,
@@ -90,12 +99,35 @@ class InferenceTimeStats(BaseMetric):
         c = 0
         while c < iterations:
             for batch in dataloader:
-                batch = model.inference_handler.move_inputs_to_device(batch, self.device)
+                batch = model.inference_handler.move_inputs_to_device(batch, get_device(model))
                 x = model.inference_handler.prepare_inputs(batch)
                 measure_fn(model, x)
                 c += 1
                 if c >= iterations:
                     break
+
+    def sync_all_cuda_devices(self, model: PrunaModel):
+        """
+        Synchronize all devices.
+
+        Force the host to wait until all CUDA work already enqueued on the target device(s) is done.
+        This is crucial for accurate timing; without a sync, it would measure only how
+        fast kernels were queued, not how long they actually took to execute.
+
+        Parameters
+        ----------
+        model : PrunaModel
+            The model to get the device map from.
+        """
+        device_type, device_idx = split_device(device_to_string(self.device))
+        if device_type == "cuda":
+            torch.cuda.synchronize(device_idx)  # block until all work on this GPU is done
+        elif device_type == "accelerate":
+            device_map = get_device_map(model)
+            for device in device_map.values():  # iterate over all devices
+                torch.cuda.synchronize(device)
+        else:
+            raise ValueError(f"Device {self.device} not supported for sync timing.")
 
     def _time_inference(self, model: PrunaModel, x: Any) -> float:
         """
@@ -114,25 +146,16 @@ class InferenceTimeStats(BaseMetric):
             The elapsed time in milliseconds.
         """
         if self.timing_type == "async" or self.device == "cpu":
-            startevent_time = time.time()
-            model.run_inference(x)
-            endevent_time = time.time()
+            startevent_time = time.perf_counter()
+            _ = model(x, **model.inference_handler.model_args)
+            endevent_time = time.perf_counter()
             return (endevent_time - startevent_time) * 1000  # in ms
         elif self.timing_type == "sync":
-            try:
-                torch_device_attr = getattr(torch, self.device)
-            except AttributeError:
-                raise ValueError(f"Device {self.device} not supported for sync timing. Using async timing instead.")
-            startevent = torch_device_attr.Event(enable_timing=True)
-            endevent = torch_device_attr.Event(enable_timing=True)
-            startevent.record()
-            if isinstance(x, dict):
-                _ = model(**x, **model.inference_handler.model_args)
-            else:
-                _ = model(x, **model.inference_handler.model_args)
-            endevent.record()
-            torch_device_attr.synchronize()
-            return startevent.elapsed_time(endevent)  # in ms
+            self.sync_all_cuda_devices(model)
+            t0 = time.perf_counter()
+            _ = model(x, **model.inference_handler.model_args)
+            self.sync_all_cuda_devices(model)
+            return (time.perf_counter() - t0) * 1_000  # ms
         else:
             raise ValueError(f"Timing type {self.timing_type} not supported.")
 
@@ -157,7 +180,7 @@ class InferenceTimeStats(BaseMetric):
             pruna_logger.warning("Async timing is not supported on CPU. Using sync timing instead.")
 
         model.set_to_eval()
-        model.move_to_device(self.device)
+        move_to_device(model, self.device)
 
         # Warmup
         self._measure(
