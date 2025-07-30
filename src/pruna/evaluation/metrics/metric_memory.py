@@ -191,7 +191,7 @@ class GPUMemoryStats(BaseMetric):
             pruna_logger.error("Multiple GPUs detected, but no device map found. Please check the model configuration.")
             raise
         else:
-            model.move_to_device("cuda")
+            move_to_device(model, "cuda")
         return MetricResult(self.mode, self.__dict__.copy(), peak_memory)
 
     def _detect_model_gpus(self, model: PrunaModel) -> List[int]:
