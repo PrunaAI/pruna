@@ -154,7 +154,9 @@ def move_to_device(
     if str(get_device(model)) == device_str:
         return
 
-    if device_str == "accelerate":
+    if device == "accelerate":
+        if hasattr(model, "smash_config") and device_map is None:
+            device_map = model.smash_config.device_map
         if device_map is None:
             raise ValueError("Device map is required when moving to accelerate.")
         cast_model_to_accelerate_device_map(model, device_map)
