@@ -24,7 +24,7 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import move_to_device, safe_memory_cleanup, set_to_best_available_device
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
@@ -173,6 +173,12 @@ class EvaluationAgent:
             )
 
         ensure_device_consistency(model, self.task)
+        model_device = get_device(model)
+
+        # The device map is set before smashing, so for the base models, we need to set it here.
+        if model_device == "accelerate" and is_base and model.smash_config.device_map is None:
+            model.smash_config.device_map = get_device_map(model)
+
         self.device = self.task.device
         # Keeping the device map to move model back to the original device, when the agent is finished.
         self.device_map = get_device_map(model)
