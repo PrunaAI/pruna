@@ -109,7 +109,7 @@ class GPTQQuantizer(PrunaQuantizer):
             The quantized model.
         """
         imported_modules = self.import_algorithm_packages()
-        with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
+        with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             # cast original model to CPU to free memory for smashed model
             if hasattr(model, "to"):
                 model.to("cpu")

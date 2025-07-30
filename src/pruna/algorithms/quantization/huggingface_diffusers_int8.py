@@ -118,7 +118,7 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
-        with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
+        with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             # save the latent model (to be quantized) in a temp directory
             if hasattr(model, "transformer"):
                 working_model = model.transformer

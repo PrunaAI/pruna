@@ -104,7 +104,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
-        with tempfile.TemporaryDirectory(prefix=smash_config["cache_dir"]) as temp_dir:
+        with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             # cast original model to CPU to free memory for smashed model
             device_map = get_device_map(model)
             move_to_device(model, "cpu")

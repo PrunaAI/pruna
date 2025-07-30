@@ -68,7 +68,7 @@ class AlgorithmTesterBase:
 
     def execute_save(self, smashed_model: PrunaModel) -> None:
         """Save the smashed model."""
-        smashed_model.save_pretrained(self._saving_path)
+        smashed_model.save_pretrained(str(self._saving_path))
         assert len(list(self._saving_path.iterdir())) > 0
         if self.allow_pickle_files:
             self.assert_no_pickle_files()
@@ -133,7 +133,7 @@ class AlgorithmTesterBase:
 
     def execute_load(self) -> PrunaModel:
         """Load the smashed model."""
-        model = PrunaModel.from_pretrained(self._saving_path)
+        model = PrunaModel.from_pretrained(str(self._saving_path))
         assert isinstance(model, PrunaModel)
         self.post_smash_hook(model)
         assert model.smash_config.device == get_device(model)
