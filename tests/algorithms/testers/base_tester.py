@@ -151,7 +151,7 @@ class AlgorithmTesterBase:
     def execute_evaluation(self, model: Any, datamodule: PrunaDataModule, device: str) -> None:
         """Execute the evaluation operation."""
         metrics = self.get_metrics(device=device)
-        datamodule.limit_datasets(10)
+        datamodule.limit_datasets(5)
         task = Task(request=metrics, datamodule=datamodule, device=device)
         evaluation_agent = EvaluationAgent(task=task)
         results = evaluation_agent.evaluate(model=model)

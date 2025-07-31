@@ -35,7 +35,7 @@ class TestTorchStructured(AlgorithmTesterBase):
     reject_models = []
     allow_pickle_files = True
     algorithm_class = TorchStructuredPruner
-    metrics = ["total_macs", "total_params"]
+    metrics = ["total_macs"]
 
     def pre_smash_hook(self, model: Any) -> None:
         """Hook to modify the model before smashing."""

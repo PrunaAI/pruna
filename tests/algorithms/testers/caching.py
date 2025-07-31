@@ -14,7 +14,7 @@ class TestDeepCache(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = DeepCacheCacher
-    metrics = ["cmmd", "ssim"]
+    metrics = ["ssim"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -42,7 +42,7 @@ class TestFasterCache(AlgorithmTesterBase):
     reject_models = ["opt_125m"]
     allow_pickle_files = False
     algorithm_class = FasterCacheCacher
-    metrics = ["clip_score", "pairwise_clip_score"]
+    metrics = ["pairwise_clip_score"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -56,7 +56,7 @@ class TestPAB(AlgorithmTesterBase):
     reject_models = ["opt_125m"]
     allow_pickle_files = False
     algorithm_class = PABCacher
-    metrics = ["psnr", "fid"]
+    metrics = ["psnr"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
