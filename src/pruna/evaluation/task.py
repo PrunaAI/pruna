@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any, List, cast
 
 import torch
+from pruna.evaluation.metrics.metric_imagereward import ImageRewardMetric
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import set_to_best_available_device
@@ -178,6 +179,7 @@ def _process_single_request(request: str, device: str | torch.device | None) -> 
             TorchMetricWrapper("clip_score"),
             TorchMetricWrapper("clip_score", call_type="pairwise"),
             CMMD(device=device),
+            ImageRewardMetric(device=device),
         ]
     else:
         pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
