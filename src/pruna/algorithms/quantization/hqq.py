@@ -113,7 +113,7 @@ class HQQQuantizer(PrunaQuantizer):
             The quantized model.
         """
         if is_transformers_pipeline_with_causal_lm(model):
-            return self._apply_to_model_within_pipeline(model, smash_config)
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
 
         imported_modules = self.import_algorithm_packages()
 

@@ -128,7 +128,7 @@ class CTranslateCompiler(PrunaCompiler):
             (isinstance(model.config, WhisperConfig) and self.algorithm_name == "c_whisper")
             or (is_translation_model(model) and self.algorithm_name == "c_translate")
             or (is_causal_lm(model) and self.algorithm_name == "c_generate")
-            or (is_transformers_pipeline_with_causal_lm(model) and self.algorithm_name == "c_translate")
+            or (is_transformers_pipeline_with_causal_lm(model) and self.algorithm_name == "c_generate")
             or (is_transformers_pipeline_with_seq2seq_lm(model) and self.algorithm_name == "c_translate")
         )
 
@@ -149,7 +149,7 @@ class CTranslateCompiler(PrunaCompiler):
             The compiled model.
         """
         if is_transformers_pipeline_with_causal_lm(model) or is_transformers_pipeline_with_seq2seq_lm(model):
-            return self._apply_to_model_within_pipeline(model, smash_config)
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
 
         imported_modules = self.import_algorithm_packages()
 

@@ -184,7 +184,9 @@ class PrunaAlgorithmBase(ABC):
         """Apply the algorithm to the model."""
         pass
 
-    def _apply_to_model_within_pipeline(self, pipeline: Pipeline, smash_config: SmashConfigPrefixWrapper) -> Pipeline:
+    def _apply_to_model_within_transformers_pipeline(
+        self, pipeline: Pipeline, smash_config: SmashConfigPrefixWrapper
+    ) -> Pipeline:
         """Apply the algorithm to the model."""
         pipeline.model = self._apply(pipeline.model, smash_config)
         return pipeline

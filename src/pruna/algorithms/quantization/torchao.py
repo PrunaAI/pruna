@@ -182,7 +182,7 @@ class TorchaoQuantizer(PrunaQuantizer):
             The quantized model.
         """
         if is_transformers_pipeline_with_causal_lm(model):
-            return self._apply_to_model_within_pipeline(model, smash_config)
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
 
         # Suppress torchao INFO messages (e.g., about skipping small layers) during quantization
         with suppress_logging("torchao.quantization.quant_api"):

@@ -104,16 +104,11 @@ def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple
     return model, smash_config
 
 
-def get_transformers_pipeline_for_text_generation(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
-    """Get a transformers pipeline for text generation."""
-    model = pipeline("text-generation", model=model_id, **kwargs)
-    smash_config = SmashConfig()
-    return model, smash_config
-
-
-def get_transformers_pipeline_for_translation(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
-    """Get a transformers pipeline for translation."""
-    model = pipeline("text2text-generation", model=model_id, **kwargs)
+def get_transformers_pipeline_for_specific_task(
+    model_id: str, task: str, **kwargs: dict[str, Any]
+) -> tuple[Any, SmashConfig]:
+    """Get a transformers pipeline for specific task."""
+    model = pipeline(task, model=model_id, **kwargs)
     smash_config = SmashConfig()
     return model, smash_config
 
@@ -159,7 +154,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
     "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
     "llama_3_tiny_random_as_pipeline": partial(
-        get_transformers_pipeline_for_text_generation, "llamafactory/tiny-random-Llama-3"
+        get_transformers_pipeline_for_specific_task, "llamafactory/tiny-random-Llama-3", task="text-generation"
     ),
     "dummy_lambda": dummy_model,
     # image generation AR models
