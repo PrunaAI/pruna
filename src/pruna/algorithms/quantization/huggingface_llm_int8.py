@@ -105,7 +105,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
             The quantized model.
         """
         if is_transformers_pipeline_with_causal_lm(model):
-            return self._apply_to_model_within_pipeline(model, smash_config)
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
         with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             # cast original model to CPU to free memory for smashed model
             device_map = get_device_map(model)

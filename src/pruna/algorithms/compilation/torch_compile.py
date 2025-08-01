@@ -210,7 +210,7 @@ class TorchCompileCompiler(PrunaCompiler):
 
         if is_causal_lm(model) or is_janus_llamagen_ar(model) or is_transformers_pipeline_with_causal_lm(model):
             if is_transformers_pipeline_with_causal_lm(model):
-                return self._apply_to_model_within_pipeline(model, smash_config)
+                return self._apply_to_model_within_transformers_pipeline(model, smash_config)
             return causal_lm_or_janus_logic(model, smash_config)
 
         return compile_callable(model, smash_config)
