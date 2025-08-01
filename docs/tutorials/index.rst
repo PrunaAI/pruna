@@ -54,6 +54,11 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :link: ./sd_deepcache.ipynb
 
       Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
+   .. grid-item-card:: Optimize and Deploy AI Models with Pruna and Hugging Face
+      :text-align: center
+      :link: ./deploying_sana_tutorial.ipynb
+
+      Optimize and .
 
 
 .. toctree::
