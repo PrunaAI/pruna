@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, List
 
 import torch
 import transformers
-from huggingface_hub import upload_large_folder
+from huggingface_hub import ModelCard, ModelCardData, login, repo_exists, upload_large_folder
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
 from pruna.engine.load import (
@@ -108,6 +108,7 @@ def save_pruna_model_to_hub(
     num_workers: int | None = None,
     print_report: bool = True,
     print_report_every: int = 60,
+    hf_token: str | None = None,
 ) -> None:
     """
     Save the model to the Hugging Face Hub.
@@ -138,6 +139,8 @@ def save_pruna_model_to_hub(
         Whether to print the report.
     print_report_every : int, optional
         The print report every.
+    hf_token : str | None
+        The Hugging Face token to use for authentication to push models to the Hub.
     """
     # Create a temporary directory within the specified folder path to store the model files
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -152,31 +155,45 @@ def save_pruna_model_to_hub(
         with (model_path_pathlib / SMASH_CONFIG_FILE_NAME).open() as f:
             smash_config_data = json.load(f)
 
-        # Determine the library name from the smash config
-        if "diffusers" in model.__module__:
-            library_name = "diffusers"
-        elif "transformers" in model.__module__:
-            library_name = "transformers"
+        # Load the base model card if repo exists on Hub
+        model_name_or_path = getattr(model, "name_or_path", None)
+        if repo_exists(repo_id=str(model_name_or_path), repo_type="model") and model_name_or_path is not None:
+            model_card_data = ModelCard.load(repo_id_or_path=model.name_or_path, repo_type="model", token=hf_token).data
         else:
-            library_name = None
+            model_card_data = ModelCardData()
+            if "diffusers" in model.__module__:
+                model_card_data["library_name"] = "diffusers"
+            elif "transformers" in model.__module__:
+                model_card_data["library_name"] = "transformers"
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
-        template = template_path.read_text()
+        # derive pruna library from initalized module
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
-        content = template.format(
-            repo_id=repo_id,
-            smash_config=json.dumps(smash_config_data, indent=4),
-            library_name=library_name,
-            pruna_model_class=instance.__class__.__name__,
-            pruna_library=pruna_library,
+        model_card_data["tags"] = [f"{pruna_library}-ai", "safetensors"]
+        model_card = ModelCard.from_template(
+            card_data=model_card_data,
+            template_path=str(template_path),
+            **{
+                **{
+                    k: v
+                    for k, v in {
+                        "repo_id": repo_id,
+                        "base_repo_id": model_name_or_path,
+                        "smash_config": json.dumps(smash_config_data, indent=4),
+                        "library_name": model_card_data.library_name,
+                        "pruna_model_class": instance.__class__.__name__,
+                        "pruna_library": pruna_library,
+                    }.items()
+                    if v is not None
+                },
+            },
         )
-
-        # Define the path for the README file and write the formatted content to it
-        readme_path = model_path_pathlib / "README.md"
-        readme_path.write_text(content)
+        model_card.save(model_path_pathlib / "README.md")
 
         # Upload the contents of the temporary directory to the specified repository on the hub
+        if hf_token:
+            login(token=hf_token)
         upload_large_folder(
             repo_id=repo_id,
             folder_path=model_path_pathlib,
