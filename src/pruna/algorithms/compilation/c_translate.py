@@ -33,7 +33,12 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.model_checks import is_causal_lm, is_translation_model
+from pruna.engine.model_checks import (
+    is_causal_lm,
+    is_transformers_pipeline_with_causal_lm,
+    is_transformers_pipeline_with_seq2seq_lm,
+    is_translation_model,
+)
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -123,6 +128,8 @@ class CTranslateCompiler(PrunaCompiler):
             (isinstance(model.config, WhisperConfig) and self.algorithm_name == "c_whisper")
             or (is_translation_model(model) and self.algorithm_name == "c_translate")
             or (is_causal_lm(model) and self.algorithm_name == "c_generate")
+            or (is_transformers_pipeline_with_causal_lm(model) and self.algorithm_name == "c_translate")
+            or (is_transformers_pipeline_with_seq2seq_lm(model) and self.algorithm_name == "c_translate")
         )
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
@@ -141,6 +148,9 @@ class CTranslateCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
+        if is_transformers_pipeline_with_causal_lm(model) or is_transformers_pipeline_with_seq2seq_lm(model):
+            return self._apply_to_model_within_pipeline(model, smash_config)
+
         imported_modules = self.import_algorithm_packages()
 
         # Extract the model itself
