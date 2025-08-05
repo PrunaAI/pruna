@@ -11,7 +11,7 @@ from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, 
     "model_fixture, device",
     [
         pytest.param("shufflenet", "cpu", marks=pytest.mark.cpu),
-        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cuda", marks=pytest.mark.cuda),
     ],
     indirect=["model_fixture"],
 )
@@ -28,7 +28,7 @@ def test_total_macs_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
     "model_fixture, device",
     [
         pytest.param("noref_resnet_18", "cpu", marks=pytest.mark.cpu),
-        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cuda", marks=pytest.mark.cuda),
     ],
     indirect=["model_fixture"],
 )

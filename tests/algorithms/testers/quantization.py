@@ -102,7 +102,7 @@ class TestTorchao(AlgorithmTesterBase):
 class TestGPTQ(AlgorithmTesterBase):
     """Test the GPTQ quantizer."""
 
-    models = ["opt_125m"]
+    models = ["opt_tiny_random"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = GPTQQuantizer

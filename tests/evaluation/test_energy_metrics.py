@@ -24,7 +24,7 @@ def test_energy_consumed_metric(model_fixture: tuple[Any, SmashConfig], device: 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],

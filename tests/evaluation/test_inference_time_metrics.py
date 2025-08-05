@@ -9,7 +9,7 @@ from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, Throughp
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("shufflenet", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
@@ -25,7 +25,7 @@ def test_latency_metric(model_fixture: tuple[Any, SmashConfig], device: str) -> 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],
@@ -41,7 +41,7 @@ def test_throughput_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
 @pytest.mark.parametrize(
     "model_fixture, device",
     [
-        pytest.param("sd_tiny_random", "cuda", marks=pytest.mark.cuda),
+        pytest.param("flux_tiny_random", "cuda", marks=pytest.mark.cuda),
         pytest.param("resnet_18", "cpu", marks=pytest.mark.cpu),
     ],
     indirect=["model_fixture"],

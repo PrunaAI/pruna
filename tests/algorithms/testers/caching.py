@@ -25,7 +25,7 @@ class TestFORA(AlgorithmTesterBase):
     """Test the fora algorithm."""
 
     models = ["flux_tiny_random"]
-    reject_models = ["opt_125m"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = FORACacher
     metrics = ["lpips", "throughput"]
@@ -39,7 +39,7 @@ class TestFasterCache(AlgorithmTesterBase):
     """Test the fastercache algorithm."""
 
     models = ["flux_tiny_random"]
-    reject_models = ["opt_125m"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = FasterCacheCacher
     metrics = ["pairwise_clip_score"]
@@ -53,7 +53,7 @@ class TestPAB(AlgorithmTesterBase):
     """Test the PAB algorithm."""
 
     models = ["flux_tiny_random"]
-    reject_models = ["opt_125m"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = PABCacher
     metrics = ["psnr"]
