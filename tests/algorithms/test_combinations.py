@@ -59,6 +59,7 @@ class CombinationsTester(AlgorithmTesterBase):
         ("flux_tiny_random", dict(cacher="fora", compiler="torch_compile"), False, 'cmmd'),
         ("flux_tiny_random", dict(cacher="fora", compiler="stable_fast"), False, 'cmmd'),
         ("tiny_janus_pro", dict(quantizer="hqq", compiler="torch_compile"), False, 'cmmd'),
+        ("flux_tiny", dict(cacher="fora", kernel="flash_attn3", compiler="torch_compile"), False, 'cmmd'),
     ],
     indirect=["model_fixture"],
 )
