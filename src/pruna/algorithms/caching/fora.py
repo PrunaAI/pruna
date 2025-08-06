@@ -43,6 +43,7 @@ class FORACacher(PrunaCacher):
         compiler=["stable_fast", "torch_compile"],
         quantizer=["diffusers_int8", "hqq_diffusers", "torchao"],
         factorizer=["qkv_diffusers"],
+        kernel=["flash_attn3"],
     )
 
     def get_hyperparameters(self) -> list:
