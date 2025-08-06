@@ -46,9 +46,7 @@ class FlashAttn3Kernel(PrunaKernel):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        compiler=["torch_compile"], cacher=["fora"]
-    )
+    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"], cacher=["fora"])
 
     def model_check_fn(self, model: Any) -> bool:
         """
@@ -65,20 +63,15 @@ class FlashAttn3Kernel(PrunaKernel):
             True if the model is a valid model for the algorithm, False otherwise.
         """
         if Version(diffusers_version) >= Version("0.35.0.dev0"):
-            if not isinstance(model, DiffusionPipeline) or not hasattr(
-                model, "components"
-            ):
+            if not isinstance(model, DiffusionPipeline) or not hasattr(model, "components"):
                 return False
 
             return any(
-                hasattr(component, "set_attention_backend")
-                and component.dtype in [torch.bfloat16, torch.float16]
+                hasattr(component, "set_attention_backend") and component.dtype in [torch.bfloat16, torch.float16]
                 for component in model.components.values()
             )
         else:
-            return isinstance(model, DiffusionPipeline) and hasattr(
-                model, "transformer"
-            )
+            return isinstance(model, DiffusionPipeline) and hasattr(model, "transformer")
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -208,17 +201,11 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
             head_dim_pass = all(t.shape[3] <= 256 for t in (query, key, value))
 
             # if any constraints are not met or unsupported input arguments are being used, reroute to native attention
-            if (
-                attn_mask is not None
-                or dropout_p != 0.0
-                or not dtype_pass
-                or not num_heads_pass
-                or not head_dim_pass
-            ):
+            if attn_mask is not None or dropout_p != 0.0 or not dtype_pass or not num_heads_pass or not head_dim_pass:
                 pruna_logger.debug(
                     "Rerouting to native attention... Check the following criteria: "
-                    f"attn_mask_pass: {attn_mask is not None}, dropout_p_pass: {dropout_p != 0.0}, dtype_pass: {dtype_pass},"
-                    f"num_heads_pass: {num_heads_pass}, head_dim_pass: {head_dim_pass}"
+                    f"attn_mask_pass: {attn_mask is not None}, dropout_p_pass: {dropout_p != 0.0}, "
+                    f"dtype_pass: {dtype_pass}, num_heads_pass: {num_heads_pass}, head_dim_pass: {head_dim_pass}"
                 )
                 return _native_attention(
                     query=query,
@@ -286,13 +273,7 @@ class FlashAttention3Context(TorchFunctionMode):
             dtype_pass = query.dtype in [torch.bfloat16, torch.float16]
             head_dim_pass = all(t.shape[3] <= 256 for t in (key, value, query))
 
-            if (
-                attn_mask_pass
-                and dropout_p_pass
-                and shapes_pass
-                and dtype_pass
-                and head_dim_pass
-            ):
+            if attn_mask_pass and dropout_p_pass and shapes_pass and dtype_pass and head_dim_pass:
                 kwargs.pop("attn_mask", None)
                 kwargs.pop("dropout_p", None)
                 kwargs.pop("enable_gqa", None)
@@ -310,14 +291,10 @@ class FlashAttention3Context(TorchFunctionMode):
             return func(*args, **kwargs)
 
 
-def _flash_attention3(
-    query, key, value, *, is_causal=False, softmax_scale=None, kernel=None
-):
+def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(
-        q, k, v, causal=is_causal, softmax_scale=softmax_scale
-    )
+    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
 
@@ -354,9 +331,7 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
     """
     flash_attn_cuda = kernel_mod.flash_attn_func
 
-    @torch.library.custom_op(
-        "flash_attn_pruna::_flash_attn_forward", mutates_args=(), device_types="cuda"
-    )
+    @torch.library.custom_op("flash_attn_pruna::_flash_attn_forward", mutates_args=(), device_types="cuda")
     def _flash_attn_forward(
         q: torch.Tensor,
         k: torch.Tensor,
@@ -364,9 +339,7 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
         softmax_scale: float | None = None,
         causal: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        out, lse = flash_attn_cuda(
-            q, k, v, softmax_scale=softmax_scale or None, causal=causal
-        )
+        out, lse = flash_attn_cuda(q, k, v, softmax_scale=softmax_scale or None, causal=causal)
         return out, lse.permute(0, 2, 1)  # (B,H,S) → (B,S,H)
 
     @torch.library.register_fake("flash_attn_pruna::_flash_attn_forward")
