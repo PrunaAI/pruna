@@ -136,7 +136,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     "flux_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-flux"),
     # text generation models
     "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
-    "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),,
+    "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
     "llama_3_tiny_random": partial(get_automodel_transformers, "llamafactory/tiny-random-Llama-3"),
     "dummy_lambda": dummy_model,
     # image generation AR models
