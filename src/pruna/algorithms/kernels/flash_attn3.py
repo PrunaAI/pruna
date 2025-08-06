@@ -199,6 +199,11 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
 
             # if any constraints are not met or unsupported input arguments are being used, reroute to native attention
             if attn_mask is not None or dropout_p != 0.0 or not dtype_pass or not num_heads_pass or not head_dim_pass:
+                pruna_logger.debug(
+                    "Rerouting to native attention... Check the following criteria: "
+                    f"attn_mask_pass: {attn_mask is not None}, dropout_p_pass: {dropout_p != 0.0}, dtype_pass: {dtype_pass},"
+                    f"num_heads_pass: {num_heads_pass}, head_dim_pass: {head_dim_pass}"
+                )
                 return _native_attention(
                     query=query,
                     key=key,
@@ -211,6 +216,7 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                     enable_gqa=enable_gqa,
                 )
             else:
+                pruna_logger.debug("Using FA3...")
                 out, _, *_ = flash_attention_3.flash_attn_func(
                     q=query,
                     k=key,
@@ -269,10 +275,14 @@ class FlashAttention3Context(TorchFunctionMode):
                 kwargs.pop("dropout_p", None)
                 kwargs.pop("enable_gqa", None)
                 kwargs["softmax_scale"] = kwargs.pop("scale", None)
-                print("Using Flash 3 attention")
+                pruna_logger.debug("Using FA3...")
                 return _flash_attention3(*args, **kwargs, kernel=self.kernel)
             else:
-                print("Rerouting to native attention")
+                pruna_logger.debug(
+                    "Rerouting to native attention... Check the following criteria: "
+                    f"attn_mask_pass: {attn_mask_pass}, dropout_p_pass: {dropout_p_pass}, shapes_pass: {shapes_pass},"
+                    f"dtype_pass: {dtype_pass}, head_dim_pass: {head_dim_pass}"
+                )
                 return func(*args, **kwargs)
         else:
             return func(*args, **kwargs)
