@@ -83,7 +83,7 @@ classifiers = [
 ]
 dependencies = [
     "torch==2.7.0",
-    "torchvision==0.22.0",
+    "torchvision==0.23.0",
     "torchmetrics[image]==1.7.4",
     "requests>=2.31.0",
     "transformers",
