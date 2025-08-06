@@ -124,6 +124,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - ✅
      - ❌
      - ➖
+   * - ``kernel``
+     - Specialized GPU routines that speed up parts of the computation.
+     - ✅
+     - ➖
+     - ➖
 
 ✅(improves), ➖(approx. the same), ❌(worsens)
 
