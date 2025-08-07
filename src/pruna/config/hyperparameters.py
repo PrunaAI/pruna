@@ -42,9 +42,9 @@ class Boolean(CategoricalHyperparameter):
         return CategoricalHyperparameter(name, choices=[True, False], default_value=default, meta=meta)
 
 
-class UserEditable(Constant):
+class UnconstrainedHyperparameter(Constant):
     """
-    Represents a hyperparameter that is freely set by the user within a pre-specified type.
+    Represents a hyperparameter that is unconstrained and can be set to any value by the user.
 
     Parameters
     ----------
