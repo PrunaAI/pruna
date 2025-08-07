@@ -140,11 +140,13 @@ def test_otlp_export_errors_not_shown_at_critical_level():
         logging.getLogger(name) for name in logging.root.manager.loggerDict if name.startswith("opentelemetry")
     ]
 
-    # Store original levels and handlers
+    # Store original levels, handlers, and propagate settings
     original_states = []
     for logger in otel_loggers:
-        original_states.append((logger, logger.level, logger.handlers.copy()))
+        original_states.append((logger, logger.level, logger.handlers.copy(), logger.propagate))
         logger.addHandler(handler)
+        # Prevent logs from propagating to console during test
+        logger.propagate = False
 
     try:
         # Configure a non-existent endpoint to force export errors
@@ -173,9 +175,10 @@ def test_otlp_export_errors_not_shown_at_critical_level():
 
     finally:
         # Restore original logger states
-        for logger, level, handlers in original_states:
+        for logger, level, handlers, propagate in original_states:
             logger.handlers = handlers
             logger.setLevel(level)
+            logger.propagate = propagate
 
 
 @pytest.mark.integration
@@ -191,11 +194,13 @@ def test_otlp_export_errors_shown_at_info_level():
         logging.getLogger(name) for name in logging.root.manager.loggerDict if name.startswith("opentelemetry")
     ]
 
-    # Store original levels and handlers
+    # Store original levels, handlers, and propagate settings
     original_states = []
     for logger in otel_loggers:
-        original_states.append((logger, logger.level, logger.handlers.copy()))
+        original_states.append((logger, logger.level, logger.handlers.copy(), logger.propagate))
         logger.addHandler(handler)
+        # Prevent logs from propagating to console during test
+        logger.propagate = False
 
     try:
         # Configure a non-existent endpoint to force export errors
@@ -224,6 +229,7 @@ def test_otlp_export_errors_shown_at_info_level():
 
     finally:
         # Restore original logger states
-        for logger, level, handlers in original_states:
+        for logger, level, handlers, propagate in original_states:
             logger.handlers = handlers
             logger.setLevel(level)
+            logger.propagate = propagate
