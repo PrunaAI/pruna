@@ -45,13 +45,12 @@ Configuration:
 
 from __future__ import annotations
 
-import contextlib
 import functools
 import inspect
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Optional, TypeVar, cast
+from typing import Any, Callable, Optional
 from uuid import uuid4
 
 import yaml
@@ -183,53 +182,51 @@ def increment_counter(function_name: str, success: bool = True, smash_config: Op
         )
 
 
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def track_usage(func: F) -> F:
+def track_usage(name_or_func: Optional[str | Callable] = None) -> Callable:
     """
-    Decorator to track function usage, preserving the original function's type hints and signature.
+    Decorator to track function usage.
 
     Parameters
     ----------
-    func : Callable
-        The function to decorate.
+    name_or_func : str or Callable, optional
+        Either a string name for the operation or the function to decorate.
+        If None, uses the decorated function's name.
 
     Returns
     -------
     Callable
-        The decorated function that tracks its usage when metrics are enabled, preserving type hints and signature.
+        The decorated function that tracks its usage when metrics are enabled.
     """
 
-    def get_full_path(function_or_method_of_class: Callable[..., Any]) -> str:
+    def get_full_path(function_or_method_of_class: Callable) -> str:
         module = inspect.getmodule(function_or_method_of_class)
         module_path = module.__name__ if module else ""
-        if hasattr(function_or_method_of_class, "__qualname__"):
+        if hasattr(
+            function_or_method_of_class, "__qualname__"
+        ):  # Handles the path within the module, e.g. part of a class
             return f"{module_path}.{function_or_method_of_class.__qualname__}"
         return f"{module_path}.{function_or_method_of_class.__name__}"
 
-    function_name = get_full_path(func)
+    def decorator(func: Callable) -> Callable:
+        function_name = name_or_func if isinstance(name_or_func, str) else get_full_path(func)
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        # Try to extract smash_config from either kwargs or from args if present in signature
-        sig = inspect.signature(func)
-        bound_args = sig.bind_partial(*args, **kwargs)
-        bound_args.apply_defaults()
-        smash_config = bound_args.arguments.get("smash_config", None)
-        smash_config_repr = repr(smash_config) if smash_config is not None else ""
-        try:
-            result = func(*args, **kwargs)
-            increment_counter(function_name, success=True, smash_config=smash_config_repr)
-            return result
-        except Exception:
-            increment_counter(function_name, success=False, smash_config=smash_config_repr)
-            raise
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            smash_config = kwargs.get("smash_config")
+            smash_config = repr(smash_config) if smash_config is not None else ""
+            try:
+                result = func(*args, **kwargs)
+                increment_counter(function_name, success=True, smash_config=smash_config)
+                return result
+            except Exception:
+                increment_counter(function_name, success=False, smash_config=smash_config)
+                raise
 
-    with contextlib.suppress(Exception):
-        wrapper.__signature__ = inspect.signature(func)  # type: ignore[attr-defined]
+        return wrapper
 
-    return cast(F, wrapper)
+    if callable(name_or_func):
+        return decorator(name_or_func)
+    return decorator
 
 
 def set_opentelemetry_log_level(level: str) -> None:

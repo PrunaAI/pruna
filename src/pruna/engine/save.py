@@ -320,7 +320,8 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
     """
     # make sure to save the pipeline along with the tokenizer
     if isinstance(model, transformers.Pipeline):
-        model.tokenizer.save_pretrained(model_path)
+        if model.tokenizer is not None:
+            model.tokenizer.save_pretrained(model_path)
         save_model_hqq(model.model, model_path, smash_config)
         return
 
