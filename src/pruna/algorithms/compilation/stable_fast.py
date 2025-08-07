@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Any, Dict
 
 from pruna.algorithms.compilation import PrunaCompiler
@@ -80,6 +81,9 @@ class StableFastCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
+        # INFO should be suppressed also for inference --> we set the level to WARNING not just temporarily
+        logging.getLogger().setLevel(logging.WARNING)
+
         imported_modules = self.import_algorithm_packages()
         config = create_config(model, imported_modules)
         cacher_type = smash_config["cacher"]
