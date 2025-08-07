@@ -364,6 +364,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     # if the model is a janus like model, we need to load the quantized model from the hqq_language_model directory
     if hqq_model_dir.exists():
         quantized_model_path = hqq_model_dir / "qmodel.pt"
+        quantized_path = str(hqq_model_dir)
         # load the weight on cpu to rename attr -> model.attr,
         # and also artifically add a random lm_head to the weights.
         weights = torch.load(quantized_model_path, map_location="cpu", weights_only=True)
