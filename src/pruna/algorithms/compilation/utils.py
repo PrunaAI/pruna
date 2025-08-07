@@ -584,7 +584,7 @@ class CausalLMGenerator:
             inputs=inputs,
             max_new_tokens=max_new_tokens,
         )
-        return self.next_token_iterator(self.prefill(), kwargs["max_new_tokens"])
+        return self.next_token_iterator(self.prefill(), max_new_tokens=max_new_tokens)
 
 
 class JanusGenerator:

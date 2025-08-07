@@ -27,7 +27,7 @@ import torch
 import transformers
 from huggingface_hub import constants, snapshot_download
 from tqdm.auto import tqdm as base_tqdm
-from transformers import pipeline
+from transformers import AutoTokenizer, pipeline
 
 from pruna import SmashConfig
 from pruna.engine.utils import load_json_config, move_to_device
@@ -355,6 +355,10 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     Any
         The loaded model.
     """
+    if isinstance(model_path, str):
+        model_path = Path(model_path)
+    pipeline_info_path = model_path / PIPELINE_INFO_FILE_NAME
+
     from pruna.algorithms.quantization.hqq import HQQQuantizer
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
@@ -407,6 +411,13 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         move_to_device(model, smash_config.device)
         return model
     else:
+        # make sure to load
+        if pipeline_info_path.exists():
+            with pipeline_info_path.open("r") as f:
+                pipeline_info = json.load(f)
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+            pipe = pipeline(pipeline_info["task"], model=quantized_model, tokenizer=tokenizer, **kwargs)
+            return pipe
         return quantized_model
 
 
