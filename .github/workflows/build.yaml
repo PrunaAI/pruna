@@ -37,15 +37,9 @@ jobs:
         run: |
           uv build
 
-      - name: Get wheel filename
-        id: get_wheel
-        run: |
-          wheel=$(basename $(ls -1 dist/*.whl))
-          echo "wheel_name=$wheel" >> $GITHUB_OUTPUT
-
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.get_wheel.outputs.wheel_name }}
+          name: wheel-python-${{ matrix.python-version }}
           path: dist/*.whl
           retention-days: 7
