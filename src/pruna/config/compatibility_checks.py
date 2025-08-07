@@ -19,7 +19,7 @@ from typing import Any
 from pruna import SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.config.smash_space import SMASH_SPACE
-from pruna.engine.utils import get_device, get_device_map, move_to_device, _resolve_cuda_device
+from pruna.engine.utils import get_device, get_device_map, move_to_device
 from pruna.logging.logger import pruna_logger
 
 

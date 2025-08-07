@@ -147,7 +147,7 @@ class EvaluationAgent:
                     "Pairwise metrics will cache the smashed model outputs. \n"
                     "Ensure this is intentional, as typically the base model outputs are cached for comparison."
                 )
-            
+
         else:
             smash_config = SmashConfig(device="cpu")
             model = PrunaModel(model, smash_config=smash_config)
@@ -168,10 +168,10 @@ class EvaluationAgent:
                 "datamodule = PrunaDataModule.from_string(dataset_name, dataloader_args={'batch_size': %d})",
                 model.smash_config.batch_size,
             )
-        
+
         # ensure the model is on the cpu
         model.move_to_device("cpu")
-        
+
         return model
 
     def update_stateful_metrics(
