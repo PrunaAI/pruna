@@ -18,7 +18,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
 
