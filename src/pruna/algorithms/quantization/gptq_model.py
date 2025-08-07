@@ -21,7 +21,7 @@ from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
 from pruna.data.utils import recover_text_from_dataloader
-from pruna.engine.model_checks import is_causal_lm
+from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import safe_memory_cleanup
 
 
@@ -90,7 +90,7 @@ class GPTQQuantizer(PrunaQuantizer):
         bool
             True if the model is a causal language model, False otherwise.
         """
-        return is_causal_lm(model)
+        return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -108,6 +108,9 @@ class GPTQQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
+        if is_transformers_pipeline_with_causal_lm(model):
+            return self._apply_to_model_within_pipeline(model, smash_config)
+
         imported_modules = self.import_algorithm_packages()
         with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             # cast original model to CPU to free memory for smashed model

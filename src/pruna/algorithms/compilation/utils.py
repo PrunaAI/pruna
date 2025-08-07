@@ -566,9 +566,23 @@ class CausalLMGenerator:
             pruna_logger.warning(f"Unhandled kwargs in generate method: {unhandled_kwargs}")
 
         # Update instance variables with any provided values
+        if "input_ids" in kwargs:
+            inputs = kwargs["input_ids"]
+        elif len(args) > 0:
+            inputs = args[0]
+        else:
+            raise ValueError("Missing required argument 'input_ids' in generate().")
+
+        if "max_new_tokens" in kwargs:
+            max_new_tokens = kwargs["max_new_tokens"]
+        elif len(args) > 1:
+            max_new_tokens = args[1]
+        else:
+            raise ValueError("Missing required argument 'max_new_tokens' in generate().")
+
         self.setup(
-            inputs=kwargs["input_ids"] if "input_ids" in kwargs else args[0],
-            max_new_tokens=kwargs["max_new_tokens"] if "max_new_tokens" in kwargs else args[1],
+            inputs=inputs,
+            max_new_tokens=max_new_tokens,
         )
         return self.next_token_iterator(self.prefill(), kwargs["max_new_tokens"])
 

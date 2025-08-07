@@ -20,7 +20,12 @@ import torch
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
-from pruna.engine.model_checks import get_diffusers_transformer_models, get_diffusers_unet_models, is_causal_lm
+from pruna.engine.model_checks import (
+    get_diffusers_transformer_models,
+    get_diffusers_unet_models,
+    is_causal_lm,
+    is_transformers_pipeline_with_causal_lm,
+)
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 from pruna.logging.utils import suppress_logging
@@ -156,7 +161,7 @@ class TorchaoQuantizer(PrunaQuantizer):
             return True
         if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_models)):
             return True
-        if is_causal_lm(model):
+        if is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model):
             return True
         return isinstance(model, torch.nn.Module)
 
@@ -176,6 +181,9 @@ class TorchaoQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
+        if is_transformers_pipeline_with_causal_lm(model):
+            return self._apply_to_model_within_pipeline(model, smash_config)
+
         # Suppress torchao INFO messages (e.g., about skipping small layers) during quantization
         with suppress_logging("torchao.quantization.quant_api"):
             if hasattr(model, "unet"):

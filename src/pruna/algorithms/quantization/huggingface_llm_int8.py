@@ -22,7 +22,7 @@ from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
-from pruna.engine.model_checks import is_causal_lm
+from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import get_device_map, move_to_device
 
 
@@ -86,7 +86,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
         bool
             True if the model is a causal language model, False otherwise.
         """
-        return is_causal_lm(model)
+        return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -104,6 +104,8 @@ class LLMInt8Quantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
+        if is_transformers_pipeline_with_causal_lm(model):
+            return self._apply_to_model_within_pipeline(model, smash_config)
         with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             # cast original model to CPU to free memory for smashed model
             device_map = get_device_map(model)

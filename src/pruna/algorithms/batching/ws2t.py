@@ -29,7 +29,7 @@ from pruna.algorithms.batching import PrunaBatcher
 from pruna.algorithms.compilation.c_translate import WhisperWrapper
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
-from pruna.engine.model_checks import is_speech_seq2seq_model
+from pruna.engine.model_checks import is_speech_seq2seq_model, is_transformers_pipeline_with_speech_recognition
 from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
@@ -84,7 +84,7 @@ class WS2TBatcher(PrunaBatcher):
             return True
         if isinstance(model, AutomaticSpeechRecognitionPipeline):
             return True
-        return bool(is_speech_seq2seq_model(model))
+        return is_speech_seq2seq_model(model) or is_transformers_pipeline_with_speech_recognition(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

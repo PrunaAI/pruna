@@ -18,6 +18,8 @@ import functools
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+from transformers import Pipeline
+
 from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import SMASH_SPACE
 from pruna.engine.save import (
@@ -181,6 +183,11 @@ class PrunaAlgorithmBase(ABC):
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """Apply the algorithm to the model."""
         pass
+
+    def _apply_to_model_within_pipeline(self, pipeline: Pipeline, smash_config: SmashConfigPrefixWrapper) -> Pipeline:
+        """Apply the algorithm to the model."""
+        pipeline.model = self._apply(pipeline.model, smash_config)
+        return pipeline
 
     def apply(self, model: Any, smash_config: SmashConfig) -> Any:
         """
