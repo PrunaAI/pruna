@@ -58,7 +58,11 @@ def collect_tester_instances(
     """Collect all model classes from a module and process them with a function."""
     parametrizations = []
     for _, cls in vars(module).items():
-        if inspect.isclass(cls) and module.__name__ in cls.__module__ and "AlgorithmTesterBase" not in cls.__name__:
+        if (
+            inspect.isclass(cls)
+            and module.__name__ in cls.__module__
+            and "AlgorithmTesterBase" not in cls.__name__
+        ):
             model_parametrizations = getattr(cls, model_attr)
             markers = getattr(cls, "pytestmark", [])
             if not isinstance(markers, list):
@@ -66,25 +70,35 @@ def collect_tester_instances(
             for model in model_parametrizations:
                 parameters = process_fn(cls, model)
                 idx = f"{cls.__name__}_{model}"
-                parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
+                parametrizations.append(
+                    pytest.param(*parameters, marks=markers, id=idx)
+                )
     return parametrizations
 
 
-def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig]) -> None:
+def run_full_integration(
+    algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig]
+) -> None:
     """Run the full integration test."""
     try:
         model, smash_config = model_fixture[0], model_fixture[1]
         if device not in algorithm_tester.compatible_devices():
-            pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
+            pytest.skip(
+                f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}"
+            )
         algorithm_tester.prepare_smash_config(smash_config, device)
-        device_map = construct_device_map_manually(model) if device == "accelerate" else None
+        device_map = (
+            construct_device_map_manually(model) if device == "accelerate" else None
+        )
         move_to_device(model, device=smash_config["device"], device_map=device_map)
         assert device == get_device(model)
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
         reloaded_model = algorithm_tester.execute_load()
-        algorithm_tester.execute_evaluation(reloaded_model, smash_config.data, smash_config["device"])
+        algorithm_tester.execute_evaluation(
+            reloaded_model, smash_config.data, smash_config["device"]
+        )
         reloaded_model.destroy()
     finally:
         algorithm_tester.final_teardown(smash_config)
@@ -116,13 +130,21 @@ def construct_device_map_manually(model: Any) -> dict:
 
         return infer_auto_device_map(
             model,
-            max_memory={0: model_size - EPS_MEMORY_SIZE, 1: model_size - EPS_MEMORY_SIZE},
+            max_memory={
+                0: model_size - EPS_MEMORY_SIZE,
+                1: model_size - EPS_MEMORY_SIZE,
+            },
             no_split_module_classes=NO_SPLIT_MODULES_ACCELERATE,
         )
     else:
         # make sure a pipelines components are distributed by putting the first half on GPU 0, second half on GPU 1
         device_map = {}
-        components = list(filter(lambda x: isinstance(getattr(model, x), torch.nn.Module), model.components.keys()))
+        components = list(
+            filter(
+                lambda x: isinstance(getattr(model, x), torch.nn.Module),
+                model.components.keys(),
+            )
+        )
         for i, component in enumerate(components):
             device_map[component] = int(i > len(components) / 2)
         return device_map
@@ -194,11 +216,17 @@ def get_all_imports(package: str) -> set[str]:
 
 def run_script_successfully(script_file: Path) -> None:
     """Run the script and return the result."""
-    result = subprocess.run(["python", str(script_file)], capture_output=True, text=True)
+    result = subprocess.run(
+        ["python", str(script_file)], capture_output=True, text=True
+    )
     run_ruff_linting(script_file)
     script_file.unlink()
 
-    assert result.returncode == 0, f"Notebook failed with error:\n{result.stderr}"
+    max_err_len = 300
+    err_msg = result.stderr
+    if len(err_msg) > max_err_len:
+        err_msg = "... (truncated) ..." + err_msg[-max_err_len:]
+    assert result.returncode == 0, f"Notebook failed with error:\n{err_msg}"
 
 
 def convert_notebook_to_script(notebook_file: Path, expected_script_file: Path) -> None:
@@ -225,7 +253,11 @@ def convert_notebook_to_script(notebook_file: Path, expected_script_file: Path) 
 
     # Read the script, filter out lines starting with '!'
     content = expected_script_file.read_text()
-    filtered_lines = [line for line in content.splitlines() if not line.lstrip().startswith(("!", "get_ipython"))]
+    filtered_lines = [
+        line
+        for line in content.splitlines()
+        if not line.lstrip().startswith(("!", "get_ipython"))
+    ]
 
     expected_script_file.write_text("\n".join(filtered_lines) + "\n")
 
@@ -246,7 +278,9 @@ def run_ruff_linting(file_path: str) -> None:
     )
 
     if result.returncode != 0:
-        raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
+        raise AssertionError(
+            f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}"
+        )
 
 
 def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
