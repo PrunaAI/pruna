@@ -19,7 +19,7 @@ from typing import Any
 from pruna import SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.config.smash_space import SMASH_SPACE
-from pruna.engine.utils import get_device, get_device_map, move_to_device
+from pruna.engine.utils import get_device, get_device_map, move_to_device, _resolve_cuda_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -48,8 +48,9 @@ def ensure_device_consistency(model, smash_config):
                 raise ValueError("Device map indicates CPU offloading, this is not supported at this time.")
             else:
                 smash_config.device_map = hf_device_map
-    elif any(device in smash_config.device for device in _device_options) and any(
-        device in model_device for device in _device_options
+    # test if deve or device index index like cuda:0, cpu:1, mps:0, match options
+    elif any(smash_config.device.startswith(device) for device in _device_options) and any(
+        model_device.startswith(device) for device in _device_options
     ):
         pruna_logger.warning(
             (
@@ -59,7 +60,6 @@ def ensure_device_consistency(model, smash_config):
             )
         )
         move_to_device(model, smash_config.device)
-
     elif smash_config.device == "accelerate" or model_device == "accelerate":
         pruna_logger.warning(
             (

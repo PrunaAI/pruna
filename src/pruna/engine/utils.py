@@ -154,8 +154,21 @@ def move_to_device(
             # transformers model maintain single-device models with a None map, diffusers does not
             # Parse device index from device string for proper device mapping
             if device_str.startswith("cuda:"):
-                device_index = int(device_str.split(":")[1])
-                model.hf_device_map = {"": device_index}
+                try:
+                    # Use robust helper for CUDA device parsing
+                    device_index = _resolve_cuda_device(device_str)
+                    model.hf_device_map = {"": int(device_index.split(":")[-1])}
+                except Exception as e:
+                    error_msg = (
+                        f"Failed to parse CUDA device string '{device_str}' when moving model from 'accelerate'. "
+                        f"Error: {str(e)}"
+                    )
+                    if raise_error:
+                        raise ValueError(error_msg) from e
+                    else:
+                        pruna_logger.warning(error_msg)
+                        # Fallback to default device 0 if parsing fails
+                        model.hf_device_map = {"": 0}
             else:
                 model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
         try:
