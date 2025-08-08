@@ -76,27 +76,8 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" },
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'" },
 ]
-fast-hadamard-transform = [
-  { index = "pruna_internal" }
-]
-flute-kernel = [
-  { index = "pruna_internal" }
-]
-pit = [
-  { index = "pruna_internal" }
-]
-pruna = [
-  { index = "pruna_internal" }
-]
-pruna-engine = [
-  { index = "pruna_internal" }
-]
-pruna-launch-party = [
-  { index = "pruna_internal" }
-]
-pruna-pro = [
-  { index = "pruna_internal" }
-]
+
+
 stable-fast = [
   { index = "pruna_internal" }
 ]
