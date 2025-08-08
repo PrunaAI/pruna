@@ -26,7 +26,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
 from pruna.engine.load import load_pruna_model, load_pruna_model_from_pretrained
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import get_nn_modules, move_to_device, set_to_best_available_device, set_to_eval
+from pruna.engine.utils import get_device, get_nn_modules, move_to_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -91,8 +91,13 @@ class PrunaModel:
         Any
             The processed output.
         """
-        device = set_to_best_available_device(device)
-        batch = self.inference_handler.move_inputs_to_device(batch, device)  # type: ignore
+        if self.model is None:
+            raise ValueError("No more model available, this model is likely destroyed.")
+
+        # Rather than giving a device to the inference call,
+        # we should run the inference on the device of the model.
+        model_device = get_device(self.model)
+        batch = self.inference_handler.move_inputs_to_device(batch, model_device)
 
         if not isinstance(batch, tuple):
             batch = (batch, {})
