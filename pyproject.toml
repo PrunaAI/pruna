@@ -61,8 +61,6 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" },
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'" },
 ]
-
-
 stable-fast = [
   { index = "pruna_internal" }
 ]
