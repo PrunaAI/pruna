@@ -64,21 +64,17 @@ testpaths = [
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"  # regular PyPI
-default = true # default = True makes this index the lowest prio
 
 [[tool.uv.index]]
 name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"  # Pruna Pythonanywhere
-default = false # default = True makes this index the highest prio
+default = true # default = True makes this index the lowe prio
 
 [tool.uv.sources]
 # Ensure all custom Pruna packages are sourced from pruna_internal by default, unless on Apple Silicon Darwin
 gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" },
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'" },
-]
-stable-fast = [
-  { index = "pruna_internal" }
 ]
 
 [project]
