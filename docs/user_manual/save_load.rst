@@ -20,7 +20,6 @@ Basic Save and Load Workflow
             direction LR
             F["Model Files"] --> G{"Load Method"}
             G --> H1["from_pretrained('saved_model/')"]
-            G --> H2["from_hub('PrunaAI/saved_model')"]
             H1 --> I["Pruna Model"]
             H2 --> I
         end
@@ -37,7 +36,7 @@ Basic Save and Load Workflow
             direction LR
             A["PrunaModel"] --> B{"Save Method"}
             B --> C1["save_pretrained('saved_model/')"]
-            B --> C2["save_to_hub('PrunaAI/saved_model')"]
+            B --> C2["push_to_hub('PrunaAI/saved_model')"]
             C1 --> D["Model Files"]
             C2 --> D
         end
@@ -74,15 +73,15 @@ Let's see what that looks like in code.
     smashed_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the model
-    smashed_model.save_pretrained("saved_model/")  # or save_to_hub
+    smashed_model.save_pretrained("saved_model/")  # or push_to_hub
 
     # Load the model
-    loaded_model = PrunaModel.from_pretrained("saved_model/")  # or from_hub
+    loaded_model = PrunaModel.from_pretrained("saved_model/")
 
 Saving a ``PrunaModel``
 -----------------------
 
-To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaModel.save_to_hub()`` method. This method saves all necessary model files and as well as the smash configuration to the specified directory:
+To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaModel.push_to_hub()`` method. This method saves all necessary model files and as well as the smash configuration to the specified directory:
 
 .. tabs::
 
@@ -120,7 +119,7 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
-            smashed_model.save_to_hub("PrunaAI/Segmind-Vega-smashed")
+            smashed_model.push_to_hub("PrunaAI/Segmind-Vega-smashed")
 
         .. tip::
 
@@ -134,7 +133,7 @@ The save operation will:
 Loading a ``PrunaModel``
 ------------------------
 
-To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained()`` or ``PrunaModel.from_hub()`` class method:
+To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained()`` to load it from a local directory or from the Hugging Face Hub:
 
 .. tabs::
 
@@ -153,7 +152,7 @@ To load a previously saved ``PrunaModel``, use the ``PrunaModel.from_pretrained(
 
             from pruna import PrunaModel
 
-            loaded_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
+            loaded_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
 
 The load operation will:
 
@@ -181,7 +180,7 @@ you should also load the smashed model as follows:
 
     from pruna import PrunaModel
 
-    loaded_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed", torch_dtype=torch.float16)
+    loaded_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed", torch_dtype=torch.float16)
 
 Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
 In that case, we discard and log a warning about unused keyword arguments.

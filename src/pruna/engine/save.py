@@ -168,26 +168,25 @@ def save_pruna_model_to_hub(
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
-        # derive pruna library from initalized module
+        # derive the version of the pruna library from initalized module as OSS or paid so we can use the same method for both
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
         model_card_data["tags"] = [f"{pruna_library}-ai", "safetensors"]
+        # Build the template parameters dictionary for clarity and maintainability
+        template_params: dict = {
+            "repo_id": repo_id,
+            "base_repo_id": model_name_or_path,
+            "smash_config": json.dumps(smash_config_data, indent=4),
+            "library_name": model_card_data.library_name,
+            "pruna_model_class": instance.__class__.__name__,
+            "pruna_library": pruna_library,
+        }
+        # Remove any parameters with None values to avoid passing them to the template
+        template_params = {k: v for k, v in template_params.items() if v is not None}
+
         model_card = ModelCard.from_template(
             card_data=model_card_data,
             template_path=str(template_path),
-            **{
-                **{
-                    k: v
-                    for k, v in {
-                        "repo_id": repo_id,
-                        "base_repo_id": model_name_or_path,
-                        "smash_config": json.dumps(smash_config_data, indent=4),
-                        "library_name": model_card_data.library_name,
-                        "pruna_model_class": instance.__class__.__name__,
-                        "pruna_library": pruna_library,
-                    }.items()
-                    if v is not None
-                },
-            },
+            **template_params,
         )
         model_card.save(model_path_pathlib / "README.md")
 

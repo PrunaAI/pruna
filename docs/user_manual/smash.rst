@@ -115,7 +115,7 @@ Let's use the ``smash()`` function to apply the configured optimizations:
     optimized_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the optimized model
-    optimized_model.save_to_hub("PrunaAI/Segmind-Vega-smashed")
+    optimized_model.push_to_hub("PrunaAI/Segmind-Vega-smashed")
 
 The ``smash()`` function returns a ``PrunaModel`` - a wrapper that provides a standardized interface for the optimized model. So, we can still use the model as we would use the original one.
 
@@ -132,7 +132,7 @@ To evaluate the optimized model, we can use the same interface as the original m
     from pruna.evaluation.task import Task
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
 
     # Define metrics
     metrics = ['clip_score', 'psnr']
@@ -158,7 +158,7 @@ To run inference with the optimized model, we can use the same interface as the 
     from pruna.engine.pruna_model import PrunaModel
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
 
     optimized_model.set_progress_bar_config(disable=True)
 

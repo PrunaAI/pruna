@@ -81,7 +81,7 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     return model, smash_config
 
 
-def load_pruna_model_from_hub(
+def load_pruna_model_from_pretrained(
     repo_id: str,
     revision: Optional[str] = None,
     cache_dir: Union[str, Path, None] = None,
