@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, List
 
 import torch
 import transformers
-from huggingface_hub import upload_large_folder
+from huggingface_hub import ModelCard, upload_large_folder
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
 from pruna.engine.load import (
@@ -152,29 +152,29 @@ def save_pruna_model_to_hub(
         with (model_path_pathlib / SMASH_CONFIG_FILE_NAME).open() as f:
             smash_config_data = json.load(f)
 
-        # Determine the library name from the smash config
-        if "diffusers" in model.__module__:
-            library_name = "diffusers"
-        elif "transformers" in model.__module__:
-            library_name = "transformers"
-        else:
-            library_name = None
+        # Load the base model card
+        base_model_card = ModelCard.load(repo_id_or_path=model.name_or_path, repo_type="model")
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
-        template = template_path.read_text()
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
-        content = template.format(
-            repo_id=repo_id,
-            smash_config=json.dumps(smash_config_data, indent=4),
-            library_name=library_name,
-            pruna_model_class=instance.__class__.__name__,
-            pruna_library=pruna_library,
+        smashed_model_card_data = base_model_card.data
+        smashed_model_card_data["tags"].append(f"{pruna_library}-ai")
+        model_card = ModelCard.from_template(
+            card_data=smashed_model_card_data,
+            template_path=str(template_path),
+            **{
+                "repo_id": repo_id,
+                "smash_config": json.dumps(smash_config_data, indent=4),
+                "library_name": smashed_model_card_data.library_name,
+                "pruna_model_class": instance.__class__.__name__,
+                "pruna_library": pruna_library,
+            },
         )
+        model_card.save(model_path_pathlib / "README.md")
+        import pdb
 
-        # Define the path for the README file and write the formatted content to it
-        readme_path = model_path_pathlib / "README.md"
-        readme_path.write_text(content)
+        pdb.set_trace()
 
         # Upload the contents of the temporary directory to the specified repository on the hub
         upload_large_folder(
