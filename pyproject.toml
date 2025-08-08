@@ -56,9 +56,10 @@ url = "https://prunaai.pythonanywhere.com/simple/"  # Pruna Pythonanywhere
 default = true # default = True makes this index the lowest prio
 
 [tool.uv.sources]
+# Ensure all custom Pruna packages are sourced from pruna_internal by default, unless on Apple Silicon Darwin
 gptqmodel = [
-  { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
-  { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
+  { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" },
+  { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'" },
 ]
 
 [project]
