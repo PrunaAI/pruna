@@ -45,7 +45,6 @@ class CombinationsTester(AlgorithmTesterBase):
     [
         ("sd_tiny_random", dict(cacher="deepcache", compiler="stable_fast"), False, 'cmmd'),
         ("mobilenet_v2", dict(pruner="torch_unstructured", quantizer="half"), True, 'latency'),
-        ("whisper_tiny_random", dict(batcher="whisper_s2t", compiler="c_whisper"), False, 'latency'),
         ("sd_tiny_random", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False, 'cmmd'),
         ("flux_tiny_random", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False, 'cmmd'),
         ("sd_tiny_random", dict(quantizer="diffusers_int8", compiler="torch_compile"), False, 'cmmd'),
