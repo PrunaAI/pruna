@@ -274,7 +274,7 @@ Underneath you can find the list of all the available datasets.
      - ``image_classification_collate``
      - ``image: PIL.Image.Image``, ``label: int``
    * - Audio Processing
-     - `CommonVoice <https://huggingface.co/datasets/mozilla-foundation/common_voice_1_0>`_, `AIPodcast <https://huggingface.co/datasets/reach-vb/random-audios>`_
+     - `CommonVoice <https://huggingface.co/datasets/mozilla-foundation/common_voice_1_0>`_, `AIPodcast <https://huggingface.co/datasets/reach-vb/random-audios/blob/main/sam_altman_lex_podcast_367.flac>`_, `MiniPresentation <https://huggingface.co/datasets/reach-vb/random-audios/blob/main/4469669-10.mp3>`_
      - ``audio_processing_collate``
      - ``audio: Optional[torch.Tensor]``, ``path: Optional[str]``, ``sentence: str``
    * - Question Answering

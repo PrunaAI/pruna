@@ -53,7 +53,7 @@ def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
-    model_id = "yujiepan/whisper-v3-tiny-random"
+    model_id = "PrunaAI/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
         model=model_id,
@@ -61,7 +61,7 @@ def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
         device_map="cpu",
     )
     smash_config = SmashConfig()
-    smash_config.add_data("AIPodcast")
+    smash_config.add_data("MiniPresentation")
     smash_config.add_tokenizer(model_id)
     smash_config.add_processor(model_id)
     return model, smash_config
