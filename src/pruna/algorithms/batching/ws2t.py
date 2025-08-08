@@ -138,7 +138,7 @@ class WS2TBatcher(PrunaBatcher):
                 processor = processor.backend_tokenizer
             else:
                 processor = Tokenizer.from_pretrained(processor.tokenizer.name_or_path)
-            processor.save(Path(model.output_dir) / "tokenizer.json")
+            processor.save(str(Path(model.output_dir) / "tokenizer.json"))
         else:
             pruna_logger.error("Please pass a Huggingface Whisper Processor.")
 
