@@ -168,7 +168,7 @@ def save_pruna_model_to_hub(
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
-        # derive the version of the pruna library from initalized module as OSS or paid so we can use the same method for both
+        # Get the pruna library version from initalized module as OSS or paid so we can use the same method for both
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
         model_card_data["tags"] = [f"{pruna_library}-ai", "safetensors"]
         # Build the template parameters dictionary for clarity and maintainability
