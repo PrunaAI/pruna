@@ -88,7 +88,7 @@ First, load any pre-trained model. Here's an example using Stable Diffusion:
 
 ```python
 from diffusers import StableDiffusionPipeline
-base_model = StableDiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
+base_model = StableDiffusionPipeline.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5")
 ```
 
 Then, use Pruna's `smash` function to optimize your model. Pruna provides a variety of different optimization algorithms, allowing you to combine different algorithms to get the best possible results. You can customize the optimization process using `SmashConfig`:
