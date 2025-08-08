@@ -2,7 +2,7 @@ from typing import Any, Callable
 
 import pytest
 from transformers import AutoTokenizer
-from datasets import Dataset 
+from datasets import Dataset
 from torch.utils.data import TensorDataset
 import torch
 from pruna.data.datasets.image import setup_imagenet_dataset
