@@ -21,7 +21,6 @@ Basic Save and Load Workflow
             F["Model Files"] --> G{"Load Method"}
             G --> H1["from_pretrained('saved_model/')"]
             H1 --> I["Pruna Model"]
-            H2 --> I
         end
 
         subgraph Model["Model Files"]
@@ -174,7 +173,7 @@ So, when the base model was loaded with e.g. a specific precision:
 
     base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega", torch_dtype=torch.float16)
 
-you should also load the smashed model as follows:
+You should also load the smashed model as follows:
 
 .. code-block:: python
 

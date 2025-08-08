@@ -344,6 +344,11 @@ class PrunaModel:
             )
             model_source = model_path
         else:
+            if pretrained_model_name_or_path is None:
+                raise ValueError(
+                    "You must provide a value for `pretrained_model_name_or_path`. "
+                    "Received None. Please specify a valid model path or repository ID."
+                )
             model_source = str(pretrained_model_name_or_path)
 
         if not verbose:

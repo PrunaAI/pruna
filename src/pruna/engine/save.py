@@ -157,7 +157,7 @@ def save_pruna_model_to_hub(
 
         # Load the base model card if repo exists on Hub
         model_name_or_path = getattr(model, "name_or_path", None)
-        if repo_exists(repo_id=str(model_name_or_path), repo_type="model") and model_name_or_path is not None:
+        if model_name_or_path is not None and repo_exists(repo_id=str(model_name_or_path), repo_type="model"):
             model_card_data = ModelCard.load(repo_id_or_path=model.name_or_path, repo_type="model", token=hf_token).data
         else:
             model_card_data = ModelCardData()
