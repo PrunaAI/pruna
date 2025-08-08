@@ -64,11 +64,12 @@ testpaths = [
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"  # regular PyPI
+default = true # default = True makes this index the lowest prio
 
 [[tool.uv.index]]
 name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"  # Pruna Pythonanywhere
-default = true # default = True makes this index the lowest prio
+default = false # default = True makes this index the highest prio
 
 [tool.uv.sources]
 # Ensure all custom Pruna packages are sourced from pruna_internal by default, unless on Apple Silicon Darwin
