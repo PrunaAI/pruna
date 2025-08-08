@@ -48,7 +48,7 @@ def ensure_device_consistency(model, smash_config):
                 raise ValueError("Device map indicates CPU offloading, this is not supported at this time.")
             else:
                 smash_config.device_map = hf_device_map
-    # test if deve or device index index like cuda:0, cpu:1, mps:0, match options
+    # Check if the device or device index (e.g., 'cuda:0', 'cpu:1', 'mps:0') matches any of the valid device options
     elif any(smash_config.device.startswith(device) for device in _device_options) and any(
         model_device.startswith(device) for device in _device_options
     ):
