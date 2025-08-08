@@ -244,7 +244,7 @@ Example 3: Speech Recognition Optimization
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Download and transcribe audio sample
-    audio_url = "https://huggingface.co/datasets/reach-vb/random-audios/blob/main/4469669-10.mp3"
+    audio_url = "https://huggingface.co/datasets/reach-vb/random-audios/resolve/main/4469669-10.mp3"
     audio_file = "4469669-10.mp3"
 
     # Download audio file

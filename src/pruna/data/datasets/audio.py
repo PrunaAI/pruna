@@ -69,7 +69,7 @@ def setup_mini_presentation_audio_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     return _download_audio_and_select_sample("4469669-10.mp3")
 
 
-def _download_audio_and_select_sample(file_id: str) -> List[Dataset]:
+def _download_audio_and_select_sample(file_id: str) -> Tuple[Dataset, Dataset, Dataset]:
     load_dataset("reach-vb/random-audios", trust_remote_code=True)
     cache_path = os.environ.get("HUGGINGFACE_HUB_CACHE")
     if cache_path is None:
