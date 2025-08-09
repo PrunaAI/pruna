@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import Any
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
+from optimum.quanto import Calibration, freeze, quantize
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -101,8 +102,6 @@ class QuantoQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
-        imported_modules = self.import_algorithm_packages()
-
         if hasattr(model, "unet"):
             working_model = model.unet
         elif hasattr(model, "transformer"):
@@ -110,14 +109,16 @@ class QuantoQuantizer(PrunaQuantizer):
         else:
             working_model = model
 
-        weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
+        import optimum.quanto as quanto
+
+        weights = getattr(quanto, smash_config["weight_bits"])
         if smash_config["act_bits"] is not None:
-            activations = getattr(imported_modules["optimum"].quanto, smash_config["act_bits"])
+            activations = getattr(quanto, smash_config["act_bits"])
         else:
             activations = None
 
         try:
-            imported_modules["quantize"](working_model, weights=weights, activations=activations)
+            quantize(working_model, weights=weights, activations=activations)
         except Exception as e:
             pruna_logger.error("Error during quantization: %s", e)
             raise
@@ -125,7 +126,7 @@ class QuantoQuantizer(PrunaQuantizer):
         if smash_config["calibrate"]:
             if smash_config.tokenizer is not None and smash_config.data is not None:
                 try:
-                    with imported_modules["Calibration"](streamline=True, debug=False):
+                    with Calibration(streamline=True, debug=False):
                         calibrate(
                             working_model,
                             smash_config.val_dataloader(),
@@ -140,25 +141,11 @@ class QuantoQuantizer(PrunaQuantizer):
                 pruna_logger.error("Calibration requires a tokenizer and dataloader. Skipping calibration.")
 
         try:
-            imported_modules["freeze"](working_model)
+            freeze(working_model)
         except Exception as e:
             pruna_logger.error("Error while freezing the model: %s", e)
             raise
         return model
-
-    def import_algorithm_packages(self) -> Dict[str, Any]:
-        """
-        Provide a algorithm packages for the algorithm.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The algorithm packages.
-        """
-        import optimum
-        from optimum.quanto import Calibration, freeze, quantize
-
-        return dict(Calibration=Calibration, freeze=freeze, quantize=quantize, optimum=optimum)
 
 
 @torch.no_grad()
