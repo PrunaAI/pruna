@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import shutil
 import tempfile
 from enum import Enum
@@ -25,7 +24,7 @@ from typing import TYPE_CHECKING, Any, List
 
 import torch
 import transformers
-from huggingface_hub import upload_large_folder
+from huggingface_hub import ModelCard, ModelCardData, login, repo_exists, upload_large_folder
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
 from pruna.engine.load import (
@@ -56,8 +55,9 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    if not os.path.exists(model_path):
-        os.makedirs(model_path, exist_ok=True)
+    model_path = Path(model_path)
+    if not model_path.exists():
+        model_path.mkdir(parents=True, exist_ok=True)
 
     if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
         save_torch_artifacts(model, model_path, smash_config)
@@ -108,6 +108,7 @@ def save_pruna_model_to_hub(
     num_workers: int | None = None,
     print_report: bool = True,
     print_report_every: int = 60,
+    hf_token: str | None = None,
 ) -> None:
     """
     Save the model to the Hugging Face Hub.
@@ -138,6 +139,8 @@ def save_pruna_model_to_hub(
         Whether to print the report.
     print_report_every : int, optional
         The print report every.
+    hf_token : str | None
+        The Hugging Face token to use for authentication to push models to the Hub.
     """
     # Create a temporary directory within the specified folder path to store the model files
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -152,31 +155,44 @@ def save_pruna_model_to_hub(
         with (model_path_pathlib / SMASH_CONFIG_FILE_NAME).open() as f:
             smash_config_data = json.load(f)
 
-        # Determine the library name from the smash config
-        if "diffusers" in model.__module__:
-            library_name = "diffusers"
-        elif "transformers" in model.__module__:
-            library_name = "transformers"
+        # Load the base model card if repo exists on Hub
+        model_name_or_path = getattr(model, "name_or_path", None)
+        if model_name_or_path is not None and repo_exists(repo_id=str(model_name_or_path), repo_type="model"):
+            model_card_data = ModelCard.load(repo_id_or_path=model.name_or_path, repo_type="model", token=hf_token).data
         else:
-            library_name = None
+            model_card_data = ModelCardData()
+            if "diffusers" in model.__module__:
+                model_card_data["library_name"] = "diffusers"
+            elif "transformers" in model.__module__:
+                model_card_data["library_name"] = "transformers"
 
         # Format the content for the README using the template and the loaded configuration data
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
-        template = template_path.read_text()
+        # Get the pruna library version from initalized module as OSS or paid so we can use the same method for both
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
-        content = template.format(
-            repo_id=repo_id,
-            smash_config=json.dumps(smash_config_data, indent=4),
-            library_name=library_name,
-            pruna_model_class=instance.__class__.__name__,
-            pruna_library=pruna_library,
-        )
+        model_card_data["tags"] = [f"{pruna_library}-ai", "safetensors"]
+        # Build the template parameters dictionary for clarity and maintainability
+        template_params: dict = {
+            "repo_id": repo_id,
+            "base_repo_id": model_name_or_path,
+            "smash_config": json.dumps(smash_config_data, indent=4),
+            "library_name": model_card_data.library_name,
+            "pruna_model_class": instance.__class__.__name__,
+            "pruna_library": pruna_library,
+        }
+        # Remove any parameters with None values to avoid passing them to the template
+        template_params = {k: v for k, v in template_params.items() if v is not None}
 
-        # Define the path for the README file and write the formatted content to it
-        readme_path = model_path_pathlib / "README.md"
-        readme_path.write_text(content)
+        model_card = ModelCard.from_template(
+            card_data=model_card_data,
+            template_path=str(template_path),
+            **template_params,
+        )
+        model_card.save(model_path_pathlib / "README.md")
 
         # Upload the contents of the temporary directory to the specified repository on the hub
+        if hf_token:
+            login(token=hf_token)
         upload_large_folder(
             repo_id=repo_id,
             folder_path=model_path_pathlib,
@@ -212,7 +228,8 @@ def original_save_fn(model: Any, model_path: str | Path, smash_config: SmashConf
         # save dtype of the model as diffusers does not provide this at the moment
         dtype = determine_dtype(model)
         # save dtype
-        with open(os.path.join(model_path, "dtype_info.json"), "w") as f:
+        dtype_info_path = Path(model_path) / "dtype_info.json"
+        with dtype_info_path.open("w") as f:
             json.dump({"dtype": str(dtype).split(".")[-1]}, f)
 
     elif "transformers" in model.__module__:
@@ -247,10 +264,10 @@ def save_pipeline_info(pipeline_obj: Any, save_directory: str | Path) -> None:
         "task": pipeline_obj.task,
     }
 
-    filepath = os.path.join(save_directory, PIPELINE_INFO_FILE_NAME)
+    filepath = Path(save_directory) / PIPELINE_INFO_FILE_NAME
 
-    with open(filepath, "w") as f:
-        json.dump(info, f)
+    with filepath.open("w") as fp:
+        json.dump(info, fp)
 
 
 def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -266,19 +283,21 @@ def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashCon
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    save_dir = os.path.join(smash_config.cache_dir, SAVE_BEFORE_SMASH_CACHE_DIR)
+    save_dir = Path(smash_config.cache_dir) / SAVE_BEFORE_SMASH_CACHE_DIR
 
     # load old smash config to get load_fn assigned previously
     # load json directly from file
-    with open(os.path.join(save_dir, SMASH_CONFIG_FILE_NAME), "r") as f:
+    smash_config_path = save_dir / SMASH_CONFIG_FILE_NAME
+    with smash_config_path.open("r") as f:
         old_smash_config = json.load(f)
+
     smash_config.load_fns.extend(old_smash_config["load_fns"])
     smash_config.load_fns = list(set(smash_config.load_fns))
     del old_smash_config
 
     # move files in save dir into model path
-    for file in os.listdir(save_dir):
-        shutil.move(os.path.join(save_dir, file), os.path.join(model_path, file))
+    for file in save_dir.iterdir():
+        shutil.move(file, Path(model_path) / file.name)
 
 
 def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -298,7 +317,7 @@ def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) 
     smash_helpers = get_helpers(model)
     for helper in smash_helpers:
         getattr(model, helper).disable()
-    torch.save(model, os.path.join(model_path, PICKLED_FILE_NAME))
+    torch.save(model, Path(model_path) / PICKLED_FILE_NAME)
     smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
 
@@ -315,15 +334,22 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+    # make sure to save the pipeline along with the tokenizer
+    if isinstance(model, transformers.Pipeline):
+        if model.tokenizer is not None:
+            model.tokenizer.save_pretrained(model_path)
+        save_model_hqq(model.model, model_path, smash_config)
+        return
+
     from pruna.algorithms.quantization.hqq import HQQQuantizer
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
 
     # we need to create a separate path for the quantized model
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        quantized_path = os.path.join(str(model_path), "hqq_language_model")
+        quantized_path = Path(model_path) / "hqq_language_model"
     else:
-        quantized_path = str(model_path)
+        quantized_path = Path(model_path)
 
     # save the quantized model only.
     with ModelContext(model) as (pipeline, working_model, denoiser_type):
@@ -345,9 +371,13 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         hqq_config = copy.deepcopy(model.config.text_config)
         # for re-loading the model, hqq expects the architecture to be LlamaForCausalLM
         hqq_config.architectures = ["LlamaForCausalLM"]
-        os.makedirs(quantized_path, exist_ok=True)
-        with open(os.path.join(quantized_path, "config.json"), "w") as f:
+
+        quantized_path.mkdir(parents=True, exist_ok=True)
+
+        config_path = quantized_path / "config.json"
+        with config_path.open("w") as f:
             json.dump(hqq_config.to_dict(), f, indent=2)
+
         model.model.language_model = transformer_backup
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
@@ -371,11 +401,17 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         construct_base_class,
     )
 
+    model_path = Path(model_path)
+
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
+
+    with (model_path / "dtype_info.json").open("w") as f:
+        json.dump({"dtype": str(model.dtype).split(".")[-1]}, f)
+
     if hasattr(model, "transformer"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, model_path / "backbone_quantized")
         transformer_backup = model.transformer
         model.transformer = None
         # save the rest of the pipeline
@@ -383,7 +419,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         model.transformer = transformer_backup
     elif hasattr(model, "unet"):
         # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, os.path.join(model_path, "backbone_quantized"))
+        auto_hqq_hf_diffusers_model.save_quantized(model.unet, model_path / "backbone_quantized")
         unet_backup = model.unet
         model.unet = None
         # save the rest of the pipeline
@@ -418,8 +454,8 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
             "Model has not been run before. Please run the model before saving to construct the compilation graph."
         )
 
-    with open(os.path.join(model_path, "artifact_bytes.bin"), "wb") as f:
-        f.write(artifact_bytes)
+    artifact_path = Path(model_path) / "artifact_bytes.bin"
+    artifact_path.write_bytes(artifact_bytes)
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
 

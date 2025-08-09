@@ -14,6 +14,7 @@ class TestDeepCache(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = DeepCacheCacher
+    metrics = ["ssim"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -24,9 +25,10 @@ class TestFORA(AlgorithmTesterBase):
     """Test the fora algorithm."""
 
     models = ["flux_tiny_random"]
-    reject_models = ["opt_125m"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = FORACacher
+    metrics = ["lpips", "throughput"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -37,9 +39,10 @@ class TestFasterCache(AlgorithmTesterBase):
     """Test the fastercache algorithm."""
 
     models = ["flux_tiny_random"]
-    reject_models = ["opt_125m"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = FasterCacheCacher
+    metrics = ["pairwise_clip_score"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
@@ -50,9 +53,10 @@ class TestPAB(AlgorithmTesterBase):
     """Test the PAB algorithm."""
 
     models = ["flux_tiny_random"]
-    reject_models = ["opt_125m"]
+    reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = PABCacher
+    metrics = ["psnr"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""

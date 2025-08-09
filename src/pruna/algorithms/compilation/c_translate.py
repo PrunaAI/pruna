@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import sys
 from argparse import Namespace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import torch
@@ -32,7 +33,12 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from pruna.algorithms.compilation import PrunaCompiler
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.model_checks import is_causal_lm, is_translation_model
+from pruna.engine.model_checks import (
+    is_causal_lm,
+    is_transformers_pipeline_with_causal_lm,
+    is_transformers_pipeline_with_seq2seq_lm,
+    is_translation_model,
+)
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -122,6 +128,8 @@ class CTranslateCompiler(PrunaCompiler):
             (isinstance(model.config, WhisperConfig) and self.algorithm_name == "c_whisper")
             or (is_translation_model(model) and self.algorithm_name == "c_translate")
             or (is_causal_lm(model) and self.algorithm_name == "c_generate")
+            or (is_transformers_pipeline_with_causal_lm(model) and self.algorithm_name == "c_generate")
+            or (is_transformers_pipeline_with_seq2seq_lm(model) and self.algorithm_name == "c_translate")
         )
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
@@ -140,6 +148,9 @@ class CTranslateCompiler(PrunaCompiler):
         Any
             The compiled model.
         """
+        if is_transformers_pipeline_with_causal_lm(model) or is_transformers_pipeline_with_seq2seq_lm(model):
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
+
         imported_modules = self.import_algorithm_packages()
 
         # Extract the model itself
@@ -153,9 +164,8 @@ class CTranslateCompiler(PrunaCompiler):
             model = model.model
 
         # Create outfile directory
-        out_dir = os.path.join(smash_config["cache_dir"], "outputs")
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+        out_dir = Path(smash_config["cache_dir"]) / "outputs"
+        out_dir.mkdir(exist_ok=True)
 
         model.save_pretrained(out_dir)
         # we can ignore mypy warnings here because we ensure beforehand that processor and tokenizer are not None
@@ -164,8 +174,8 @@ class CTranslateCompiler(PrunaCompiler):
         elif self.tokenizer_required:
             smash_config.tokenizer.save_pretrained(out_dir)  # type: ignore[attr-defined]
 
-        temp_dir = os.path.join(out_dir, "temp")
-        os.mkdir(temp_dir)
+        temp_dir = Path(out_dir, "temp")
+        temp_dir.mkdir(exist_ok=True)
         args = Namespace(
             output_dir=temp_dir,
             vocab_mapping=None,
@@ -188,16 +198,18 @@ class CTranslateCompiler(PrunaCompiler):
             load_as_float16=True,
         )
 
+        temp_dir_str = str(temp_dir)
+
         converter.convert_from_args(args)
         if self.task_name == "translate":
-            optimized_model = imported_modules["Translator"](temp_dir, device=smash_config["device"])
-            optimized_model = TranslatorWrapper(optimized_model, temp_dir, smash_config.tokenizer)
+            optimized_model = imported_modules["Translator"](temp_dir_str, device=smash_config["device"])
+            optimized_model = TranslatorWrapper(optimized_model, temp_dir_str, smash_config.tokenizer)
         elif self.task_name == "generate":
-            optimized_model = imported_modules["Generator"](temp_dir, device=smash_config["device"])
-            optimized_model = GeneratorWrapper(optimized_model, temp_dir, smash_config.tokenizer)
+            optimized_model = imported_modules["Generator"](temp_dir_str, device=smash_config["device"])
+            optimized_model = GeneratorWrapper(optimized_model, temp_dir_str, smash_config.tokenizer)
         elif self.task_name == "whisper":
-            optimized_model = imported_modules["Whisper"](temp_dir, device=smash_config["device"])
-            optimized_model = WhisperWrapper(optimized_model, temp_dir, smash_config.processor)
+            optimized_model = imported_modules["Whisper"](temp_dir_str, device=smash_config["device"])
+            optimized_model = WhisperWrapper(optimized_model, temp_dir_str, smash_config.processor)
         else:
             raise ValueError("Task not supported")
         optimized_model.config = model.config
@@ -212,26 +224,26 @@ class CTranslateCompiler(PrunaCompiler):
         Dict[str, Any]
             The algorithm packages.
         """
-        cudnn_path = os.path.join(
-            os.path.dirname(sys.executable).strip("bin"),
-            f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib",
+        cudnn_path = (
+            Path(sys.executable).parent.parent
+            / f"lib/python{sys.version_info[0]}.{sys.version_info[1]}/site-packages/nvidia/cudnn/lib"
         )
         ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
 
         # Update LD_LIBRARY_PATH for the current process
         os.environ["LD_LIBRARY_PATH"] = f"{cudnn_path}:{ld_library_path}"
 
-        if not os.path.exists(cudnn_path):
+        if not cudnn_path.exists():
             # Try to find cudnn in alternative locations
             possible_paths = [
-                "/usr/local/cuda/lib64",
-                "/usr/lib/x86_64-linux-gnu",
-                "/usr/lib/cuda/lib64",
-                os.path.join(os.path.dirname(sys.executable), "lib"),
+                Path("/usr/local/cuda/lib64"),
+                Path("/usr/lib/x86_64-linux-gnu"),
+                Path("/usr/lib/cuda/lib64"),
+                Path(sys.executable).parent / "lib",
             ]
 
             for path in possible_paths:
-                if os.path.exists(path) and any(f.startswith("libcudnn") for f in os.listdir(path)):
+                if path.exists() and any(str(f).startswith("libcudnn") for f in path.iterdir()):
                     os.environ["LD_LIBRARY_PATH"] = f"{path}:{os.environ['LD_LIBRARY_PATH']}"
                     break
 

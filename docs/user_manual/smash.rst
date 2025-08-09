@@ -4,7 +4,7 @@ Smash your first model
 This guide provides a quick introduction to optimizing AI models with |pruna|.
 
 You'll learn how to use Pruna's core functionality to make your models faster, smaller, cheaper, and greener.
-For installation instructions, see :doc:`Installation </setup/pip>`.
+For installation instructions, see :doc:`Installation </setup/install>`.
 
 Basic Optimization Workflow
 ---------------------------
@@ -74,7 +74,7 @@ First, load any model using its original library, like ``transformers`` or ``dif
     base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
 Step 2: Define optimizations with a ``SmashConfig``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 After loading the model, we can define a ``SmashConfig`` to customize the optimizations we want to apply.
 This ``SmashConfig`` is a dictionary-like object that configures which optimizations to apply to your model.
@@ -115,12 +115,12 @@ Let's use the ``smash()`` function to apply the configured optimizations:
     optimized_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the optimized model
-    optimized_model.save_to_hub("PrunaAI/Segmind-Vega-smashed")
+    optimized_model.push_to_hub("PrunaAI/Segmind-Vega-smashed")
 
 The ``smash()`` function returns a ``PrunaModel`` - a wrapper that provides a standardized interface for the optimized model. So, we can still use the model as we would use the original one.
 
 Step 4: Evaluate the optimized model with the ``EvaluationAgent``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To evaluate the optimized model, we can use the same interface as the original model.
 
@@ -132,7 +132,7 @@ To evaluate the optimized model, we can use the same interface as the original m
     from pruna.evaluation.task import Task
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
 
     # Define metrics
     metrics = ['clip_score', 'psnr']
@@ -158,7 +158,7 @@ To run inference with the optimized model, we can use the same interface as the 
     from pruna.engine.pruna_model import PrunaModel
 
     # Load the optimized model
-    optimized_model = PrunaModel.from_hub("PrunaAI/Segmind-Vega-smashed")
+    optimized_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed")
 
     optimized_model.set_progress_bar_config(disable=True)
 
@@ -244,8 +244,8 @@ Example 3: Speech Recognition Optimization
     optimized_model = smash(model=model, smash_config=smash_config)
 
     # Download and transcribe audio sample
-    audio_url = "https://huggingface.co/datasets/reach-vb/random-audios/resolve/main/sam_altman_lex_podcast_367.flac"
-    audio_file = "sam_altman_lex_podcast_367.flac"
+    audio_url = "https://huggingface.co/datasets/reach-vb/random-audios/resolve/main/4469669-10.mp3"
+    audio_file = "4469669-10.mp3"
 
     # Download audio file
     response = requests.get(audio_url)

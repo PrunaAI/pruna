@@ -2,7 +2,9 @@ from typing import Any, Callable
 
 import pytest
 from transformers import AutoTokenizer
-
+from datasets import Dataset
+from torch.utils.data import TensorDataset
+import torch
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -44,6 +46,7 @@ def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> N
     # get the datamodule from the string
     datamodule = PrunaDataModule.from_string(dataset_name, collate_fn_args=collate_fn_args, tokenizer=tokenizer)
     datamodule.limit_datasets(10)
+
 
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)

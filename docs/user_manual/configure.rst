@@ -7,7 +7,7 @@ Model optimization configuration relies on the ``SmashConfig`` class.
 The ``SmashConfig`` class provides a flexible dictionary-like interface for configuring model optimization strategies.
 It manages algorithms, hyperparameters, and additional components like tokenizers, processors and datasets.
 
-Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/optimize>` to learn how to do that.
+Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/smash>` to learn how to do that.
 
 Basic Configuration Workflow
 ----------------------------
@@ -123,6 +123,11 @@ The table underneath provides a general overview of the impact of each algorithm
      - Distributes the inference, the model or certain calculations across multiple devices.
      - ✅
      - ❌
+     - ➖
+   * - ``kernel``
+     - Specialized GPU routines that speed up parts of the computation.
+     - ✅
+     - ➖
      - ➖
 
 ✅(improves), ➖(approx. the same), ❌(worsens)
@@ -240,6 +245,8 @@ This means, we can use the same tokenizers and processors as the ones used in th
 
 Now we've set up the tokenizer and processor, we can use them to process our data.
 
+.. _configure-datasets:
+
 Configure Datasets
 ^^^^^^^^^^^^^^^^^^
 
@@ -267,7 +274,7 @@ Underneath you can find the list of all the available datasets.
      - ``image_classification_collate``
      - ``image: PIL.Image.Image``, ``label: int``
    * - Audio Processing
-     - `CommonVoice <https://huggingface.co/datasets/mozilla-foundation/common_voice_1_0>`_, `AIPodcast <https://huggingface.co/datasets/reach-vb/random-audios>`_
+     - `CommonVoice <https://huggingface.co/datasets/mozilla-foundation/common_voice_1_0>`_, `AIPodcast <https://huggingface.co/datasets/reach-vb/random-audios/blob/main/sam_altman_lex_podcast_367.flac>`_, `MiniPresentation <https://huggingface.co/datasets/reach-vb/random-audios/blob/main/4469669-10.mp3>`_
      - ``audio_processing_collate``
      - ``audio: Optional[torch.Tensor]``, ``path: Optional[str]``, ``sentence: str``
    * - Question Answering

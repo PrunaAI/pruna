@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional, Type, cast
-from warnings import warn
 
 import pynvml
 import torch
@@ -33,8 +32,6 @@ DISK_MEMORY = "disk_memory"
 INFERENCE_MEMORY = "inference_memory"
 TRAINING_MEMORY = "training_memory"
 VALID_MODES = (DISK_MEMORY, INFERENCE_MEMORY, TRAINING_MEMORY)
-DEPRECATED_MODES = ("disk", "inference", "training")
-DEPRECATED_MODES_MAP = {"disk": DISK_MEMORY, "inference": INFERENCE_MEMORY, "training": TRAINING_MEMORY}
 MEMORY_UNITS = "MB"
 
 
@@ -117,22 +114,7 @@ class GPUMemoryStats(BaseMetric):
             If the provided mode is invalid.
         """
         if mode not in VALID_MODES:
-            if mode in DEPRECATED_MODES:
-                warn(
-                    "GPUMemoryStats is no longer the preferred interface for GPU memory evaluation. "
-                    "Please use 'DiskMemoryMetric', 'InferenceMemoryMetric' or 'TrainingMemoryMetric' instead.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                warn(
-                    f"Mode '{mode}' is deprecated and will be removed in 'v0.2.8' release. "
-                    f"Please use '{DEPRECATED_MODES_MAP[mode]}' instead.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                mode = DEPRECATED_MODES_MAP[mode]
-            else:
-                raise ValueError(f"Mode must be one of {VALID_MODES}, got '{mode}'.")
+            raise ValueError(f"Mode must be one of {VALID_MODES}, got '{mode}'.")
 
         self.mode = mode
         self.gpu_indices = gpu_indices
@@ -154,13 +136,13 @@ class GPUMemoryStats(BaseMetric):
         MetricResult
             The peak GPU memory usage in MB.
         """
-        save_path = model.smash_config.cache_dir + "/metrics_save"
+        save_path = model.smash_config.cache_dir / "metrics_save"
         model_cls = model.__class__
         model_device_indices = self._detect_model_gpus(model)
         if not model_device_indices:
             pruna_logger.warning("No GPUs found.")
             raise ValueError("No GPUs detected for the model. Memory metric is designed to measure the GPU usage.")
-        model.save_pretrained(save_path)
+        model.save_pretrained(str(save_path))
         model.move_to_device("cpu")
 
         gpu_manager = GPUManager(self.gpu_indices)
@@ -169,7 +151,7 @@ class GPUMemoryStats(BaseMetric):
             memory_before_load = gpu_manager.get_memory_usage()
 
             # Load and prepare the model
-            metric_model = self._load_and_prepare_model(save_path, model_cls)
+            metric_model = self._load_and_prepare_model(str(save_path), model_cls)
 
             memory_after_load = gpu_manager.get_memory_usage()
 
@@ -342,9 +324,7 @@ class GPUMemoryStats(BaseMetric):
         PrunaModel
             The loaded and prepared model.
         """
-        model = model_cls.from_pretrained(
-            model_path,
-        )
+        model = model_cls.from_pretrained(model_path)
         model.move_to_device(set_to_best_available_device(None))
         if self.mode in {DISK_MEMORY, INFERENCE_MEMORY}:
             model.set_to_eval()
@@ -480,28 +460,3 @@ class TrainingMemoryMetric(BaseMetric):
             The training memory usage of the model.
         """
         return self.metric.compute(model, dataloader)
-
-
-class GPUMemoryMetric:
-    """
-    Deprecated class.
-
-    Parameters
-    ----------
-    *args : Any
-        Arguments for GPUMemoryStats.
-    **kwargs : Any
-        Keyword arguments for GPUMemoryStats.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        """Forwards to GPUMemoryStats."""
-        warn(
-            "GPUMemoryMetric is deprecated and will be removed in 'v0.2.8' release. \n "
-            "It has been replaced by GPUMemoryStats, "
-            "which is a shared parent class for 'DiskMemoryMetric', 'InferenceMemoryMetric' and 'TrainingMemoryMetric'. \n"  # noqa: E501
-            "In the future, please use 'DiskMemoryMetric', 'InferenceMemoryMetric' or 'TrainingMemoryMetric' instead.\n",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return GPUMemoryStats(*args, **kwargs)

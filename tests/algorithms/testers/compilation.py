@@ -13,6 +13,7 @@ class TestTorchCompile(AlgorithmTesterBase):
     reject_models = []
     allow_pickle_files = False
     algorithm_class = TorchCompileCompiler
+    metrics = ["latency"]
 
 
 class TestStableFast(AlgorithmTesterBase):
@@ -22,6 +23,7 @@ class TestStableFast(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = StableFastCompiler
+    metrics = ["cmmd"]
 
 
 class TestCGenerate(AlgorithmTesterBase):
@@ -31,6 +33,7 @@ class TestCGenerate(AlgorithmTesterBase):
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = CGenerateCompiler
+    metrics = ["latency"]
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""

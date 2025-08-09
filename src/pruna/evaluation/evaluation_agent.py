@@ -19,8 +19,10 @@ from typing import Any, List
 import torch
 from torch import Tensor
 
+from pruna.config.smash_config import SmashConfig
 from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
@@ -122,7 +124,7 @@ class EvaluationAgent:
 
     def prepare_model(self, model: Any) -> PrunaModel:
         """
-        Prepare the model for evaluation by wrapping it in a PrunaModel if it is not already.
+        Prepare the model for evaluation by wrapping it in a PrunaModel and moving it to the cpu if it is not already.
 
         Parameters
         ----------
@@ -145,9 +147,12 @@ class EvaluationAgent:
                     "Pairwise metrics will cache the smashed model outputs. \n"
                     "Ensure this is intentional, as typically the base model outputs are cached for comparison."
                 )
+
         else:
-            model = PrunaModel(model)
+            smash_config = SmashConfig(device="cpu")
+            model = PrunaModel(model, smash_config=smash_config)
             pruna_logger.info("Evaluating a base model.")
+            is_base = True
 
         model.inference_handler.log_model_info()
         if (
@@ -163,6 +168,9 @@ class EvaluationAgent:
                 "datamodule = PrunaDataModule.from_string(dataset_name, dataloader_args={'batch_size': %d})",
                 model.smash_config.batch_size,
             )
+
+        # ensure the model is on the cpu
+        model.move_to_device("cpu")
 
         return model
 
@@ -195,6 +203,8 @@ class EvaluationAgent:
         for batch_idx, batch in enumerate(self.task.dataloader):
             processed_outputs = model.run_inference(batch, self.device)
 
+            batch = move_batch_to_device(batch, self.device)
+            processed_outputs = move_batch_to_device(processed_outputs, self.device)
             (x, gt) = batch
             # Non-pairwise (aka single) metrics have regular update.
             for stateful_metric in single_stateful_metrics:

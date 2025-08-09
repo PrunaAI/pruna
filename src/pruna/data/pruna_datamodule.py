@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import inspect
 from functools import partial
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, cast
 
 from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
@@ -189,13 +189,25 @@ class PrunaDataModule(LightningDataModule):
             train_limit, val_limit, test_limit = limit
 
         if isinstance(self.train_dataset, Dataset):
-            self.train_dataset = self.train_dataset.select(range(train_limit))
-            self.val_dataset = self.val_dataset.select(range(val_limit))  # type: ignore[union-attr]
-            self.test_dataset = self.test_dataset.select(range(test_limit))  # type: ignore[union-attr]
+            self.train_dataset = cast(Dataset, self.train_dataset)  # for mypy
+            self.val_dataset = cast(Dataset, self.val_dataset)
+            self.test_dataset = cast(Dataset, self.test_dataset)
+            self.train_dataset = self.train_dataset.select(range(min(len(self.train_dataset), train_limit)))
+            self.val_dataset = self.val_dataset.select(range(min(len(self.val_dataset), val_limit)))  # type: ignore[union-attr]
+            self.test_dataset = self.test_dataset.select(range(min(len(self.test_dataset), test_limit)))  # type: ignore[union-attr]
         elif isinstance(self.train_dataset, IterableDataset):
-            self.train_dataset = self.train_dataset[:train_limit]
-            self.val_dataset = self.val_dataset[:val_limit]
-            self.test_dataset = self.test_dataset[:test_limit]
+            # Handle IterableDataset objects (like C4) which don't support slicing
+            # Convert to limited iterables by taking only the first N elements
+            def limit_iterable_dataset(dataset, limit):
+                from itertools import islice
+
+                # Create a new iterable dataset that only yields the first 'limit' items
+                limited_items = list(islice(dataset, limit))
+                return Dataset.from_list(limited_items) if limited_items else Dataset.from_dict({})
+
+            self.train_dataset = limit_iterable_dataset(self.train_dataset, train_limit)
+            self.val_dataset = limit_iterable_dataset(self.val_dataset, val_limit)
+            self.test_dataset = limit_iterable_dataset(self.test_dataset, test_limit)
         elif isinstance(self.train_dataset, TorchDataset):
             train_indices = list(range(min(len(self.train_dataset), train_limit)))  # type: ignore[arg-type]
             val_indices = list(range(min(len(self.val_dataset), val_limit)))  # type: ignore[arg-type]

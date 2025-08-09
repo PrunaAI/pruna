@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 
 @dataclass
@@ -34,7 +34,7 @@ class MetricResult:
 
     name: str
     params: Dict[str, Any]
-    result: float | int | List[float | int]
+    result: float | int
 
     def __str__(self) -> str:
         """

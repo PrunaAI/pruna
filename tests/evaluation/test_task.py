@@ -29,5 +29,5 @@ def _mock_torch_metrics():
 
 @pytest.mark.parametrize("metric_name", MetricRegistry()._registry)
 def test_metric_initialization_from_metric_name(metric_name):
-    datamodule = PrunaDataModule.from_string(next(iter(base_datasets)))
+    datamodule = PrunaDataModule.from_string("LAION256")
     Task(request=[metric_name], datamodule=datamodule)

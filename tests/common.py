@@ -1,7 +1,7 @@
 import importlib.util
 import inspect
-import os
 import subprocess
+from pathlib import Path
 from typing import Any, Callable
 
 import numpydoc_validation
@@ -25,7 +25,10 @@ def device_parametrized(cls: Any) -> Any:
         "device",
         [
             pytest.param("cuda", marks=pytest.mark.cuda),
-            pytest.param("accelerate", marks=pytest.mark.distributed),
+            pytest.param(
+                "accelerate",
+                marks=pytest.mark.distributed,
+            ),
             pytest.param("cpu", marks=pytest.mark.cpu),
         ],
     )(cls)
@@ -55,7 +58,11 @@ def collect_tester_instances(
     """Collect all model classes from a module and process them with a function."""
     parametrizations = []
     for _, cls in vars(module).items():
-        if inspect.isclass(cls) and module.__name__ in cls.__module__ and "AlgorithmTesterBase" not in cls.__name__:
+        if (
+            inspect.isclass(cls)
+            and module.__name__ in cls.__module__
+            and "AlgorithmTesterBase" not in cls.__name__
+        ):
             model_parametrizations = getattr(cls, model_attr)
             markers = getattr(cls, "pytestmark", [])
             if not isinstance(markers, list):
@@ -63,24 +70,36 @@ def collect_tester_instances(
             for model in model_parametrizations:
                 parameters = process_fn(cls, model)
                 idx = f"{cls.__name__}_{model}"
-                parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
+                parametrizations.append(
+                    pytest.param(*parameters, marks=markers, id=idx)
+                )
     return parametrizations
 
 
-def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig]) -> None:
+def run_full_integration(
+    algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig]
+) -> None:
     """Run the full integration test."""
     try:
         model, smash_config = model_fixture[0], model_fixture[1]
         if device not in algorithm_tester.compatible_devices():
-            pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
+            pytest.skip(
+                f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}"
+            )
         algorithm_tester.prepare_smash_config(smash_config, device)
-        device_map = construct_device_map_manually(model) if device == "accelerate" else None
+        device_map = (
+            construct_device_map_manually(model) if device == "accelerate" else None
+        )
         move_to_device(model, device=smash_config["device"], device_map=device_map)
         assert device == get_device(model)
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
-        algorithm_tester.execute_load()
+        reloaded_model = algorithm_tester.execute_load()
+        algorithm_tester.execute_evaluation(
+            reloaded_model, smash_config.data, smash_config["device"]
+        )
+        reloaded_model.destroy()
     finally:
         algorithm_tester.final_teardown(smash_config)
 
@@ -111,13 +130,21 @@ def construct_device_map_manually(model: Any) -> dict:
 
         return infer_auto_device_map(
             model,
-            max_memory={0: model_size - EPS_MEMORY_SIZE, 1: model_size - EPS_MEMORY_SIZE},
+            max_memory={
+                0: model_size - EPS_MEMORY_SIZE,
+                1: model_size - EPS_MEMORY_SIZE,
+            },
             no_split_module_classes=NO_SPLIT_MODULES_ACCELERATE,
         )
     else:
         # make sure a pipelines components are distributed by putting the first half on GPU 0, second half on GPU 1
         device_map = {}
-        components = list(filter(lambda x: isinstance(getattr(model, x), torch.nn.Module), model.components.keys()))
+        components = list(
+            filter(
+                lambda x: isinstance(getattr(model, x), torch.nn.Module),
+                model.components.keys(),
+            )
+        )
         for i, component in enumerate(components):
             device_map[component] = int(i > len(components) / 2)
         return device_map
@@ -173,42 +200,36 @@ def get_all_imports(package: str) -> set[str]:
 
     # Loop over all directories associated with the package (in case of namespace packages)
     for location in spec.submodule_search_locations:
-        for root, _, files in os.walk(location):
-            for file in files:
-                if file.endswith(".py"):
-                    file_path = os.path.join(root, file)
-                    # Get the relative path from the package location
-                    relative_path = os.path.relpath(file_path, location)
-                    # Remove the .py extension
-                    module_path = relative_path[:-3]
-                    # Replace OS-specific path separators with dots to form the import string
-                    module_name = module_path.replace(os.sep, ".")
+        pkg_path = Path(location)
+        for file_path in pkg_path.rglob("*.py"):
+            if file_path.name == "__init__.py":
+                rel_parent = file_path.parent.relative_to(pkg_path)
+                if rel_parent == Path():  # Root package __init__.py
+                    full_import = package
+                else:  # Subpackage __init__.py
+                    module_name = ".".join(rel_parent.parts)
+                    full_import = f"{package}.{module_name}"
+                imports.add(full_import)
 
-                    # ignore __init__.py at the root of the package
-                    if module_name == "__init__":
-                        continue
-
-                    # Handle __init__.py: its module is the package (or subpackage) itself.
-                    if file == "__init__.py":
-                        module_name = module_name.rsplit(".", 1)[0]  # Remove the trailing '__init__'
-
-                    # Combine the base package name with the module path.
-                    # If module_name is empty (i.e. __init__.py at the root), just use the package name.
-                    full_import = f"{package}.{module_name}" if module_name else package
-                    imports.add(full_import)
     return imports
 
 
-def run_script_successfully(script_file: str) -> None:
+def run_script_successfully(script_file: Path) -> None:
     """Run the script and return the result."""
-    result = subprocess.run(["python", script_file], capture_output=True, text=True)
+    result = subprocess.run(
+        ["python", str(script_file)], capture_output=True, text=True
+    )
     run_ruff_linting(script_file)
-    os.remove(script_file)
+    script_file.unlink()
 
-    assert result.returncode == 0, f"Notebook failed with error:\n{result.stderr}"
+    max_err_len = 300
+    err_msg = result.stderr
+    if len(err_msg) > max_err_len:
+        err_msg = "... (truncated) ..." + err_msg[-max_err_len:]
+    assert result.returncode == 0, f"Notebook failed with error:\n{err_msg}"
 
 
-def convert_notebook_to_script(notebook_file: str, expected_script_file: str) -> None:
+def convert_notebook_to_script(notebook_file: Path, expected_script_file: Path) -> None:
     """Convert the notebook to a Python script."""
     subprocess.run(
         [
@@ -217,26 +238,28 @@ def convert_notebook_to_script(notebook_file: str, expected_script_file: str) ->
             "--to",
             "script",
             "--TemplateExporter.exclude_raw=True",
-            notebook_file,
+            str(notebook_file),
         ],
         check=True,
     )
 
     # Handle possible incorrect extension
-    generated_script = notebook_file.replace(".ipynb", ".txt")
-    if os.path.exists(generated_script):
-        os.rename(generated_script, expected_script_file)
-    elif not os.path.exists(expected_script_file):
+    expected_script_file = expected_script_file
+    generated_script = notebook_file.with_suffix(".txt")
+    if generated_script.exists():
+        generated_script.rename(expected_script_file)
+    elif not expected_script_file.exists():
         raise FileNotFoundError("Converted script not found!")
 
     # Read the script, filter out lines starting with '!'
-    with open(expected_script_file, "r") as file:
-        lines = file.readlines()
+    content = expected_script_file.read_text()
+    filtered_lines = [
+        line
+        for line in content.splitlines()
+        if not line.lstrip().startswith(("!", "get_ipython"))
+    ]
 
-    with open(expected_script_file, "w") as file:
-        for line in lines:
-            if not line.lstrip().startswith("get_ipython") and not line.lstrip().startswith("!"):
-                file.write(line)
+    expected_script_file.write_text("\n".join(filtered_lines) + "\n")
 
 
 def run_ruff_linting(file_path: str) -> None:
@@ -255,24 +278,25 @@ def run_ruff_linting(file_path: str) -> None:
     )
 
     if result.returncode != 0:
-        raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
+        raise AssertionError(
+            f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}"
+        )
 
 
-def extract_python_code_blocks(rst_file_path: str, output_dir: str) -> None:
+def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
     """Extract code blocks from first-level sections of an rst file, skipping blocks with the `noextract` class."""
     # Read the content of the .rst file
-    with open(rst_file_path, "r") as file:
-        rst_content = file.read()
+    rst_content = rst_file_path.read_text()
 
     # Parse the content into a document tree
     document = publish_doctree(rst_content)
 
     # Create the output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
-        section_code_file = os.path.join(output_dir, f"{section_name}_code.py")
-        with open(section_code_file, "w") as code_file:
+        section_code_file = output_dir / f"{section_name}_code.py"
+        with open(str(section_code_file), "w") as code_file:
             for block in node.traverse(literal_block):
                 # Skip code blocks marked with the 'noextract' class
                 if "noextract" in block.attributes.get("classes", []):

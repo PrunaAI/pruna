@@ -29,6 +29,7 @@ from pruna.engine.model_checks import (
     is_causal_lm,
     is_janus_llamagen_ar,
     is_opt_model,
+    is_transformers_pipeline_with_causal_lm,
 )
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
@@ -55,6 +56,7 @@ class TorchCompileCompiler(PrunaCompiler):
         quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq", "torchao"],
         cacher=["deepcache", "fora"],
         pruner=["torch_structured"],
+        kernel=["flash_attn3"],
     )
 
     def get_hyperparameters(self) -> list:
@@ -81,7 +83,7 @@ class TorchCompileCompiler(PrunaCompiler):
             ),
             Boolean(
                 "fullgraph",
-                default=True,
+                default=False,
                 meta=dict(desc="Whether to discover compilable subgraphs or compile the full input graph."),
             ),
             CategoricalHyperparameter(
@@ -207,7 +209,9 @@ class TorchCompileCompiler(PrunaCompiler):
         ):
             return unet_transformer_pipeline_logic(model, smash_config)
 
-        if is_causal_lm(model) or is_janus_llamagen_ar(model):
+        if is_causal_lm(model) or is_janus_llamagen_ar(model) or is_transformers_pipeline_with_causal_lm(model):
+            if is_transformers_pipeline_with_causal_lm(model):
+                return self._apply_to_model_within_transformers_pipeline(model, smash_config)
             return causal_lm_or_janus_logic(model, smash_config)
 
         return compile_callable(model, smash_config)

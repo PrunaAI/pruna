@@ -8,20 +8,19 @@ import pytest
 
 from ..common import extract_python_code_blocks, run_script_successfully
 
-TUTORIAL_PATH = Path(os.path.dirname(__file__)).parent.parent / "docs"
+TUTORIAL_PATH = Path(__file__).parent.parent.parent / "docs"
 
 
 
 def pytest_generate_tests(metafunc):
     if "rst_path" in metafunc.fixturenames and "script_content" in metafunc.fixturenames:
-        rst_files = list((TUTORIAL_PATH / "user_manual").glob("*.rst"))
         all_script_params = []
         all_ids = []
-        for rst_file in rst_files:
+        for rst_file in (TUTORIAL_PATH / "user_manual").glob("*.rst"):
             # Use a temporary directory to extract code blocks
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir_path = Path(tmpdir)
-                extract_python_code_blocks(str(rst_file), str(tmpdir_path))
+                extract_python_code_blocks(rst_file, tmpdir_path)
                 scripts = sorted(tmpdir_path.iterdir())
                 for idx, script in enumerate(scripts):
                     script_content = script.read_text()
@@ -39,7 +38,7 @@ def test_codeblock_cuda(rst_path, script_content, tmp_path):
     script_file = tmp_path / "script.py"
     script_file.write_text(script_content)
 
-    run_script_successfully(str(script_file))
+    run_script_successfully(script_file)
 
     # Clean up
     if script_file.exists():

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import inspect
 import json
-import os
 import sys
 from copy import deepcopy
 from enum import Enum
@@ -28,7 +27,7 @@ import torch
 import transformers
 from huggingface_hub import constants, snapshot_download
 from tqdm.auto import tqdm as base_tqdm
-from transformers import pipeline
+from transformers import AutoTokenizer, pipeline
 
 from pruna import SmashConfig
 from pruna.engine.utils import load_json_config, move_to_device
@@ -82,7 +81,7 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     return model, smash_config
 
 
-def load_pruna_model_from_hub(
+def load_pruna_model_from_pretrained(
     repo_id: str,
     revision: Optional[str] = None,
     cache_dir: Union[str, Path, None] = None,
@@ -238,13 +237,16 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig, **kwarg
         # unless specified by the user, load the model in the same dtype as the base model
         kwargs["torch_dtype"] = "auto"
 
-    if os.path.exists(os.path.join(path, PIPELINE_INFO_FILE_NAME)):
-        with open(os.path.join(path, PIPELINE_INFO_FILE_NAME), "r") as f:
+    path = Path(path)
+    pipeline_info_path = path / PIPELINE_INFO_FILE_NAME
+    if pipeline_info_path.exists():
+        with pipeline_info_path.open("r") as f:
             pipeline_info = json.load(f)
         # transformers discards kwargs automatically, no need for filtering
         return pipeline(pipeline_info["task"], str(path), **kwargs)
     else:
-        with open(os.path.join(path, "config.json"), "r") as f:
+        config_path = path / "config.json"
+        with config_path.open("r") as f:
             config = json.load(f)
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
@@ -272,13 +274,17 @@ def load_diffusers_model(path: str | Path, smash_config: SmashConfig, **kwargs) 
     Any
         The loaded diffusers model.
     """
-    if os.path.exists(os.path.join(path, "model_index.json")):
+    path = Path(path)
+    model_index_path = path / "model_index.json"
+
+    if model_index_path.exists():
         # if it is a diffusers pipeline, it saves the model_index.json file
-        model_index = load_json_config(path, "model_index.json")
+        with model_index_path.open("r") as f:
+            model_index = json.load(f)
     else:
         # individual components like the unet or the vae are saved with a config.json file
-        model_index = load_json_config(path, "config.json")
-
+        with (path / "config.json").open("r") as f:
+            model_index = json.load(f)
     # make loading of model backward compatible with older versions
     # in newer versions the dtype is always saved in the model_config.json file
     try:
@@ -321,7 +327,7 @@ def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     # torch load has a target device but no interface to reproduce an accelerate-distributed model, we first map to cpu
     target_device = "cpu" if smash_config.device == "accelerate" else smash_config.device
     model = torch.load(
-        os.path.join(path, PICKLED_FILE_NAME),
+        Path(path) / PICKLED_FILE_NAME,
         weights_only=False,
         map_location=target_device,
         **filter_load_kwargs(torch.load, kwargs),
@@ -349,14 +355,20 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     Any
         The loaded model.
     """
+    if isinstance(model_path, str):
+        model_path = Path(model_path)
+    pipeline_info_path = model_path / PIPELINE_INFO_FILE_NAME
+
     from pruna.algorithms.quantization.hqq import HQQQuantizer
 
     algorithm_packages = HQQQuantizer().import_algorithm_packages()
+    model_path = Path(model_path)
+    hqq_model_dir = model_path / "hqq_language_model"
 
     # if the model is a janus like model, we need to load the quantized model from the hqq_language_model directory
-    if os.path.exists(os.path.join(model_path, "hqq_language_model")):
-        quantized_path = str(os.path.join(model_path, "hqq_language_model"))
-        quantized_model_path = os.path.join(quantized_path, "qmodel.pt")
+    if hqq_model_dir.exists():
+        quantized_model_path = hqq_model_dir / "qmodel.pt"
+        quantized_path = str(hqq_model_dir)
         # load the weight on cpu to rename attr -> model.attr,
         # and also artifically add a random lm_head to the weights.
         weights = torch.load(quantized_model_path, map_location="cpu", weights_only=True)
@@ -399,6 +411,13 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         move_to_device(model, smash_config.device)
         return model
     else:
+        # make sure to load
+        if pipeline_info_path.exists():
+            with pipeline_info_path.open("r") as f:
+                pipeline_info = json.load(f)
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+            pipe = pipeline(pipeline_info["task"], model=quantized_model, tokenizer=tokenizer, **kwargs)
+            return pipe
         return quantized_model
 
 
@@ -413,8 +432,8 @@ def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
     """
-    with open(os.path.join(model_path, "artifact_bytes.bin"), "rb") as f:
-        artifact_bytes = f.read()
+    artifact_path = Path(model_path) / "artifact_bytes.bin"
+    artifact_bytes = artifact_path.read_bytes()
 
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
@@ -445,11 +464,19 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
 
+    path = Path(path)
+    if "compute_dtype" not in kwargs and (path / "dtype_info.json").exists():
+        dtype = getattr(torch, load_json_config(path, "dtype_info.json")["dtype"])
+        kwargs["compute_dtype"] = dtype
+        kwargs.setdefault("torch_dtype", dtype)
+
+    backbone_path = path / "backbone_quantized"
+
     # If a pipeline was saved, load the backbone and the rest of the pipeline separately
-    if os.path.exists(os.path.join(path, "backbone_quantized")):
+    if backbone_path.exists():
         # load the backbone
         loaded_backbone = auto_hqq_hf_diffusers_model.from_quantized(
-            os.path.join(path, "backbone_quantized"),
+            str(backbone_path),
             **filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs),
         )
         # Get the pipeline class name

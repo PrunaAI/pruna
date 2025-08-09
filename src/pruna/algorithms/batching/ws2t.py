@@ -13,8 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-import os
 import shutil
+from pathlib import Path
 from typing import Any, Dict, List, Union
 
 from tokenizers import Tokenizer
@@ -29,7 +29,7 @@ from pruna.algorithms.batching import PrunaBatcher
 from pruna.algorithms.compilation.c_translate import WhisperWrapper
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
-from pruna.engine.model_checks import is_speech_seq2seq_model
+from pruna.engine.model_checks import is_speech_seq2seq_model, is_transformers_pipeline_with_speech_recognition
 from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
@@ -82,9 +82,7 @@ class WS2TBatcher(PrunaBatcher):
         """
         if isinstance(model, WhisperWrapper):
             return True
-        if isinstance(model, AutomaticSpeechRecognitionPipeline):
-            return True
-        return bool(is_speech_seq2seq_model(model))
+        return is_speech_seq2seq_model(model) or is_transformers_pipeline_with_speech_recognition(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -135,12 +133,12 @@ class WS2TBatcher(PrunaBatcher):
         elif task == "whisper_ct" and hasattr(processor.tokenizer, "name_or_path"):
             # this requires a little trick, a transformers tokenizer can not be directly converted
             # we can either go via a download or via a file and then parsing out the Tokenizer
-            if os.path.exists(processor.tokenizer.name_or_path):
+            if Path(processor.tokenizer.name_or_path).exists():
                 processor = AutoTokenizer.from_pretrained(processor.tokenizer.name_or_path, use_fast=True)
                 processor = processor.backend_tokenizer
             else:
                 processor = Tokenizer.from_pretrained(processor.tokenizer.name_or_path)
-            processor.save(os.path.join(model.output_dir, "tokenizer.json"))
+            processor.save(str(Path(model.output_dir) / "tokenizer.json"))
         else:
             pruna_logger.error("Please pass a Huggingface Whisper Processor.")
 

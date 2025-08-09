@@ -25,10 +25,11 @@ def test_save_llm_to_hub() -> None:
     upload_repo_id = "PrunaAI/test-save-tiny-random-llama4-smashed"
     model = AutoModelForCausalLM.from_pretrained(download_repo_id)
     smash_config = SmashConfig(device="cpu")
-    smash(
+    pruna_model = smash(
         model=model,
         smash_config=smash_config,
-    ).save_to_hub(upload_repo_id, private=False)
+    )
+    pruna_model.push_to_hub(upload_repo_id, private=False)
 
 @pytest.mark.skipif("HF_TOKEN" not in os.environ, reason="HF_TOKEN environment variable is not set, skipping tests.")
 @pytest.mark.slow
@@ -37,13 +38,13 @@ def test_save_diffusers_to_hub() -> None:
     """Test saving a diffusers model to the Hugging Face Hub."""
     download_repo_id = "hf-internal-testing/tiny-stable-diffusion-pipe"
     upload_repo_id = "PrunaAI/test-save-tiny-stable-diffusion-pipe-smashed"
-
     model = DiffusionPipeline.from_pretrained(download_repo_id)
     smash_config = SmashConfig(device="cpu")
-    smash(
+    pruna_model = smash(
         model=model,
         smash_config=smash_config,
-    ).save_to_hub(upload_repo_id, private=False)
+    )
+    pruna_model.push_to_hub(upload_repo_id, private=False)
 
 
 @pytest.mark.parametrize(
@@ -121,7 +122,7 @@ def test_save_load_integration_path_types(tmp_path, save_path_type: str, load_pa
     else:
         load_path = Path(model_path)
     save_pruna_model(original_model, save_path, config)
-    loaded_model, loaded_config = load_pruna_model(load_path)
+    loaded_model, _ = load_pruna_model(load_path)
     loaded_model = loaded_model.cpu()
     assert isinstance(loaded_model, torch.nn.Linear)
     assert loaded_model.in_features == 8
@@ -131,8 +132,8 @@ def test_save_load_integration_path_types(tmp_path, save_path_type: str, load_pa
 
 
 @pytest.mark.cpu
-def test_save_to_hub_path_types(tmp_path) -> None:
-    """Test save_to_hub with different path types for local model_path."""
+def test_push_to_hub_path_types(tmp_path) -> None:
+    """Test push_to_hub with different path types for local model_path."""
 
     dummy_model = torch.nn.Linear(3, 2)
     config = SmashConfig()

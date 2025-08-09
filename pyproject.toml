@@ -3,8 +3,8 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408"]
-select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA"]
+ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408", "PTH123"]
+select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA", "PTH"]
 preview = true # enable preview features for copyright checking
 
 [tool.ruff.lint.per-file-ignores]
@@ -63,7 +63,7 @@ gptqmodel = [
 
 [project]
 name = "pruna"
-version = "0.2.7"
+version = "0.2.8"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
@@ -84,7 +84,7 @@ classifiers = [
 dependencies = [
     "torch==2.7.0",
     "torchvision==0.22.0",
-    "torchmetrics[image]",
+    "torchmetrics[image]==1.7.4",
     "requests>=2.31.0",
     "transformers",
     "pytorch-lightning",
@@ -117,6 +117,9 @@ dependencies = [
     "llmcompressor",
     "gliner; python_version >= '3.10'",
     "piq",
+    "opencv-python",
+    "kernels",
+    "aenum"
 
 ]
 

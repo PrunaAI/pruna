@@ -2,7 +2,7 @@ import pytest
 import torch
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.utils import move_to_device, get_device
-from diffusers import StableDiffusionPipeline, FluxTransformer2DModel, FluxPipeline
+from diffusers import FluxTransformer2DModel, FluxPipeline
 from typing import Any
 from ..common import construct_device_map_manually
 from transformers import Pipeline

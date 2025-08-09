@@ -22,7 +22,7 @@ from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar
+from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext, move_to_device, safe_memory_cleanup
 from pruna.logging.filter import SuppressOutput
@@ -94,7 +94,7 @@ class HQQQuantizer(PrunaQuantizer):
         bool
             True if the model is a causal language model or a Janus LlamaGen AR model, False otherwise.
         """
-        return is_causal_lm(model) or is_janus_llamagen_ar(model)
+        return is_causal_lm(model) or is_janus_llamagen_ar(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -112,6 +112,9 @@ class HQQQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
+        if is_transformers_pipeline_with_causal_lm(model):
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
+
         imported_modules = self.import_algorithm_packages()
 
         weight_quantization_bits = smash_config["weight_bits"]

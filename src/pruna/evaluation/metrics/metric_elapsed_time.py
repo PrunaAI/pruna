@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import time
 from typing import Any, Dict, cast
-from warnings import warn
 
 import torch
 from torch.utils.data import DataLoader
@@ -323,28 +322,3 @@ class TotalTimeMetric(InferenceTimeStats):
         raw_results = super().compute(model, dataloader)
         result = cast(Dict[str, Any], raw_results)[self.metric_name]
         return MetricResult(self.metric_name, self.__dict__.copy(), result)
-
-
-class ElapsedTimeMetric:
-    """
-    Deprecated class.
-
-    Parameters
-    ----------
-    *args : Any
-        Arguments for InferenceTimeStats.
-    **kwargs : Any
-        Keyword arguments for InferenceTimeStats.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        """Forwards to InferenceTimeStats."""
-        warn(
-            "Class ElapsedTimeMetric is deprecated and will be removed in 'v0.2.8' release. \n"
-            "It has been replaced by InferenceTimeStats, \n"
-            "which is a shared parent class for 'LatencyMetric', 'ThroughputMetric' and 'TotalTimeMetric'. \n"
-            "In the future please use 'LatencyMetric', 'ThroughputMetric' or 'TotalTimeMetric' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return InferenceTimeStats(*args, **kwargs)

@@ -18,7 +18,6 @@ from contextlib import suppress
 from enum import Enum
 from functools import partial
 from typing import Any, Callable, List, Optional, Union
-from warnings import warn
 
 import torch
 from torch import Tensor
@@ -44,7 +43,6 @@ from pruna.evaluation.metrics.utils import (
     CALL_TYPES,
     PAIRWISE,
     SINGLE,
-    get_any_call_type_pairing,
     get_pairwise_pairing,
     get_single_pairing,
     metric_data_processor,
@@ -343,7 +341,7 @@ class TorchMetricWrapper(StatefulMetric):
         # Normally we have a single score for each metric for the entire dataset.
         # For IQA metrics we have a single score per image, so we need to convert the tensor to a list.
         if isinstance(result, Tensor):
-            result_value = result.item() if result.numel() == 1 else result.tolist()
+            result_value = result.item() if result.numel() == 1 else result.mean().item()
         else:
             result_value = result
         return MetricResult(
@@ -384,18 +382,5 @@ def get_call_type(call_type: str, metric_name: str) -> str:
         else:
             return get_single_pairing(TorchMetrics[metric_name].call_type)
     else:
-        # If the correct call type is called we give a deprecation warning.
-        if call_type == TorchMetrics[metric_name].call_type or call_type == get_any_call_type_pairing(
-            TorchMetrics[metric_name].call_type
-        ):
-            warn(
-                f"Calling with call type {call_type} is deprecated and will be removed in 'v0.2.8' release. \n"
-                f"Use {SINGLE} or {PAIRWISE} instead. \n"
-                f"Using default call type {TorchMetrics[metric_name].call_type}.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return TorchMetrics[metric_name].call_type
-        else:
-            pruna_logger.error(f"Invalid call type: {call_type}. Must be one of {CALL_TYPES}.")
-            raise ValueError(f"Invalid call type: {call_type}. Must be one of {CALL_TYPES}.")
+        pruna_logger.error(f"Invalid call type: {call_type}. Must be one of {CALL_TYPES}.")
+        raise ValueError(f"Invalid call type: {call_type}. Must be one of {CALL_TYPES}.")
