@@ -67,7 +67,7 @@ def collect_tester_instances(
                 parameters = process_fn(cls, model)
                 idx = f"{cls.__name__}_{model}"
                 parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
-    return parametrizations
+    return sorted(parametrizations, key=lambda x: x.argvalues[0])
 
 
 def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig]) -> None:
