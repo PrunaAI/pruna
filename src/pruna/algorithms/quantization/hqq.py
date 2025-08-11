@@ -22,6 +22,7 @@ from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext, move_to_device, safe_memory_cleanup
@@ -78,16 +79,14 @@ class HQQQuantizer(PrunaQuantizer):
                 default_value="torch.float16",
                 meta=dict(desc="Compute dtype for quantization."),
             ),
-            CategoricalHyperparameter(
+            Boolean(
                 "use_torchao_kernels",
-                choices=[True, False],
-                default_value=True,
+                default=True,
                 meta=dict(desc="Whether to use the torchaoint4 kernels for inference."),
             ),
-            CategoricalHyperparameter(
+            Boolean(
                 "force_hf_implementation",
-                choices=[True, False],
-                default_value=False,
+                default=False,
                 meta=dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
             ),
         ]
