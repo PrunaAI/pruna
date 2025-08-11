@@ -572,4 +572,9 @@ class ModelContext:
             self.pipeline.model.language_model = self.pipeline.working_model
         else:
             self.pipeline = self.pipeline.working_model
-        del self.pipeline.working_model
+        # Only delete working_model if it was actually set as an attribute
+        # In the else case above, working_model and pipeline are the same object,
+        # so we don't need to (and can't) delete it
+        if hasattr(self.pipeline, "working_model") and self.pipeline.working_model is not self.pipeline:
+            del self.pipeline.working_model
+            safe_memory_cleanup()

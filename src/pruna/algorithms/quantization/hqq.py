@@ -187,8 +187,9 @@ class HQQQuantizer(PrunaQuantizer):
             # so we need to re-define the working_model as an attribute of the model.
             pipeline.working_model = working_model
             # as we have moved the model to cpu for cleaning, but only one of its attribute was put back on cuda.
-            move_to_device(model, smash_config["device"])
-            return model
+        smashed_model = pipeline.working_model if hasattr(pipeline, "working_model") else pipeline
+        move_to_device(smashed_model, smash_config["device"])
+        return smashed_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
