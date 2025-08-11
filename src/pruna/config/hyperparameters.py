@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+import fnmatch
+from typing import Any, Dict, List, Literal, Optional
 
 from ConfigSpace import CategoricalHyperparameter, Constant
 from typing_extensions import override
+
+from pruna.engine.utils import get_nn_modules
 
 
 class Boolean(CategoricalHyperparameter):
@@ -70,3 +73,79 @@ class UnconstrainedHyperparameter(Constant):
         self._contains_sequence_as_value = isinstance(value, (list, tuple))
         self._transformer.value = value
         return super().legal_value(value)
+
+
+TARGET_MODULES_TYPE = Dict[Literal["include", "exclude"], List[str]]
+
+
+class TargetModules(UnconstrainedHyperparameter):
+    """
+    Represents a target modules hyperparameter, used to select modules based on include and exclude patterns.
+
+    Parameters
+    ----------
+    name : str
+        The name of the hyperparameter.
+    default_value : Optional[TARGET_MODULES_TYPE]
+        The default value of the hyperparameter.
+    meta : Any
+        Meta data describing the hyperparameter.
+    """
+
+    path_to_target_modules_documentation = "https://docs.pruna.ai/en/stable/reference/target_modules.html"
+
+    def __init__(self, name: str, default_value: Optional[TARGET_MODULES_TYPE] = None, meta: Any = None) -> None:
+        super().__init__(name, default_value, meta=meta)
+
+    @override
+    def legal_value(self, value: TARGET_MODULES_TYPE | None):  # numpydoc ignore=GL08
+        # ensure the value is a TARGET_MODULES_TYPE to make errors more explicit for the user
+        if value is None:
+            pass
+        elif not isinstance(value, dict) or any(key not in ["include", "exclude"] for key in value):
+            raise TypeError(f"Target modules must be a dictionary with keys 'include' and/or 'exclude'. Got: {value}")
+        elif any(not isinstance(patterns, list) for patterns in value.values()):
+            raise TypeError(f"Target modules must be a dictionary with lists of glob patterns as values. Got: {value}")
+        elif "include" not in value or len(value["include"]) == 0:
+            raise ValueError("Target modules must have at least one 'include' pattern.")
+        else:
+            all_patterns = [pattern for patterns in value.values() for pattern in patterns]
+            unrecognized_patterns = [pattern for pattern in all_patterns if not isinstance(pattern, str)]
+            if unrecognized_patterns:
+                raise TypeError(
+                    "Target modules must be a dictionary with lists of glob patterns as values. "
+                    f"Could not recognize the following as glob patterns: {unrecognized_patterns}."
+                )
+        return super().legal_value(value)
+
+    @staticmethod
+    def to_list_of_modules_paths(target_modules: TARGET_MODULES_TYPE, model: Any) -> List[str]:
+        """
+        Convert the target modules to a list of module paths.
+
+        Parameters
+        ----------
+        model : Any
+            The model to get the module paths from.
+        target_modules : TARGET_MODULES_TYPE
+            The target modules to convert to a list of module paths.
+
+        Returns
+        -------
+        List[str]
+            The list of module paths.
+        """
+        include = target_modules.get("include", ["*"])
+        exclude = target_modules.get("exclude", [])
+        modules_paths = []
+        for root_name, module in get_nn_modules(model).items():
+            matching_modules = [
+                path
+                for path, _ in module.named_modules()
+                if any(fnmatch.fnmatch(path, _include) for _include in include)
+                and not any(fnmatch.fnmatch(path, _exclude) for _exclude in exclude)
+            ]
+            if root_name:  # add to the start of each matching module path
+                matching_modules = [f"{root_name}.{path}" for path in matching_modules]
+            modules_paths.extend(matching_modules)
+        return modules_paths
