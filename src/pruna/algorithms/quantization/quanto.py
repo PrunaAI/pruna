@@ -112,10 +112,7 @@ class QuantoQuantizer(PrunaQuantizer):
         import optimum.quanto as quanto
 
         weights = getattr(quanto, smash_config["weight_bits"])
-        if smash_config["act_bits"] is not None:
-            activations = getattr(quanto, smash_config["act_bits"])
-        else:
-            activations = None
+        activations = getattr(quanto, smash_config["act_bits"]) if smash_config["act_bits"] is not None else None
 
         try:
             quantize(working_model, weights=weights, activations=activations)
