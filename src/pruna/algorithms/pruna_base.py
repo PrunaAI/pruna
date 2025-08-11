@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from transformers import Pipeline
 
@@ -178,6 +178,24 @@ class PrunaAlgorithmBase(ABC):
             The hyperparameters for the algorithm.
         """
         return []
+
+    def get_default_hyperparameters(self, model: Any, smash_config: SmashConfig) -> Tuple[Any]:
+        """
+        Get default values for hyperparameters based on the model and configuration.
+
+        Parameters
+        ----------
+        model : Any
+            The model to get the default hyperparameters from.
+        smash_config : SmashConfig
+            The SmashConfig object.
+
+        Returns
+        -------
+        Tuple[Any]
+            The default hyperparameters for the algorithm.
+        """
+        return ()
 
     @abstractmethod
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
