@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -23,7 +23,6 @@ from pruna.config.hyperparameters import TARGET_MODULES_TYPE, Boolean, TargetMod
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.utils import get_nn_modules
 from pruna.logging.logger import pruna_logger
 
 
@@ -145,7 +144,7 @@ class QuantoQuantizer(PrunaQuantizer):
         else:
             activations = None
 
-        modules_with_subpaths = self._get_modules_with_subpaths(model, target_modules)
+        modules_with_subpaths = TargetModules.to_list_of_roots_and_subpaths(model, target_modules)
         for module, subpaths in modules_with_subpaths:
             try:
                 imported_modules["quantize"](
@@ -189,20 +188,6 @@ class QuantoQuantizer(PrunaQuantizer):
                 pruna_logger.error("Error while freezing the module: %s", e)
                 raise
         return model
-
-    def _get_modules_with_subpaths(
-        self, model: Any, target_modules: TARGET_MODULES_TYPE
-    ) -> List[Tuple[torch.nn.Module, List[str]]]:
-        """Get torch modules within the model and their associated subpaths."""
-        target_modules_paths = TargetModules.to_list_of_modules_paths(target_modules, model)
-        modules_with_subpaths: List[Tuple[torch.nn.Module, List[str]]] = []
-        for root_name, module in get_nn_modules(model).items():
-            targeted_submodules = [path for path in target_modules_paths if path.startswith(f"{root_name}.")]
-            if root_name:
-                targeted_submodules = [path.removeprefix(f"{root_name}.") for path in targeted_submodules]
-            if targeted_submodules:
-                modules_with_subpaths.append((module, targeted_submodules))
-        return modules_with_subpaths
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
