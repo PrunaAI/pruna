@@ -99,7 +99,7 @@ class TargetModules(UnconstrainedHyperparameter):
         super().__init__(name, default_value, meta=meta)
 
     @override
-    def legal_value(self, value: TARGET_MODULES_TYPE | None):  # numpydoc ignore=GL08
+    def legal_value(self, value: TARGET_MODULES_TYPE | None):  # type: ignore[override]  # numpydoc ignore=GL08
         # ensure the value is a TARGET_MODULES_TYPE to make errors more explicit for the user
         if value is None:
             pass
