@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import Any, Dict, Tuple
 
 import torch
@@ -94,7 +96,9 @@ class QuantoQuantizer(PrunaQuantizer):
             return True
         return hasattr(model, "transformer") and isinstance(model.transformer, torch.nn.Module)
 
-    def get_default_hyperparameters(self, model: Any, smash_config: SmashConfig) -> Tuple[TARGET_MODULES_TYPE]:
+    def get_default_hyperparameters(
+        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
+    ) -> Tuple[TARGET_MODULES_TYPE]:
         """
         Get default values for the target_modules based on the model and configuration.
 
