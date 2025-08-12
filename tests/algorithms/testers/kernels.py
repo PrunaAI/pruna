@@ -1,8 +1,11 @@
+import pytest
+
 from pruna.algorithms.kernels.flash_attn3 import FlashAttn3Kernel
 
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.high
 class TestFlashAttn3(AlgorithmTesterBase):
     """Test the flash attention 3 kernel."""
 
