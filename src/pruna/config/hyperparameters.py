@@ -15,8 +15,9 @@
 from __future__ import annotations
 
 import fnmatch
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
+import torch
 from ConfigSpace import CategoricalHyperparameter, Constant
 from typing_extensions import override
 
@@ -149,3 +150,32 @@ class TargetModules(UnconstrainedHyperparameter):
                 matching_modules = [f"{root_name}.{path}" for path in matching_modules]
             modules_paths.extend(matching_modules)
         return modules_paths
+
+    @staticmethod
+    def to_list_of_roots_and_subpaths(
+        model: Any, target_modules: TARGET_MODULES_TYPE
+    ) -> List[Tuple[torch.nn.Module, List[str]]]:
+        """
+        Get torch modules within the model and their associated subpaths.
+
+        Parameters
+        ----------
+        model : Any
+            The model to get the module paths from.
+        target_modules : TARGET_MODULES_TYPE
+            The target modules to convert to a list of module paths.
+
+        Returns
+        -------
+        List[Tuple[torch.nn.Module, List[str]]]
+            The list of modules attributes in the model with their associated subpaths.
+        """
+        target_modules_paths = TargetModules.to_list_of_modules_paths(target_modules, model)
+        modules_with_subpaths: List[Tuple[torch.nn.Module, List[str]]] = []
+        for root_name, module in get_nn_modules(model).items():
+            targeted_submodules = [path for path in target_modules_paths if path.startswith(f"{root_name}.")]
+            if root_name:
+                targeted_submodules = [path.removeprefix(f"{root_name}.") for path in targeted_submodules]
+            if targeted_submodules:
+                modules_with_subpaths.append((module, targeted_submodules))
+        return modules_with_subpaths
