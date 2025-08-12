@@ -21,7 +21,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import _resolve_cuda_device, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -120,9 +120,10 @@ class InferenceTimeStats(BaseMetric):
             return (endevent_time - startevent_time) * 1000  # in ms
         elif self.timing_type == "sync":
             try:
-                torch_device_attr = getattr(torch, self.device)
+                device_normalized = torch.device(_resolve_cuda_device(self.device))
+                torch_device_attr = getattr(torch, device_normalized.type)
             except AttributeError:
-                raise ValueError(f"Device {self.device} not supported for sync timing. Using async timing instead.")
+                raise ValueError(f"Device {self.device} not supported for sync timing. Use async timing instead.")
             startevent = torch_device_attr.Event(enable_timing=True)
             endevent = torch_device_attr.Event(enable_timing=True)
             startevent.record()
