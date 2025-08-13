@@ -312,6 +312,8 @@ def get_device_map(model: Any, subset_key: str | None = None) -> dict[str, str]:
         else:
             return model.hf_device_map[subset_key]
     else:
+        if model_device.startswith("cuda"):
+            model_device = _resolve_cuda_device(model_device)
         return {"": model_device}
 
 
