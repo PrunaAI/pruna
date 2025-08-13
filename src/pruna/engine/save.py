@@ -297,10 +297,13 @@ def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashCon
 
     # move files in save dir into model path
     for file in save_dir.iterdir():
+        target_path = Path(model_path) / file.name
+        if target_path == file:
+            continue
         if file.is_file():
-            shutil.copy(file, Path(model_path) / file.name)
+            shutil.copy(file, target_path)
         else:
-            shutil.copytree(file, Path(model_path) / file.name)
+            shutil.copytree(file, target_path)
 
 
 def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
