@@ -70,7 +70,9 @@ def collect_tester_instances(
     return parametrizations
 
 
-def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig]) -> None:
+def run_full_integration(
+    algorithm_tester: Any, device: str, model_fixture: tuple[Any, SmashConfig], skip_evaluation: bool = False
+) -> None:
     """Run the full integration test."""
     try:
         model, smash_config = model_fixture[0], model_fixture[1]
@@ -84,7 +86,7 @@ def run_full_integration(algorithm_tester: Any, device: str, model_fixture: tupl
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
         reloaded_model = algorithm_tester.execute_load()
-        if device != "accelerate":
+        if device != "accelerate" and not skip_evaluation:
             algorithm_tester.execute_evaluation(reloaded_model, smash_config.data, smash_config["device"])
         reloaded_model.destroy()
     finally:
