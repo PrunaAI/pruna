@@ -88,7 +88,8 @@ def run_full_integration(
         reloaded_model = algorithm_tester.execute_load()
         if device != "accelerate" and not skip_evaluation:
             algorithm_tester.execute_evaluation(reloaded_model, smash_config.data, smash_config["device"])
-        reloaded_model.destroy()
+        if hasattr(reloaded_model, "destroy"):
+            reloaded_model.destroy()
     finally:
         algorithm_tester.final_teardown(smash_config)
 
