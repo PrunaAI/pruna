@@ -103,10 +103,14 @@ class TargetModules(UnconstrainedHyperparameter):
         # ensure the value is a TARGET_MODULES_TYPE to make errors more explicit for the user
         if value is None:
             pass
-        elif not isinstance(value, dict) or any(key not in ["include", "exclude"] for key in value):
+        elif not isinstance(value, dict):
             raise TypeError(f"Target modules must be a dictionary with keys 'include' and/or 'exclude'. Got: {value}")
+        elif any(key not in ["include", "exclude"] for key in value):
+            raise ValueError(f"Target modules must only use keys 'include' and/or 'exclude'. Got: {list(value.keys())}")
         elif any(not isinstance(patterns, list) for patterns in value.values()):
-            raise TypeError(f"Target modules must be a dictionary with lists of glob patterns as values. Got: {value}")
+            raise TypeError(
+                f"Target modules must be a dictionary with lists of fnmatch patterns as values. Got: {value}"
+            )
         elif "include" not in value or len(value["include"]) == 0:
             raise ValueError("Target modules must have at least one 'include' pattern.")
         else:
@@ -114,8 +118,8 @@ class TargetModules(UnconstrainedHyperparameter):
             unrecognized_patterns = [pattern for pattern in all_patterns if not isinstance(pattern, str)]
             if unrecognized_patterns:
                 raise TypeError(
-                    "Target modules must be a dictionary with lists of glob patterns as values. "
-                    f"Could not recognize the following as glob patterns: {unrecognized_patterns}."
+                    "Target modules must be a dictionary with lists of fnmatch patterns as values. "
+                    f"Could not recognize the following as fnmatch patterns: {unrecognized_patterns}."
                 )
         return super().legal_value(value)
 
@@ -168,7 +172,7 @@ class TargetModules(UnconstrainedHyperparameter):
         Returns
         -------
         List[Tuple[torch.nn.Module, List[str]]]
-            The list of modules attributes in the model with their associated subpaths.
+            The list of modules attributes in the model with their associated targeted subpaths.
         """
         target_modules_paths = TargetModules.to_list_of_modules_paths(target_modules, model)
         modules_with_subpaths: List[Tuple[torch.nn.Module, List[str]]] = []
