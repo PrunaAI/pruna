@@ -40,28 +40,6 @@ KERNEL = "kernel"
 ALGORITHM_GROUPS = [FACTORIZER, PRUNER, QUANTIZER, KERNEL, CACHER, COMPILER, BATCHER]
 
 
-class Boolean(CategoricalHyperparameter):
-    """
-    Represents a boolean hyperparameter with choices True and False.
-
-    Parameters
-    ----------
-    name : str
-        The name of the hyperparameter.
-    default : bool
-        The default value of the hyperparameter.
-    meta : Any
-        The metadata for the hyperparameter.
-    """
-
-    def __init__(self, name: str, default: bool = False, meta: Any = dict()) -> None:
-        super().__init__(name, choices=[True, False], default_value=default, meta=meta)
-
-    def __new__(cls, name: str, default: bool = False, meta: Any = None) -> CategoricalHyperparameter:  # type: ignore
-        """Create a new boolean hyperparameter."""
-        return CategoricalHyperparameter(name, choices=[True, False], default_value=default, meta=meta)
-
-
 class IsTrueCondition(EqualsCondition):
     """
     Represents a condition that checks if a hyperparameter is set to True.

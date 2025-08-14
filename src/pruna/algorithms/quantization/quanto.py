@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from __future__ import annotations
+
+from typing import Any, Dict, Tuple
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
 
+from pruna import SmashConfig
 from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.config.hyperparameters import TARGET_MODULES_TYPE, Boolean, TargetModules
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import Boolean
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
@@ -63,6 +66,14 @@ class QuantoQuantizer(PrunaQuantizer):
             Constant("act_bits", value=None),
             Boolean("calibrate", default=True, meta=dict(desc="Whether to calibrate the model.")),
             Constant(name="calibration_samples", value=64),
+            TargetModules(
+                name="target_modules",
+                default_value=None,
+                meta=dict(
+                    desc=f"Precise choices of which modules to quantize. "
+                    f"See {TargetModules.path_to_target_modules_documentation} for more details."
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -85,6 +96,33 @@ class QuantoQuantizer(PrunaQuantizer):
             return True
         return hasattr(model, "transformer") and isinstance(model.transformer, torch.nn.Module)
 
+    def get_default_hyperparameters(
+        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
+    ) -> Tuple[TARGET_MODULES_TYPE]:
+        """
+        Get default values for the target_modules based on the model and configuration.
+
+        Parameters
+        ----------
+        model : Any
+            The model to get the default hyperparameters from.
+        smash_config : SmashConfig
+            The SmashConfig object.
+
+        Returns
+        -------
+        Tuple[TARGET_MODULES_TYPE]
+            The default target_modules for the algorithm.
+        """
+        include: list[str]
+        if hasattr(model, "unet"):
+            include = ["unet*"]
+        elif hasattr(model, "transformer"):
+            include = ["transformer*"]
+        else:
+            include = ["*"]
+        return ({"include": include},)
+
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
         Quantize the model with QUANTO.
@@ -102,13 +140,7 @@ class QuantoQuantizer(PrunaQuantizer):
             The quantized model.
         """
         imported_modules = self.import_algorithm_packages()
-
-        if hasattr(model, "unet"):
-            working_model = model.unet
-        elif hasattr(model, "transformer"):
-            working_model = model.transformer
-        else:
-            working_model = model
+        target_modules = smash_config["target_modules"] or self.get_default_hyperparameters(model, smash_config)[0]
 
         weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
         if smash_config["act_bits"] is not None:
@@ -116,14 +148,28 @@ class QuantoQuantizer(PrunaQuantizer):
         else:
             activations = None
 
-        try:
-            imported_modules["quantize"](working_model, weights=weights, activations=activations)
-        except Exception as e:
-            pruna_logger.error("Error during quantization: %s", e)
-            raise
+        modules_with_subpaths = TargetModules.to_list_of_roots_and_subpaths(model, target_modules)
+        for module, subpaths in modules_with_subpaths:
+            try:
+                imported_modules["quantize"](
+                    module,
+                    weights=weights,
+                    activations=activations,
+                    include=subpaths,
+                )
+            except Exception as e:
+                pruna_logger.error("Error during quantization: %s", e)
+                raise
 
         if smash_config["calibrate"]:
             if smash_config.tokenizer is not None and smash_config.data is not None:
+                if hasattr(model, "unet"):
+                    working_model = model.unet
+                elif hasattr(model, "transformer"):
+                    working_model = model.transformer
+                else:
+                    working_model = model
+
                 try:
                     with imported_modules["Calibration"](streamline=True, debug=False):
                         calibrate(
@@ -139,11 +185,12 @@ class QuantoQuantizer(PrunaQuantizer):
             else:
                 pruna_logger.error("Calibration requires a tokenizer and dataloader. Skipping calibration.")
 
-        try:
-            imported_modules["freeze"](working_model)
-        except Exception as e:
-            pruna_logger.error("Error while freezing the model: %s", e)
-            raise
+        for module, _ in modules_with_subpaths:
+            try:
+                imported_modules["freeze"](module)
+            except Exception as e:
+                pruna_logger.error("Error while freezing the module: %s", e)
+                raise
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
