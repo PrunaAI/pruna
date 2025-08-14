@@ -610,6 +610,8 @@ def has_fused_attention_processor(pipeline: Any) -> bool:
         True if the pipeline can use a Fused attention processor, False otherwise.
     """
     with ModelContext(pipeline) as (_, working_model, _):
+        # add this line just to make the __exit__ method of ModelContext work
+        pipeline.working_model = working_model
         if hasattr(working_model, "fuse_qkv_projections"):
             for _, attn_processor in working_model.attn_processors.items():
                 if "Added" in str(attn_processor.__class__.__name__):
