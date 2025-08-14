@@ -93,7 +93,9 @@ class TargetModules(UnconstrainedHyperparameter):
         Meta data describing the hyperparameter.
     """
 
-    path_to_target_modules_documentation = "https://docs.pruna.ai/en/stable/reference/target_modules.html"
+    path_to_target_modules_documentation = (
+        "`Target Modules <https://docs.pruna.ai/en/stable/reference/target_modules.html>`_ documentation"
+    )
 
     def __init__(self, name: str, default_value: Optional[TARGET_MODULES_TYPE] = None, meta: Any = None) -> None:
         super().__init__(name, default_value, meta=meta)
