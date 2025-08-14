@@ -144,14 +144,15 @@ class TargetModules(UnconstrainedHyperparameter):
         exclude = target_modules.get("exclude", [])
         modules_paths = []
         for root_name, module in get_nn_modules(model).items():
+            module_paths = [
+                f"{root_name}{'.' + path if path else ''}" if root_name else path for path, _ in module.named_modules()
+            ]
             matching_modules = [
                 path
-                for path, _ in module.named_modules()
+                for path in module_paths
                 if any(fnmatch.fnmatch(path, _include) for _include in include)
                 and not any(fnmatch.fnmatch(path, _exclude) for _exclude in exclude)
             ]
-            if root_name:  # add to the start of each matching module path
-                matching_modules = [f"{root_name}.{path}" for path in matching_modules]
             modules_paths.extend(matching_modules)
         return modules_paths
 
@@ -179,7 +180,7 @@ class TargetModules(UnconstrainedHyperparameter):
         for root_name, module in get_nn_modules(model).items():
             targeted_submodules = [path for path in target_modules_paths if path.startswith(f"{root_name}.")]
             if root_name:
-                targeted_submodules = [path.removeprefix(f"{root_name}.") for path in targeted_submodules]
+                targeted_submodules = [path.removeprefix(root_name).removeprefix(".") for path in targeted_submodules]
             if targeted_submodules:
                 modules_with_subpaths.append((module, targeted_submodules))
         return modules_with_subpaths
