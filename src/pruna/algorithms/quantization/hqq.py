@@ -22,6 +22,7 @@ from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_space import Boolean
 from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext, move_to_device, safe_memory_cleanup
@@ -78,6 +79,16 @@ class HQQQuantizer(PrunaQuantizer):
                 default_value="torch.float16",
                 meta=dict(desc="Compute dtype for quantization."),
             ),
+            Boolean(
+                "use_torchao_kernels",
+                default=True,
+                meta=dict(desc="Whether to use the torchaoint4 kernels for inference."),
+            ),
+            Boolean(
+                "force_hf_implementation",
+                default=False,
+                meta=dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -126,14 +137,23 @@ class HQQQuantizer(PrunaQuantizer):
         safe_memory_cleanup()
         with ModelContext(model) as (pipeline, working_model, denoiser_type):
             try:  # Try to quantize the model using HQQ
+                if smash_config["force_hf_implementation"]:
+                    raise Exception(
+                        "AutoHQQHFModel is bypassed, defaulting to generic HF quantization. "
+                        "Set force_hf_implementation to False to (try to) use AutoHQQHFModel."
+                    )
                 working_model = imported_modules["AutoHQQHFModel"].quantize_model(
                     working_model,
                     quant_config=quant_config_hqq,
                     device=smash_config["device"],
                     compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
                 )
-            except Exception:  # Default to generic HF quantization if it fails
-                pruna_logger.info("Could not quantize model using specialized HQQ pipeline, trying generic interface...")
+            except Exception:  # Default to generic HF quantization if it fails or if default_to_hf is True
+                if not smash_config["force_hf_implementation"]:
+                    pruna_logger.info(
+                        "Could not quantize model using specialized HQQ pipeline, "
+                        "trying implementation from transformers library..."
+                    )
                 # Create a temporary directory in a specific location
                 base_temp_dir = smash_config["cache_dir"]
                 temp_dir = tempfile.mkdtemp(dir=base_temp_dir)
@@ -152,7 +172,12 @@ class HQQQuantizer(PrunaQuantizer):
 
             # Prepare the model for fast inference
             try:
-                if weight_quantization_bits == 4:
+                if weight_quantization_bits == 4 and smash_config["use_torchao_kernels"]:
+                    pruna_logger.info(
+                        "Patching model for fast inference with torchaoint4 kernels. "
+                        "This operation can make the model incompatible with re-load. "
+                        "If you plan to save and re-load the model, set use_torchao_kernels to False."
+                    )
                     imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
             except Exception as e:
                 pruna_logger.error(f"Error: {e}")
@@ -161,8 +186,9 @@ class HQQQuantizer(PrunaQuantizer):
             # so we need to re-define the working_model as an attribute of the model.
             pipeline.working_model = working_model
             # as we have moved the model to cpu for cleaning, but only one of its attribute was put back on cuda.
-            move_to_device(model, smash_config["device"])
-            return model
+        smashed_model = pipeline.working_model if hasattr(pipeline, "working_model") else pipeline
+        move_to_device(smashed_model, smash_config["device"])
+        return smashed_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
