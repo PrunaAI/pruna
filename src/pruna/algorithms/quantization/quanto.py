@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
+from typing import Any, Dict
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -143,6 +143,20 @@ class QuantoQuantizer(PrunaQuantizer):
             pruna_logger.error("Error while freezing the model: %s", e)
             raise
         return model
+
+    def import_algorithm_packages(self) -> Dict[str, Any]:
+        """
+        Provide a algorithm packages for the algorithm.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The algorithm packages.
+        """
+        import optimum
+        from optimum.quanto import Calibration, freeze, quantize
+
+        return dict(Calibration=Calibration, freeze=freeze, quantize=quantize, optimum=optimum)
 
 
 @torch.no_grad()
