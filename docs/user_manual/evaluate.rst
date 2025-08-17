@@ -216,7 +216,7 @@ The ``EvaluationAgent`` accepts ``Metrics`` in three ways:
 Metric Call Types
 ~~~~~~~~~~~~~~~~~
 
-Stateful metrics can generally be evaluated in single-model and pariwise modes.
+Stateful metrics can generally be evaluated in single-model and pairwise modes.
 Single-mode allows to compare a mode against ground-truth data, while pairwise mode allows to compare the fidelity of model against another model.
 
 - **Single-Model mode**: Each evaluation produces independent scores for the model being evaluated. IQA metrics are only supported in single-model mode.
