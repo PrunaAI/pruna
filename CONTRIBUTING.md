@@ -9,8 +9,8 @@ Contributions that do not adhere to the code of conduct will be ignored.
 
 There are various ways you can contribute:
 
-- Have a question? Discuss with us on [Discord](https://discord.gg/Tun8YgzxZ9) or check out the [FAQ](https://docs.pruna.ai/en/stable/docs_pruna/faq.html)
-- Have an idea for a new tutorial? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request) or chat with us on [Discord](https://discord.gg/Tun8YgzxZ9)
+- Have a question? Discuss with us on [Discord](https://discord.gg/JFQmtFKCjd9) or check out the [FAQ](https://docs.pruna.ai/en/stable/docs_pruna/faq.html)
+- Have an idea for a new tutorial? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request) or chat with us on [Discord](https://discord.gg/JFQmtFKCjd9)
 - Found a bug? Open an issue with a [bug report](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#bug-report)
 - Want a new feature? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request)
 - Have a new algorithm to add? Check out the [guide on adding algorithms](https://docs.pruna.ai/en/stable/docs_pruna/contributions/adding_algorithm.html)
@@ -92,4 +92,4 @@ pytest -m "cpu and not slow"
 
 ### 5. Create a Pull Request
 
-Once you have made your changes and tested them, you can create a Pull Request. We will then review your Pull Request and get back to you as soon as possible. If there are any questions along the way, please do not hesitate to reach out on [Discord](https://discord.gg/Tun8YgzxZ9).
+Once you have made your changes and tested them, you can create a Pull Request. We will then review your Pull Request and get back to you as soon as possible. If there are any questions along the way, please do not hesitate to reach out on [Discord](https://discord.gg/JFQmtFKCjd9).
