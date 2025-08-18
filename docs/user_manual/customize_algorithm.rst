@@ -2,7 +2,7 @@ Customize Algorithms
 ====================
 
 If you’ve developed a new method or want to integrate a missing algorithm into |pruna|, we welcome your contribution! This tutorial guides you through the steps to integrate a new compression algorithm, making it available for all users.
-If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/Tun8YgzxZ9>`_ anytime!
+If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjdd9>`_ anytime!
 If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
 
 Add a Custom Algorithm

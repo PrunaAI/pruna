@@ -27,7 +27,7 @@ Customize components
 
    You can also customize the package by adding your own algorithms, datasets, and metrics.
    Take a look at the :doc:`contributing guide </docs_pruna/contributions/how_to_contribute>` to learn more.
-   If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/Tun8YgzxZ9>`_ anytime!
+   If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjdd9>`_ anytime!
 
 .. toctree::
    :maxdepth: 1
