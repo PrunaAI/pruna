@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
-    from optimum.quanto import Calibration, freeze, quantize
-    import optimum.quanto as optimum
+    from optimum.quanto import Calibration, quantize
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -146,7 +145,7 @@ class QuantoQuantizer(PrunaQuantizer):
                 pruna_logger.error("Calibration requires a tokenizer and dataloader. Skipping calibration.")
 
         try:
-            freeze(working_model)
+            imported_modules["freeze"](working_model)
         except Exception as e:
             pruna_logger.error("Error while freezing the model: %s", e)
             raise
