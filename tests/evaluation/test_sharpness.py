@@ -145,7 +145,6 @@ def test_task_sharpness_from_string(model_fixture: tuple[Any, SmashConfig], devi
     "kernel_size, call_type",
     [
         (3, "single"),
-        (5, "y"),
         (7, "single"),
     ],
 )

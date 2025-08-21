@@ -68,11 +68,14 @@ class SharpnessMetric(StatefulMetric):
 
     def __init__(self, *args, kernel_size: int = 3, call_type: str = SINGLE, **kwargs) -> None:
         device = kwargs.pop("device", None)
-        if device is not None and device not in self.runs_on:
-            pruna_logger.error(f"SharpnessMetric: device {device} not supported. Supported devices: {self.runs_on}")
-            raise
+        if device is not None and str(device).split(":")[0] not in self.runs_on:
+            msg = f"SharpnessMetric: device {device} not supported. Supported devices: {self.runs_on}"
+            pruna_logger.error(msg)
+            # Repeating the message here since inside an if block we can only raise with a message
+            # or we get a RuntimeError.
+            raise ValueError(msg)
         super().__init__(*args, **kwargs)
-        self.device = set_to_best_available_device(device)  # OpenCV only works on CPU
+        self.device = set_to_best_available_device(device)
         self.kernel_size = kernel_size
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])
