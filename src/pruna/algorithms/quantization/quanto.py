@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
+
+if TYPE_CHECKING:
+    from optimum.quanto import Calibration, quantize
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -102,7 +105,6 @@ class QuantoQuantizer(PrunaQuantizer):
             The quantized model.
         """
         imported_modules = self.import_algorithm_packages()
-
         if hasattr(model, "unet"):
             working_model = model.unet
         elif hasattr(model, "transformer"):
@@ -110,14 +112,17 @@ class QuantoQuantizer(PrunaQuantizer):
         else:
             working_model = model
 
-        weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
-        if smash_config["act_bits"] is not None:
-            activations = getattr(imported_modules["optimum"].quanto, smash_config["act_bits"])
-        else:
-            activations = None
+        imported_modules = self.import_algorithm_packages()
+
+        weights = getattr(imported_modules["quanto"], smash_config["weight_bits"])
+        activations = (
+            getattr(imported_modules["quanto"], smash_config["act_bits"])
+            if smash_config["act_bits"] is not None
+            else None
+        )
 
         try:
-            imported_modules["quantize"](working_model, weights=weights, activations=activations)
+            quantize(working_model, weights=weights, activations=activations)
         except Exception as e:
             pruna_logger.error("Error during quantization: %s", e)
             raise
@@ -125,7 +130,7 @@ class QuantoQuantizer(PrunaQuantizer):
         if smash_config["calibrate"]:
             if smash_config.tokenizer is not None and smash_config.data is not None:
                 try:
-                    with imported_modules["Calibration"](streamline=True, debug=False):
+                    with Calibration(streamline=True, debug=False):
                         calibrate(
                             working_model,
                             smash_config.val_dataloader(),
@@ -155,10 +160,10 @@ class QuantoQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        import optimum
+        import optimum.quanto as quanto
         from optimum.quanto import Calibration, freeze, quantize
 
-        return dict(Calibration=Calibration, freeze=freeze, quantize=quantize, optimum=optimum)
+        return dict(Calibration=Calibration, freeze=freeze, quantize=quantize, quanto=quanto)
 
 
 @torch.no_grad()
