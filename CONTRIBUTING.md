@@ -1,16 +1,16 @@
 # How to Contribute 💜
 
-Since you landed on this part of the repository, we want to first of all say thank you! 💜  
+Since you landed on this part of the repository, we want to first of all say thank you! 💜
 Contributions from the community are essential to improving Pruna, we appreciate your effort in making the repository better for everyone!
 
-Please make sure to review and adhere to the [Pruna Code of Conduct](https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md) before contributing to Pruna.  
-Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms.  
+Please make sure to review and adhere to the [Pruna Code of Conduct](https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md) before contributing to Pruna.
+Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms.
 Contributions that do not adhere to the code of conduct will be ignored.
 
 There are various ways you can contribute:
 
-- Have a question? Discuss with us on [Discord](https://discord.gg/JFQmtFKCjd9) or check out the [FAQ](https://docs.pruna.ai/en/stable/docs_pruna/faq.html)
-- Have an idea for a new tutorial? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request) or chat with us on [Discord](https://discord.gg/JFQmtFKCjd9)
+- Have a question? Discuss with us on [Discord](https://discord.gg/JFQmtFKCjd) or check out the [FAQ](https://docs.pruna.ai/en/stable/docs_pruna/faq.html)
+- Have an idea for a new tutorial? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request) or chat with us on [Discord](https://discord.gg/JFQmtFKCjd)
 - Found a bug? Open an issue with a [bug report](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#bug-report)
 - Want a new feature? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request)
 - Have a new algorithm to add? Check out the [guide on adding algorithms](https://docs.pruna.ai/en/stable/docs_pruna/contributions/adding_algorithm.html)
@@ -92,4 +92,4 @@ pytest -m "cpu and not slow"
 
 ### 5. Create a Pull Request
 
-Once you have made your changes and tested them, you can create a Pull Request. We will then review your Pull Request and get back to you as soon as possible. If there are any questions along the way, please do not hesitate to reach out on [Discord](https://discord.gg/JFQmtFKCjd9).
+Once you have made your changes and tested them, you can create a Pull Request. We will then review your Pull Request and get back to you as soon as possible. If there are any questions along the way, please do not hesitate to reach out on [Discord](https://discord.gg/JFQmtFKCjd).

@@ -3,7 +3,7 @@ Customize a Metric
 
 This guide will walk you through the process of adding a new metric to Pruna's evaluation system.
 
-If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjdd9>`_ anytime!
+If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjd>`_ anytime!
 
 If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
 

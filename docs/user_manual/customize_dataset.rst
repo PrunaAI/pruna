@@ -5,7 +5,7 @@ Our interface makes it easy to add :ref:`your own dataset <customize-dataset>`.
 Additionally, we provide a variety of :ref:`preconfigured datasets <configure-datasets>` that can be readily used in SmashConfig for calibration or evaluation.
 
 If you’d like to contribute a new dataset to our supported list, follow these two quick steps.
-If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjdd9>`_ anytime!
+If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjd>`_ anytime!
 If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
 
 .. _customize-dataset:
