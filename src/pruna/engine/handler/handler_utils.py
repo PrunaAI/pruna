@@ -19,6 +19,7 @@ from typing import Any
 
 from pruna.engine.handler.handler_diffuser import DiffuserHandler
 from pruna.engine.handler.handler_inference import InferenceHandler
+from pruna.engine.handler.handler_pipeline import PipelineHandler
 from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
 
@@ -49,7 +50,14 @@ def register_inference_handler(model: Any) -> InferenceHandler:
 
     model_module = model._orig_mod.__module__ if hasattr(model, "_orig_mod") else model.__module__
 
-    if "diffusers" in model_module:
+    # Check if it's a transformers pipeline
+    if hasattr(model, "__class__") and "Pipeline" in model.__class__.__name__:
+        # Specific check for text generation pipelines
+        if "TextGeneration" in model.__class__.__name__:
+            return PipelineHandler(pipeline=model)
+        # For other pipelines, fallback to standard pipeline handler
+        return PipelineHandler(pipeline=model)
+    elif "diffusers" in model_module:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
     elif "transformers" in model_module:
         return TransformerHandler()

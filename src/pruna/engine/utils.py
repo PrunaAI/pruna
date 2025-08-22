@@ -173,6 +173,13 @@ def move_to_device(
                 model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
         try:
             model.to(device)
+            # Avoid circular imports
+            from pruna.engine.model_checks import is_gptq_model
+
+            # Special handling for GPTQ models to ensure all quantization tensors are on the correct device
+            if is_gptq_model(model):
+                _ensure_gptq_device_consistency(model, device_str)
+
         except torch.cuda.OutOfMemoryError as e:
             # there is anyway no way to recover from this error
             # raise it here for better traceability
@@ -183,6 +190,78 @@ def move_to_device(
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
     safe_memory_cleanup()
+
+
+def _ensure_gptq_device_consistency(model: Any, target_device: str) -> None:
+    """
+    Ensure all GPTQ quantization tensors are on the correct device.
+
+    This fixes device mismatch issues where GPTQ quantization parameters
+    might be on different devices than the model weights.
+
+    Parameters
+    ----------
+    model : Any
+        The GPTQ model to fix.
+    target_device : str
+        The target device string (e.g., "cuda", "cuda:0", "cpu").
+    """
+    try:
+        for name, module in model.named_modules():
+            # Handle GPTQ-specific quantized linear layers
+            if hasattr(module, "qweight") or "qlinear" in str(type(module)).lower():
+                # Move all quantization-related tensors to the target device
+                # Include all Marlin-specific tensors for GPTQ compatibility
+                known_attrs = ["qweight", "qzeros", "scales", "g_idx", "g_idx_sort_indices", "workspace", "zp", "bias"]
+
+                for attr_name in known_attrs:
+                    if hasattr(module, attr_name):
+                        attr = getattr(module, attr_name)
+                        if isinstance(attr, torch.Tensor) and attr.device != torch.device(target_device):
+                            try:
+                                setattr(module, attr_name, attr.to(target_device))
+                            except Exception as e:
+                                # Some tensors might be read-only or have special handling
+                                pruna_logger.debug(f"Could not move {attr_name} in {name} to {target_device}: {e}")
+
+                # Comprehensive scan: move ALL tensor attributes that might be missed
+                # This catches TorchQuantLinear and other GPTQ variant tensors
+                for attr_name in dir(module):
+                    if not attr_name.startswith("_") and attr_name not in known_attrs:
+                        try:
+                            attr = getattr(module, attr_name)
+                            if isinstance(attr, torch.Tensor) and attr.device != torch.device(target_device):
+                                try:
+                                    setattr(module, attr_name, attr.to(target_device))
+                                except Exception as e:
+                                    # Some tensors might be read-only or have special handling
+                                    pruna_logger.debug(f"Could not move {attr_name} in {name} to {target_device}: {e}")
+                        except Exception:
+                            # Skip attributes that can't be accessed
+                            pass
+
+                # Also check for any buffer tensors
+                for buffer_name, buffer in module.named_buffers():
+                    if buffer.device != torch.device(target_device):
+                        try:
+                            buffer.data = buffer.data.to(target_device)
+                        except Exception as e:
+                            pruna_logger.warning(
+                                f"Could not move buffer {buffer_name} in {name} to {target_device}: {e}"
+                            )
+
+                # Check parameters as well
+                for param_name, param in module.named_parameters(recurse=False):
+                    if param.device != torch.device(target_device):
+                        try:
+                            param.data = param.data.to(target_device)
+                        except Exception as e:
+                            pruna_logger.warning(
+                                f"Could not move parameter {param_name} in {name} to {target_device}: {e}"
+                            )
+
+    except Exception as e:
+        pruna_logger.warning(f"Error during GPTQ device consistency check: {e}")
 
 
 def remove_all_accelerate_hooks(model: Any) -> None:
