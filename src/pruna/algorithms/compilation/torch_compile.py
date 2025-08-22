@@ -27,6 +27,7 @@ from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
     is_causal_lm,
+    is_gptq_model,
     is_janus_llamagen_ar,
     is_opt_model,
     is_transformers_pipeline_with_causal_lm,
@@ -209,7 +210,12 @@ class TorchCompileCompiler(PrunaCompiler):
         ):
             return unet_transformer_pipeline_logic(model, smash_config)
 
-        if is_causal_lm(model) or is_janus_llamagen_ar(model) or is_transformers_pipeline_with_causal_lm(model):
+        if (
+            is_causal_lm(model)
+            or is_janus_llamagen_ar(model)
+            or is_transformers_pipeline_with_causal_lm(model)
+            or is_gptq_model(model)
+        ):
             if is_transformers_pipeline_with_causal_lm(model):
                 return self._apply_to_model_within_transformers_pipeline(model, smash_config)
             return causal_lm_or_janus_logic(model, smash_config)
@@ -414,7 +420,7 @@ def causal_lm_or_janus_logic(model: Any, smash_config: SmashConfigPrefixWrapper)
         # https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig.temperature
         temperature = 1.0
 
-    if is_causal_lm(model):
+    if is_causal_lm(model) or is_gptq_model(model):
         # We use a generator as in https://github.com/mobiusml/hqq/blob/1f052eb5a0aab0572d380d48b708ae1c74936d23/hqq/utils/generation_hf.py
         gen = CausalLMGenerator(
             model,

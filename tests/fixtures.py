@@ -93,8 +93,11 @@ def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple
     except Exception:
         smash_config.add_tokenizer("bert-base-uncased")
 
-    if hasattr(smash_config.tokenizer, "pad_token"):
+    if hasattr(smash_config.tokenizer, "pad_token") and smash_config.tokenizer.pad_token is None:
         smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
+
+    # Create dataset for text generation models
+    if hasattr(smash_config.tokenizer, "pad_token"):
         dataset = PrunaDataModule.from_string(
             "WikiText", collate_fn_args=dict(tokenizer=smash_config.tokenizer, max_seq_len=64)
         )
@@ -110,6 +113,21 @@ def get_transformers_pipeline_for_specific_task(
     """Get a transformers pipeline for specific task."""
     model = pipeline(task, model=model_id, **kwargs)
     smash_config = SmashConfig()
+    try:
+        smash_config.add_tokenizer(model_id)
+    except Exception:
+        smash_config.add_tokenizer("bert-base-uncased")
+
+    if hasattr(smash_config.tokenizer, "pad_token") and smash_config.tokenizer.pad_token is None:
+        smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
+
+    # Create dataset for text generation models
+    if hasattr(smash_config.tokenizer, "pad_token"):
+        dataset = PrunaDataModule.from_string(
+            "WikiText", collate_fn_args=dict(tokenizer=smash_config.tokenizer, max_seq_len=64)
+        )
+        dataset.limit_datasets(16)
+        smash_config.add_data(dataset)
     return model, smash_config
 
 
@@ -161,4 +179,5 @@ MODEL_FACTORY: dict[str, Callable] = {
     "tiny_janus_pro": partial(get_automodel_image_text_to_text_transformers, "loulou2/tiny_janus"),
     "wan_tiny_random": partial(get_diffusers_model, "PrunaAI/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "loulou2/tiny_flux", torch_dtype=torch.float16),
+    "tiny_llama": partial(get_automodel_transformers, "loulou2/tiny_llama", torch_dtype=torch.bfloat16),
 }
