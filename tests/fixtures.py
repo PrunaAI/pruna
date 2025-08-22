@@ -113,6 +113,21 @@ def get_transformers_pipeline_for_specific_task(
     """Get a transformers pipeline for specific task."""
     model = pipeline(task, model=model_id, **kwargs)
     smash_config = SmashConfig()
+    try:
+        smash_config.add_tokenizer(model_id)
+    except Exception:
+        smash_config.add_tokenizer("bert-base-uncased")
+
+    if hasattr(smash_config.tokenizer, "pad_token") and smash_config.tokenizer.pad_token is None:
+        smash_config.tokenizer.pad_token = smash_config.tokenizer.eos_token
+
+    # Create dataset for text generation models
+    if hasattr(smash_config.tokenizer, "pad_token"):
+        dataset = PrunaDataModule.from_string(
+            "WikiText", collate_fn_args=dict(tokenizer=smash_config.tokenizer, max_seq_len=64)
+        )
+        dataset.limit_datasets(16)
+        smash_config.add_data(dataset)
     return model, smash_config
 
 

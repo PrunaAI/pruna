@@ -661,3 +661,36 @@ def is_janus_llamagen_ar(model: Any) -> bool:
         True if the model is a Janus LlamaGen AR model, False otherwise.
     """
     return model.__class__.__name__ == "JanusForConditionalGeneration"
+
+
+def is_gptq_model(model: Any) -> bool:
+    """
+    Check if the model is a GPTQ model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a GPTQ model, False otherwise.
+    """
+    # Check if it's a gptqmodel class
+    model_class_name = model.__class__.__name__
+    model_module_name = model.__class__.__module__
+
+    # Check for gptqmodel classes (like LlamaGPTQ, MistralGPTQ, etc.)
+    if "gptqmodel" in model_module_name and "GPTQ" in model_class_name:
+        return True
+
+    # Check for GPTQ-specific attributes in the model modules
+    try:
+        for module in model.modules():
+            if hasattr(module, "qweight") or "qlinear" in str(type(module)).lower():
+                return True
+    except Exception:
+        pass
+
+    return False
