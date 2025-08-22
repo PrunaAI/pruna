@@ -121,7 +121,7 @@ class TestGPTQ(AlgorithmTesterBase):
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 
-    models = ["noref_llama_3_tiny_random"]
+    models = ["noref_tiny_llama"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = LLMCompressorQuantizer
