@@ -23,6 +23,8 @@ from typing_extensions import override
 
 from pruna.engine.utils import get_nn_modules
 
+TARGET_MODULES_TYPE = Dict[Literal["include", "exclude"], List[str]]
+
 
 class Boolean(CategoricalHyperparameter):
     """
@@ -94,9 +96,6 @@ class UnconstrainedHyperparameter(Constant):
         # we still run the super method which should return True, to make sure internal values
         # are correctly updated
         return super().legal_value(value)
-
-
-TARGET_MODULES_TYPE = Dict[Literal["include", "exclude"], List[str]]
 
 
 class TargetModules(UnconstrainedHyperparameter):
