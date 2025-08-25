@@ -72,7 +72,7 @@ class QuantoQuantizer(PrunaQuantizer):
                 default_value=None,
                 meta=dict(
                     desc=f"Precise choices of which modules to quantize. "
-                    f"See {TargetModules.path_to_target_modules_documentation} for more details."
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
                 ),
             ),
         ]
