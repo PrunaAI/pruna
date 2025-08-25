@@ -181,7 +181,7 @@ class PrunaAlgorithmBase(ABC):
 
     def get_unconstrained_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> tuple[Any, ...]:
+    ) -> Any:
         """
         Get default values for unconstrained hyperparameters based on the model and configuration.
 
@@ -196,10 +196,10 @@ class PrunaAlgorithmBase(ABC):
 
         Returns
         -------
-        Tuple[Any, ...]
+        Any
             The default unconstrained hyperparameters values for the algorithm.
         """
-        return ()
+        return None
 
     @abstractmethod
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
