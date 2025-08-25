@@ -70,9 +70,29 @@ class UnconstrainedHyperparameter(Constant):
 
     @override
     def legal_value(self, value):  # numpydoc ignore=GL08
+        """
+        Check if a value is legal for this hyperparameter.
+
+        This hyperparameter is unconstrained and can be set to any value by the user.
+        Therefore, this method always returns `True` as long as the format is accepted
+        by ConfigSpace.
+
+        Parameters
+        ----------
+        value : Any
+            The value to check.
+
+        Returns
+        -------
+        bool or numpy.ndarray
+            `True` if the value is legal, `False` otherwise. If `value` is an array,
+            a boolean mask of legal values is returned.
+        """
         # edit the internal state of the Constant to allow for the new value
         self._contains_sequence_as_value = isinstance(value, (list, tuple))
         self._transformer.value = value
+        # we still run the super method which should return True, to make sure internal values
+        # are correctly updated
         return super().legal_value(value)
 
 
@@ -102,6 +122,19 @@ class TargetModules(UnconstrainedHyperparameter):
 
     @override
     def legal_value(self, value: TARGET_MODULES_TYPE | None):  # type: ignore[override]  # numpydoc ignore=GL08
+        """
+        Check if a value is a valid target modules of type TARGET_MODULES_TYPE.
+
+        Parameters
+        ----------
+        value : Any
+            The value to check.
+
+        Returns
+        -------
+        bool or numpy.ndarray
+            `True` if the value is of type TARGET_MODULES_TYPE, `False` otherwise.
+        """
         # ensure the value is a TARGET_MODULES_TYPE to make errors more explicit for the user
         if value is None:
             pass
@@ -120,7 +153,8 @@ class TargetModules(UnconstrainedHyperparameter):
             unrecognized_patterns = [pattern for pattern in all_patterns if not isinstance(pattern, str)]
             if unrecognized_patterns:
                 raise TypeError(
-                    "Target modules must be a dictionary with lists of fnmatch patterns as values. "
+                    "Target modules must be a dictionary with lists of "
+                    "Unix shell-style wildcards (fnmatch-style) patterns as values. "
                     f"Could not recognize the following as fnmatch patterns: {unrecognized_patterns}."
                 )
         return super().legal_value(value)
