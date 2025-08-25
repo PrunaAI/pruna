@@ -18,13 +18,13 @@ from typing import Any
 
 from pruna import PrunaModel, SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
-from pruna.config.compatibility_checks import (
+from pruna.config.pre_smash_routines import (
     check_algorithm_availability,
     check_model_compatibility,
     ensure_device_consistency,
+    execute_algorithm_pre_smash_hooks,
 )
 from pruna.config.smash_space import ALGORITHM_GROUPS
-from pruna.engine.pre_smash_setup import pre_smash_setup
 from pruna.logging.logger import PrunaLoggerContext, pruna_logger
 from pruna.telemetry import track_usage
 
@@ -65,7 +65,7 @@ def smash(
             check_model_compatibility(model, smash_config)
 
         # perform any necessary setup steps before the smashing process begins
-        pre_smash_setup(model, smash_config)
+        execute_algorithm_pre_smash_hooks(model, smash_config)
 
         # iterate through all algorithms groups in a predefined order
         for algorithm_group in ALGORITHM_GROUPS:

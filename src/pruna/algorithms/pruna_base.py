@@ -179,9 +179,12 @@ class PrunaAlgorithmBase(ABC):
         """
         return []
 
-    def pre_smash_setup(self, model: Any, smash_config: SmashConfig) -> None:
+    def pre_smash_hook(self, model: Any, smash_config: SmashConfig) -> None:
         """
-        Wrap the _pre_smash_setup method to handle smash_config prefix.
+        Perform any necessary setup steps before the smashing process begins.
+
+        This method is called before any algorithm is applied to the model. It allows algorithms
+        to perform preparatory steps that need to happen before the actual model adaptation.
 
         Parameters
         ----------
@@ -192,16 +195,13 @@ class PrunaAlgorithmBase(ABC):
         """
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
-        self._pre_smash_setup(model, wrapped_config)
+        self._pre_smash_hook(model, wrapped_config)
 
-    def _pre_smash_setup(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> None:
+    def _pre_smash_hook(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> None:
         """
-        Perform any necessary setup steps before the smashing process begins.
+        Function to be overridden by an algorithm to perform a pre-smash setup.
 
-        This method is called before any algorithm is applied to the model. It allows algorithms
-        to perform preparatory steps that need to happen before the actual model transformation.
-
-        Needs to be overridden by the algorithm
+        Wrapped by the pre_smash_hook method to handle smash_config prefix.
 
         Parameters
         ----------
