@@ -185,6 +185,11 @@ class TargetModules(UnconstrainedHyperparameter):
         -------
         List[str]
             The list of module paths.
+
+        Raises
+        ------
+        ValueError
+            If no targeted subpath is found within the model.
         """
         include = target_modules.get("include", ["*"])
         exclude = target_modules.get("exclude", [])
@@ -200,6 +205,9 @@ class TargetModules(UnconstrainedHyperparameter):
                 and not any(fnmatch.fnmatch(path, _exclude) for _exclude in exclude)
             ]
             modules_paths.extend(matching_modules)
+
+        if not modules_paths:
+            raise ValueError(f"No targeted subpath found within the model from target_modules {target_modules}")
         return modules_paths
 
     @staticmethod
