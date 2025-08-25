@@ -124,6 +124,11 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
         Any
             The quantized model.
         """
+        pruna_logger.debug(
+            "HQQ can only save linear layers. So models (e.g. Sana) with separate torch.nn.Parameters or "
+            "buffers can not be saved correctly. If some parameters are not saved, handle them manually or "
+            "consider selecting a different quantizer."
+        )
         imported_modules = self.import_algorithm_packages()
 
         if hasattr(model, "transformer"):
