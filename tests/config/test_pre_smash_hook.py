@@ -8,11 +8,11 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from typing import Any
 
 
-@pytest.mark.cpu
+@pytest.mark.cuda
 @pytest.mark.parametrize(
     "model_fixture",
     [
-        pytest.param("opt_tiny_random", marks=pytest.mark.cpu),
+        pytest.param("opt_tiny_random", marks=pytest.mark.cuda),
     ],
     indirect=["model_fixture"],
 )
