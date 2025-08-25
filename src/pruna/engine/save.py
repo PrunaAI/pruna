@@ -407,6 +407,11 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         construct_base_class,
     )
 
+    pruna_logger.warning(
+        "Currently HQQ can only save linear layers. So model (e.g. Sana) with separate torch.nn.Parameters or "
+        "buffers will be partially saved."
+    )
+
     model_path = Path(model_path)
 
     hf_quantizer = HQQDiffusersQuantizer()

@@ -125,8 +125,9 @@ class HQQDiffusersQuantizer(PrunaQuantizer):
             The quantized model.
         """
         pruna_logger.debug(
-            "HQQ can only save linear layers. So models (eg Sana) with other nn.parameters or "
-            "buffers can not be saved. For saving/loading, please select a different quantizer."
+            "HQQ can only save linear layers. So models (e.g. Sana) with separate torch.nn.Parameters or "
+            "buffers can not be saved correctly. If some parameters are not saved, handle them manually or "
+            "consider selecting a different quantizer."
         )
         imported_modules = self.import_algorithm_packages()
 
@@ -277,53 +278,6 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
                 config = load_json_config(save_dir, "config.json")
                 model_class = getattr(imported_modules["diffusers"], config["_class_name"])
                 model = model_class.from_config(save_dir, **model_kwargs)
-
-            return model
-
-        @classmethod
-        def save_quantized(cls, model: Any, save_dir: str) -> None:
-            """
-            Save the quantized model with additional handling for missing parameters.
-
-            Parameters
-            ----------
-            model : Any
-                The model to save.
-            save_dir : str
-                Directory path where the model will be saved.
-            """
-            pruna_logger.warning(
-                "Currently HQQ can only save linear layers. So model (eg Sana) with other nn.parameters or "
-                "buffers will not be saved."
-            )
-            # Call the parent save_quantized method
-            super(AutoHQQHFDiffusersModel, cls).save_quantized(model, save_dir)
-
-        @classmethod
-        def from_quantized(cls, save_dir: str, **kwargs) -> Any:
-            """
-            Load the quantized model with additional handling for missing parameters.
-
-            Parameters
-            ----------
-            save_dir : str
-                Directory path where the model is saved.
-            **kwargs : Any
-                Additional keyword arguments.
-
-            Returns
-            -------
-            Any
-                The loaded model with restored missing parameters.
-            """
-            pruna_logger.warning(
-                "Currently HQQ can only load linear layers. So model (eg Sana) with other "
-                "nn.parameters or buffers will not be loaded."
-            )
-            # Call the parent from_quantized method
-            model = super(AutoHQQHFDiffusersModel, cls).from_quantized(save_dir, **kwargs)
-            if "torch_dtype" in kwargs:
-                model.to(kwargs["torch_dtype"])
 
             return model
 

@@ -461,6 +461,11 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         construct_base_class,
     )
 
+    pruna_logger.warning(
+        "Currently HQQ can only load linear layers. So model (e.g. Sana) with separate torch.nn.Parameters or "
+        "buffers will not be loaded correctly."
+    )
+
     hf_quantizer = HQQDiffusersQuantizer()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
 
@@ -479,6 +484,10 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
             str(backbone_path),
             **filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs),
         )
+        # The from_quantized method does not set the dtype of the model, even if it is specified in the kwargs.
+        # So we set it manually here.
+        if "torch_dtype" in kwargs:
+            loaded_backbone.to(kwargs["torch_dtype"])
         # Get the pipeline class name
         model_index = load_json_config(path, "model_index.json")
         cls = getattr(diffusers, model_index["_class_name"])
@@ -495,6 +504,10 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     else:
         # load the whole model if a pipeline wasn't saved
         model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
+        # The from_quantized method does not set the dtype of the model, even if it is specified in the kwargs.
+        # So we set it manually here.
+        if "torch_dtype" in kwargs:
+            model.to(kwargs["torch_dtype"])
     # HQQ does not support direct loading on the correct device, so we move it afterwards
     move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
