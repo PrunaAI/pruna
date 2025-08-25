@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -99,7 +99,7 @@ class QuantoQuantizer(PrunaQuantizer):
 
     def get_unconstrained_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> Tuple[TARGET_MODULES_TYPE]:
+    ) -> TARGET_MODULES_TYPE:
         """
         Get default values for the target_modules based on the model and configuration.
 
@@ -112,7 +112,7 @@ class QuantoQuantizer(PrunaQuantizer):
 
         Returns
         -------
-        Tuple[TARGET_MODULES_TYPE]
+        TARGET_MODULES_TYPE
             The default target_modules for the algorithm.
         """
         include: list[str]
@@ -122,8 +122,7 @@ class QuantoQuantizer(PrunaQuantizer):
             include = ["transformer*"]
         else:
             include = ["*"]
-        target_modules = {"include": include, "exclude": []}
-        return (target_modules,)
+        return {"include": include, "exclude": []}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -142,8 +141,9 @@ class QuantoQuantizer(PrunaQuantizer):
             The quantized model.
         """
         imported_modules = self.import_algorithm_packages()
-        hp_defaults = self.get_unconstrained_hyperparameter_defaults(model, smash_config)
-        target_modules = smash_config["target_modules"] or hp_defaults[0]
+        target_modules = smash_config["target_modules"]
+        if target_modules is None:
+            target_modules = self.get_unconstrained_hyperparameter_defaults(model, smash_config)
 
         weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
         if smash_config["act_bits"] is not None:
