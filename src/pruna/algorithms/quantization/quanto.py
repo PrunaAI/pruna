@@ -25,6 +25,7 @@ from pruna.config.hyperparameters import TARGET_MODULES_TYPE, Boolean, TargetMod
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.utils import get_nn_modules
 from pruna.logging.logger import pruna_logger
 
 
@@ -180,8 +181,10 @@ class QuantoQuantizer(PrunaQuantizer):
             else:
                 pruna_logger.error("Calibration requires a tokenizer and dataloader. Skipping calibration.")
 
-        for module, _ in modules_with_subpaths:
+        for module in get_nn_modules(model).values():
             try:
+                # optimum.quanto.freeze checks whether the module has been quantized by quanto
+                # so we can call it on all nn.Module without filtering
                 imported_modules["freeze"](module)
             except Exception as e:
                 pruna_logger.error("Error while freezing the module: %s", e)
