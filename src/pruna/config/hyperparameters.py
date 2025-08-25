@@ -220,13 +220,14 @@ class TargetModules(UnconstrainedHyperparameter):
         -------
         List[Tuple[torch.nn.Module, List[str]]]
             The list of modules attributes in the model with their associated targeted subpaths.
+            A module attribute which doesn't contain any targeted subpath won't be included in the list.
         """
         target_modules_paths = TargetModules.to_list_of_modules_paths(target_modules, model)
         modules_with_subpaths: List[Tuple[torch.nn.Module, List[str]]] = []
         for root_name, module in get_nn_modules(model).items():
-            targeted_submodules = [path for path in target_modules_paths if path.startswith(f"{root_name}.")]
-            if root_name:
-                targeted_submodules = [path.removeprefix(root_name).removeprefix(".") for path in targeted_submodules]
+            prefix = f"{root_name}." if root_name else ""
+            targeted_submodules = [path for path in target_modules_paths if path.startswith(prefix)]
+            targeted_submodules = [path.removeprefix(prefix) for path in targeted_submodules]
             if targeted_submodules:
                 modules_with_subpaths.append((module, targeted_submodules))
         return modules_with_subpaths
