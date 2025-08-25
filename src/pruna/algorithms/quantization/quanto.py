@@ -165,17 +165,10 @@ class QuantoQuantizer(PrunaQuantizer):
 
         if smash_config["calibrate"]:
             if smash_config.tokenizer is not None and smash_config.data is not None:
-                if hasattr(model, "unet"):
-                    working_model = model.unet
-                elif hasattr(model, "transformer"):
-                    working_model = model.transformer
-                else:
-                    working_model = model
-
                 try:
                     with imported_modules["Calibration"](streamline=True, debug=False):
                         calibrate(
-                            working_model,
+                            model,
                             smash_config.val_dataloader(),
                             model.device,  # only e.g. CUDA here is not enough, we need also the correct device index
                             batch_size=smash_config.batch_size,
