@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import fnmatch
+from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import torch
@@ -156,6 +157,16 @@ class TargetModules(UnconstrainedHyperparameter):
                     "Unix shell-style wildcards (fnmatch-style) patterns as values. "
                     f"Could not recognize the following as fnmatch patterns: {unrecognized_patterns}."
                 )
+
+        # handle default value
+        value = deepcopy(value)
+        if value is None:
+            pass  # chosing a default value is left to the algorithm based on the model
+        elif "include" not in value:
+            value["include"] = ["*"]
+        elif "exclude" not in value:
+            value["exclude"] = []  # for consistency
+
         return super().legal_value(value)
 
     @staticmethod
