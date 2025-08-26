@@ -1,3 +1,6 @@
+:title: SmashConfig Configuration Guide - Pruna AI Model Optimization
+:description: Learn how to configure model optimization strategies with Pruna AI. Complete guide to SmashConfig, algorithm selection, hyperparameters, and optimization workflows.
+
 Define a SmashConfig
 ====================
 

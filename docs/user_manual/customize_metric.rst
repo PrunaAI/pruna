@@ -5,7 +5,9 @@ This guide will walk you through the process of adding a new metric to Pruna's e
 
 If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjd>`_ anytime!
 
-If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
+.. tip::
+
+   If you want to contribute to |pruna|, please refer to the :doc:`/docs_pruna/contributions/how_to_contribute` guide for more information. You can also `find finished PRs <https://github.com/PrunaAI/pruna/pulls?q=is%3Apr+label%3Ametric+>`_ in the GitHub repository.
 
 1. Choosing the right type of metric
 ------------------------------------

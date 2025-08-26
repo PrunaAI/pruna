@@ -1,3 +1,6 @@
+:title: Smash Your First Model - Pruna AI Quick Start Guide
+:description: Learn how to optimize your first AI model with Pruna AI. Step-by-step guide to compression, evaluation, and inference with practical examples.
+
 Smash your first model
 ======================
 

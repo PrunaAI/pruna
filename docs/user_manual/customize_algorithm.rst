@@ -1,9 +1,15 @@
+:title: Custom Algorithm Development - Pruna AI Framework Extension
+:description: Learn how to develop and integrate custom compression algorithms into Pruna AI. Step-by-step guide for creating new optimization methods and extending the framework.
+
 Customize Algorithms
 ====================
 
 If you’ve developed a new method or want to integrate a missing algorithm into |pruna|, we welcome your contribution! This tutorial guides you through the steps to integrate a new compression algorithm, making it available for all users.
 If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjd>`_ anytime!
-If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
+
+.. tip::
+
+   If you want to contribute to |pruna|, please refer to the :doc:`/docs_pruna/contributions/how_to_contribute` guide for more information. You can also `find finished PRs <https://github.com/PrunaAI/pruna/pulls?q=is%3Apr+label%3Aalgorithm+>`_ in the GitHub repository.
 
 Add a Custom Algorithm
 ----------------------
