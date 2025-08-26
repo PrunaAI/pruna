@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any, Dict
 
-if TYPE_CHECKING:
-    from optimum.quanto import Calibration, quantize
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -122,7 +120,7 @@ class QuantoQuantizer(PrunaQuantizer):
         )
 
         try:
-            quantize(working_model, weights=weights, activations=activations)
+            imported_modules["quantize"](working_model, weights=weights, activations=activations)
         except Exception as e:
             pruna_logger.error("Error during quantization: %s", e)
             raise
@@ -130,7 +128,7 @@ class QuantoQuantizer(PrunaQuantizer):
         if smash_config["calibrate"]:
             if smash_config.tokenizer is not None and smash_config.data is not None:
                 try:
-                    with Calibration(streamline=True, debug=False):
+                    with imported_modules["Calibration"](streamline=True, debug=False):
                         calibrate(
                             working_model,
                             smash_config.val_dataloader(),
