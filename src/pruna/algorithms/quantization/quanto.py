@@ -14,7 +14,6 @@
 
 from typing import Any, Dict
 
-
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
 
@@ -109,7 +108,6 @@ class QuantoQuantizer(PrunaQuantizer):
             working_model = model.transformer
         else:
             working_model = model
-
 
         weights = getattr(imported_modules["quanto"], smash_config["weight_bits"])
         activations = (
