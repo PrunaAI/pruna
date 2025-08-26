@@ -203,7 +203,7 @@ If you use Pruna in your research, feel free to cite the project! 💜
 
 <p align="center"><img src="./docs/assets/images/triple_line.png" alt="Pruna AI Logo" width=600, height=30></img></p>
 
-[discord]: https://discord.gg/Tun8YgzxZ9
+[discord]: https://discord.gg/JFQmtFKCjd
 [reddit]: https://www.reddit.com/r/PrunaAI/
 [x]: https://x.com/PrunaAI
 [devto]: https://dev.to/pruna-ai
