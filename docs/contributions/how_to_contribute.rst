@@ -147,9 +147,3 @@ Note: ``uv run`` automatically uses uv's virtual environment in ``.venv/``, not 
 Once you have made your changes and tested them, you can create a Pull Request.
 We will then review your Pull Request and get back to you as soon as possible.
 If there are any questions along the way, please do not hesitate to reach out on `Discord <https://discord.gg/JFQmtFKCjd>`_.
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   open_an_issue
