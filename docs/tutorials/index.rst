@@ -6,7 +6,7 @@
 Tutorials Pruna
 ===============
 
-This tutorial will guide you through the process of using |pruna| to optimize your model. Looking for |pruna_pro| tutorials? Check out the :ref:`pruna_pro_tutorials` page.
+These tutorials will guide you through the process of using |pruna| to optimize your models. Looking for |pruna_pro| tutorials? Check out the :ref:`pruna_pro_tutorials` page.
 
 .. grid:: 1 2 2 2
 

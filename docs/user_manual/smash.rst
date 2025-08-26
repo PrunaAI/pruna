@@ -62,7 +62,7 @@ Let's see what that looks like in code.
     optimized_model.to("cuda")
     optimized_model("A serene landscape with mountains").images[0].save("output.png")
 
-Step-by-Step Optimisation Workflow
+Step-by-Step Optimization Workflow
 ----------------------------------
 
 Step 1: Load a pretrained model
@@ -92,7 +92,7 @@ For now, let's just use a ``quantizer`` to accelerate the model during inference
     smash_config = SmashConfig()
     smash_config["quantizer"] = "hqq_diffusers"  # Accelerate the model with caching
 
-Pruna support a wide range of algorithms for specific optimizations, all with different trade-offs.
+Pruna supports a wide range of algorithms for specific optimizations, all with different trade-offs.
 To understand how to configure the right one for your scenario, see :doc:`Define a SmashConfig </docs_pruna/user_manual/configure>`.
 
 Step 3: Apply optimizations with ``smash``
