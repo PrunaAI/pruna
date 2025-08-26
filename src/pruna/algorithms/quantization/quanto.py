@@ -110,7 +110,6 @@ class QuantoQuantizer(PrunaQuantizer):
         else:
             working_model = model
 
-        imported_modules = self.import_algorithm_packages()
 
         weights = getattr(imported_modules["quanto"], smash_config["weight_bits"])
         activations = (
