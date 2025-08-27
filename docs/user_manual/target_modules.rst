@@ -48,3 +48,26 @@ The following example shows how to use ``target_modules`` with the ``quanto`` qu
         "include": ["transformer.*"],
         "exclude": ["*embed*"]
     }
+
+Previewing the Targeted Modules
+-------------------------------
+
+You can preview the targeted modules by using the ``TargetModules.to_list_of_modules_paths`` method as shown in the example below:
+
+.. code-block:: python
+
+    from transformers import AutoModelForCausalLM
+    from pruna.config.hyperparameters import TargetModules
+
+    model = AutoModelForCausalLM.from_pretrained("HuggingFaceTB/SmolLM2-135M")
+    target_modules = {
+        "include": ["model.layers.[01].*attn.*"],
+        "exclude": ["*v_proj"]
+    }
+    print(TargetModules.to_list_of_modules_paths(target_modules, model))
+
+This will return the list of module paths that match the ``include`` and ``exclude`` patterns.
+In this example, the output contains the first two attention modules (``model.layers.0.self_attn`` and ``model.layers.1.self_attn``) and the
+``q_proj``, ``k_proj`` and ``o_proj`` layers inside them.
+
+Note that this will list *all* modules that match the patterns, some algorithms may only apply to the linear layers among those.
