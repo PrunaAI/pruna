@@ -16,7 +16,7 @@ The parameter is a dictionary with two keys, ``include`` and ``exclude``, each m
 
 A module is targeted if its path in the model matches at least one ``include`` pattern and does not match any ``exclude`` pattern.
 
-Check out :link:`this tutorial notebook </docs_pruna/tutorials/target_modules_quanto.ipynb>` to learn more about how to use ``target_modules``.
+Check out `this tutorial notebook <../tutorials/target_modules_quanto.ipynb>`_ to learn more about how to use ``target_modules``.
 
 Pattern Format
 --------------
