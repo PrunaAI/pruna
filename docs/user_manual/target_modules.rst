@@ -32,9 +32,12 @@ Default Values
 
 If ``target_modules`` is not provided (i.e., ``None``), default values are inferred automatically from the model, configuration and algorithm used.
 
-If a ``target_modules`` is provided but does not specify a value for ``include`` or ``exclude``, the default values are ``["*"]`` for ``include`` (considering all modules) and ``[]`` for ``exclude`` (excluding no modules).
+If a ``target_modules`` dictionary is provided but missing either the ``include`` or ``exclude`` key:
 
-Usage examples ``target_modules``
+* Missing ``include``: defaults to ``["*"]`` (considering all modules)
+* Missing ``exclude``: defaults to ``[]`` (excluding no modules)
+
+Usage Examples ``target_modules``
 ---------------------------------
 
 The following example shows how to use ``target_modules`` with the ``quanto`` quantizer to target your model's transformer, excluding the embedding layers.
