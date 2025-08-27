@@ -1,1 +1,0 @@
-This is a fake file to check whether ruff will run on this edited file.
