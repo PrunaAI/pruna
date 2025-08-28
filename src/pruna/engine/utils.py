@@ -571,9 +571,18 @@ class ModelContext(AbstractContextManager):
                 return
             else:
                 raise RuntimeError(
-                    "ModelContext is not in read-only mode, but the working model was not updated. "
+                    "ModelContext is not in read-only mode, but the working model has not been updated. "
                     "Make sure to call `update_working_model` with the adapted model "
-                    "before exiting the context manager."
+                    "before exiting the context manager. After exiting the context manager retrieve "
+                    "the updated abstracted model via `get_updated_model` to e.g. return "
+                    "it after finishing the current compression algorithm."
+                )
+        else:
+            if self.read_only:
+                raise RuntimeWarning(
+                    "ModelContext is in read-only mode, but the working model has been updated. "
+                    "This can lead to unexpected behavior. If you want to update the model "
+                    "make sure to enter the context manager with `read-only=False` which is the default."
                 )
 
         if self.path_to_working_model is not None:
