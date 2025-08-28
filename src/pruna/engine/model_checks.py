@@ -677,20 +677,4 @@ def is_gptq_model(model: Any) -> bool:
     bool
         True if the model is a GPTQ model, False otherwise.
     """
-    # Check if it's a gptqmodel class
-    model_class_name = model.__class__.__name__
-    model_module_name = model.__class__.__module__
-
-    # Check for gptqmodel classes (like LlamaGPTQ, MistralGPTQ, etc.)
-    if "gptqmodel" in model_module_name and "GPTQ" in model_class_name:
-        return True
-
-    # Check for GPTQ-specific attributes in the model modules
-    try:
-        for module in model.modules():
-            if hasattr(module, "qweight") or "qlinear" in str(type(module)).lower():
-                return True
-    except Exception:
-        pass
-
-    return False
+    return "gptqmodel" in model.__class__.__module__ and "GPTQ" in model.__class__.__name__

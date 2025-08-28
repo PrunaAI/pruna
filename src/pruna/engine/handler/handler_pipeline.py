@@ -67,9 +67,7 @@ class PipelineHandler(InferenceHandler):
             # If input is tensor, return logits from the underlying model forward
             if hasattr(inputs, "shape") and hasattr(inputs, "dtype"):
                 try:
-                    if hasattr(pipeline, "model") and hasattr(inputs, "to"):
-                        device = next(pipeline.model.parameters()).device
-                        inputs = inputs.to(device)
+                    if hasattr(pipeline, "model"):
                         with torch.no_grad():
                             outputs = pipeline.model(input_ids=inputs)
                         return outputs.logits if hasattr(outputs, "logits") else outputs
