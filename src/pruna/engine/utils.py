@@ -523,7 +523,7 @@ class ModelContext(AbstractContextManager):
         model : ModelMixin
             The model to handle. Can be a transformer model, UNet, or other pipeline.
         """
-        self.smashed_pipeline = model
+        self.model = model
         self.smashed_working_model = None
         self.denoiser_type: str | None = None
 
@@ -538,17 +538,17 @@ class ModelContext(AbstractContextManager):
         Any
             The working model.
         """
-        if hasattr(self.smashed_pipeline, "transformer"):
-            working_model = self.smashed_pipeline.transformer
+        if hasattr(self.model, "transformer"):
+            working_model = self.model.transformer
             self.denoiser_type = "transformer"
-        elif hasattr(self.smashed_pipeline, "unet"):
-            working_model = self.smashed_pipeline.unet
+        elif hasattr(self.model, "unet"):
+            working_model = self.model.unet
             self.denoiser_type = "unet"
-        elif hasattr(self.smashed_pipeline, "model") and hasattr(self.smashed_pipeline.model, "language_model"):
-            working_model = self.smashed_pipeline.model.language_model
+        elif hasattr(self.model, "model") and hasattr(self.model.model, "language_model"):
+            working_model = self.model.model.language_model
             self.denoiser_type = "language_model"
         else:
-            working_model = self.smashed_pipeline
+            working_model = self.model
 
         return self, working_model
 
@@ -568,14 +568,14 @@ class ModelContext(AbstractContextManager):
         if self.smashed_working_model is None:
             return
 
-        if hasattr(self.smashed_pipeline, "transformer"):
-            self.smashed_pipeline.transformer = self.smashed_working_model
-        elif hasattr(self.smashed_pipeline, "unet"):
-            self.smashed_pipeline.unet = self.smashed_working_model
-        elif hasattr(self.smashed_pipeline, "model") and hasattr(self.smashed_pipeline.model, "language_model"):
-            self.smashed_pipeline.model.language_model = self.smashed_working_model
+        if hasattr(self.model, "transformer"):
+            self.model.transformer = self.smashed_working_model
+        elif hasattr(self.model, "unet"):
+            self.model.unet = self.smashed_working_model
+        elif hasattr(self.model, "model") and hasattr(self.model.model, "language_model"):
+            self.model.model.language_model = self.smashed_working_model
         else:
-            self.smashed_pipeline = self.smashed_working_model
+            self.model = self.smashed_working_model
 
         del self.smashed_working_model
         safe_memory_cleanup()
@@ -600,4 +600,4 @@ class ModelContext(AbstractContextManager):
         ModelMixin
             The smashed model.
         """
-        return self.smashed_pipeline
+        return self.model
