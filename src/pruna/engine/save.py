@@ -358,7 +358,7 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         quantized_path = Path(model_path)
 
     # save the quantized model only.
-    with ModelContext(model) as (mc, working_model):
+    with ModelContext(model, read_only=True) as (_, working_model):
         if isinstance(working_model, algorithm_packages["HQQModelForCausalLM"]):
             working_model.save_quantized(quantized_path)
         else:
