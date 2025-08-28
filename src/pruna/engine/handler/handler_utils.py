@@ -59,8 +59,8 @@ def register_inference_handler(model: Any) -> InferenceHandler:
         # Specific check for text generation pipelines
         if "TextGeneration" in type(model).__name__:
             return PipelineHandler(pipeline=model)
-        # For other transformers pipelines, use PipelineHandler
-        return PipelineHandler(pipeline=model)
+        else:
+            raise ValueError("Unsupported pipeline type. Only text generation pipelines are currently supported.")
     elif "transformers" in model_module:
         return TransformerHandler()
     else:
