@@ -50,15 +50,17 @@ def register_inference_handler(model: Any) -> InferenceHandler:
 
     model_module = model._orig_mod.__module__ if hasattr(model, "_orig_mod") else model.__module__
 
-    # Check if it's a transformers pipeline
-    if hasattr(model, "__class__") and "Pipeline" in model.__class__.__name__:
-        # Specific check for text generation pipelines
-        if "TextGeneration" in model.__class__.__name__:
-            return PipelineHandler(pipeline=model)
-        # For other pipelines, fallback to standard pipeline handler
-        return PipelineHandler(pipeline=model)
-    elif "diffusers" in model_module:
+    # Prefer diffusers handler first to avoid routing diffusers pipelines to generic pipeline handler
+    if "diffusers" in model_module:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
+
+    # Transformers models and pipelines
+    if "transformers" in model_module and "Pipeline" in type(model).__name__:
+        # Specific check for text generation pipelines
+        if "TextGeneration" in type(model).__name__:
+            return PipelineHandler(pipeline=model)
+        # For other transformers pipelines, use PipelineHandler
+        return PipelineHandler(pipeline=model)
     elif "transformers" in model_module:
         return TransformerHandler()
     else:

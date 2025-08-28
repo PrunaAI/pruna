@@ -48,7 +48,7 @@ class CombinationsTester(AlgorithmTesterBase):
         ("sd_tiny_random", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False, 'cmmd'),
         ("flux_tiny_random", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False, 'cmmd'),
         ("sd_tiny_random", dict(quantizer="diffusers_int8", compiler="torch_compile"), False, 'cmmd'),
-        ("tiny_llama", dict(quantizer="gptq", compiler="torch_compile", torch_compile_fullgraph=False), True, 'perplexity'),
+        ("tiny_llama", dict(quantizer="gptq", compiler="torch_compile"), True, 'perplexity'),
         ("llama_3_tiny_random_as_pipeline", dict(quantizer="llm_int8", compiler="torch_compile"), True, 'perplexity'),
         ("flux_tiny_random", dict(cacher="pab", quantizer="hqq_diffusers"), False, 'cmmd'),
         ("flux_tiny_random", dict(cacher="pab", quantizer="diffusers_int8"), False, 'cmmd'),
