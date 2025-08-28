@@ -18,6 +18,7 @@ import contextlib
 import gc
 import inspect
 import json
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any
 
@@ -503,7 +504,7 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         raise ValueError(f"Device not supported: '{device_str}'")
 
 
-class ModelContext:
+class ModelContext(AbstractContextManager):
     """
     Context manager for handling the model.
 
@@ -522,34 +523,34 @@ class ModelContext:
         model : ModelMixin
             The model to handle. Can be a transformer model, UNet, or other pipeline.
         """
-        self.pipeline = model
+        self.smashed_pipeline = model
+        self.smashed_working_model = None
+        self.denoiser_type: str | None = None
 
-    def __enter__(self) -> tuple[ModelMixin, Any, str | None]:
+    def __enter__(self) -> tuple[ModelContext, Any]:
         """
         Enter the context manager.
 
         Returns
         -------
-        ModelMixin
-            The working model.
+        ModelContext
+            The context manager.
         Any
-            The denoiser type.
-        str | None
-            The denoiser type.
+            The working model.
         """
-        if hasattr(self.pipeline, "transformer"):
-            self.working_model = self.pipeline.transformer
+        if hasattr(self.smashed_pipeline, "transformer"):
+            working_model = self.smashed_pipeline.transformer
             self.denoiser_type = "transformer"
-        elif hasattr(self.pipeline, "unet"):
-            self.working_model = self.pipeline.unet
+        elif hasattr(self.smashed_pipeline, "unet"):
+            working_model = self.smashed_pipeline.unet
             self.denoiser_type = "unet"
-        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
-            self.working_model = self.pipeline.model.language_model
+        elif hasattr(self.smashed_pipeline, "model") and hasattr(self.smashed_pipeline.model, "language_model"):
+            working_model = self.smashed_pipeline.model.language_model
             self.denoiser_type = "language_model"
         else:
-            self.working_model = self.pipeline
-            self.denoiser_type = None  # type: ignore [assignment]
-        return self.pipeline, self.working_model, self.denoiser_type
+            working_model = self.smashed_pipeline
+
+        return self, working_model
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """
@@ -564,17 +565,39 @@ class ModelContext:
         traceback : Exception
             The traceback.
         """
-        if hasattr(self.pipeline, "transformer"):
-            self.pipeline.transformer = self.pipeline.working_model
-        elif hasattr(self.pipeline, "unet"):
-            self.pipeline.unet = self.pipeline.working_model
-        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
-            self.pipeline.model.language_model = self.pipeline.working_model
+        if self.smashed_working_model is None:
+            return
+
+        if hasattr(self.smashed_pipeline, "transformer"):
+            self.smashed_pipeline.transformer = self.smashed_working_model
+        elif hasattr(self.smashed_pipeline, "unet"):
+            self.smashed_pipeline.unet = self.smashed_working_model
+        elif hasattr(self.smashed_pipeline, "model") and hasattr(self.smashed_pipeline.model, "language_model"):
+            self.smashed_pipeline.model.language_model = self.smashed_working_model
         else:
-            self.pipeline = self.pipeline.working_model
-        # Only delete working_model if it was actually set as an attribute
-        # In the else case above, working_model and pipeline are the same object,
-        # so we don't need to (and can't) delete it
-        if hasattr(self.pipeline, "working_model") and self.pipeline.working_model is not self.pipeline:
-            del self.pipeline.working_model
-            safe_memory_cleanup()
+            self.smashed_pipeline = self.smashed_working_model
+
+        del self.smashed_working_model
+        safe_memory_cleanup()
+
+    def set_smashed_working_model(self, working_model: Any) -> None:
+        """
+        Set the smashed working model.
+
+        Parameters
+        ----------
+        working_model : Any
+            The smashed working model.
+        """
+        self.smashed_working_model = working_model
+
+    def get_smashed(self) -> "ModelMixin":
+        """
+        Get the smashed model.
+
+        Returns
+        -------
+        ModelMixin
+            The smashed model.
+        """
+        return self.smashed_pipeline
