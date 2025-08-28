@@ -201,14 +201,15 @@ class CTranslateCompiler(PrunaCompiler):
         temp_dir_str = str(temp_dir)
 
         converter.convert_from_args(args)
+        device = torch.device(smash_config["device"]).type
         if self.task_name == "translate":
-            optimized_model = imported_modules["Translator"](temp_dir_str, device=smash_config["device"])
+            optimized_model = imported_modules["Translator"](temp_dir_str, device=device)
             optimized_model = TranslatorWrapper(optimized_model, temp_dir_str, smash_config.tokenizer)
         elif self.task_name == "generate":
-            optimized_model = imported_modules["Generator"](temp_dir_str, device=smash_config["device"])
+            optimized_model = imported_modules["Generator"](temp_dir_str, device=device)
             optimized_model = GeneratorWrapper(optimized_model, temp_dir_str, smash_config.tokenizer)
         elif self.task_name == "whisper":
-            optimized_model = imported_modules["Whisper"](temp_dir_str, device=smash_config["device"])
+            optimized_model = imported_modules["Whisper"](temp_dir_str, device=device)
             optimized_model = WhisperWrapper(optimized_model, temp_dir_str, smash_config.processor)
         else:
             raise ValueError("Task not supported")

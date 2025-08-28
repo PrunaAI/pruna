@@ -28,6 +28,8 @@ from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechR
 from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
 from transformers.pipelines.text_generation import TextGenerationPipeline
 
+from pruna.engine.utils import ModelContext
+
 
 def is_causal_lm(model: Any) -> bool:
     """
@@ -593,34 +595,6 @@ def get_diffusers_unet_models() -> list:
     return unet_models
 
 
-def check_fused_attention_processor(model: Any) -> bool:
-    """
-    Helper function to check attention processors in a model.
-
-    Parameters
-    ----------
-    model : Any
-        The model to check.
-
-    Returns
-    -------
-    bool
-        True if the model can use a Fused attention processor, False otherwise.
-    """
-    if not hasattr(model, "attn_processors"):
-        return False
-    try:
-        attention_processor_module = diffusers.models.attention_processor  # type: ignore
-        fusing_possible_list = [
-            processor_name.replace("Fused", "")
-            for processor_name in dir(attention_processor_module)
-            if "Fused" in processor_name
-        ]
-        return any(processor.__class__.__name__ in fusing_possible_list for processor in model.attn_processors.values())
-    except AttributeError:
-        return False
-
-
 def has_fused_attention_processor(pipeline: Any) -> bool:
     """
     Check if the pipeline's unet or transformer can use a Fused attention processor.
@@ -635,9 +609,16 @@ def has_fused_attention_processor(pipeline: Any) -> bool:
     bool
         True if the pipeline can use a Fused attention processor, False otherwise.
     """
-    return (hasattr(pipeline, "unet") and check_fused_attention_processor(pipeline.unet)) or (
-        hasattr(pipeline, "transformer") and check_fused_attention_processor(pipeline.transformer)
-    )
+    with ModelContext(pipeline) as (_, working_model, _):
+        # add this line just to make the __exit__ method of ModelContext work
+        pipeline.working_model = working_model
+        if hasattr(working_model, "fuse_qkv_projections"):
+            for _, attn_processor in working_model.attn_processors.items():
+                if "Added" in str(attn_processor.__class__.__name__):
+                    return False
+            return True
+        else:
+            return False
 
 
 def is_opt_model(model: Any) -> bool:

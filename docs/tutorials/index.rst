@@ -11,13 +11,25 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :text-align: center
       :link: ./image_generation.ipynb
 
-      Compress with a ``hq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
+      Compress with a ``hqq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
+   
+   .. grid-item-card:: Compress and Evaluate Video Generation Models
+      :text-align: center
+      :link: ./video_generation.ipynb
+
+      Compress with a ``torch_compile`` ``compiler`` and a ``flash_attn3`` ``kernel``, and evaluate with ``total time``, ``latency``, ``throughput``, ``co2_emissions``, and ``energy_consumed``.
 
    .. grid-item-card:: Compress and Evaluate Large Language Models
       :text-align: center
       :link: ./llms.ipynb
 
       Compress with ``hqq`` quantization and ``torch_compile`` compilation and evaluate with ``elapsed_time`` and ``perplexity``.
+
+   .. grid-item-card:: Compress and Evaluate Reasoning Large Language Models
+      :text-align: center
+      :link: ./reasoning_llm.ipynb
+
+      Compress with ``hqq`` quantization and ``torch_compile`` compilation and evaluate with ``total time``, ``perplexity``, ``throughput`` and ``energy_consumed``.
 
    .. grid-item-card:: Transcribe 2 hour of audio in 2 minutes with Whisper
       :text-align: center

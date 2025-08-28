@@ -10,7 +10,7 @@ from typing import Any
 from pruna import PrunaModel, SmashConfig, smash
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
+from pruna.engine.utils import _resolve_cuda_device, get_device, move_to_device, safe_memory_cleanup
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -136,7 +136,7 @@ class AlgorithmTesterBase:
         model = PrunaModel.from_pretrained(str(self._saving_path))
         assert isinstance(model, PrunaModel)
         self.post_smash_hook(model)
-        assert model.smash_config.device == get_device(model)
+        assert _resolve_cuda_device(model.smash_config.device) == _resolve_cuda_device(get_device(model))
         return model
 
     def execute_smash(self, model: Any, smash_config: SmashConfig) -> PrunaModel:
@@ -145,7 +145,7 @@ class AlgorithmTesterBase:
         smashed_model = smash(model, smash_config=smash_config)
         assert isinstance(smashed_model, PrunaModel)
         self.post_smash_hook(smashed_model)
-        assert get_device(smashed_model) == smash_config["device"]
+        assert _resolve_cuda_device(get_device(smashed_model)) == _resolve_cuda_device(smash_config["device"])
         return smashed_model
 
     def execute_evaluation(self, model: Any, datamodule: PrunaDataModule, device: str) -> None:

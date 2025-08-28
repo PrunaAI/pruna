@@ -33,7 +33,7 @@ class LLMCompressorQuantizer(PrunaQuantizer):
     references: dict[str, str] = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
     tokenizer_required: bool = True
     processor_required: bool = False
-    runs_on: list[str] = ["cuda", "accelerate"]
+    runs_on: list[str] = ["cuda"]
     dataset_required: bool = True
     compatible_algorithms: dict[str, list[str]] = dict()
 

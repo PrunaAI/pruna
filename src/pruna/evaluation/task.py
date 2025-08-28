@@ -61,7 +61,7 @@ class Task:
         self.metrics = get_metrics(request, device)
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
-        if device not in ["cuda", "cpu", "mps"]:
+        if device not in ["cpu", "mps"] and not device.startswith("cuda"):
             raise ValueError(f"Unsupported device: {device}. Must be one of: cuda, cpu, mps.")
         self.device = device
 
