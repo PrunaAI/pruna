@@ -570,7 +570,7 @@ class ModelContext(AbstractContextManager):
             if self.read_only:
                 return
             else:
-                raise RuntimeWarning(
+                raise RuntimeError(
                     "ModelContext is not in read-only mode, but the working model was not updated. "
                     "Make sure to call `update_working_model` with the adapted model "
                     "before exiting the context manager."
