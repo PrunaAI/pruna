@@ -514,7 +514,7 @@ class ModelContext(AbstractContextManager):
         The model to handle. Can be a transformer model, UNet, or other ModelMixin.
     """
 
-    def __init__(self, model: "ModelMixin") -> None:
+    def __init__(self, model: "ModelMixin", read_only: bool = False) -> None:
         """
         Context manager for handling the model.
 
@@ -524,6 +524,7 @@ class ModelContext(AbstractContextManager):
             The model to handle. Can be a transformer model, UNet, or other pipeline.
         """
         self.model = model
+        self.read_only = read_only
         self.smashed_working_model = None
         self.denoiser_type: str | None = None
 
@@ -566,7 +567,14 @@ class ModelContext(AbstractContextManager):
             The traceback.
         """
         if self.smashed_working_model is None:
-            return
+            if self.read_only:
+                return
+            else:
+                raise RuntimeWarning(
+                    "ModelContext is not in read-only mode, but the working model was not updated. "
+                    "Make sure to call `update_working_model` with the adapted model "
+                    "before exiting the context manager."
+                )
 
         if hasattr(self.model, "transformer"):
             self.model.transformer = self.smashed_working_model
