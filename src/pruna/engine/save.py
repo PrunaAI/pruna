@@ -358,14 +358,11 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         quantized_path = Path(model_path)
 
     # save the quantized model only.
-    with ModelContext(model) as (pipeline, working_model, denoiser_type):
+    with ModelContext(model) as (mc, working_model):
         if isinstance(working_model, algorithm_packages["HQQModelForCausalLM"]):
             working_model.save_quantized(quantized_path)
         else:
             algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(quantized_path))
-        # redefining the working_model breaks links with context manager
-        # so we need to re-define the working_model as an attribute of the model.
-        pipeline.working_model = working_model
 
     # save the rest of the model, if it is a janus like model,
     # and add a config file to the quantized model path.

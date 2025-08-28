@@ -135,7 +135,7 @@ class HQQQuantizer(PrunaQuantizer):
         quant_config_hf = imported_modules["HqqConfig"](nbits=weight_quantization_bits, group_size=group_size)
         move_to_device(model, "cpu")
         safe_memory_cleanup()
-        with ModelContext(model) as (pipeline, working_model, denoiser_type):
+        with ModelContext(model) as (mc, working_model):
             try:  # Try to quantize the model using HQQ
                 if smash_config["force_hf_implementation"]:
                     raise Exception(
@@ -182,11 +182,11 @@ class HQQQuantizer(PrunaQuantizer):
             except Exception as e:
                 pruna_logger.error(f"Error: {e}")
                 pass
-            # redefining the working_model breaks links with context manager
-            # so we need to re-define the working_model as an attribute of the model.
-            pipeline.working_model = working_model
-            # as we have moved the model to cpu for cleaning, but only one of its attribute was put back on cuda.
-        smashed_model = pipeline.working_model if hasattr(pipeline, "working_model") else pipeline
+
+            mc.set_smashed_working_model(working_model)
+
+        smashed_model = mc.get_smashed()
+        # as we have moved the model to cpu for cleaning, but only one of its attribute was put back on cuda.
         move_to_device(smashed_model, smash_config["device"])
         return smashed_model
 
