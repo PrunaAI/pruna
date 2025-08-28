@@ -100,9 +100,9 @@ class QKVDiffusers(PrunaFactorizer):
             processor = working_model.attn_processors[random_key]
             working_model.set_attn_processor(processor)
 
-            mc.set_smashed_working_model(working_model)
+            mc.update_working_model(working_model)
 
-        return mc.get_smashed()
+        return mc.get_updated_model()
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

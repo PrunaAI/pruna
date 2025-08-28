@@ -183,9 +183,9 @@ class HQQQuantizer(PrunaQuantizer):
                 pruna_logger.error(f"Error: {e}")
                 pass
 
-            mc.set_smashed_working_model(working_model)
+            mc.update_working_model(working_model)
 
-        smashed_model = mc.get_smashed()
+        smashed_model = mc.get_updated_model()
         # as we have moved the model to cpu for cleaning, but only one of its attribute was put back on cuda.
         move_to_device(smashed_model, smash_config["device"])
         return smashed_model

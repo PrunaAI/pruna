@@ -588,7 +588,7 @@ class ModelContext(AbstractContextManager):
         del self.smashed_working_model
         safe_memory_cleanup()
 
-    def set_smashed_working_model(self, working_model: Any) -> None:
+    def update_working_model(self, working_model: Any) -> None:
         """
         Set the smashed working model.
 
@@ -599,7 +599,7 @@ class ModelContext(AbstractContextManager):
         """
         self.smashed_working_model = working_model
 
-    def get_smashed(self) -> "ModelMixin":
+    def get_updated_model(self) -> "ModelMixin":
         """
         Get the smashed model.
 
