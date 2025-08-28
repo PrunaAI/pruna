@@ -526,7 +526,7 @@ class ModelContext(AbstractContextManager):
         self.model = model
         self.read_only = read_only
         self.smashed_working_model = None
-        self.denoiser_type: str | None = None
+        self.path_to_working_model: str | None = None
 
     def __enter__(self) -> tuple[ModelContext, Any]:
         """
@@ -541,13 +541,13 @@ class ModelContext(AbstractContextManager):
         """
         if hasattr(self.model, "transformer"):
             working_model = self.model.transformer
-            self.denoiser_type = "transformer"
+            self.path_to_working_model = "transformer"
         elif hasattr(self.model, "unet"):
             working_model = self.model.unet
-            self.denoiser_type = "unet"
+            self.path_to_working_model = "unet"
         elif hasattr(self.model, "model") and hasattr(self.model.model, "language_model"):
             working_model = self.model.model.language_model
-            self.denoiser_type = "language_model"
+            self.path_to_working_model = "model.language_model"
         else:
             working_model = self.model
 
@@ -576,12 +576,15 @@ class ModelContext(AbstractContextManager):
                     "before exiting the context manager."
                 )
 
-        if hasattr(self.model, "transformer"):
-            self.model.transformer = self.smashed_working_model
-        elif hasattr(self.model, "unet"):
-            self.model.unet = self.smashed_working_model
-        elif hasattr(self.model, "model") and hasattr(self.model.model, "language_model"):
-            self.model.model.language_model = self.smashed_working_model
+        if self.path_to_working_model is not None:
+            # Handle nested paths like "model.language_model"
+            path_parts = self.path_to_working_model.split(".")
+            current_obj = self.model
+            # Navigate to the parent object that contains the final attribute
+            for part in path_parts[:-1]:
+                current_obj = getattr(current_obj, part)
+            # Set the final attribute
+            setattr(current_obj, path_parts[-1], self.smashed_working_model)
         else:
             self.model = self.smashed_working_model
 
