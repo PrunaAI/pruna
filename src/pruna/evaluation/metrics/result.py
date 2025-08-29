@@ -59,13 +59,7 @@ class MetricResult:
             A string representation of the MetricResult.
         """
         units = f" {self.metric_units}" if self.metric_units else ""
-        if self.higher_is_better is None:
-            trend = ""
-        elif self.higher_is_better:
-            trend = " (higher is better)"
-        else:
-            trend = " (lower is better)"
-        return f"{self.name}: {self.result}{units}{trend}"
+        return f"{self.name}: {self.result}{units}"
 
     @classmethod
     def from_results_dict(
