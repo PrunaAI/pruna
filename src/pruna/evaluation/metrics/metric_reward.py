@@ -24,12 +24,17 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    SINGLE,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.logging.logger import pruna_logger
 
 IMAGE_REWARD = "image_reward"
 HPS_REWARD = "hps"
 HPSv2_REWARD = "hpsv2"
+VQA_REWARD = "vqa"
 
 
 class BaseModelRewardMetric(StatefulMetric):
@@ -208,6 +213,8 @@ class ImageRewardMetric(BaseModelRewardMetric):
         The device to use for the model. If None, the best available device will be used.
     call_type : str
         The type of call to use for the metric. IQA metrics, like image_reward, are only supported for single mode.
+    **model_load_kwargs : Any
+        Additional keyword arguments for the model.
     **kwargs : Any
         Additional keyword arguments for the metric.
     """
@@ -260,6 +267,8 @@ class HPSMetric(BaseModelRewardMetric):
         The device to use for the model. If None, the best available device will be used.
     call_type : str
         The type of call to use for the metric. IQA metrics, like image_reward, are only supported for single mode.
+    **model_load_kwargs : Any
+        Additional keyword arguments for the model.
     **kwargs : Any
         Additional keyword arguments for the metric.
     """
@@ -325,6 +334,8 @@ class HPSv2Metric(BaseModelRewardMetric):
         The device to use for the model. If None, the best available device will be used.
     call_type : str
         The type of call to use for the metric. IQA metrics, like image_reward, are only supported for single mode.
+    **model_load_kwargs : Any
+        Additional keyword arguments for the model.
     **kwargs : Any
         Additional keyword arguments for the metric.
     """
@@ -357,3 +368,75 @@ class HPSv2Metric(BaseModelRewardMetric):
         if isinstance(score, (list, tuple)):
             return float(score[0])
         return float(score)
+
+
+@MetricRegistry.register(VQA_REWARD)
+class VQAMetric(BaseModelRewardMetric):
+    """
+    VQA metric for evaluating text-to-image generation quality.
+
+    VQA (Visual Question Answering) metric evaluates the quality of text-to-image
+    generation by assessing how well the generated images can answer questions about
+    their content.
+
+    References
+    ----------
+    - https://github.com/PrunaAI/t2v-metrics
+
+    Parameters
+    ----------
+    device : str | torch.device | None, optional
+        The device to use for the model. If None, the best available device will be used.
+    call_type : str
+        The type of call to use for the metric. IQA metrics, like image_reward, are only supported for single mode.
+    **model_load_kwargs : Any
+        Additional keyword arguments for the model.
+    **kwargs : Any
+        Additional keyword arguments for the metric.
+    """
+
+    metric_name: str = VQA_REWARD
+
+    def _load(self, **kwargs: Any) -> None:
+        try:
+            import t2v_metrics
+
+            self.model = t2v_metrics.VQAScore(
+                model=kwargs.get("model", "clip-flant5-xxl"),
+                device=str(self.device),
+            )
+        except ImportError:
+            pruna_logger.warning("t2v-metrics not available. VQA metric will not work.")
+            self.model = None
+
+    def _score_image(self, prompt: str, image: PIL.Image.Image) -> float:
+        """
+        Score an image with a prompt using VQA.
+
+        Parameters
+        ----------
+        prompt : str
+            The prompt to score the image with.
+        image : PIL.Image.Image
+            The image to score.
+
+        Returns
+        -------
+        float
+            The VQA score for the image.
+        """
+        if self.model is None:
+            return 0.0
+
+        try:
+            # Convert prompt to a question format for VQA
+            question = f"What is shown in this image? Answer: {prompt}"
+            score = self.model.score(image, question)
+
+            # Handle case where score might be a list or array
+            if isinstance(score, (list, tuple)):
+                return float(score[0])
+            return float(score)
+        except Exception as e:
+            pruna_logger.warning(f"Error computing VQA score: {e}")
+            return 0.0
