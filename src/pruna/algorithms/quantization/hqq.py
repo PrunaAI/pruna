@@ -23,7 +23,12 @@ from transformers import AutoModelForCausalLM
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import Boolean
-from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
+from pruna.engine.model_checks import (
+    is_causal_lm,
+    is_janus_llamagen_ar,
+    is_opt_model,
+    is_transformers_pipeline_with_causal_lm,
+)
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext, move_to_device, safe_memory_cleanup
 from pruna.logging.filter import SuppressOutput
@@ -48,7 +53,9 @@ class HQQQuantizer(PrunaQuantizer):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"], pruner=["torch_structured"])
+    compatible_algorithms: dict[str, list[str]] = dict(
+        compiler=["torch_compile"], pruner=["torch_structured"]
+    )
 
     def get_hyperparameters(self) -> list:
         """
@@ -87,7 +94,9 @@ class HQQQuantizer(PrunaQuantizer):
             Boolean(
                 "force_hf_implementation",
                 default=False,
-                meta=dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
+                meta=dict(
+                    desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."
+                ),
             ),
         ]
 
@@ -105,7 +114,11 @@ class HQQQuantizer(PrunaQuantizer):
         bool
             True if the model is a causal language model or a Janus LlamaGen AR model, False otherwise.
         """
-        return is_causal_lm(model) or is_janus_llamagen_ar(model) or is_transformers_pipeline_with_causal_lm(model)
+        return (
+            is_causal_lm(model)
+            or is_janus_llamagen_ar(model)
+            or is_transformers_pipeline_with_causal_lm(model)
+        )
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -124,18 +137,31 @@ class HQQQuantizer(PrunaQuantizer):
             The quantized model.
         """
         if is_transformers_pipeline_with_causal_lm(model):
-            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
+            return self._apply_to_model_within_transformers_pipeline(
+                model, smash_config
+            )
 
         imported_modules = self.import_algorithm_packages()
 
         weight_quantization_bits = smash_config["weight_bits"]
         group_size = smash_config["group_size"]
 
-        quant_config_hqq = imported_modules["BaseQuantizeConfig"](nbits=weight_quantization_bits, group_size=group_size)
-        quant_config_hf = imported_modules["HqqConfig"](nbits=weight_quantization_bits, group_size=group_size)
+        quant_config_hqq = imported_modules["BaseQuantizeConfig"](
+            nbits=weight_quantization_bits, group_size=group_size
+        )
+        quant_config_hf = imported_modules["HqqConfig"](
+            nbits=weight_quantization_bits, group_size=group_size
+        )
         move_to_device(model, "cpu")
         safe_memory_cleanup()
         with ModelContext(model) as (mc, working_model):
+            # Check if this is an OPT model and handle it specially
+            if is_opt_model(working_model):
+                pruna_logger.info(
+                    "Detected OPT model. Using generic HF quantization as HQQ may have compatibility issues with OPT models."
+                )
+                smash_config["force_hf_implementation"] = True
+
             try:  # Try to quantize the model using HQQ
                 if smash_config["force_hf_implementation"]:
                     raise Exception(
@@ -146,12 +172,19 @@ class HQQQuantizer(PrunaQuantizer):
                     working_model,
                     quant_config=quant_config_hqq,
                     device=smash_config["device"],
-                    compute_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
+                    compute_dtype=(
+                        torch.float16
+                        if smash_config["compute_dtype"] == "torch.float16"
+                        else torch.bfloat16
+                    ),
                 )
-            except Exception:  # Default to generic HF quantization if it fails or if default_to_hf is True
+            except (
+                Exception,
+                AttributeError,
+            ) as e:  # Default to generic HF quantization if it fails or if default_to_hf is True
                 if not smash_config["force_hf_implementation"]:
                     pruna_logger.info(
-                        "Could not quantize model using specialized HQQ pipeline, "
+                        f"Could not quantize model using specialized HQQ pipeline (error: {str(e)}), "
                         "trying implementation from transformers library..."
                     )
                 # Create a temporary directory in a specific location
@@ -164,7 +197,11 @@ class HQQQuantizer(PrunaQuantizer):
                     quantization_config=quant_config_hf,
                     trust_remote_code=True,
                     device_map="auto",
-                    torch_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
+                    torch_dtype=(
+                        torch.float16
+                        if smash_config["compute_dtype"] == "torch.float16"
+                        else torch.bfloat16
+                    ),
                 )
 
                 # Delete the temporary directory and its contents
@@ -172,13 +209,18 @@ class HQQQuantizer(PrunaQuantizer):
 
             # Prepare the model for fast inference
             try:
-                if weight_quantization_bits == 4 and smash_config["use_torchao_kernels"]:
+                if (
+                    weight_quantization_bits == 4
+                    and smash_config["use_torchao_kernels"]
+                ):
                     pruna_logger.info(
                         "Patching model for fast inference with torchaoint4 kernels. "
                         "This operation can make the model incompatible with re-load. "
                         "If you plan to save and re-load the model, set use_torchao_kernels to False."
                     )
-                    imported_modules["prepare_for_inference"](working_model, backend=smash_config["backend"])
+                    imported_modules["prepare_for_inference"](
+                        working_model, backend=smash_config["backend"]
+                    )
             except Exception as e:
                 pruna_logger.error(f"Error: {e}")
                 pass
