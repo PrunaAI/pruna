@@ -60,6 +60,8 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
+image-reward = { git = "https://github.com/PrunaAI/ImageReward" }
+hpsv2 = { git = "https://github.com/PrunaAI/HPSv2" }
 
 [project]
 name = "pruna"
@@ -70,7 +72,7 @@ authors = [
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -106,7 +108,6 @@ dependencies = [
     "codecarbon",
     "pynvml",
     "thop",
-    "timm",
     "bitsandbytes; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "optimum-quanto>=0.2.5",
     "ctranslate2==4.6.0",
@@ -115,11 +116,14 @@ dependencies = [
     "torchao",
     "llmcompressor",
     "gliner; python_version >= '3.10'",
-    "piq",
     "opencv-python",
     "kernels",
-    "aenum"
-
+    "aenum",
+    "image-reward",
+    "piq",
+    "clip",
+    "hpsv2",
+    "t2v-metrics",
 ]
 
 [project.optional-dependencies]
