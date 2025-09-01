@@ -21,6 +21,7 @@ from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMe
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metric_t2i_compbench import T2ICompBench
 
 __all__ = [
     "MetricRegistry",
@@ -37,4 +38,5 @@ __all__ = [
     "TotalMACsMetric",
     "PairwiseClipScore",
     "CMMD",
+    "T2ICompBench",
 ]

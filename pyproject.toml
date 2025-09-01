@@ -118,8 +118,8 @@ dependencies = [
     "piq",
     "opencv-python",
     "kernels",
-    "aenum"
-
+    "aenum",
+    "pytest>=8.4.1",
 ]
 
 [project.optional-dependencies]
