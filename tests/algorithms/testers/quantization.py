@@ -60,11 +60,21 @@ class TestDiffusersInt8(AlgorithmTesterBase):
 class TestHQQ(AlgorithmTesterBase):
     """Test the HQQ quantizer."""
 
-    models = ["llama_3_tiny_random", "tiny_janus_pro"]
+    models = ["llama_3_tiny_random"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HQQQuantizer
     metrics = ["perplexity"]
+
+
+class TestHQQJanus(AlgorithmTesterBase):
+    """Test the HQQ quantizer."""
+
+    models = ["tiny_janus_pro"]
+    reject_models = ["sd_tiny_random"]
+    allow_pickle_files = False
+    algorithm_class = HQQQuantizer
+    metrics = ["cmmd"]
 
 
 class TestHQQDiffusers(AlgorithmTesterBase):
