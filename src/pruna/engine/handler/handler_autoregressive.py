@@ -82,10 +82,11 @@ class AutoregressiveHandler(InferenceHandler):
 
         # image generation mode
         text, _ = batch
+        text = cast(str, text)
         inputs = self.smash_config.processor(text=text, generation_mode=generation_mode, return_tensors="pt")
         inputs = inputs.to(self.smash_config.device, dtype=self.model.dtype)
         if isinstance(inputs, BatchFeature):
-            inputs = dict(inputs)
+            return dict(inputs)
         return inputs
 
     def process_output(self, output: Any) -> Any:
