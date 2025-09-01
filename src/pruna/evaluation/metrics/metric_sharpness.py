@@ -21,7 +21,6 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from pruna.engine.utils import device_to_string
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -156,18 +155,3 @@ class SharpnessMetric(StatefulMetric):
         # Otherwise, compute the mean sharpness score over all accumulated samples.
         mean_val = float(np.mean(self.scores))
         return MetricResult(self.metric_name, self.__dict__, mean_val)
-
-    def move_to_device(self, device: str | torch.device) -> None:
-        """
-        Move the metric to a specific device.
-
-        Parameters
-        ----------
-        device : str | torch.device
-            The device to move the metric to.
-        """
-        if not self.is_device_supported(device):
-            raise ValueError(
-                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
-            )
-        self.device = device_to_string(device)

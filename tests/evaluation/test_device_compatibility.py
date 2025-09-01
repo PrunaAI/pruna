@@ -25,7 +25,9 @@ from typing import Any, List
     indirect=["datamodule_fixture", "model_fixture"],
 )
 def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDataModule, model_fixture: Any, evaluation_request: List[str], low_memory: bool):
+    """Test that the task automatically adapts to accelerate model when the user doesn't specify a device for the Task."""
 
+    # We don't specify a device for the task here.
     task = Task(request=evaluation_request, datamodule=datamodule_fixture, device=None, low_memory=low_memory)
     agent = EvaluationAgent(task)
 
@@ -35,16 +37,17 @@ def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDa
 
     model = agent.prepare_model(model)
 
+    # Now we check if the task and the evaluation agent are on the same device as the model.
     assert split_device(device_to_string(get_device(model))) == split_device(device_to_string(agent.device))
     assert split_device(device_to_string(agent.device)) == split_device(device_to_string(task.device))
     if not low_memory:
         assert split_device(device_to_string(task.stateful_metric_device))[0] == split_device(device_to_string("cuda"))[0] # Task and stateful metrics can be on different indexes
     else:
         assert split_device(device_to_string(task.stateful_metric_device)) == split_device(device_to_string("cpu"))
-    for metric in task.metrics:
+    for metric in task.metrics: # Base metrics should be on the same device as the task, as they just run inference on the model.
         if isinstance(metric, BaseMetric):
             assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
-        elif isinstance(metric, StatefulMetric): # Stateful metrics should not be moved
+        elif isinstance(metric, StatefulMetric): # Stateful metrics should not be moved.
             if hasattr(metric, "device"):
                 assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
             if hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
@@ -63,6 +66,7 @@ def test_auto_device_task_adapts_to_accelerate_model(datamodule_fixture: PrunaDa
     indirect=["datamodule_fixture", "model_fixture"],
 )
 def test_auto_device_task_adapts_to_model(datamodule_fixture: PrunaDataModule, model_device: str, model_fixture: Any, evaluation_request: List[str], low_memory: bool):
+    """Test that the task automatically adapts to the model's device when the user doesn't specify a device for the Task."""
     task = Task(request=evaluation_request, datamodule=datamodule_fixture, device=None, low_memory=low_memory)
     agent = EvaluationAgent(task)
 

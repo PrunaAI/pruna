@@ -79,6 +79,7 @@ def test_device_is_set_correctly_for_metrics(device:str):
     ],
 )
 def test_metric_device_adapts_to_task_device(inference_device: str, stateful_metric_device: str, task_device: str):
+    """ Test that the metrics in the task are moved to the task device if they are on a different device."""
     latency = LatencyMetric(device=inference_device)
     cmmd = CMMD(device=stateful_metric_device)
     pairwise_clip_score = PairwiseClipScore(device=stateful_metric_device)

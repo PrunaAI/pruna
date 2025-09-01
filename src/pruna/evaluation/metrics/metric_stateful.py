@@ -136,7 +136,6 @@ class StatefulMetric(ABC):
         """
         return self.call_type.startswith("pairwise")
 
-    @abstractmethod
     def move_to_device(self, device: str | torch.device) -> None:
         """
         Move the metric to a specific device.
@@ -146,7 +145,11 @@ class StatefulMetric(ABC):
         device : str | torch.device
             The device to move the metric to.
         """
-        pass
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
+        self.device = device_to_string(device)
 
     def is_device_supported(self, device: str | torch.device) -> bool:
         """
