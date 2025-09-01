@@ -134,7 +134,7 @@ def move_to_device(
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
-        if device_str != "accelerate" and hasattr(model.model, "hf_device_map"):
+        if device != "accelerate" and hasattr(model.model, "hf_device_map"):
             delattr(model.model, "hf_device_map")
         return
 
@@ -151,7 +151,7 @@ def move_to_device(
         raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
 
     # do not cast if the model is already on the correct device
-    if str(get_device(model)) == device_str:
+    if get_device(model) == device:
         return
 
     if device == "accelerate":
@@ -165,24 +165,10 @@ def move_to_device(
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
             # Parse device index from device string for proper device mapping
-            if device_str.startswith("cuda:"):
-                try:
-                    # Use robust helper for CUDA device parsing
-                    device_index = _resolve_cuda_device(device_str)
-                    model.hf_device_map = {"": int(device_index.split(":")[-1])}
-                except Exception as e:
-                    error_msg = (
-                        f"Failed to parse CUDA device string '{device_str}' when moving model from 'accelerate'. "
-                        f"Error: {str(e)}"
-                    )
-                    if raise_error:
-                        raise ValueError(error_msg) from e
-                    else:
-                        pruna_logger.warning(error_msg)
-                        # Fallback to default device 0 if parsing fails
-                        model.hf_device_map = {"": 0}
+            if device.startswith("cuda:"):
+                model.hf_device_map = {"": device_index}
             else:
-                model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
+                model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
         try:
             model.to(device)
             # Avoid circular imports
@@ -190,7 +176,7 @@ def move_to_device(
 
             # Special handling for GPTQ models to ensure all quantization tensors are on the correct device
             if is_gptq_model(model):
-                _ensure_gptq_device_consistency(model, device_str)
+                _ensure_gptq_device_consistency(model, device)
 
         except torch.cuda.OutOfMemoryError as e:
             # there is anyway no way to recover from this error
@@ -514,7 +500,6 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
     return torch.float32
 
 
-
 def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None = None) -> str:
     """
     Resolve CUDA device string to a valid CUDA device.
@@ -611,6 +596,7 @@ def set_to_best_available_device(
 
     raise ValueError(f"Device not supported: '{device}'")
 
+
 def device_to_string(device: str | torch.device) -> str:
     """
     Convert a device to a string.
@@ -666,7 +652,6 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     if strict:
         raise ValueError(f"Unsupported device: '{device}'.")
     return device, None
-
 
 
 class ModelContext(AbstractContextManager):
