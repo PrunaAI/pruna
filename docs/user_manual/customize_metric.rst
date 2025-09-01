@@ -40,9 +40,13 @@ Create a new class that inherits from ``BaseMetric`` and implements the ``comput
 
 Your metric should have a ``metric_name`` and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
 
-Every metric has a ``runs_on`` attribute that should be a list that contains the device(s) the metric can run on. For base metrics it is by default ``["cuda", "cpu", "mps"]``.
+Every metric has a ``runs_on`` attribute that specifies the device(s) it supports.
 
-Please update the ``runs_on`` if you want to change the default devices. For instance, you can also include ``accelerate`` if your metric logic works on multiple devices. Inference with ``accelerate`` should work out of the box, and some of |pruna|'s metrics already use it!
+For custom metrics, you should explicitly set this list. If not specified, the default is ``["cuda", "cpu", "mps"]``.
+
+You can extend this list as needed. For example, include ``accelerate`` if your metric logic is compatible with multiple devices.
+
+Inference with accelerate works out of the box, and some of |pruna|’s built-in metrics already make use of it.
 
 ``compute()`` takes two parameters: ``model`` and ``dataloader``.
 
@@ -81,9 +85,13 @@ To implement a ``StatefulMetric``, create a class that inherits from ``StatefulM
 
 Your metric should have a ``metric_name`` and a ``higher_is_better`` attribute. Higher is better is a boolean value that indicates if a higher metric value is better.
 
-Every metric has a ``runs_on`` attribute that should be a list that contains the device(s) the metric can run on. For base metrics it is by default ``["cuda", "cpu", "mps"]``.
+Every metric has a ``runs_on`` attribute that specifies the device(s) it supports.
 
-Please update the ``runs_on`` if you want to change the default devices.
+For custom metrics, you should explicitly set this list. If not specified, the default is ``["cuda", "cpu", "mps"]``.
+
+You can extend this list as needed. For example, include ``accelerate`` if your metric logic is compatible with multiple devices.
+
+Inference with accelerate works out of the box, and some of |pruna|’s built-in metrics already make use of it.
 
 Use ``add_state()`` method to define internal state variables that will accumulate data across batches. For example, you might track totals and counts to compute an average.
 
