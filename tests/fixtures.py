@@ -144,14 +144,20 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
     return model, smash_config
 
 
-def get_automodel_image_text_to_text_transformers(model_id: str) -> tuple[Any, SmashConfig]:
+def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashConfig]:
     """
-    Get an AutoModelForImageTextToText model.
+    Get an AutoModelForImageTextToText model specialized for image generation.
 
-    This multi-modal model is not only for text generation, but also for AR image generation.
+    This is based on Janus, which hacks AutoModelForImageTextToText for AR image generation.
+    This function loads it with a text-to-image dataset and configuration.
     """
     model = AutoModelForImageTextToText.from_pretrained(model_id)
     smash_config = SmashConfig()
+    smash_config.add_data("LAION256")
+
+    original_generate = model.generate
+    model.generate = partial(original_generate, generation_mode="image")
+
     return model, smash_config
 
 
