@@ -6,7 +6,7 @@ import pytest
 import torch
 from huggingface_hub import snapshot_download
 from torchvision.models import get_model as torchvision_get_model
-from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoProcessor, AutoTokenizer, pipeline
 
 from pruna import SmashConfig
 from pruna.data.pruna_datamodule import PrunaDataModule
@@ -151,12 +151,12 @@ def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashCon
     This is based on Janus, which hacks AutoModelForImageTextToText for AR image generation.
     This function loads it with a text-to-image dataset and configuration.
     """
-    model = AutoModelForImageTextToText.from_pretrained(model_id)
+    model = AutoModelForImageTextToText.from_pretrained(model_id, torch_dtype=torch.bfloat16)
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
 
-    original_generate = model.generate
-    model.generate = partial(original_generate, generation_mode="image")
+    processor = AutoProcessor.from_pretrained(model_id)
+    smash_config.add_processor(processor)
 
     return model, smash_config
 
@@ -187,7 +187,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     ),
     "dummy_lambda": dummy_model,
     # image generation AR models
-    "tiny_janus_pro": partial(get_automodel_image_text_to_text_transformers, "pruna-test/tiny_janus"),
+    "tiny_janus_pro": partial(get_autoregressive_text_to_image_model, "pruna-test/tiny_janus"),
     "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
