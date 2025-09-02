@@ -18,8 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import torch
 import torchvision.transforms as transforms
+import transformers
 from transformers.feature_extraction_utils import BatchFeature
-from transformers.models.janus.processing_janus import JanusProcessor
 
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_inference import InferenceHandler
@@ -77,13 +77,17 @@ class AutoregressiveHandler(InferenceHandler):
                 "The SmashConfig did not contain a processor, you can set it by hand with "
                 "`model.inference_handler.processor = ...`"
             )
-        elif not isinstance(self.smash_config.processor, JanusProcessor):
+        # recognize JanusProcessor by its class name because it requires transformers>=4.52.0
+        elif self.smash_config.processor.__class__.__name__ != "JanusProcessor":
             raise ValueError(f"Expected a JanusProcessor, but got {type(self.smash_config.processor)}")
+
+        # processor is a JanusProcessor, meaning transformers>=4.52.0, so we can now us it for type casting
+        processor = cast(transformers.JanusProcessor, self.smash_config.processor)
 
         # image generation mode
         text, _ = batch
         text = cast(str, text)
-        inputs = self.smash_config.processor(text=text, generation_mode=generation_mode, return_tensors="pt")
+        inputs = processor(text=text, generation_mode=generation_mode, return_tensors="pt")
         inputs = inputs.to(self.smash_config.device, dtype=self.model.dtype)
         if isinstance(inputs, BatchFeature):
             return dict(inputs)
@@ -111,7 +115,7 @@ class AutoregressiveHandler(InferenceHandler):
 
         # image generation mode
         decoded_image = self.model.decode_image_tokens(output)
-        processor = cast(JanusProcessor, self.smash_config.processor)
+        processor = cast(transformers.JanusProcessor, self.smash_config.processor)
         # return_tensors="pt" leads to [width, height, 3] images instead of [3, width, height]
         # processing to PIL for consistency
         images = processor.postprocess(list(decoded_image.float()), return_tensors="PIL.Image.Image")
