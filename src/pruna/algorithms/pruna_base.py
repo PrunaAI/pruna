@@ -179,6 +179,39 @@ class PrunaAlgorithmBase(ABC):
         """
         return []
 
+    def pre_smash_hook(self, model: Any, smash_config: SmashConfig) -> None:
+        """
+        Perform any necessary actions before the smashing process begins.
+
+        This method is called before any algorithm is applied to the model. It allows algorithms
+        to e.g. perform preparatory steps that need to happen before the actual model adaptation.
+
+        Parameters
+        ----------
+        model : Any
+            The model to be smashed.
+        smash_config : SmashConfig
+            The SmashConfig object containing the algorithm settings.
+        """
+        prefix = self.algorithm_name + "_"
+        wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
+        self._pre_smash_hook(model, wrapped_config)
+
+    def _pre_smash_hook(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> None:
+        """
+        Function to be overridden by an algorithm to perform any pre-smash actions.
+
+        Wrapped by the pre_smash_hook method to handle smash_config prefix.
+
+        Parameters
+        ----------
+        model : Any
+            The model to be smashed.
+        smash_config : SmashConfig
+            The SmashConfig object containing the algorithm settings.
+        """
+        pass
+
     @abstractmethod
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """Apply the algorithm to the model."""

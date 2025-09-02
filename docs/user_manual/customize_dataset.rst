@@ -1,3 +1,6 @@
+:title: Custom Dataset Integration - Pruna AI Data Management
+:description: Learn how to integrate custom datasets into Pruna AI. Step-by-step guide for adding new datasets, calibration data, and evaluation datasets to the framework.
+
 Customize Datasets
 ==================
 
@@ -6,7 +9,10 @@ Additionally, we provide a variety of :ref:`preconfigured datasets <configure-da
 
 If you’d like to contribute a new dataset to our supported list, follow these two quick steps.
 If anything is unclear or you want to discuss your contribution before opening a PR, please reach out on `Discord <https://discord.gg/JFQmtFKCjd>`_ anytime!
-If this is your first time contributing to |pruna|, please refer to the :ref:`how-to-contribute` guide for more information.
+
+.. tip::
+
+   If you want to contribute to |pruna|, please refer to the :doc:`/docs_pruna/contributions/how_to_contribute` guide for more information. You can also `find finished PRs <https://github.com/PrunaAI/pruna/pulls?q=is%3Apr+label%3Adataset+>`_ in the GitHub repository.
 
 .. _customize-dataset:
 

@@ -1,3 +1,6 @@
+:title: How to Contribute to Pruna AI - Community Development Guide
+:description: Learn how to contribute to Pruna AI's open source project. Setup guide, contribution guidelines, and ways to help improve the AI model optimization framework.
+
 How to Contribute ? 💜
 ======================
 

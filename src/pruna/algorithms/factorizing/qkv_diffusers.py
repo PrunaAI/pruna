@@ -91,7 +91,7 @@ class QKVDiffusers(PrunaFactorizer):
             The fused model.
         """
         # Use context manager to handle the model vs working_model.
-        with ModelContext(model) as (pipeline, working_model, denoiser_type):
+        with ModelContext(model) as (mc, working_model):
             # only this line thanks to https://github.com/huggingface/diffusers/pull/9185
             working_model.fuse_qkv_projections()
             # adding a single attention processor instance for all layers for torch compile compatibility
@@ -99,11 +99,10 @@ class QKVDiffusers(PrunaFactorizer):
             random_key = next(iter(working_model.attn_processors.keys()))
             processor = working_model.attn_processors[random_key]
             working_model.set_attn_processor(processor)
-            # redefining the working_model breaks links with context manager
-            # so we need to re-define the working_model as an attribute of the model.
-            pipeline.working_model = working_model
 
-        return model
+            mc.update_working_model(working_model)
+
+        return mc.get_updated_model()
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

@@ -19,6 +19,7 @@ from typing import Any
 
 from pruna.engine.handler.handler_diffuser import DiffuserHandler
 from pruna.engine.handler.handler_inference import InferenceHandler
+from pruna.engine.handler.handler_pipeline import PipelineHandler
 from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
 
@@ -49,8 +50,17 @@ def register_inference_handler(model: Any) -> InferenceHandler:
 
     model_module = model._orig_mod.__module__ if hasattr(model, "_orig_mod") else model.__module__
 
+    # Prefer diffusers handler first to avoid routing diffusers pipelines to generic pipeline handler
     if "diffusers" in model_module:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
+
+    # Transformers models and pipelines
+    if "transformers" in model_module and "Pipeline" in type(model).__name__:
+        # Specific check for text generation pipelines
+        if "TextGeneration" in type(model).__name__:
+            return PipelineHandler(pipeline=model)
+        else:
+            raise ValueError("Unsupported pipeline type. Only text generation pipelines are currently supported.")
     elif "transformers" in model_module:
         return TransformerHandler()
     else:

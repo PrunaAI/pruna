@@ -156,3 +156,29 @@ def check_algorithm_availability(algorithm: str, algorithm_group: str, algorithm
         raise RuntimeError(f"Algorithm group {algorithm_group} is unavailable with pruna.smash")
     if algorithm not in algorithm_dict[algorithm_group]:
         raise RuntimeError(f"Algorithm {algorithm} is unavailable with pruna.smash")
+
+
+def execute_algorithm_pre_smash_hooks(
+    model: Any, smash_config: SmashConfig, algorithm_dict: dict[str, Any] = PRUNA_ALGORITHMS
+) -> None:
+    """
+    Loops through all algorithm groups and calls the pre_smash_hook method for each algorithm.
+
+    Parameters
+    ----------
+    model : Any
+        The model to apply the setup to.
+    smash_config : SmashConfig
+        The SmashConfig object containing the algorithm configuration.
+    algorithm_dict : dict[str, Any], optional
+        Dictionary mapping algorithm groups to algorithm instances. Defaults to PRUNA_ALGORITHMS.
+    """
+    # algorithm groups are subject to change, make sure we have the latest version
+    from pruna.config.smash_space import ALGORITHM_GROUPS
+
+    # iterate through compiler, quantizer, ...
+    for current_group in ALGORITHM_GROUPS:
+        algorithm = smash_config[current_group]
+        if algorithm is not None:
+            check_algorithm_availability(algorithm, current_group, algorithm_dict)
+            algorithm_dict[current_group][algorithm].pre_smash_hook(model, smash_config)

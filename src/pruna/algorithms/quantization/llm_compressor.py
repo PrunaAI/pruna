@@ -14,6 +14,8 @@
 
 from typing import Any, Dict
 
+from ConfigSpace import CategoricalHyperparameter
+
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
@@ -46,7 +48,14 @@ class LLMCompressorQuantizer(PrunaQuantizer):
         list
             The hyperparameters.
         """
-        return []
+        return [
+            CategoricalHyperparameter(
+                "quant_scheme",
+                choices=["W4A16", "W4A16_ASYM"],
+                default_value="W4A16",
+                meta=dict(desc="Quantization scheme to use. Use symmetric quantization to avoid decompression issues."),
+            ),
+        ]
 
     def model_check_fn(self, model: Any) -> bool:
         """
@@ -87,14 +96,16 @@ class LLMCompressorQuantizer(PrunaQuantizer):
         recipe = [
             imported["AWQModifier"](
                 ignore=["lm_head"],
-                scheme="W4A16_ASYM",
+                scheme=smash_config["quant_scheme"],
                 targets=["Linear"],
             )
         ]
 
         dataset = smash_config.data.val_dataset
 
-        imported["oneshot"](model=model, recipe=recipe, dataset=dataset)
+        # For text generation models, provide the tokenizer as processor to avoid AutoProcessor errors
+        processor = smash_config.tokenizer if smash_config.tokenizer is not None else "bert-base-uncased"
+        imported["oneshot"](model=model, recipe=recipe, dataset=dataset, processor=processor)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

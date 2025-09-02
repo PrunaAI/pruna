@@ -556,6 +556,17 @@ class CausalLMGenerator:
         self.top_k = kwargs.pop("top_k", self.top_k)
         self.use_cache = kwargs.pop("use_cache", self.use_cache)
 
+        # Handle generation when the user does not provide max_new_tokens, but a generation_config.
+        # This also fixes the evaluation test.
+        generation_config = kwargs.pop("generation_config", None)
+        if (
+            generation_config is not None
+            and "max_new_tokens" not in kwargs
+            and hasattr(generation_config, "max_new_tokens")
+            and getattr(generation_config, "max_new_tokens") is not None
+        ):
+            kwargs["max_new_tokens"] = int(generation_config.max_new_tokens)
+
         # Log any kwargs that are not explicitly handled
         unhandled_kwargs = {
             k: v

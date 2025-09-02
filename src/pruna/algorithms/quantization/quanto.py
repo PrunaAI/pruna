@@ -102,7 +102,6 @@ class QuantoQuantizer(PrunaQuantizer):
             The quantized model.
         """
         imported_modules = self.import_algorithm_packages()
-
         if hasattr(model, "unet"):
             working_model = model.unet
         elif hasattr(model, "transformer"):
@@ -110,11 +109,12 @@ class QuantoQuantizer(PrunaQuantizer):
         else:
             working_model = model
 
-        weights = getattr(imported_modules["optimum"].quanto, smash_config["weight_bits"])
-        if smash_config["act_bits"] is not None:
-            activations = getattr(imported_modules["optimum"].quanto, smash_config["act_bits"])
-        else:
-            activations = None
+        weights = getattr(imported_modules["quanto"], smash_config["weight_bits"])
+        activations = (
+            getattr(imported_modules["quanto"], smash_config["act_bits"])
+            if smash_config["act_bits"] is not None
+            else None
+        )
 
         try:
             imported_modules["quantize"](working_model, weights=weights, activations=activations)
@@ -155,10 +155,10 @@ class QuantoQuantizer(PrunaQuantizer):
         Dict[str, Any]
             The algorithm packages.
         """
-        import optimum
+        import optimum.quanto as quanto
         from optimum.quanto import Calibration, freeze, quantize
 
-        return dict(Calibration=Calibration, freeze=freeze, quantize=quantize, optimum=optimum)
+        return dict(Calibration=Calibration, freeze=freeze, quantize=quantize, quanto=quanto)
 
 
 @torch.no_grad()

@@ -20,7 +20,6 @@ When opening a pull request for a documentation improvement, you will encounter 
    :linenos:
    :lines: 9-
 
-
 .. _bug-report:
 
 Bug Report

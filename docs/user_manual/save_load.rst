@@ -47,7 +47,6 @@ Basic Save and Load Workflow
         style F fill:#f9f,stroke:#333,stroke-width:2px
         style G fill:#bbf,stroke:#333,stroke-width:2px
         style H1 fill:#bbf,stroke:#333,stroke-width:2px
-        style H2 fill:#bbf,stroke:#333,stroke-width:2px
         style I fill:#bbf,stroke:#333,stroke-width:2px
         style B fill:#bbf,stroke:#333,stroke-width:2px
         style C1 fill:#bbf,stroke:#333,stroke-width:2px

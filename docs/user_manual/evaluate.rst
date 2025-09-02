@@ -1,10 +1,21 @@
-Evaluate quality with the Evaluation Agent
-================================================
+:title: Evaluation Agent Guide - Model Quality Assessment with Pruna AI
+:description: Learn to evaluate AI model quality with Pruna's Evaluation Agent. Comprehensive guide to efficiency metrics, quality metrics, and model assessment workflows.
 
-This guide provides an introduction to evaluating models with |pruna|.
+Evaluate quality with the Evaluation Agent
+==========================================
+
+This guide provides a comprehensive introduction to the Evaluation Agent in |pruna|, your all-in-one suite for evaluating and optimizing AI models.
 
 Evaluation helps you understand how compression affects your models across different dimensions - from output quality to resource requirements.
-This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs.
+This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs using two types of metrics:
+
+- **Efficiency Metrics:** Measure speed (total time, latency, throughput), memory (disk, inference, training), and energy usage (consumption, CO2 emissions).
+- **Quality Metrics:** Assess fidelity (FID, CMMD), alignment (Clip Score), diversity (PSNR, SSIM), accuracy (accuracy, precision, perplexity), and more. Custom metrics are supported.
+
+.. image:: /_static/assets/images/evaluation_agent.png
+    :alt: Evaluation Agent
+    :align: center
+    :width: 100%
 
 Haven't smashed a model yet? Check out the :doc:`optimize guide </docs_pruna/user_manual/smash>` to learn how to do that.
 
@@ -521,6 +532,6 @@ Use pairwise metrics for comparison
 When comparing an optimized model against the baseline, use pairwise metrics to get direct comparison scores.
 
 Choose your initialization style
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Both direct parameters and Task-based initialization are valid approaches. Choose the one that best fits your project's coding patterns and requirements.

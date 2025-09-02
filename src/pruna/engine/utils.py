@@ -18,6 +18,7 @@ import contextlib
 import gc
 import inspect
 import json
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any
 
@@ -173,6 +174,13 @@ def move_to_device(
                 model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
         try:
             model.to(device)
+            # Avoid circular imports
+            from pruna.engine.model_checks import is_gptq_model
+
+            # Special handling for GPTQ models to ensure all quantization tensors are on the correct device
+            if is_gptq_model(model):
+                _ensure_gptq_device_consistency(model, device_str)
+
         except torch.cuda.OutOfMemoryError as e:
             # there is anyway no way to recover from this error
             # raise it here for better traceability
@@ -183,6 +191,78 @@ def move_to_device(
             else:
                 pruna_logger.warning(f"Could not move model to device: {str(e)}")
     safe_memory_cleanup()
+
+
+def _ensure_gptq_device_consistency(model: Any, target_device: str) -> None:
+    """
+    Ensure all GPTQ quantization tensors are on the correct device.
+
+    This fixes device mismatch issues where GPTQ quantization parameters
+    might be on different devices than the model weights.
+
+    Parameters
+    ----------
+    model : Any
+        The GPTQ model to fix.
+    target_device : str
+        The target device string (e.g., "cuda", "cuda:0", "cpu").
+    """
+    try:
+        for name, module in model.named_modules():
+            # Handle GPTQ-specific quantized linear layers
+            if hasattr(module, "qweight") or "qlinear" in str(type(module)).lower():
+                # Move all quantization-related tensors to the target device
+                # Include all Marlin-specific tensors for GPTQ compatibility
+                known_attrs = ["qweight", "qzeros", "scales", "g_idx", "g_idx_sort_indices", "workspace", "zp", "bias"]
+
+                for attr_name in known_attrs:
+                    if hasattr(module, attr_name):
+                        attr = getattr(module, attr_name)
+                        if isinstance(attr, torch.Tensor) and attr.device != torch.device(target_device):
+                            try:
+                                setattr(module, attr_name, attr.to(target_device))
+                            except Exception as e:
+                                # Some tensors might be read-only or have special handling
+                                pruna_logger.debug(f"Could not move {attr_name} in {name} to {target_device}: {e}")
+
+                # Comprehensive scan: move ALL tensor attributes that might be missed
+                # This catches TorchQuantLinear and other GPTQ variant tensors
+                for attr_name in dir(module):
+                    if not attr_name.startswith("_") and attr_name not in known_attrs:
+                        try:
+                            attr = getattr(module, attr_name)
+                            if isinstance(attr, torch.Tensor) and attr.device != torch.device(target_device):
+                                try:
+                                    setattr(module, attr_name, attr.to(target_device))
+                                except Exception as e:
+                                    # Some tensors might be read-only or have special handling
+                                    pruna_logger.debug(f"Could not move {attr_name} in {name} to {target_device}: {e}")
+                        except Exception:
+                            # Skip attributes that can't be accessed
+                            pass
+
+                # Also check for any buffer tensors
+                for buffer_name, buffer in module.named_buffers():
+                    if buffer.device != torch.device(target_device):
+                        try:
+                            buffer.data = buffer.data.to(target_device)
+                        except Exception as e:
+                            pruna_logger.warning(
+                                f"Could not move buffer {buffer_name} in {name} to {target_device}: {e}"
+                            )
+
+                # Check parameters as well
+                for param_name, param in module.named_parameters(recurse=False):
+                    if param.device != torch.device(target_device):
+                        try:
+                            param.data = param.data.to(target_device)
+                        except Exception as e:
+                            pruna_logger.warning(
+                                f"Could not move parameter {param_name} in {name} to {target_device}: {e}"
+                            )
+
+    except Exception as e:
+        pruna_logger.warning(f"Error during GPTQ device consistency check: {e}")
 
 
 def remove_all_accelerate_hooks(model: Any) -> None:
@@ -503,7 +583,7 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
         raise ValueError(f"Device not supported: '{device_str}'")
 
 
-class ModelContext:
+class ModelContext(AbstractContextManager):
     """
     Context manager for handling the model.
 
@@ -513,7 +593,7 @@ class ModelContext:
         The model to handle. Can be a transformer model, UNet, or other ModelMixin.
     """
 
-    def __init__(self, model: "ModelMixin") -> None:
+    def __init__(self, model: "ModelMixin", read_only: bool = False) -> None:
         """
         Context manager for handling the model.
 
@@ -522,34 +602,35 @@ class ModelContext:
         model : ModelMixin
             The model to handle. Can be a transformer model, UNet, or other pipeline.
         """
-        self.pipeline = model
+        self.model = model
+        self.read_only = read_only
+        self.smashed_working_model = None
+        self.path_to_working_model: str | None = None
 
-    def __enter__(self) -> tuple[ModelMixin, Any, str | None]:
+    def __enter__(self) -> tuple[ModelContext, Any]:
         """
         Enter the context manager.
 
         Returns
         -------
-        ModelMixin
-            The working model.
+        ModelContext
+            The context manager.
         Any
-            The denoiser type.
-        str | None
-            The denoiser type.
+            The working model.
         """
-        if hasattr(self.pipeline, "transformer"):
-            self.working_model = self.pipeline.transformer
-            self.denoiser_type = "transformer"
-        elif hasattr(self.pipeline, "unet"):
-            self.working_model = self.pipeline.unet
-            self.denoiser_type = "unet"
-        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
-            self.working_model = self.pipeline.model.language_model
-            self.denoiser_type = "language_model"
+        if hasattr(self.model, "transformer"):
+            working_model = self.model.transformer
+            self.path_to_working_model = "transformer"
+        elif hasattr(self.model, "unet"):
+            working_model = self.model.unet
+            self.path_to_working_model = "unet"
+        elif hasattr(self.model, "model") and hasattr(self.model.model, "language_model"):
+            working_model = self.model.model.language_model
+            self.path_to_working_model = "model.language_model"
         else:
-            self.working_model = self.pipeline
-            self.denoiser_type = None  # type: ignore [assignment]
-        return self.pipeline, self.working_model, self.denoiser_type
+            working_model = self.model
+
+        return self, working_model
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """
@@ -564,17 +645,58 @@ class ModelContext:
         traceback : Exception
             The traceback.
         """
-        if hasattr(self.pipeline, "transformer"):
-            self.pipeline.transformer = self.pipeline.working_model
-        elif hasattr(self.pipeline, "unet"):
-            self.pipeline.unet = self.pipeline.working_model
-        elif hasattr(self.pipeline, "model") and hasattr(self.pipeline.model, "language_model"):
-            self.pipeline.model.language_model = self.pipeline.working_model
+        if self.smashed_working_model is None:
+            if self.read_only:
+                return
+            else:
+                raise RuntimeError(
+                    "ModelContext is not in read-only mode, but the working model has not been updated. "
+                    "Make sure to call `update_working_model` with the adapted model "
+                    "before exiting the context manager. After exiting the context manager retrieve "
+                    "the updated abstracted model via `get_updated_model` to e.g. return "
+                    "it after finishing the current compression algorithm."
+                )
         else:
-            self.pipeline = self.pipeline.working_model
-        # Only delete working_model if it was actually set as an attribute
-        # In the else case above, working_model and pipeline are the same object,
-        # so we don't need to (and can't) delete it
-        if hasattr(self.pipeline, "working_model") and self.pipeline.working_model is not self.pipeline:
-            del self.pipeline.working_model
-            safe_memory_cleanup()
+            if self.read_only:
+                raise RuntimeWarning(
+                    "ModelContext is in read-only mode, but the working model has been updated. "
+                    "This can lead to unexpected behavior. If you want to update the model "
+                    "make sure to enter the context manager with `read-only=False` which is the default."
+                )
+
+        if self.path_to_working_model is not None:
+            # Handle nested paths like "model.language_model"
+            path_parts = self.path_to_working_model.split(".")
+            current_obj = self.model
+            # Navigate to the parent object that contains the final attribute
+            for part in path_parts[:-1]:
+                current_obj = getattr(current_obj, part)
+            # Set the final attribute
+            setattr(current_obj, path_parts[-1], self.smashed_working_model)
+        else:
+            self.model = self.smashed_working_model
+
+        del self.smashed_working_model
+        safe_memory_cleanup()
+
+    def update_working_model(self, working_model: Any) -> None:
+        """
+        Set the smashed working model.
+
+        Parameters
+        ----------
+        working_model : Any
+            The smashed working model.
+        """
+        self.smashed_working_model = working_model
+
+    def get_updated_model(self) -> "ModelMixin":
+        """
+        Get the smashed model.
+
+        Returns
+        -------
+        ModelMixin
+            The smashed model.
+        """
+        return self.model

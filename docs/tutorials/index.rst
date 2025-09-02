@@ -1,9 +1,12 @@
+:title: Pruna Tutorials - AI Model Optimization Examples
+:description: Comprehensive tutorials for Pruna AI's compression framework. Learn to optimize image generation, video generation, language models, and more with step-by-step examples.
+
 .. _pruna_tutorials:
 
 Tutorials Pruna
 ===============
 
-This tutorial will guide you through the process of using |pruna| to optimize your model. Looking for |pruna_pro| tutorials? Check out the :ref:`pruna_pro_tutorials` page.
+These tutorials will guide you through the process of using |pruna| to optimize your models. Looking for |pruna_pro| tutorials? Check out the :ref:`pruna_pro_tutorials` page.
 
 .. grid:: 1 2 2 2
 
@@ -12,7 +15,7 @@ This tutorial will guide you through the process of using |pruna| to optimize yo
       :link: ./image_generation.ipynb
 
       Compress with a ``hqq_diffusers`` ``quantizer`` and a ``deepcache`` ``cacher``, and evaluate with ``throughput``, ``total time``, ``clip_score``.
-   
+
    .. grid-item-card:: Compress and Evaluate Video Generation Models
       :text-align: center
       :link: ./video_generation.ipynb

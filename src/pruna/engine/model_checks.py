@@ -609,9 +609,7 @@ def has_fused_attention_processor(pipeline: Any) -> bool:
     bool
         True if the pipeline can use a Fused attention processor, False otherwise.
     """
-    with ModelContext(pipeline) as (_, working_model, _):
-        # add this line just to make the __exit__ method of ModelContext work
-        pipeline.working_model = working_model
+    with ModelContext(pipeline, read_only=True) as (_, working_model):
         if hasattr(working_model, "fuse_qkv_projections"):
             for _, attn_processor in working_model.attn_processors.items():
                 if "Added" in str(attn_processor.__class__.__name__):
@@ -661,3 +659,20 @@ def is_janus_llamagen_ar(model: Any) -> bool:
         True if the model is a Janus LlamaGen AR model, False otherwise.
     """
     return model.__class__.__name__ == "JanusForConditionalGeneration"
+
+
+def is_gptq_model(model: Any) -> bool:
+    """
+    Check if the model is a GPTQ model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a GPTQ model, False otherwise.
+    """
+    return "gptqmodel" in model.__class__.__module__ and "GPTQ" in model.__class__.__name__

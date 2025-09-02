@@ -1,3 +1,6 @@
+:title: SmashConfig Configuration Guide - Pruna AI Model Optimization
+:description: Learn how to configure model optimization strategies with Pruna AI. Complete guide to SmashConfig, algorithm selection, hyperparameters, and optimization workflows.
+
 Define a SmashConfig
 ====================
 
@@ -61,7 +64,7 @@ Let's see what that looks like in code.
 Configure Algorithms
 --------------------
 
-|pruna| implements a extensible architecture for optimization algorithms.
+|pruna| implements an extensible architecture for optimization algorithms.
 Each algorithm has its own impact on the model in terms of speed, memory and accuracy.
 The table underneath provides a general overview of the impact of each algorithm group.
 
@@ -85,7 +88,7 @@ The table underneath provides a general overview of the impact of each algorithm
      - ➖
      - ➖
    * - ``compiler``
-     - Optimises the model with instructions for specific hardware.
+     - Optimizes the model with instructions for specific hardware.
      - ✅
      - ➖
      - ➖
@@ -134,8 +137,8 @@ The table underneath provides a general overview of the impact of each algorithm
 
 .. tip::
 
-   The :doc:`Algorithm Overview </compression>` page provides a more detailed overview of each algorithm within the different groups.
-   As well as additional information on the hardware requirements, compatibility with other algorithms and required components for each algorithm.
+   The :doc:`Algorithm Overview </compression>` page provides a more detailed overview of each algorithm within the different groups,
+   as well as additional information on the hardware requirements, compatibility with other algorithms, and required components for each algorithm.
 
 Configure Algorithm Groups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
