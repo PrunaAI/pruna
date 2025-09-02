@@ -35,8 +35,11 @@ from pruna.data.datasets.text_generation import (
 )
 from pruna.data.datasets.text_to_image import (
     setup_coco_dataset,
+    setup_drawbench_dataset,
+    setup_genai_bench_dataset,
     setup_laion256_dataset,
     setup_open_image_dataset,
+    setup_parti_prompts_dataset,
 )
 
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
@@ -56,4 +59,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "Polyglot": (setup_polyglot_dataset, "question_answering_collate", {}),
     "OpenImage": (setup_open_image_dataset, "image_generation_collate", {"img_size": 1024}),
     "CIFAR10": (setup_cifar10_dataset, "image_classification_collate", {"img_size": 32}),
+    "DrawBench": (setup_drawbench_dataset, "image_generation_collate", {"img_size": None}),
+    "PartiPrompts": (setup_parti_prompts_dataset, "image_generation_collate", {"img_size": None}),
+    "GenAIBench": (setup_genai_bench_dataset, "image_generation_collate", {"img_size": None}),
 }

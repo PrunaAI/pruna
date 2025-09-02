@@ -54,7 +54,9 @@ def image_format_to_transforms(output_format: str, img_size: int) -> transforms.
         raise ValueError(f"Invalid output format: {output_format}")
 
 
-def image_generation_collate(data: Any, img_size: int, output_format: str = "int") -> Tuple[List[str], torch.Tensor]:
+def image_generation_collate(
+    data: Any, img_size: int | None, output_format: str = "int"
+) -> Tuple[List[str], torch.Tensor]:
     """
     Custom collation function for text-to-image generation datasets.
 
@@ -65,8 +67,8 @@ def image_generation_collate(data: Any, img_size: int, output_format: str = "int
     ----------
     data : Any
         The data to collate.
-    img_size : int
-        The size of the image to resize to.
+    img_size : int | None
+        The size of the image to resize to. None if dataset does not contain images.
     output_format : str
         The output format, in ["int", "float", "normalized"].
         With "int", output tensors have integer values between 0 and 255. With "float", they have float values
@@ -77,17 +79,21 @@ def image_generation_collate(data: Any, img_size: int, output_format: str = "int
     Tuple[torch.Tensor, Any]
         The collated data with size img_size and normalized to [0, 1].
     """
-    transformations = image_format_to_transforms(output_format, img_size)
+    if img_size is not None:
+        transformations = image_format_to_transforms(output_format, img_size)
     images, texts = [], []
 
     for item in data:
+        texts.append(item["text"])
+        if img_size is None:
+            continue
         image = item["image"]
         if image.mode != "RGB":
             image = image.convert("RGB")
         image_tensor = transformations(image)
         images.append(image_tensor)
-        texts.append(item["text"])
-
+    if img_size is None:
+        return texts, None
     images_tensor = torch.stack(images)
     return texts, images_tensor
 
