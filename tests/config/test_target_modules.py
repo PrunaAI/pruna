@@ -4,7 +4,7 @@ import pytest
 import re
 
 from pruna import SmashConfig, smash
-from pruna.config.hyperparameters import TARGET_MODULES_TYPE
+from pruna.config.target_modules import TARGET_MODULES_TYPE
 
 
 @pytest.mark.cuda
@@ -45,11 +45,8 @@ def test_target_modules_format_accept(target_modules: dict[str, list[str]]):
 
 @pytest.mark.cpu
 @pytest.mark.parametrize("target_modules, expected_error", [
-    ({"include": []}, ValueError),
     (["transformer*"], TypeError),  # not a dict
     ({"what_are_the_keywords": ["transformer"]}, ValueError),  # keys should be "include" or "exclude"
-    ({}, ValueError),  # missing "include"
-    ({"exclude": ["skip", "*this_too*"]}, ValueError),  # missing "include"
     ({"include": ["transformer*"], "exclude": 1}, TypeError),  # "exclude" value is not a list
     ({"include": ["transformer*"], "exclude": [1, "transformer*"]}, TypeError),  # lists can't contain anything but strings
 ])

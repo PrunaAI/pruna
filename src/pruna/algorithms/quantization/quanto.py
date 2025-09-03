@@ -21,8 +21,9 @@ from ConfigSpace import Constant, OrdinalHyperparameter
 
 from pruna import SmashConfig
 from pruna.algorithms.quantization import PrunaQuantizer
-from pruna.config.hyperparameters import TARGET_MODULES_TYPE, Boolean, TargetModules
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import get_nn_modules
@@ -152,8 +153,17 @@ class QuantoQuantizer(PrunaQuantizer):
             else None
         )
 
-        modules_with_subpaths = TargetModules.to_list_of_roots_and_subpaths(model, target_modules)
-        for module, subpaths in modules_with_subpaths:
+        def quantize_nn(module: torch.nn.Module, subpaths: list[str]) -> Any:
+            """
+            Apply Quanto quantization to a nn.Module.
+
+            Parameters
+            ----------
+            module : torch.nn.Module
+                The nn.Module to quantize.
+            subpaths : list[str]
+                The subpaths of the module to quantize.
+            """
             try:
                 imported_modules["quantize"](
                     module,
@@ -164,6 +174,9 @@ class QuantoQuantizer(PrunaQuantizer):
             except Exception as e:
                 pruna_logger.error("Error during quantization: %s", e)
                 raise
+            return module
+
+        model = map_targeted_nn_roots(quantize_nn, model, target_modules)
 
         if smash_config["calibrate"]:
             if smash_config.tokenizer is not None and smash_config.data is not None:
