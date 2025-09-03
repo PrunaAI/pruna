@@ -198,6 +198,33 @@ def expand_dict_of_roots_and_subpaths(
     return modules_with_subpaths
 
 
+def get_skipped_submodules(module: torch.nn.Module, subpaths: List[str], leaf_modules: bool = False) -> List[str]:
+    """
+    Get the skipped submodules.
+
+    Parameters
+    ----------
+    module : torch.nn.Module
+        The module to get the skipped submodules from.
+    subpaths : List[str]
+        The subpaths to get the skipped submodules from.
+    leaf_modules : bool
+        If True, only include modules which do not contain other modules themselves. Default is False.
+
+    Returns
+    -------
+    List[str]
+        The list of submodules not listed in subpaths.
+    """
+    subpaths_set = set(subpaths)  # quicker for lookups if the model is very large
+    return [
+        path
+        for path, submodule in module.named_modules()
+        if path not in subpaths_set
+        and (not leaf_modules or is_leaf_module(submodule))  # only check when leaf_modules is True
+    ]
+
+
 def map_targeted_nn_roots(
     apply_single_root_fn: Callable[[str | None, torch.nn.Module, List[str]], Any],
     model: Any,
