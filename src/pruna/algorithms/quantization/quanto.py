@@ -153,12 +153,14 @@ class QuantoQuantizer(PrunaQuantizer):
             else None
         )
 
-        def quantize_nn(module: torch.nn.Module, subpaths: list[str]) -> Any:
+        def quantize_nn(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> Any:
             """
             Apply Quanto quantization to a nn.Module.
 
             Parameters
             ----------
+            attr_name : str
+                The name of the attribute in the model pointing to the nn.Module to quantize.
             module : torch.nn.Module
                 The nn.Module to quantize.
             subpaths : list[str]

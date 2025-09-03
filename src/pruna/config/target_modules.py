@@ -172,7 +172,7 @@ def expand_dict_of_roots_and_subpaths(
 
 
 def map_targeted_nn_roots(
-    apply_single_root_fn: Callable[[torch.nn.Module, List[str]], Any],
+    apply_single_root_fn: Callable[[str | None, torch.nn.Module, List[str]], Any],
     model: Any,
     target_modules: TARGET_MODULES_TYPE,
 ) -> Any:
@@ -181,9 +181,12 @@ def map_targeted_nn_roots(
 
     Parameters
     ----------
-    apply_single_root_fn : Callable[[torch.nn.Module, List[str]], Any]
-        The function to apply to each targeted nn.Module root, returning the modified root.
-        The roots are the model itself if it is a torch.nn.Module, or its nn.Module attributes otherwise.
+    apply_single_root_fn : Callable[[str | None, torch.nn.Module, List[str]], Any]
+        The function to apply to map. It must take as input the attribute name of the root in the model,
+        the nn.Module itself, and a list of paths withing the root, each pointing to a targeted submodule.
+        It must return the modified root.
+        The roots are the model itself if it is a torch.nn.Module (attribute name is None in this case),
+        or its nn.Module attributes otherwise.
     model : Any
         The model to apply the function to.
     target_modules : TARGET_MODULES_TYPE
@@ -197,7 +200,7 @@ def map_targeted_nn_roots(
     nn_roots_with_subpaths = expand_dict_of_roots_and_subpaths(target_modules, model)
     for attr_name, (nn_root, subpaths) in nn_roots_with_subpaths.items():
         # modify the root with the provided function
-        applied_root = apply_single_root_fn(nn_root, subpaths)
+        applied_root = apply_single_root_fn(attr_name, nn_root, subpaths)
         if applied_root is None:
             raise ValueError("The 'apply_single_root_fn' function must return the modified root.")
 
