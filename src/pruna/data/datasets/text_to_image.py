@@ -41,7 +41,7 @@ def setup_open_image_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The OpenImage dataset.
     """
-    dataset = load_dataset("data-is-better-together/open-image-preferences-v1", trust_remote_code=True)["cleaned"]
+    dataset = load_dataset("data-is-better-together/open-image-preferences-v1")["cleaned"]
     dataset = dataset.rename_column("image_quality_dev", "image")
     dataset = dataset.rename_column("quality_prompt", "text")
     return split_train_into_train_val_test(dataset, seed)
@@ -61,7 +61,7 @@ def setup_laion256_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The LAION256 dataset.
     """
-    dataset = load_dataset("nannullna/laion_subset", trust_remote_code=True)["artwork"]
+    dataset = load_dataset("nannullna/laion_subset")["artwork"]
     return split_train_into_train_val_test(dataset, seed)
 
 
@@ -97,7 +97,7 @@ def setup_coco_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
 
             zip_path.unlink()
 
-    dataset = load_dataset("phiyodr/coco2017", trust_remote_code=True)
+    dataset = load_dataset("phiyodr/coco2017")
 
     def _process_example(example: Dict[str, Any], directory_dataset: str) -> Dict[str, Any]:
         """

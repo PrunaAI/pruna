@@ -15,7 +15,7 @@
 from typing import Any, Callable, Tuple
 
 from pruna.data.datasets.audio import (
-    setup_commonvoice_dataset,
+    setup_librispeech_dataset,
     setup_mini_presentation_audio_dataset,
     setup_podcast_dataset,
 )
@@ -42,7 +42,7 @@ from pruna.data.datasets.text_to_image import (
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "COCO": (setup_coco_dataset, "image_generation_collate", {"img_size": 512}),
     "LAION256": (setup_laion256_dataset, "image_generation_collate", {"img_size": 512}),
-    "CommonVoice": (setup_commonvoice_dataset, "audio_collate", {}),
+    "LibriSpeech": (setup_librispeech_dataset, "audio_collate", {}),
     "AIPodcast": (setup_podcast_dataset, "audio_collate", {}),
     "MiniPresentation": (setup_mini_presentation_audio_dataset, "audio_collate", {}),
     "ImageNet": (setup_imagenet_dataset, "image_classification_collate", {"img_size": 224}),

@@ -25,7 +25,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("COCO", dict(img_size=512), marks=pytest.mark.slow),
         pytest.param("LAION256", dict(img_size=512), marks=pytest.mark.slow),
         pytest.param("OpenImage", dict(img_size=512), marks=pytest.mark.slow),
-        pytest.param("CommonVoice", dict(), marks=pytest.mark.slow),
+        pytest.param("LibriSpeech", dict(), marks=pytest.mark.slow),
         pytest.param("AIPodcast", dict(), marks=pytest.mark.slow),
         ("ImageNet", dict(img_size=512)),
         pytest.param("MNIST", dict(img_size=512), marks=pytest.mark.slow),
