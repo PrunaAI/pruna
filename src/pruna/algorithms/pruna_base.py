@@ -179,7 +179,7 @@ class PrunaAlgorithmBase(ABC):
         """
         return []
 
-    def get_unconstrained_hyperparameter_defaults(
+    def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> Any:
         """

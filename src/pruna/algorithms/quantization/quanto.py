@@ -95,7 +95,7 @@ class QuantoQuantizer(PrunaQuantizer):
             return True
         return hasattr(model, "transformer") and isinstance(model.transformer, torch.nn.Module)
 
-    def get_unconstrained_hyperparameter_defaults(
+    def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
@@ -141,7 +141,7 @@ class QuantoQuantizer(PrunaQuantizer):
         imported_modules = self.import_algorithm_packages()
         target_modules = smash_config["target_modules"]
         if target_modules is None:
-            target_modules = self.get_unconstrained_hyperparameter_defaults(model, smash_config)
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
 
         weights = getattr(imported_modules["quanto"], smash_config["weight_bits"])
         activations = (

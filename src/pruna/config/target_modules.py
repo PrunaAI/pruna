@@ -70,7 +70,9 @@ class TargetModules(UnconstrainedHyperparameter):
                 f"Target modules must be a dictionary with lists of fnmatch patterns as values. Got: {value}"
             )
         else:
-            all_patterns = [pattern for patterns in value.values() for pattern in patterns]
+            include_patterns = value.get("include", [])
+            exclude_patterns = value.get("exclude", [])
+            all_patterns = include_patterns + exclude_patterns
             unrecognized_patterns = [pattern for pattern in all_patterns if not isinstance(pattern, str)]
             if unrecognized_patterns:
                 raise TypeError(
@@ -90,7 +92,7 @@ class TargetModules(UnconstrainedHyperparameter):
         return super().legal_value(value)
 
 
-def expand_list_of_modules_paths(target_modules: TARGET_MODULES_TYPE, model: Any) -> List[str]:
+def expand_list_of_targeted_paths(target_modules: TARGET_MODULES_TYPE, model: Any) -> List[str]:
     """
     Convert the target modules to a list of module paths.
 
@@ -135,14 +137,14 @@ def expand_dict_of_roots_and_subpaths(
     target_modules: TARGET_MODULES_TYPE, model: Any
 ) -> Dict[str | None, Tuple[torch.nn.Module, List[str]]]:
     """
-    Get torch modules within the model and their associated subpaths.
+    Get the torch modules within the model and their associated targeted subpaths.
 
     Parameters
     ----------
-    model : Any
-        The model to get the module paths from.
     target_modules : TARGET_MODULES_TYPE
         The target modules to convert to a list of module paths.
+    model : Any
+        The model to get the module paths from.
 
     Returns
     -------
@@ -151,9 +153,9 @@ def expand_dict_of_roots_and_subpaths(
         A module attribute which doesn't contain any targeted subpath won't be included in the dictionary.
         Each module-subpaths pair is indexed by the module attribute name within the model.
         Following the convention of get_nn_modules, if the model itself is a torch.nn.Module, the dictionary
-        will contain a single item with key None, pointint to the model itself and the targeted paths.
+        will contain a single item with key None, pointing to the model itself and the targeted paths.
     """
-    target_modules_paths = expand_list_of_modules_paths(target_modules, model)
+    target_modules_paths = expand_list_of_targeted_paths(target_modules, model)
 
     modules_with_subpaths: Dict[str | None, Tuple[torch.nn.Module, List[str]]] = {}
     for root_name, module in get_nn_modules(model).items():
@@ -180,9 +182,9 @@ def map_targeted_nn_roots(
     Parameters
     ----------
     apply_single_root_fn : Callable[[str | None, torch.nn.Module, List[str]], Any]
-        The function to apply to map. It must take as input the attribute name of the root in the model,
-        the nn.Module itself, and a list of paths withing the root, each pointing to a targeted submodule.
-        It must return the modified root.
+        The function to apply each root in the model.
+        It must take as input the attribute name of the root in the model, the nn.Module itself, and a list of
+        paths withing the root, each pointing to a targeted submodule. It must return the modified root.
         The roots are the model itself if it is a torch.nn.Module (attribute name is None in this case),
         or its nn.Module attributes otherwise.
     model : Any
