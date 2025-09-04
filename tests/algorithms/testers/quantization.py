@@ -119,6 +119,7 @@ class TestGPTQ(AlgorithmTesterBase):
 
 @pytest.mark.high
 @pytest.mark.slow
+@pytest.mark.skip(reason="This test is causing an internal server error on GitHub Actions.")
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 
