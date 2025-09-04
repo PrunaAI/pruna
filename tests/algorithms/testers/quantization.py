@@ -118,6 +118,7 @@ class TestGPTQ(AlgorithmTesterBase):
 
 
 @pytest.mark.slow
+@pytest.mark.slow
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 
