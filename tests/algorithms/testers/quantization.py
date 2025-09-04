@@ -117,7 +117,7 @@ class TestGPTQ(AlgorithmTesterBase):
         assert "GPTQ" in model.model.__class__.__name__
 
 
-@pytest.mark.slow
+@pytest.mark.high
 @pytest.mark.slow
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
