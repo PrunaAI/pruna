@@ -84,7 +84,7 @@ classifiers = [
 dependencies = [
     "torch==2.7.0",
     "torchvision==0.22.0",
-    "torchmetrics[image]==1.7.4",
+    "torchmetrics[image]==1.8.2",
     "requests>=2.31.0",
     "transformers",
     "pytorch-lightning",
