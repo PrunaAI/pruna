@@ -71,10 +71,7 @@ class QuantoQuantizer(PrunaQuantizer):
             TargetModules(
                 name="target_modules",
                 default_value=None,
-                meta=dict(
-                    desc=f"Precise choices of which modules to quantize. "
-                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                meta=dict(desc="Precise choices of which modules to quantize."),
             ),
         ]
 

@@ -70,12 +70,6 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
 
-   .. grid-item-card:: Target Modules
-      :text-align: center
-      :link: ./target_modules_quanto.ipynb
-      
-      Learn how to use the ``target_modules`` parameter to target specific modules in your model.
-
 .. toctree::
    :hidden:
    :maxdepth: 1
