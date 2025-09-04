@@ -182,7 +182,7 @@ def expand_dict_of_roots_and_subpaths(
         Following the convention of get_nn_modules, if the model itself is a torch.nn.Module, the dictionary
         will contain a single item with key None, pointing to the model itself and the targeted paths.
     """
-    target_modules_paths = expand_list_of_targeted_paths(target_modules, model)
+    target_modules_paths = expand_list_of_targeted_paths(target_modules, model, leaf_modules=leaf_modules)
 
     modules_with_subpaths: Dict[str | None, Tuple[torch.nn.Module, List[str]]] = {}
     for root_name, module in get_nn_modules(model).items():
