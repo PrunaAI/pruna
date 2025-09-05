@@ -18,8 +18,10 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any, Dict, List
 
+import torch
 from torch import Tensor
 
+from pruna.engine.utils import device_to_string, set_to_best_available_device, split_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -31,14 +33,27 @@ class StatefulMetric(ABC):
     across multiple batches or iterations. Unlike simple metrics that compute values
     independently for each input, stateful metrics track running statistics or
     aggregated values over time.
+
+    Parameters
+    ----------
+    device : str | torch.device | None
+        The device to move the metric to.
+    **kwargs : Any
+        Additional keyword arguments.
     """
 
     metric_name: str
     call_type: str
+    runs_on: list[str] = ["cuda", "cpu", "mps"]
 
-    def __init__(self) -> None:
+    def __init__(self, device: str | torch.device | None = None, **kwargs) -> None:
         """Initialize the StatefulMetric class."""
         super().__init__()
+        self.device = set_to_best_available_device(device)
+        if not self.is_device_supported(self.device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {self.device}. Must be one of {self.runs_on}."
+            )
         self._defaults: Dict[str, List | Tensor] = {}
 
     def add_state(self, name: str, default: List | Tensor) -> None:
@@ -120,3 +135,35 @@ class StatefulMetric(ABC):
             True if the metric is pairwise, False otherwise.
         """
         return self.call_type.startswith("pairwise")
+
+    def move_to_device(self, device: str | torch.device) -> None:
+        """
+        Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
+        self.device = device_to_string(device)
+
+    def is_device_supported(self, device: str | torch.device) -> bool:
+        """
+        Check if the metric is compatible with the device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to check.
+
+        Returns
+        -------
+        bool
+            True if the metric is compatible with the device, False otherwise.
+        """
+        dvc, idx = split_device(device_to_string(device))
+        return dvc in self.runs_on
