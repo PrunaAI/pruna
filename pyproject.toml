@@ -21,6 +21,25 @@ author = "- Pruna AI GmbH"
 [tool.mypy]
 ignore_missing_imports = true
 
+[tool.coverage.run]
+source = ["src/pruna"]
+
+[tool.coverage.report]
+omit = ["src/pruna/tests/*"]
+show_missing = true
+skip_covered = false
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+
+addopts = [
+    "--cov=src/pruna",
+    "--cov-report=term-missing",
+    "--cov-config=pyproject.toml",
+    "--durations=0"
+]
+
 python_files = "test_*.py"
 
 testpaths = [
@@ -139,10 +158,13 @@ dev = [
     "ruff",
     "numpydoc-validation",
     "pytest",
+    "pytest-cov",
+    "coverage",
     "docutils",
     "mypy",
     "types-PyYAML",
     "logbar",
+    "pytest-xdist>=3.8.0",
 ]
 cpu = []
 
