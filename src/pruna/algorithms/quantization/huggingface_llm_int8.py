@@ -20,6 +20,7 @@ from typing import Any, Dict, cast
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+from transformers.modeling_utils import PreTrainedModel
 
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.hyperparameters import Boolean
@@ -156,6 +157,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
                 raise ValueError(
                     "llm-int8 was applied to a model (or part of a model) which is not a causal language model."
                 )
+            causal_lm = cast(PreTrainedModel, causal_lm)
 
             # get the skipped modules, only include leaf modules since the bnb quantizer skips all submodules
             # in a skipped module. Only Linear and Conv1d layers can be quantized anyway.
