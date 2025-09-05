@@ -182,9 +182,9 @@ def map_targeted_nn_roots(
     Parameters
     ----------
     apply_single_root_fn : Callable[[str | None, torch.nn.Module, List[str]], Any]
-        The function to apply each root in the model.
+        The function to apply to each root in the model.
         It must take as input the attribute name of the root in the model, the nn.Module itself, and a list of
-        paths withing the root, each pointing to a targeted submodule. It must return the modified root.
+        paths within the root, each pointing to a targeted submodule. It must return the modified root.
         The roots are the model itself if it is a torch.nn.Module (attribute name is None in this case),
         or its nn.Module attributes otherwise.
     model : Any
