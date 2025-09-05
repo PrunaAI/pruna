@@ -52,7 +52,7 @@ Let's see what that looks like in code.
     # Evaluate the model
     metrics = ["clip_score", "psnr"]
     datamodule = PrunaDataModule.from_string("LAION256")
-    datamodule.limit_datasets(10) # You can limit the number of samples.
+    datamodule.limit_datasets(5) # You can limit the number of samples.
     task = Task(metrics, datamodule=datamodule)
     eval_agent = EvaluationAgent(task)
     eval_agent.evaluate(optimized_model)
@@ -141,7 +141,9 @@ To evaluate the optimized model, we can use the same interface as the original m
     metrics = ['clip_score', 'psnr']
 
     # Define task
-    task = Task(metrics, datamodule=PrunaDataModule.from_string('LAION256'))
+    datamodule = PrunaDataModule.from_string('LAION256')
+    datamodule.limit_datasets(5)
+    task = Task(metrics, datamodule=datamodule)
 
     # Evaluate the model
     eval_agent = EvaluationAgent(task)
