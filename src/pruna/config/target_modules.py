@@ -40,6 +40,8 @@ class TargetModules(UnconstrainedHyperparameter):
         Meta data describing the hyperparameter.
     """
 
+    documentation_name_with_link = ":ref:`Target Modules <target_modules>`"
+
     def __init__(self, name: str, default_value: Optional[TARGET_MODULES_TYPE] = None, meta: Any = None) -> None:
         super().__init__(name, default_value, meta=meta)
 
