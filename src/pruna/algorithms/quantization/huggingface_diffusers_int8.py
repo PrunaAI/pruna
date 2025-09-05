@@ -171,6 +171,10 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
             subpaths : list[str]
                 The subpaths of the working model to quantize.
             """
+            if not hasattr(latent_model, "save_pretrained") or not callable(latent_model.save_pretrained):
+                raise ValueError(
+                    "diffusers-int8 was applied to a module which didn't have a callable save_pretrained method."
+                )
             skipped_modules = get_skipped_submodules(latent_model, subpaths, leaf_modules=True)
 
             with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
