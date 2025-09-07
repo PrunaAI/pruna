@@ -170,7 +170,7 @@ def save_pruna_model_to_hub(
         template_path = Path(__file__).parent / "hf_hub_utils" / "model_card_template.md"
         # Get the pruna library version from initalized module as OSS or paid so we can use the same method for both
         pruna_library = instance.__module__.split(".")[0] if "." in instance.__module__ else None
-        model_card_data["tags"] = [f"{pruna_library}-ai", "safetensors"]
+        model_card_data["tags"] = list({f"{pruna_library}-ai", "safetensors", "pruna-ai"})
         # Build the template parameters dictionary for clarity and maintainability
         template_params: dict = {
             "repo_id": repo_id,
