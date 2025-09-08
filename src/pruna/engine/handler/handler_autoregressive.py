@@ -65,10 +65,12 @@ class AutoregressiveHandler(InferenceHandler):
         Any
             The prepared inputs.
         """
-        # make sure the generation mode is set as model argument
+        # currently using the only supported mode: 'image', but Janus' default mode is different: 'text'
         if "generation_mode" not in self.model_args:
-            raise ValueError("Generation mode must be set as a model argument")
+            pruna_logger.warning("Missing 'generation_mode', defaulting to only mode available: 'image'.")
+            self.model_args["generation_mode"] = "image"  # change in place so it affects the generate call
         generation_mode = self.model_args["generation_mode"]
+
         if generation_mode not in ["image"]:
             raise ValueError("Unrecognized generation mode: expected 'image', other modes are not supported yet")
 
