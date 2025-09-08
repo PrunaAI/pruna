@@ -23,6 +23,7 @@ from transformers.feature_extraction_utils import BatchFeature
 
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_inference import InferenceHandler
+from pruna.engine.utils import determine_dtype, get_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -86,9 +87,11 @@ class AutoregressiveHandler(InferenceHandler):
 
         # image generation mode
         text, _ = batch
-        text = cast(str, text)
+        text = cast(List[str], text)
         inputs = processor(text=text, generation_mode=generation_mode, return_tensors="pt")
-        inputs = inputs.to(self.smash_config.device, dtype=self.model.dtype)
+        inputs = cast(BatchFeature, inputs)  # BatchFeature has a 'to' method
+        inputs = inputs.to(device=get_device(self.model), dtype=determine_dtype(self.model))
+
         if isinstance(inputs, BatchFeature):
             return dict(inputs)
         return inputs
