@@ -270,8 +270,8 @@ Underneath you can find the list of all the available datasets.
      - ``text: str``
    * - Image Generation
      - `LAION256 <https://huggingface.co/datasets/nannullna/laion_subset>`_, `OpenImage <https://huggingface.co/datasets/data-is-better-together/open-image-preferences-v1>`_, `COCO <https://huggingface.co/datasets/phiyodr/coco2017>`_, `DrawBench <https://huggingface.co/datasets/sayakpaul/drawbench>`_, `PartiPrompts <https://huggingface.co/datasets/nateraw/parti-prompts>`_, `GenAIBench <https://huggingface.co/datasets/BaiqiL/GenAI-Bench>`_
-     - ``image_generation_collate``
-     - ``image: Optional[PIL.Image.Image]``, ``text: str``
+     - ``image_generation_collate``, ``prompt_collate``
+     - ``text: str``, ``image: Optional[PIL.Image.Image]``
    * - Image Classification
      - `ImageNet <https://huggingface.co/datasets/zh-plus/tiny-imagenet>`_, `MNIST <https://huggingface.co/datasets/ylecun/mnist>`_, `CIFAR10 <https://huggingface.co/datasets/uoft-cs/cifar10>`_
      - ``image_classification_collate``
