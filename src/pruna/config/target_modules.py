@@ -110,7 +110,7 @@ def is_leaf_module(module: torch.nn.Module) -> bool:
 
 
 def expand_list_of_targeted_paths(
-    target_modules: TARGET_MODULES_TYPE, model: Any, leaf_modules: bool = False
+    target_modules: TARGET_MODULES_TYPE, model: Any, only_leaf_modules: bool = False
 ) -> List[str]:
     """
     Convert the target modules to a list of module paths.
@@ -121,7 +121,7 @@ def expand_list_of_targeted_paths(
         The model to get the module paths from.
     target_modules : TARGET_MODULES_TYPE
         The target modules to convert to a list of module paths.
-    leaf_modules : bool
+    only_leaf_modules : bool
         If True, only include modules which do not contain other modules themselves. Default is False.
 
     Returns
@@ -141,7 +141,7 @@ def expand_list_of_targeted_paths(
         module_paths = [
             f"{root_name}{'.' + path if path else ''}" if root_name else path
             for path, submodule in module.named_modules()
-            if (not leaf_modules) or is_leaf_module(submodule)  # only check when leaf_modules is True
+            if (not only_leaf_modules) or is_leaf_module(submodule)  # only check when only_leaf_modules is True
         ]
         matching_modules = [
             path
@@ -157,7 +157,7 @@ def expand_list_of_targeted_paths(
 
 
 def expand_dict_of_roots_and_subpaths(
-    target_modules: TARGET_MODULES_TYPE, model: Any, leaf_modules: bool = False
+    target_modules: TARGET_MODULES_TYPE, model: Any, only_leaf_modules: bool = False
 ) -> Dict[str | None, Tuple[torch.nn.Module, List[str]]]:
     """
     Get the torch modules within the model and their associated targeted subpaths.
@@ -168,7 +168,7 @@ def expand_dict_of_roots_and_subpaths(
         The target modules to convert to a list of module paths.
     model : Any
         The model to get the module paths from.
-    leaf_modules : bool
+    only_leaf_modules : bool
         If True, only include modules which do not contain other modules themselves. Default is False.
 
     Returns
@@ -180,7 +180,7 @@ def expand_dict_of_roots_and_subpaths(
         Following the convention of get_nn_modules, if the model itself is a torch.nn.Module, the dictionary
         will contain a single item with key None, pointing to the model itself and the targeted paths.
     """
-    target_modules_paths = expand_list_of_targeted_paths(target_modules, model, leaf_modules=leaf_modules)
+    target_modules_paths = expand_list_of_targeted_paths(target_modules, model, only_leaf_modules=only_leaf_modules)
 
     modules_with_subpaths: Dict[str | None, Tuple[torch.nn.Module, List[str]]] = {}
     for root_name, module in get_nn_modules(model).items():
@@ -196,7 +196,7 @@ def expand_dict_of_roots_and_subpaths(
     return modules_with_subpaths
 
 
-def get_skipped_submodules(module: torch.nn.Module, subpaths: List[str], leaf_modules: bool = False) -> List[str]:
+def get_skipped_submodules(module: torch.nn.Module, subpaths: List[str], only_leaf_modules: bool = False) -> List[str]:
     """
     Get the skipped submodules.
 
@@ -206,7 +206,7 @@ def get_skipped_submodules(module: torch.nn.Module, subpaths: List[str], leaf_mo
         The module to get the skipped submodules from.
     subpaths : List[str]
         The subpaths to get the skipped submodules from.
-    leaf_modules : bool
+    only_leaf_modules : bool
         If True, only include modules which do not contain other modules themselves. Default is False.
 
     Returns
@@ -219,7 +219,7 @@ def get_skipped_submodules(module: torch.nn.Module, subpaths: List[str], leaf_mo
         path
         for path, submodule in module.named_modules()
         if path not in subpaths_set
-        and (not leaf_modules or is_leaf_module(submodule))  # only check when leaf_modules is True
+        and (not only_leaf_modules or is_leaf_module(submodule))  # only check when only_leaf_modules is True
     ]
 
 
@@ -227,7 +227,7 @@ def map_targeted_nn_roots(
     apply_single_root_fn: Callable[[str | None, torch.nn.Module, List[str]], Any],
     model: Any,
     target_modules: TARGET_MODULES_TYPE,
-    leaf_modules: bool = False,
+    only_leaf_modules: bool = False,
 ) -> Any:
     """
     Apply a function to the model, or to each of its targeted nn.Modules in the case of a Pipeline.
@@ -244,7 +244,7 @@ def map_targeted_nn_roots(
         The model to apply the function to.
     target_modules : TARGET_MODULES_TYPE
         The target modules to apply the function to.
-    leaf_modules : bool
+    only_leaf_modules : bool
         If True, only target modules which do not contain other modules themselves. Default is False.
 
     Returns
@@ -252,7 +252,9 @@ def map_targeted_nn_roots(
     Any
         The model after the function has been applied.
     """
-    nn_roots_with_subpaths = expand_dict_of_roots_and_subpaths(target_modules, model, leaf_modules=leaf_modules)
+    nn_roots_with_subpaths = expand_dict_of_roots_and_subpaths(
+        target_modules, model, only_leaf_modules=only_leaf_modules
+    )
     for attr_name, (nn_root, subpaths) in nn_roots_with_subpaths.items():
         # modify the root with the provided function
         applied_root = apply_single_root_fn(attr_name, nn_root, subpaths)

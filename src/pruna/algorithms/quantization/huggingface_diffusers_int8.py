@@ -30,6 +30,7 @@ from pruna.engine.model_checks import (
     get_diffusers_unet_models,
 )
 from pruna.engine.utils import determine_dtype, get_device_map, move_to_device
+from pruna.logging.logger import pruna_logger
 
 
 class DiffusersInt8Quantizer(PrunaQuantizer):
@@ -110,7 +111,7 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
 
         return hasattr(model, "unet") and isinstance(model.unet, tuple(transformer_and_unet_models))
 
-    def get_unconstrained_hyperparameter_defaults(
+    def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
@@ -155,10 +156,10 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
         """
         target_modules = smash_config["target_modules"]
         if target_modules is None:
-            target_modules = self.get_unconstrained_hyperparameter_defaults(model, smash_config)
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
         target_modules = cast(TARGET_MODULES_TYPE, target_modules)
 
-        def quantize_latent_model(attr_name: str | None, latent_model: nn.Module, subpaths: list[str]) -> Any:
+        def quantize_working_model(attr_name: str | None, working_model: nn.Module, subpaths: list[str]) -> Any:
             """
             Quantize a working model with bitsandbytes.
 
@@ -166,16 +167,19 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
             ----------
             attr_name : str | None
                 The name of the attribute in the model pointing to the working model to quantize.
-            latent_model : torch.nn.Module
-                The latent model to quantize.
+            working_model : torch.nn.Module
+                The working model to quantize, i.e. a nn.Module component of the model.
             subpaths : list[str]
                 The subpaths of the working model to quantize.
             """
-            if not hasattr(latent_model, "save_pretrained") or not callable(latent_model.save_pretrained):
+            if not hasattr(working_model, "save_pretrained") or not callable(working_model.save_pretrained):
                 raise ValueError(
                     "diffusers-int8 was applied to a module which didn't have a callable save_pretrained method."
                 )
-            skipped_modules = get_skipped_submodules(latent_model, subpaths, leaf_modules=True)
+            skipped_modules = get_skipped_submodules(working_model, subpaths, only_leaf_modules=True)
+            pruna_logger.debug(
+                f"Skipped leaf modules within {attr_name or 'the model'} in {self.algorithm_name}: {skipped_modules}"
+            )
 
             with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
                 # Only the full model contains the device map, so we get it using the attribute name
@@ -183,10 +187,10 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 device_map = get_device_map(model, subset_key=attr_name)
 
                 # save the latent model (to be quantized) in a temp directory
-                move_to_device(latent_model, "cpu")
-                latent_model.save_pretrained(temp_dir)
-                latent_class = getattr(diffusers, type(latent_model).__name__)
-                compute_dtype = determine_dtype(latent_model)
+                move_to_device(working_model, "cpu")
+                working_model.save_pretrained(temp_dir)
+                working_class = getattr(diffusers, type(working_model).__name__)
+                compute_dtype = determine_dtype(working_model)
 
                 bnb_config = DiffusersBitsAndBytesConfig(
                     load_in_8bit=smash_config["weight_bits"] == 8,
@@ -201,15 +205,15 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 )
 
                 # re-load the latent model (with the quantization config)
-                quantized_latent_model = latent_class.from_pretrained(
+                quantized_working_model = working_class.from_pretrained(
                     temp_dir,
                     quantization_config=bnb_config,
                     torch_dtype=compute_dtype,
                     device_map=device_map,
                 )
-            return quantized_latent_model
+            return quantized_working_model
 
-        quantized_model = map_targeted_nn_roots(quantize_latent_model, model, target_modules, leaf_modules=True)
+        quantized_model = map_targeted_nn_roots(quantize_working_model, model, target_modules, only_leaf_modules=True)
         return quantized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

@@ -28,6 +28,7 @@ from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, get_skipped_submodules, map_targeted_nn_roots
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import get_device_map, move_to_device
+from pruna.logging.logger import pruna_logger
 
 
 class LLMInt8Quantizer(PrunaQuantizer):
@@ -97,7 +98,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
         """
         return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
-    def get_unconstrained_hyperparameter_defaults(
+    def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
@@ -136,7 +137,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
         """
         target_modules = smash_config["target_modules"]
         if target_modules is None:
-            target_modules = self.get_unconstrained_hyperparameter_defaults(model, smash_config)
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
         target_modules = cast(TARGET_MODULES_TYPE, target_modules)
 
         def quantize_causal_lm(attr_name: str | None, causal_lm: torch.nn.Module, subpaths: list[str]) -> Any:
@@ -161,7 +162,10 @@ class LLMInt8Quantizer(PrunaQuantizer):
 
             # get the skipped modules, only include leaf modules since the bnb quantizer skips all submodules
             # in a skipped module. Only Linear and Conv1d layers can be quantized anyway.
-            skipped_modules = get_skipped_submodules(causal_lm, subpaths, leaf_modules=True)
+            skipped_modules = get_skipped_submodules(causal_lm, subpaths, only_leaf_modules=True)
+            pruna_logger.debug(
+                f"Skipped leaf modules within {attr_name or 'the model'} in {self.algorithm_name}: {skipped_modules}"
+            )
 
             with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
                 # cast original model to CPU to free memory for smashed model
@@ -190,7 +194,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
                 )
             return quantized_causal_lm
 
-        quantized_model = map_targeted_nn_roots(quantize_causal_lm, model, target_modules, leaf_modules=True)
+        quantized_model = map_targeted_nn_roots(quantize_causal_lm, model, target_modules, only_leaf_modules=True)
         return quantized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
