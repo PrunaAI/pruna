@@ -21,7 +21,7 @@ Check out `this tutorial notebook <../tutorials/target_modules_quanto.ipynb>`_ t
 Pattern Format
 --------------
 
-The ``include`` and ``exclude`` lists each contain glob patterns, allowing you to match module paths like you would in a file search:
+Each of the ``include`` and ``exclude`` lists contains glob patterns, allowing you to match module paths like you would in a file search:
 
 * ``*`` to match any number of characters (e.g., ``attention.*`` matches ``attention.to_q``, ``attention.to_k``, etc.)
 * ``?`` to match exactly one character
@@ -37,7 +37,7 @@ If a ``target_modules`` dictionary is provided but missing either the ``include`
 * Missing ``include``: defaults to ``["*"]`` (considering all modules)
 * Missing ``exclude``: defaults to ``[]`` (excluding no modules)
 
-Usage Examples ``target_modules``
+Usage Example ``target_modules``
 ---------------------------------
 
 The following example shows how to use ``target_modules`` with the ``quanto`` quantizer to target your model's transformer, excluding the embedding layers.
@@ -73,4 +73,4 @@ This will return the list of module paths that match the ``include`` and ``exclu
 In this example, the output contains the first two attention modules (``model.layers.0.self_attn`` and ``model.layers.1.self_attn``) and the
 ``q_proj``, ``k_proj`` and ``o_proj`` layers inside them.
 
-Note that this will list *all* modules that match the patterns, some algorithms may only apply to the linear layers among those.
+Note that this will list *all* modules that match the patterns, although some algorithms may only apply to the linear layers among those.
