@@ -217,7 +217,7 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
 
 def load_transformers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
     """
-    Load a transformers model or pipeline from the given model path.
+    Load a transformers model or pipeline from the given model path. If a SmashConfig is not provided, it will default to "auto" for the device_map.
 
     Parameters
     ----------
@@ -251,18 +251,18 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig | None =
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
         # transformers discards kwargs automatically, no need for filtering
-        if smash_config is not None:
-            device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
-            device_map = smash_config.device_map if smash_config.device == "accelerate" else device
-        else:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            device_map = "auto"
+        if smash_config is None:
+            smash_config = SmashConfig()
+            smash_config["device"] = "auto"
+            smash_config["device_map"] = pruna.engine.set_to_best_available_device(None)
+        device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
+        device_map = smash_config.device_map if smash_config.device == "accelerate" else device
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
 def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
     """
-    Load a diffusers model from the given model path.
+    Load a diffusers model from the given model path.  If a SmashConfig is not provided, it will default to "cuda" for the device and "auto" for the device_map.
 
     Parameters
     ----------
@@ -306,8 +306,11 @@ def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = No
     # diffusers discards kwargs automatically, no need for filtering
     # diffusers does not support device_maps as dicts at the moment, we load on cpu and cast it ourselves
     model = cls.from_pretrained(path, device_map=None, **kwargs)
-    if smash_config is not None:
-        move_to_device(model, smash_config.device, device_map=smash_config.device_map)
+    if smash_config is None:
+        smash_config = SmashConfig()
+        smash_config["device"] = "auto"
+        smash_config["device_map"] = pruna.engine.set_to_best_available_device(None)
+    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
 
 
