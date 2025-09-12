@@ -30,7 +30,7 @@ from tqdm.auto import tqdm as base_tqdm
 from transformers import AutoTokenizer, pipeline
 
 from pruna import SmashConfig
-from pruna.engine.utils import load_json_config, move_to_device
+from pruna.engine.utils import load_json_config, move_to_device, set_to_best_available_device
 from pruna.logging.logger import pruna_logger
 
 PICKLED_FILE_NAME = "optimized_model.pt"
@@ -224,7 +224,8 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig | None =
     path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
-        The SmashConfig object containing the device and device_map. If a SmashConfig is not provided, it will default to "auto" for the device_map.
+        The SmashConfig object containing the device and device_map. If a SmashConfig is not provided,
+        it will default to "auto" for the device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -251,12 +252,12 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig | None =
         architecture = config["architectures"][0]
         cls = getattr(transformers, architecture)
         # transformers discards kwargs automatically, no need for filtering
+        device_map: str | None
         if smash_config is None:
-            smash_config = SmashConfig()
-            smash_config["device"] = "auto"
-            smash_config["device_map"] = pruna.engine.set_to_best_available_device(None)
-        device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
-        device_map = smash_config.device_map if smash_config.device == "accelerate" else device
+            device_map = "auto"
+        else:
+            device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
+            device_map = smash_config.device_map if smash_config.device == "accelerate" else device
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
@@ -269,7 +270,8 @@ def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = No
     path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
-        The SmashConfig object containing the device and device_map. If a SmashConfig is not provided, it will default to "auto" for the device_map.
+        The SmashConfig object containing the device and device_map. If a SmashConfig is not provided,
+        it will default to "auto" for the device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -307,10 +309,12 @@ def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = No
     # diffusers does not support device_maps as dicts at the moment, we load on cpu and cast it ourselves
     model = cls.from_pretrained(path, device_map=None, **kwargs)
     if smash_config is None:
-        smash_config = SmashConfig()
-        smash_config["device"] = "auto"
-        smash_config["device_map"] = pruna.engine.set_to_best_available_device(None)
-    move_to_device(model, smash_config.device, device_map=smash_config.device_map)
+        device = set_to_best_available_device(None)
+        device_map = None
+    else:
+        device = smash_config.device
+        device_map = smash_config.device_map
+    move_to_device(model, device, device_map=device_map)
     return model
 
 
