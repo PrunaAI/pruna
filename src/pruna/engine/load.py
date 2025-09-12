@@ -217,14 +217,14 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
 
 def load_transformers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
     """
-    Load a transformers model or pipeline from the given model path. If a SmashConfig is not provided, it will default to "auto" for the device_map.
+    Load a transformers model or pipeline from the given model path.
 
     Parameters
     ----------
     path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
-        The SmashConfig object containing the device and device_map.
+        The SmashConfig object containing the device and device_map. If a SmashConfig is not provided, it will default to "auto" for the device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
@@ -262,14 +262,14 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig | None =
 
 def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
     """
-    Load a diffusers model from the given model path.  If a SmashConfig is not provided, it will default to "cuda" for the device and "auto" for the device_map.
+    Load a diffusers model from the given model path.
 
     Parameters
     ----------
     path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
-        The SmashConfig object containing the device and device_map.
+        The SmashConfig object containing the device and device_map. If a SmashConfig is not provided, it will default to "auto" for the device_map.
     **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
