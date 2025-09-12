@@ -1,6 +1,8 @@
+import ast
 import importlib.util
 import inspect
 import subprocess
+import textwrap
 from pathlib import Path
 from typing import Any, Callable
 
@@ -85,7 +87,12 @@ def run_full_integration(
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
-        reloaded_model = algorithm_tester.execute_load()
+        # For algorithms that do not support saving/loading
+        reloaded_model = (
+            smashed_model
+            if is_function_unimplemented(algorithm_tester.execute_load)
+            else algorithm_tester.execute_load()
+        )  # noqa: E501
         if device != "accelerate" and not skip_evaluation:
             algorithm_tester.execute_evaluation(reloaded_model, smash_config.data, smash_config["device"])
         if hasattr(reloaded_model, "destroy"):
@@ -296,3 +303,59 @@ def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
             extract_code_blocks_from_node(sec, section_title)
 
     print(f"Code blocks extracted and written to {output_dir}")
+
+
+def is_function_unimplemented(func) -> bool:
+    """Check if a function body indicates it is unimplemented."""
+    try:
+        source = inspect.getsource(func)
+    except (OSError, TypeError):  # builtins, C-extensions, or dynamic funcs
+        return False
+
+    source = textwrap.dedent(source)
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return False
+
+    func_def = tree.body[0]
+    if not isinstance(func_def, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return False
+
+    # remove docstring if present
+    body = func_def.body
+    if (
+        body
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
+        body = body[1:]
+
+    if len(body) != 1:
+        return False
+
+    stmt = body[0]
+
+    # "pass"
+    if isinstance(stmt, ast.Pass):
+        return True
+
+    # "..."
+    if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and stmt.value.value == Ellipsis:
+        return True
+
+    # "raise NotImplementedError", with or without parentheses, with args
+    if isinstance(stmt, ast.Raise) and stmt.exc:
+        exc = stmt.exc
+        # direct call: raise NotImplementedError(...)
+        if isinstance(exc, ast.Call) and getattr(exc.func, "id", None) == "NotImplementedError":
+            return True
+        # bare: raise NotImplementedError
+        if isinstance(exc, ast.Name) and exc.id == "NotImplementedError":
+            return True
+        # qualified: raise exceptions.NotImplementedError(...)
+        if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Attribute) and exc.func.attr == "NotImplementedError":
+            return True
+
+    return False
