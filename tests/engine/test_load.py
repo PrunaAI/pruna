@@ -103,7 +103,8 @@ def test_filter_load_kwargs(func_def, kwargs, expected_output, test_name):
 @pytest.mark.parametrize("model_id", ["katuni4ka/tiny-random-flux"])
 def test_load_diffusers_model_without_smash_config(model_id: str) -> None:
     """Test loading a diffusers model without a SmashConfig."""
-    model = load_diffusers_model(model_id)
+    download_directory = snapshot_download(model_id)
+    model = load_diffusers_model(download_directory)
     assert model is not None
 
 
@@ -111,5 +112,6 @@ def test_load_diffusers_model_without_smash_config(model_id: str) -> None:
 @pytest.mark.parametrize("model_id", ["llama_3_tiny_random"])
 def test_load_transformers_model_without_smash_config(model_id: str) -> None:
     """Test loading a diffusers model without a SmashConfig."""
-    model = load_transformers_model(model_id)
+    download_directory = snapshot_download(model_id)
+    model = load_transformers_model(download_directory)
     assert model is not None
