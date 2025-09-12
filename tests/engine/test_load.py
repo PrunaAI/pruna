@@ -100,7 +100,7 @@ def test_filter_load_kwargs(func_def, kwargs, expected_output, test_name):
     assert filtered == expected_output, f"Test {test_name} failed"
 
 @pytest.mark.cpu
-@pytest.parametrize("model_id", ["katuni4ka/tiny-random-flux"])
+@pytest.mark.parametrize("model_id", ["katuni4ka/tiny-random-flux"])
 def test_load_diffusers_model_without_smash_config(model_id: str) -> None:
     """Test loading a diffusers model without a SmashConfig."""
     model = load_diffusers_model(model_id)
@@ -108,7 +108,7 @@ def test_load_diffusers_model_without_smash_config(model_id: str) -> None:
 
 
 @pytest.mark.cpu
-@pytest.parametrize("model_id", ["llama_3_tiny_random"])
+@pytest.mark.parametrize("model_id", ["llama_3_tiny_random"])
 def test_load_transformers_model_without_smash_config(model_id: str) -> None:
     """Test loading a diffusers model without a SmashConfig."""
     model = load_transformers_model(model_id)
