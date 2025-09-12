@@ -1,6 +1,7 @@
 import pytest
 import torch
 from pathlib import Path
+from huggingface_hub import snapshot_download
 
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.load import LOAD_FUNCTIONS, filter_load_kwargs, load_diffusers_model, load_transformers_model
