@@ -110,7 +110,7 @@ def test_load_diffusers_model_without_smash_config(model_id: str) -> None:
 
 
 @pytest.mark.cpu
-@pytest.mark.parametrize("model_id", ["llama_3_tiny_random"])
+@pytest.mark.parametrize("model_id", ["yujiepan/llama-3-tiny-random"])
 def test_load_transformers_model_without_smash_config(model_id: str) -> None:
     """Test loading a diffusers model without a SmashConfig."""
     download_directory = snapshot_download(model_id)
