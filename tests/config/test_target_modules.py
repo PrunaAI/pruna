@@ -14,6 +14,10 @@ from pruna.config.target_modules import TARGET_MODULES_TYPE
         ("flux_tiny_random", "quantizer", "quanto", None, 28),
         ("flux_tiny_random", "quantizer", "quanto", {"include": ["transformer*"]}, 28),
         ("flux_tiny_random", "quantizer", "quanto", {"include": ["transformer*"], "exclude": ["*norm*"]}, 24),
+        ("flux_tiny_random", "quantizer", "diffusers_int8", None, 28),
+        ("flux_tiny_random", "quantizer", "diffusers_int8", {"include": ["transformer*"], "exclude": ["*norm*"]}, 24),
+        ("llama_3_tiny_random", "quantizer", "llm_int8", None, 14),
+        ("llama_3_tiny_random_as_pipeline", "quantizer", "llm_int8", {"include": ["model.*"], "exclude": ["*v_proj*"]}, 13),
     ],
     indirect=["model_fixture"],
 )
@@ -25,10 +29,16 @@ def test_target_modules(
     smash_config[f"{algorithm}_target_modules"] = target_modules
     smashed_model = smash(model, smash_config)
 
+    is_algorithm_applied = {
+        "quanto": lambda module: module.__class__.__name__ == "QLinear",
+        "llm_int8": lambda module: "bitsandbytes" in str(type(module)).lower(),
+        "diffusers_int8": lambda module: "bitsandbytes" in str(type(module)).lower(),
+    }
+
     num_targeted_modules = sum(
         1 for module in smashed_model.get_nn_modules().values()
         for submodule in module.modules()
-        if submodule.__class__.__name__ == "QLinear"
+        if is_algorithm_applied[algorithm](submodule)
     )
     assert num_targeted_modules == expected_number_of_targeted_modules
 
