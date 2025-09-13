@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader
 
 from pruna.engine.call_sequence_tracker import CallSequenceTracker
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import move_to_device, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -78,7 +78,7 @@ class ModelArchitectureStats(BaseMetric):
             The MACs and number of parameters of the model during inference.
         """
         model.set_to_eval()
-        model.move_to_device(self.device)
+        move_to_device(model, self.device)
         # wrap the forward method of the model.
         # the wrapper will track the call sequence and input stats for the nn.Modules of the model.
         self.call_tracker.wrap(model)
