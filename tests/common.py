@@ -83,13 +83,16 @@ def run_full_integration(
         move_to_device(model, device=smash_config["device"], device_map=device_map)
         assert device == get_device(model)
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
-        algorithm_tester.execute_save(smashed_model)
-        safe_memory_cleanup()
         # For algorithms that do not support saving/loading
         try:
+            algorithm_tester.execute_save(smashed_model)
             reloaded_model = algorithm_tester.execute_load()
         except NotImplementedError:
             reloaded_model = smashed_model
+        else:
+            if reloaded_model.is_empty():  # We have a save but no load.
+                reloaded_model = smashed_model
+        safe_memory_cleanup()
         if device != "accelerate" and not skip_evaluation:
             algorithm_tester.execute_evaluation(reloaded_model, smash_config.data, smash_config["device"])
         if hasattr(reloaded_model, "destroy"):
