@@ -185,11 +185,7 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
 
             # only include leaf modules since the bnb quantizer skips all submodules
             # within a skipped module. Only Linear and Conv1d layers can be quantized anyway.
-
-            def _is_leaf_module(module: nn.Module, path: str | None) -> bool:
-                return is_leaf_module(module)
-
-            skipped_modules = get_skipped_submodules(working_model, subpaths, filter_fn=_is_leaf_module)
+            skipped_modules = get_skipped_submodules(working_model, subpaths, filter_fn=is_leaf_module)
             pruna_logger.debug(
                 f"Skipping {self.algorithm_name} quantization for the following "
                 f"leaf modules within {attr_name or 'the model'} : {skipped_modules}"

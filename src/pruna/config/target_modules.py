@@ -185,7 +185,7 @@ def expand_dict_of_roots_and_subpaths(
     return modules_with_subpaths
 
 
-def is_leaf_module(module: torch.nn.Module) -> bool:
+def is_leaf_module(module: torch.nn.Module, path: str | None = None) -> bool:
     """
     Check if a module is a leaf module.
 
@@ -193,6 +193,8 @@ def is_leaf_module(module: torch.nn.Module) -> bool:
     ----------
     module : torch.nn.Module
         The module to check.
+    path : str | None
+        An optional, phantom argument to make this function a valid filter function.
 
     Returns
     -------
