@@ -25,7 +25,13 @@ from transformers.modeling_utils import PreTrainedModel
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
-from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, get_skipped_submodules, map_targeted_nn_roots
+from pruna.config.target_modules import (
+    TARGET_MODULES_TYPE,
+    TargetModules,
+    get_skipped_submodules,
+    is_leaf_module,
+    map_targeted_nn_roots,
+)
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import get_device_map, move_to_device
 from pruna.logging.logger import pruna_logger
@@ -161,10 +167,14 @@ class LLMInt8Quantizer(PrunaQuantizer):
             causal_lm = cast(PreTrainedModel, causal_lm)
 
             # get the skipped modules, only include leaf modules since the bnb quantizer skips all submodules
-            # in a skipped module. Only Linear and Conv1d layers can be quantized anyway.
-            skipped_modules = get_skipped_submodules(causal_lm, subpaths, only_leaf_modules=True)
+            # within a skipped module. Only Linear and Conv1d layers can be quantized anyway.
+            def _is_leaf_module(module: torch.nn.Module, path: str | None) -> bool:
+                return is_leaf_module(module)
+
+            skipped_modules = get_skipped_submodules(causal_lm, subpaths, filter_fn=_is_leaf_module)
             pruna_logger.debug(
-                f"Skipped leaf modules within {attr_name or 'the model'} in {self.algorithm_name}: {skipped_modules}"
+                f"Skipping {self.algorithm_name} quantization for the following "
+                f"leaf modules within {attr_name or 'the model'} : {skipped_modules}"
             )
 
             with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
@@ -194,7 +204,7 @@ class LLMInt8Quantizer(PrunaQuantizer):
                 )
             return quantized_causal_lm
 
-        quantized_model = map_targeted_nn_roots(quantize_causal_lm, model, target_modules, only_leaf_modules=True)
+        quantized_model = map_targeted_nn_roots(quantize_causal_lm, model, target_modules)
         return quantized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:

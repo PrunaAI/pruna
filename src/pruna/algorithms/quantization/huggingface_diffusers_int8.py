@@ -24,7 +24,13 @@ from diffusers import BitsAndBytesConfig as DiffusersBitsAndBytesConfig
 from pruna.algorithms.quantization import PrunaQuantizer
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
-from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, get_skipped_submodules, map_targeted_nn_roots
+from pruna.config.target_modules import (
+    TARGET_MODULES_TYPE,
+    TargetModules,
+    get_skipped_submodules,
+    is_leaf_module,
+    map_targeted_nn_roots,
+)
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
@@ -176,9 +182,17 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 raise ValueError(
                     "diffusers-int8 was applied to a module which didn't have a callable save_pretrained method."
                 )
-            skipped_modules = get_skipped_submodules(working_model, subpaths, only_leaf_modules=True)
+
+            # only include leaf modules since the bnb quantizer skips all submodules
+            # within a skipped module. Only Linear and Conv1d layers can be quantized anyway.
+
+            def _is_leaf_module(module: nn.Module, path: str | None) -> bool:
+                return is_leaf_module(module)
+
+            skipped_modules = get_skipped_submodules(working_model, subpaths, filter_fn=_is_leaf_module)
             pruna_logger.debug(
-                f"Skipped leaf modules within {attr_name or 'the model'} in {self.algorithm_name}: {skipped_modules}"
+                f"Skipping {self.algorithm_name} quantization for the following "
+                f"leaf modules within {attr_name or 'the model'} : {skipped_modules}"
             )
 
             with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
@@ -213,7 +227,7 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
                 )
             return quantized_working_model
 
-        quantized_model = map_targeted_nn_roots(quantize_working_model, model, target_modules, only_leaf_modules=True)
+        quantized_model = map_targeted_nn_roots(quantize_working_model, model, target_modules)
         return quantized_model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
