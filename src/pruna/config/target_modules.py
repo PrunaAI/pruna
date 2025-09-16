@@ -227,9 +227,12 @@ def filter_targeted_modules(
     additional_exclude: List[str] = []
 
     for root_path, (root, subpaths) in expand_dict_of_roots_and_subpaths(target_modules, model).items():
-        for subpath in subpaths:
+        subpaths_set = set(subpaths)  # faster when there are many subpaths
+        for subpath, module in root.named_modules():
+            if subpath not in subpaths_set:
+                continue  # no need to check if it should be kept if it isn't included in the first place
             full_path = f"{root_path}.{subpath}" if root_path is not None else subpath
-            if not keep_targeted_fn(root, full_path):
+            if not keep_targeted_fn(module, full_path):
                 additional_exclude.append(full_path)
     return {"include": target_modules["include"], "exclude": target_modules["exclude"] + additional_exclude}
 
