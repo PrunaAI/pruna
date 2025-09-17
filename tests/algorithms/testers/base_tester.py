@@ -103,6 +103,8 @@ class AlgorithmTesterBase:
     @classmethod
     def get_metric_instances(cls, metrics: list[str], device: str) -> list[BaseMetric | StatefulMetric]:
         """Get the metric instances."""
+        if not metrics:
+            raise ValueError("No metrics provided")
         metric_instances = [MetricRegistry.get_metric(metric) for metric in metrics]
         for metric in metric_instances:
             if hasattr(metric, "n_iterations"):
