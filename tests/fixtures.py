@@ -197,4 +197,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
+    "tiny_llama_hqq_4bits_smashed": partial(get_pre_quantized_model, "loulou2/tiny_llama_hqq"),
+    "tiny_llama_higgs_4bits_smashed": partial(get_pre_quantized_model, "loulou2/tiny_llama_higgs"),
 }
