@@ -15,13 +15,26 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from pruna.engine.pruna_model import PrunaModel
+    from pruna.evaluation.task import Task
 from collections import defaultdict
 from inspect import Signature, getmro, signature
-from typing import Any, Callable, Dict, List, Tuple, Type, cast
+from typing import Callable, Dict, List, Tuple, Type
 
 import torch
 
 from pruna.data.utils import move_batch_to_device
+from pruna.engine.utils import (
+    device_to_string,
+    find_bytes_free_per_gpu,
+    get_device,
+    get_device_map,
+    set_to_best_available_device,
+    split_device,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.logging.logger import pruna_logger
 
@@ -35,7 +48,7 @@ def metric_data_processor(
     gt: List[Any] | torch.Tensor,
     outputs: Any,
     call_type: str,
-    device: torch.device | str | None = None,
+    device: str | torch.device | None = None,
 ) -> List[Any]:
     """
     Arrange metric inputs based on the specified configuration call type.
@@ -61,8 +74,8 @@ def metric_data_processor(
         The model outputs or predictions.
     call_type : str
         The type of call to be made to the metric.
-    device : torch.device | str | None
-        The device to be used for the metric.
+    device : str | torch.device | None
+        The device to move the data to.
 
     Returns
     -------
@@ -84,6 +97,7 @@ def metric_data_processor(
         x = move_batch_to_device(x, device)
         gt = move_batch_to_device(gt, device)
         outputs = move_batch_to_device(outputs, device)
+
     if call_type == "x_y":
         return [x, outputs]
     elif call_type == "gt_y":
@@ -291,3 +305,105 @@ def get_call_type_for_single_metric(call_type_requested: str, default_call_type:
     else:
         pruna_logger.error(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
         raise ValueError(f"Invalid call type: {call_type_requested}. Must be one of {CALL_TYPES}.")
+
+
+def ensure_device_consistency(model: PrunaModel, task: Task) -> None:
+    """
+    Ensure the model and the task agree on the device they will run on.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    task : Task
+        The task to check.
+    """
+    # Preprocessing the devices
+    model_device_raw = cast(str, get_device(model))
+    model_device, idx_m = split_device(model_device_raw, strict=True)
+    task_device, idx_t = split_device(device_to_string(task.device), strict=True)
+
+    # Everything is fine scenario.
+    if (model_device, idx_m) == (task_device, idx_t):
+        pruna_logger.debug("Device consistency check passed.")
+        if model_device == "accelerate":
+            # in case of accelerate, we need to check loading the metrics didn't offload the model.
+            _check_offload(model)
+        return
+    if model_device == task_device == "cuda":  # Cases like cuda:0 and cuda:1
+        pruna_logger.info(
+            f"Model on cuda:{idx_m}, task on cuda:{idx_t}. If undesired, call task(device='{model_device_raw}')."
+        )
+        return
+
+    # If the user explicitly provided a device and it doesn't match the model's device,
+    # raise an error: we assume they know what they're doing and want control.
+    if not task.auto_device:
+        raise ValueError(
+            f"Model and task have different devices. Model: {model_device}, task: {task.device}. \n"
+            f"If you want auto device casting, create the task without providing a device."
+        )
+
+    # Only auto-resolve device mismatches when no device was provided.
+    # We take model's device as the default device for the task in this case.
+    else:
+        pruna_logger.warning(
+            (
+                f"Model and task have different devices. Model: {model_device}, "
+                f"task: {task.device}. Updating task to device='{model_device}'."
+            )
+        )
+        task.device = model_device_raw
+        if model_device in ["cuda", "mps", "accelerate"]:
+            if not task.low_memory:
+                free_bytes = find_bytes_free_per_gpu() if model_device == "accelerate" else None
+                # Return the best available device with them most free memory.
+                task.stateful_metric_device = set_to_best_available_device("cuda", free_bytes)
+            else:
+                task.stateful_metric_device = "cpu"
+            # We update the inference device for the metrics in the task.
+            _update_metric_devices(task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device)
+            if model_device == "accelerate":
+                _check_offload(model)  # We want to make sure to catch if the model is offloaded to CPU.
+        elif model_device == "cpu":
+            task.stateful_metric_device = "cpu"
+            _update_metric_devices(task, inference_device=model_device_raw, stateful_device=task.stateful_metric_device)
+        else:
+            raise ValueError(
+                f"Invalid model device: {model_device}. Must be one of {['cuda', 'mps', 'accelerate', 'cpu']}."
+            )
+
+
+def _check_offload(model: Any) -> None:
+    """
+    Check if the model is offloaded to CPU.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+    """
+    hf_device_map = get_device_map(model)
+    if not all(isinstance(v, int) for v in hf_device_map.values()):
+        raise ValueError(
+            "Device map indicates CPU offloading; not supported at this time. \n"
+            "Please initialize Task with `low_memory=True` to run stateful metrics on cpu."
+        )
+
+
+def _update_metric_devices(task: Task, inference_device: str, stateful_device: str) -> None:
+    """
+    Update the inference device for the metrics in the task.
+
+    Parameters
+    ----------
+    task : Task
+        The task to update.
+    device : str
+        The device to update the metrics to.
+    """
+    for metric in task.metrics:
+        if isinstance(metric, BaseMetric):
+            metric.device = inference_device
+        else:
+            metric.move_to_device(stateful_device)
