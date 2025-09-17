@@ -187,11 +187,11 @@ MODEL_FACTORY: dict[str, Callable] = {
     "tiny_llama": partial(get_automodel_transformers, "loulou2/tiny_llama", torch_dtype=torch.bfloat16),
     "tiny_llama_hqq": lambda: (
         # The fixture emits a dummy model (None) and a SmashConfig carrying path to quantized model.
-        None,
-        (lambda sc: (sc.update({"quantized_model_repo": "loulou2/tiny_llama_hqq"}) or sc))(SmashConfig()),
+        torch.nn.Linear(1, 1),
+        (lambda sc: (setattr(sc, "quantized_model_repo", "loulou2/tiny_llama_hqq") or sc))(SmashConfig()),
     ),
     "tiny_llama_higgs": lambda: (
-        None,
-        (lambda sc: (sc.update({"quantized_model_repo": "loulou2/tiny_llama_higgs"}) or sc))(SmashConfig()),
+        torch.nn.Linear(1, 1),
+        (lambda sc: (setattr(sc, "quantized_model_repo", "loulou2/tiny_llama_higgs") or sc))(SmashConfig()),
     ),
 }
