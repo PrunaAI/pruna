@@ -2,8 +2,8 @@
 .. this page presents more advanced features and is not directly presented in the user manual
 .. but is referenced by algorithms that support the target_modules parameter.
 
-Target Modules
-==============
+Selective Smashing with Target Modules
+======================================
 
 Some algorithms let you target specific modules in your model via the ``target_modules`` parameter.
 It specifies exactly which parts of the model the algorithm should operate on.

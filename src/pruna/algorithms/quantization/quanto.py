@@ -72,7 +72,8 @@ class QuantoQuantizer(PrunaQuantizer):
                 name="target_modules",
                 default_value=None,
                 meta=dict(
-                    desc=f"Precise choices of which modules to quantize. "
+                    desc="Precise choices of which modules to quantize, "
+                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
                     f"See the {TargetModules.documentation_name_with_link} documentation for more details."
                 ),
             ),

@@ -70,7 +70,7 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
 
-   .. grid-item-card:: Target Modules
+   .. grid-item-card:: Smashing at Finer Granularity with Target Modules
       :text-align: center
       :link: ./target_modules_quanto.ipynb
       
