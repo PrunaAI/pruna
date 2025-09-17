@@ -20,6 +20,7 @@ from warnings import warn
 import torch
 from codecarbon import EmissionsTracker
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import set_to_best_available_device
@@ -104,11 +105,11 @@ class EnvironmentalImpactStats(BaseMetric):
         inputs = model.inference_handler.prepare_inputs(batch)
 
         # Warmup
-        for _ in range(self.n_warmup_iterations):
+        for _ in tqdm(range(self.n_warmup_iterations), desc="Warmup", unit="iter"):
             model(inputs, **model.inference_handler.model_args)
 
         tracker.start_task("Inference")
-        for _ in range(self.n_iterations):
+        for _ in tqdm(range(self.n_iterations), desc="Measuring energy consumption", unit="iter"):
             model(inputs, **model.inference_handler.model_args)
         tracker.stop_task()
 
