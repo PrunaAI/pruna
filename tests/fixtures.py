@@ -185,4 +185,13 @@ MODEL_FACTORY: dict[str, Callable] = {
     "wan_tiny_random": partial(get_diffusers_model, "PrunaAI/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "loulou2/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "loulou2/tiny_llama", torch_dtype=torch.bfloat16),
+    "tiny_llama_hqq": lambda: (
+        # The fixture emits a dummy model and a SmashConfig carrying path to quantized model.
+        torch.nn.Linear(1, 1),
+        (lambda sc: (setattr(sc, "quantized_model_repo", "loulou2/tiny_llama_hqq") or sc))(SmashConfig()),
+    ),
+    "tiny_llama_higgs": lambda: (
+        torch.nn.Linear(1, 1),
+        (lambda sc: (setattr(sc, "quantized_model_repo", "loulou2/tiny_llama_higgs") or sc))(SmashConfig()),
+    ),
 }
