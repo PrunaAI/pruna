@@ -89,7 +89,11 @@ class DiffusersInt8Quantizer(PrunaQuantizer):
             TargetModules(
                 name="target_modules",
                 default_value=None,
-                meta=dict(desc="Precise choices of which modules to quantize."),
+                meta=dict(
+                    desc="Precise choices of which modules to quantize, "
+                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                ),
             ),
         ]
 
