@@ -74,7 +74,7 @@ pip install pruna
 You can also install Pruna directly from source by cloning the repository and installing the package in editable mode:
 
 ```bash
-git clone https://github.com/pruna-ai/pruna.git
+git clone https://github.com/PrunaAI/pruna.git
 cd pruna
 pip install -e .
 ```
