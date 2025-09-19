@@ -18,6 +18,7 @@ from typing import Any, List
 
 import torch
 from torch import Tensor
+from tqdm.auto import tqdm
 
 from pruna.config.smash_config import SmashConfig
 from pruna.config.utils import is_empty_config
@@ -200,7 +201,7 @@ class EvaluationAgent:
             return
 
         model.move_to_device(self.device)
-        for batch_idx, batch in enumerate(self.task.dataloader):
+        for batch_idx, batch in enumerate(tqdm(self.task.dataloader, desc="Processing batchs", unit="batch")):
             processed_outputs = model.run_inference(batch, self.device)
 
             batch = move_batch_to_device(batch, self.device)

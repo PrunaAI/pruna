@@ -19,6 +19,7 @@ from typing import Any, Dict, cast
 
 import torch
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import _resolve_cuda_device, set_to_best_available_device
@@ -174,9 +175,11 @@ class InferenceTimeStats(BaseMetric):
 
         # Measurement
         list_elapsed_times = []
-        self._measure(
-            model, dataloader, self.n_iterations, lambda m, x: list_elapsed_times.append(self._time_inference(m, x))
-        )
+        with tqdm(total=self.n_iterations, desc="Measuring inference time", unit="iter") as pbar:
+            def measure_with_progress(m, x):
+                list_elapsed_times.append(self._time_inference(m, x))
+                pbar.update(1)
+            self._measure(model, dataloader, self.n_iterations, measure_with_progress)
 
         total_elapsed_time = sum(list_elapsed_times)
         self.batch_size = cast(int, dataloader.batch_size)
