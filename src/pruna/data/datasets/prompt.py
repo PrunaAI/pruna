@@ -16,6 +16,8 @@ from typing import Tuple
 
 from datasets import Dataset, load_dataset
 
+from pruna.logging.logger import pruna_logger
+
 
 def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
@@ -35,6 +37,7 @@ def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     ds = load_dataset("sayakpaul/drawbench", trust_remote_code=True)["train"]
     ds = ds.rename_column("Prompts", "text")
+    pruna_logger.info("DrawBench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
 
@@ -56,6 +59,7 @@ def setup_parti_prompts_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     ds = load_dataset("nateraw/parti-prompts")["train"]
     ds = ds.rename_column("Prompt", "text")
+    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
 
@@ -77,4 +81,5 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     ds = load_dataset("BaiqiL/GenAI-Bench")["train"]
     ds = ds.rename_column("Prompt", "text")
+    pruna_logger.info("GenAI-Bench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
