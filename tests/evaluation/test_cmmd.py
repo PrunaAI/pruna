@@ -8,7 +8,7 @@ from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.task import Task
-
+from pruna.engine.utils import move_to_device
 @pytest.mark.parametrize(
     "model_fixture, device, clip_model",
     [
@@ -21,12 +21,12 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
     model, smash_config = model_fixture
     smash_config.device = device
     pruna_model = PrunaModel(model, smash_config=smash_config)
-
+    move_to_device(pruna_model, device)
     metric = CMMD(clip_model_name=clip_model, device=device)
 
     batch = next(iter(smash_config.test_dataloader()))
     x, gt = batch
-    outputs = pruna_model.run_inference(batch, device)
+    outputs = pruna_model.run_inference(batch)
 
     # Calculate CMMD between model outputs and ground truth
     metric.update(x, gt, outputs)
@@ -52,6 +52,7 @@ def test_cmmd(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: s
 def test_task_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
     """Test CMMD pairwise."""
     model, _ = model_fixture
+    move_to_device(model, device)
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(10)
 
@@ -78,6 +79,7 @@ def test_task_cmmd_pairwise(model_fixture: tuple[Any, SmashConfig], device: str,
 def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], device: str, clip_model: str):
     """Test CMMD pairwise using direct parameters to EvaluationAgent."""
     model, _ = model_fixture
+    move_to_device(model, device)
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(10)
 
