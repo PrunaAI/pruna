@@ -167,6 +167,30 @@ def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashCon
     return model, smash_config
 
 
+def get_pre_quantized_model(model_id: str) -> tuple[Any, SmashConfig]:
+    """
+    Get a pre-quantized model.
+
+    The fixture emits a dummy model and a SmashConfig carrying path to quantized model.
+    """
+
+    class DummyModel(torch.nn.Linear):
+        """A nn.Module used exclusively for device and dtype checking."""
+
+        def __init__(self):
+            super().__init__(1, 1)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            raise NotImplementedError(
+                "This model is used exclusively for device and dtype checking and should not be called."
+            )
+
+    dummy_model = DummyModel()
+    smash_config = SmashConfig()
+    setattr(smash_config, "quantized_model_repo", model_id)
+    return dummy_model, smash_config
+
+
 MODEL_FACTORY: dict[str, Callable] = {
     # whisper models
     "whisper_tiny_random": whisper_tiny_random_model,
