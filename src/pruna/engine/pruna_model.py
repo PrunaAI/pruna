@@ -400,14 +400,3 @@ class PrunaModel:
     def destroy(self) -> None:
         """Destroy model."""
         pass
-
-    def is_empty(self) -> bool:
-        """
-        Check if the model is empty.
-
-        Returns
-        -------
-        bool
-            True if the model is empty, False otherwise.
-        """
-        return self.model is None
