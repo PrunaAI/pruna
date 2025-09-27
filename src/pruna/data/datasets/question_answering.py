@@ -35,7 +35,7 @@ def setup_polyglot_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The Polyglot dataset.
     """
-    dataset = load_dataset("Polyglot-or-Not/Fact-Completion", split="english".capitalize(), trust_remote_code=True)
+    dataset = load_dataset("Polyglot-or-Not/Fact-Completion", split="english".capitalize())
     dataset = dataset.rename_column("true", "answer")
     dataset = dataset.rename_column("stem", "question")
     return split_train_into_train_val_test(dataset, seed)

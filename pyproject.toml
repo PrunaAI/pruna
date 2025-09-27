@@ -63,7 +63,7 @@ gptqmodel = [
 
 [project]
 name = "pruna"
-version = "0.2.9"
+version = "0.2.10"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
@@ -89,7 +89,7 @@ dependencies = [
     "transformers",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
-    "datasets<=3.5.0",
+    "datasets>=0.34",
     "numpy>=1.24.4",
     "diffusers>=0.21.4",
     "torch_pruning",

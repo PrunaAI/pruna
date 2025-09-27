@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -30,11 +30,24 @@ class MetricResult:
         The parameters of the metric.
     result : float | int
         The result of the metric.
+    metric_units: Optional[str]
+        The units of the metric.
+    higher_is_better: Optional[bool]
+        Whether larger values mean better performance.
     """
 
     name: str
     params: Dict[str, Any]
     result: float | int
+    higher_is_better: Optional[bool] = None
+    metric_units: Optional[str] = None
+
+    def __post_init__(self):
+        """Checker that metric_units and higher_is_better are consistent with the result."""
+        if self.metric_units is None:
+            object.__setattr__(self, "metric_units", self.params.get("metric_units"))
+        if self.higher_is_better is None:
+            object.__setattr__(self, "higher_is_better", self.params.get("higher_is_better"))
 
     def __str__(self) -> str:
         """
@@ -45,7 +58,8 @@ class MetricResult:
         str
             A string representation of the MetricResult.
         """
-        return f"{self.name}: {self.result}"
+        units = f" {self.metric_units}" if self.metric_units else ""
+        return f"{self.name}: {self.result}{units}"
 
     @classmethod
     def from_results_dict(

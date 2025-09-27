@@ -25,7 +25,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("COCO", dict(img_size=512), marks=pytest.mark.slow),
         pytest.param("LAION256", dict(img_size=512), marks=pytest.mark.slow),
         pytest.param("OpenImage", dict(img_size=512), marks=pytest.mark.slow),
-        pytest.param("CommonVoice", dict(), marks=pytest.mark.slow),
+        pytest.param("LibriSpeech", dict(), marks=pytest.mark.slow),
         pytest.param("AIPodcast", dict(), marks=pytest.mark.slow),
         ("ImageNet", dict(img_size=512)),
         pytest.param("MNIST", dict(img_size=512), marks=pytest.mark.slow),
@@ -36,6 +36,9 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("OpenAssistant", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("C4", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("Polyglot", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
+        pytest.param("DrawBench", dict(), marks=pytest.mark.slow),
+        pytest.param("PartiPrompts", dict(), marks=pytest.mark.slow),
+        pytest.param("GenAIBench", dict(), marks=pytest.mark.slow),
     ],
 )
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:

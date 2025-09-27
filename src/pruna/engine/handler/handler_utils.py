@@ -22,6 +22,7 @@ from pruna.engine.handler.handler_inference import InferenceHandler
 from pruna.engine.handler.handler_pipeline import PipelineHandler
 from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
+from pruna.logging.logger import pruna_logger
 
 HANDLER_EXCEPTIONS: dict[type[InferenceHandler], list[str]] = {
     TransformerHandler: ["AutoHQQHFModel", "TranslatorWrapper", "GeneratorWrapper", "GPTQ"],
@@ -60,7 +61,10 @@ def register_inference_handler(model: Any) -> InferenceHandler:
         if "TextGeneration" in type(model).__name__:
             return PipelineHandler(pipeline=model)
         else:
-            raise ValueError("Unsupported pipeline type. Only text generation pipelines are currently supported.")
+            pruna_logger.warning(
+                "Only text generation pipelines are currently fully supported. Defaulting to StandardHandler."
+            )
+            return StandardHandler()
     elif "transformers" in model_module:
         return TransformerHandler()
     else:

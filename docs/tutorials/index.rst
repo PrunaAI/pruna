@@ -75,6 +75,11 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Optimize and .
 
+   .. grid-item-card:: Smashing at Finer Granularity with Target Modules
+      :text-align: center
+      :link: ./target_modules_quanto.ipynb
+      
+      Learn how to use the ``target_modules`` parameter to target specific modules in your model.
 
 .. toctree::
    :hidden:

@@ -100,8 +100,8 @@ def setup_smolsmoltalk_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The SmolSmolTalk dataset.
     """
-    train_full = load_dataset("HuggingFaceTB/smol-smoltalk", split="train", trust_remote_code=True)
-    test_ds = load_dataset("HuggingFaceTB/smol-smoltalk", split="test", trust_remote_code=True)
+    train_full = load_dataset("HuggingFaceTB/smol-smoltalk", split="train")
+    test_ds = load_dataset("HuggingFaceTB/smol-smoltalk", split="test")
 
     train_ds, val_ds = split_train_into_train_val(train_full, seed)
 
@@ -148,7 +148,7 @@ def setup_pubchem_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The PubChem dataset.
     """
-    dataset = load_dataset("alxfgh/PubChem10M_SELFIES", trust_remote_code=True)["train"]
+    dataset = load_dataset("alxfgh/PubChem10M_SELFIES")["train"]
     dataset = dataset.rename_column("SELFIES", "text")
     return split_train_into_train_val_test(dataset, seed)
 
@@ -169,9 +169,7 @@ def setup_openassistant_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The OpenAssistant dataset.
     """
-    train_dataset, test_dataset = load_dataset(
-        "timdettmers/openassistant-guanaco", split=["train", "test"], trust_remote_code=True
-    )
+    train_dataset, test_dataset = load_dataset("timdettmers/openassistant-guanaco", split=["train", "test"])
     train_ds, val_ds = split_train_into_train_val(train_dataset, seed)
     return train_ds, val_ds, test_dataset
 
@@ -187,8 +185,8 @@ def setup_c4_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The C4 dataset.
     """
-    train_dataset = load_dataset("allenai/c4", "en", split="train", streaming=True, trust_remote_code=True)
-    val_dataset = load_dataset("allenai/c4", "en", split="validation", streaming=True, trust_remote_code=True)
+    train_dataset = load_dataset("allenai/c4", "en", split="train", streaming=True)
+    val_dataset = load_dataset("allenai/c4", "en", split="validation", streaming=True)
     pruna_logger.info("Received only train and val datasets as iterable datasets, copying validation dataset to test.")
     test_dataset = copy.deepcopy(val_dataset)
     return train_dataset, val_dataset, test_dataset

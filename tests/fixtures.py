@@ -79,6 +79,11 @@ def get_diffusers_model(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, S
     # snapshot download of the model
     model_path = snapshot_download(model_id)
     model = load_diffusers_model(model_path, smash_config=SmashConfig(device="cpu"), **kwargs)
+    # safely enable attention slicing if supported
+    # the gpus of the CI do not support efficient attention backends.
+    # we try to avoid OOM errors by using attention slicing.
+    if hasattr(model, "enable_attention_slicing"):
+        model.enable_attention_slicing("auto")
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
     return model, smash_config

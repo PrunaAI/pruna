@@ -36,7 +36,7 @@ def setup_mnist_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The MNIST dataset.
     """
-    train_ds, test_ds = load_dataset("ylecun/mnist", split=["train", "test"], trust_remote_code=True)
+    train_ds, test_ds = load_dataset("ylecun/mnist", split=["train", "test"])
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     return train_ds, val_ds, test_ds
 
@@ -57,7 +57,7 @@ def setup_imagenet_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The ImageNet dataset.
     """
-    train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"], trust_remote_code=True)
+    train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"])
     val_ds, test_ds = split_val_into_val_test(val, seed)
     return train_ds, val_ds, test_ds
 
@@ -78,6 +78,6 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The CIFAR-10 dataset.
     """
-    train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"], trust_remote_code=True)
+    train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     return train_ds, val_ds, test_ds

@@ -14,31 +14,35 @@
 
 import os
 from pathlib import Path
-from typing import List, Tuple
+from typing import Tuple
 
 from datasets import Dataset, load_dataset
 
+from pruna.data.utils import split_train_into_train_val_test
 from pruna.logging.logger import pruna_logger
 
 
-def setup_commonvoice_dataset() -> List[Dataset]:
+def setup_librispeech_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
-    Setup the Common Voice dataset.
+    Setup the LibriSpeech dataset.
 
-    License: CC0-1.0
+    License: MIT
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use for the split.
 
     Returns
     -------
-    List[Dataset]
-        The Common Voice dataset.
+    Tuple[Dataset, Dataset, Dataset]
+        The LibriSpeech dataset with explicit audio paths.
     """
-    return load_dataset(
-        "mozilla-foundation/common_voice_1_0",
-        "fr",
-        revision="refs/pr/5",
-        split=["train", "validation", "test"],
-        trust_remote_code=True,
-    )
+    ds = load_dataset("argmaxinc/librispeech-200", split="train", streaming=False)
+    ds = ds.map(lambda batch: {"sentence": ""})
+
+    ds_train, ds_val, ds_test = split_train_into_train_val_test(ds, seed)
+    return ds_train, ds_val, ds_test
 
 
 def setup_podcast_dataset() -> Tuple[Dataset, Dataset, Dataset]:
@@ -70,7 +74,7 @@ def setup_mini_presentation_audio_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
 
 def _download_audio_and_select_sample(file_id: str) -> Tuple[Dataset, Dataset, Dataset]:
-    load_dataset("reach-vb/random-audios", trust_remote_code=True)
+    load_dataset("reach-vb/random-audios")
     cache_path = os.environ.get("HUGGINGFACE_HUB_CACHE")
     if cache_path is None:
         cache_path = str(Path.home() / ".cache" / "huggingface" / "hub")

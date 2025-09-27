@@ -160,7 +160,7 @@ class GPUMemoryStats(BaseMetric):
 
             # Perform forward pass if required by the mode
             if self.mode in {INFERENCE_MEMORY, TRAINING_MEMORY}:
-                self._perform_forward_pass(model, dataloader)
+                self._perform_forward_pass(metric_model, dataloader)
 
             memory_after_model_run = gpu_manager.get_memory_usage()
 

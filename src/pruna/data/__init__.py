@@ -15,7 +15,7 @@
 from typing import Any, Callable, Tuple
 
 from pruna.data.datasets.audio import (
-    setup_commonvoice_dataset,
+    setup_librispeech_dataset,
     setup_mini_presentation_audio_dataset,
     setup_podcast_dataset,
 )
@@ -23,6 +23,11 @@ from pruna.data.datasets.image import (
     setup_cifar10_dataset,
     setup_imagenet_dataset,
     setup_mnist_dataset,
+)
+from pruna.data.datasets.prompt import (
+    setup_drawbench_dataset,
+    setup_genai_bench_dataset,
+    setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
 from pruna.data.datasets.text_generation import (
@@ -42,7 +47,7 @@ from pruna.data.datasets.text_to_image import (
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "COCO": (setup_coco_dataset, "image_generation_collate", {"img_size": 512}),
     "LAION256": (setup_laion256_dataset, "image_generation_collate", {"img_size": 512}),
-    "CommonVoice": (setup_commonvoice_dataset, "audio_collate", {}),
+    "LibriSpeech": (setup_librispeech_dataset, "audio_collate", {}),
     "AIPodcast": (setup_podcast_dataset, "audio_collate", {}),
     "MiniPresentation": (setup_mini_presentation_audio_dataset, "audio_collate", {}),
     "ImageNet": (setup_imagenet_dataset, "image_classification_collate", {"img_size": 224}),
@@ -56,4 +61,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "Polyglot": (setup_polyglot_dataset, "question_answering_collate", {}),
     "OpenImage": (setup_open_image_dataset, "image_generation_collate", {"img_size": 1024}),
     "CIFAR10": (setup_cifar10_dataset, "image_classification_collate", {"img_size": 32}),
+    "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
+    "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
+    "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
 }
