@@ -23,7 +23,7 @@ from transformers.modeling_outputs import ImageClassifierOutput
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
 from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
 
-from pruna.algorithms.pruning import PrunaPruner
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -38,7 +38,7 @@ _EMBED_DIM_ATTRS = ("all_head_size", "embed_dim", "hidden_size")  # To capture a
 is_gradient_based = {"TaylorImportance", "HessianImportance"}
 
 
-class TorchStructuredPruner(PrunaPruner):
+class TorchStructured(PrunaAlgorithmBase):
     """
     Implement structured pruning using torch.
 
@@ -51,6 +51,7 @@ class TorchStructuredPruner(PrunaPruner):
     """
 
     algorithm_name: str = "torch_structured"
+    group_tags: list[str] = ["pruner"]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # when performing structured pruning, the tensor sizes can change and disrupt normal saving
     save_fn = SAVE_FUNCTIONS.pickled

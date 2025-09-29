@@ -19,12 +19,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.caching import PrunaCacher
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_flux_pipeline
+from pruna.engine.save import SAVE_FUNCTIONS
 
 
-class FORACacher(PrunaCacher):
+class FORA(PrunaAlgorithmBase):
     """
     Implement FORA for the Flux pipeline.
 
@@ -34,6 +35,8 @@ class FORACacher(PrunaCacher):
     """
 
     algorithm_name: str = "fora"
+    group_tags: list[str] = ["cacher"]
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False
     processor_required: bool = False
@@ -105,17 +108,6 @@ class FORACacher(PrunaCacher):
         model.cache_helper = CacheHelper(model, smash_config["interval"], smash_config["start_step"])
         model.cache_helper.enable()
         return model
-
-    def import_algorithm_packages(self) -> dict[str, Any]:
-        """
-        Import necessary algorithm packages.
-
-        Returns
-        -------
-        dict
-            An empty dictionary as no packages are imported in this implementation.
-        """
-        return dict()
 
 
 class CacheHelper:

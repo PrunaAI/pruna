@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.data.utils import recover_text_from_dataloader
@@ -25,7 +25,7 @@ from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_wit
 from pruna.engine.utils import safe_memory_cleanup
 
 
-class GPTQQuantizer(PrunaQuantizer):
+class GPTQ(PrunaAlgorithmBase):
     """
     Implement GPTQ using GPTQModel.
 
@@ -36,7 +36,9 @@ class GPTQQuantizer(PrunaQuantizer):
     """
 
     algorithm_name: str = "gptq"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {"GitHub": "https://github.com/ModelCloud/GPTQModel"}
+    save_fn: None = None
     tokenizer_required: bool = True
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]

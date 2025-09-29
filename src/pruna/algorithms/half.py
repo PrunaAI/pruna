@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import functools
-from typing import Any, Dict, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import torch
 
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 
 
-class HalfQuantizer(PrunaQuantizer):
+class Half(PrunaAlgorithmBase):
     """
     Implement half precision quantization using torch.
 
@@ -31,6 +31,7 @@ class HalfQuantizer(PrunaQuantizer):
     """
 
     algorithm_name: str = "half"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
@@ -50,17 +51,6 @@ class HalfQuantizer(PrunaQuantizer):
         ],
         pruner=["torch_structured", "torch_unstructured"],
     )
-
-    def get_hyperparameters(self) -> list:
-        """
-        Configure all algorithm-specific hyperparameters with ConfigSpace.
-
-        Returns
-        -------
-        list
-            The hyperparameters.
-        """
-        return []
 
     def model_check_fn(self, model: Any) -> bool:
         """
@@ -110,17 +100,6 @@ class HalfQuantizer(PrunaQuantizer):
         model.forward = new_forward
 
         return model
-
-    def import_algorithm_packages(self) -> Dict[str, Any]:
-        """
-        Provide a algorithm packages for the algorithm.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The algorithm packages.
-        """
-        return dict()
 
 
 def _to_half(x):

@@ -20,7 +20,7 @@ import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
 from transformers import AutoModelForCausalLM
 
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
@@ -30,7 +30,7 @@ from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
 
-class HQQQuantizer(PrunaQuantizer):
+class HQQ(PrunaAlgorithmBase):
     """
     Implement HQQ using huggingface transformers and the HQQ package.
 
@@ -39,6 +39,7 @@ class HQQQuantizer(PrunaQuantizer):
     """
 
     algorithm_name: str = "hqq"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",

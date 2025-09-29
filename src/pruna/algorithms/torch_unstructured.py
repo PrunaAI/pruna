@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import Any
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter
 
-from pruna.algorithms.pruning import PrunaPruner
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 
 
-class TorchUnstructuredPruner(PrunaPruner):
+class TorchUnstructured(PrunaAlgorithmBase):
     """
     Implement structured pruning using torch.
 
@@ -31,6 +31,7 @@ class TorchUnstructuredPruner(PrunaPruner):
     """
 
     algorithm_name: str = "torch_unstructured"
+    group_tags: list[str] = ["pruner"]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # original model-saving can be retained as is, only parameter values are modified
     save_fn = None
@@ -52,10 +53,7 @@ class TorchUnstructuredPruner(PrunaPruner):
         return [
             CategoricalHyperparameter(
                 "pruning_method",
-                choices=[
-                    "random",
-                    "l1",
-                ],
+                choices=["random", "l1"],
                 default_value="l1",
                 meta=dict(desc="Pruning method to use."),
             ),
@@ -114,14 +112,3 @@ class TorchUnstructuredPruner(PrunaPruner):
                     )
                 torch.nn.utils.prune.remove(module, "weight")
         return model
-
-    def import_algorithm_packages(self) -> Dict[str, Any]:
-        """
-        Import the algorithm packages.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The algorithm packages.
-        """
-        return dict()

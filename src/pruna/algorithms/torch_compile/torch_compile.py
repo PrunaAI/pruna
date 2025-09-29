@@ -14,13 +14,13 @@
 
 import contextlib
 import os
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
-from pruna.algorithms.compilation import PrunaCompiler
-from pruna.algorithms.compilation.utils import CausalLMGenerator, JanusGenerator
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.torch_compile.generators import CausalLMGenerator, JanusGenerator
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
@@ -39,7 +39,7 @@ from pruna.logging.logger import pruna_logger
 torch._dynamo.config.cache_size_limit = 128
 
 
-class TorchCompileCompiler(PrunaCompiler):
+class TorchCompile(PrunaAlgorithmBase):
     """
     Implement Torch Compile compilation using torch.compile.
 
@@ -47,7 +47,9 @@ class TorchCompileCompiler(PrunaCompiler):
     """
 
     algorithm_name: str = "torch_compile"
+    group_tags: list[str] = ["compiler"]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
@@ -221,17 +223,6 @@ class TorchCompileCompiler(PrunaCompiler):
             return causal_lm_or_janus_logic(model, smash_config)
 
         return compile_callable(model, smash_config)
-
-    def import_algorithm_packages(self) -> Dict[str, Any]:
-        """
-        Import the algorithm packages.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The algorithm packages.
-        """
-        return dict()
 
 
 def get_model_device(model: Callable[..., Any]) -> torch.device:

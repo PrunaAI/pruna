@@ -25,16 +25,17 @@ from transformers import (
 )
 from transformers.modeling_utils import PreTrainedModel
 
-from pruna.algorithms.batching import PrunaBatcher
-from pruna.algorithms.compilation.c_translate import WhisperWrapper
+from pruna.algorithms.c_translate import WhisperWrapper
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_speech_seq2seq_model, is_transformers_pipeline_with_speech_recognition
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
 
-class WS2TBatcher(PrunaBatcher):
+class WS2T(PrunaAlgorithmBase):
     """
     Implement whisper_s2t processing using the whisper_s2t library.
 
@@ -44,6 +45,8 @@ class WS2TBatcher(PrunaBatcher):
     """
 
     algorithm_name: str = "whisper_s2t"
+    group_tags: list[str] = ["batcher"]
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
     tokenizer_required: bool = True
     processor_required: bool = True

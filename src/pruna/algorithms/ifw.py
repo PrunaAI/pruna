@@ -19,13 +19,14 @@ from ConfigSpace import Constant, OrdinalHyperparameter
 from transformers import AutomaticSpeechRecognitionPipeline, pipeline
 from transformers.utils import is_flash_attn_2_available
 
-from pruna.algorithms.batching import PrunaBatcher
-from pruna.algorithms.compilation.c_translate import WhisperWrapper
+from pruna.algorithms.c_translate import WhisperWrapper
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
-class IFWBatcher(PrunaBatcher):
+class IFW(PrunaAlgorithmBase):
     """
     Implement IFW processing using huggingface transformers.
 
@@ -37,6 +38,8 @@ class IFWBatcher(PrunaBatcher):
     """
 
     algorithm_name: str = "ifw"
+    group_tags: list[str] = ["batcher"]
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/transformers"}
     tokenizer_required: bool = True
     processor_required: bool = True
