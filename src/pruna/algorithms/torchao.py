@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 import torch
 
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
 from pruna.engine.model_checks import (
@@ -67,7 +67,7 @@ EMBEDDING_MODULES: list[str] = [
 ]
 
 
-class TorchaoQuantizer(PrunaQuantizer):
+class Torchao(PrunaAlgorithmBase):
     """
     Implement quantization using torchao.
 
@@ -80,6 +80,7 @@ class TorchaoQuantizer(PrunaQuantizer):
     """
 
     algorithm_name: str = "torchao"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
@@ -106,15 +107,7 @@ class TorchaoQuantizer(PrunaQuantizer):
         return [
             CategoricalHyperparameter(
                 "quant_type",
-                choices=[
-                    "int4dq",
-                    "int4wo",
-                    "int8dq",
-                    "int8wo",
-                    "fp8wo",
-                    "fp8dq",
-                    "fp8dqrow",
-                ],
+                choices=["int4dq", "int4wo", "int8dq", "int8wo", "fp8wo", "fp8dq", "fp8dqrow"],
                 default_value="int8dq",
                 meta=dict(
                     desc=(
@@ -127,12 +120,7 @@ class TorchaoQuantizer(PrunaQuantizer):
             ),
             CategoricalHyperparameter(
                 "excluded_modules",
-                choices=[
-                    "none",
-                    "norm",
-                    "embedding",
-                    "norm+embedding",
-                ],
+                choices=["none", "norm", "embedding", "norm+embedding"],
                 default_value="none",
                 meta=dict(desc="Which types of modules to omit when applying quantization."),
             ),
@@ -168,7 +156,7 @@ class TorchaoQuantizer(PrunaQuantizer):
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Quantize the model.
+        Quantize the model with torchao.
 
         Parameters
         ----------
@@ -252,7 +240,7 @@ class TorchaoQuantizer(PrunaQuantizer):
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
-        Provide a algorithm packages for the algorithm.
+        Import the packages needed for torchao quantization.
 
         Returns
         -------

@@ -15,13 +15,14 @@
 import logging
 from typing import Any, Dict
 
-from pruna.algorithms.compilation import PrunaCompiler
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_comfy_model, is_diffusers_pipeline, is_flux_pipeline
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
-class StableFastCompiler(PrunaCompiler):
+class StableFast(PrunaAlgorithmBase):
     """
     Implement stable_fast compilation using the sfast library.
 
@@ -30,6 +31,8 @@ class StableFastCompiler(PrunaCompiler):
     """
 
     algorithm_name: str = "stable_fast"
+    group_tags: list[str] = ["compiler"]
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
     tokenizer_required: bool = False
     processor_required: bool = False
@@ -37,17 +40,6 @@ class StableFastCompiler(PrunaCompiler):
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(cacher=["deepcache", "fora"], quantizer=["half"])
     required_install: str = "``pip install pruna[stable-fast]``"
-
-    def get_hyperparameters(self) -> list:
-        """
-        Configure all algorithm-specific hyperparameters with ConfigSpace.
-
-        Returns
-        -------
-        list
-            The hyperparameters.
-        """
-        return []
 
     def model_check_fn(self, model: Any) -> bool:
         """

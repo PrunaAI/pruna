@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.caching import PrunaCacher
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_allegro_pipeline,
@@ -28,25 +28,24 @@ from pruna.engine.model_checks import (
     is_mochi_pipeline,
     is_wan_pipeline,
 )
+from pruna.engine.save import SAVE_FUNCTIONS
 
 
-class FasterCacheCacher(PrunaCacher):
+class PAB(PrunaAlgorithmBase):
     """
-    Implement FasterCache.
+    Implement PAB.
 
-    FasterCache is a method that speeds up inference in diffusion transformers by:
-    - Reusing attention states between successive inference steps, due to high similarity between them
-    - Skipping unconditional branch prediction used in classifier-free guidance by revealing redundancies between
-      unconditional and conditional branch outputs for the same timestep, and therefore approximating the unconditional
-      branch output using the conditional branch output
-    This implementation reduces the number of tunable parameters by setting pipeline specific parameters according to
-    https://github.com/huggingface/diffusers/pull/9562.
+    Pyramid Attention Broadcast (PAB) is a method that speeds up inference in diffusion models by systematically skipping
+    attention computations between successive inference steps and reusing cached attention states. This implementation
+    reduces the number of tunable parameters by setting pipeline specific parameters according to https://github.com/huggingface/diffusers/pull/9562.
     """
 
-    algorithm_name: str = "fastercache"
+    algorithm_name: str = "pab"
+    group_tags: list[str] = ["cacher"]
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
-        "GitHub": "https://github.com/Vchitect/FasterCache",
-        "Paper": "https://arxiv.org/abs/2410.19355",
+        "Paper": "https://arxiv.org/abs/2408.12588",
+        "HuggingFace": "https://huggingface.co/docs/diffusers/main/api/cache#pyramid-attention-broadcast",
     }
     tokenizer_required: bool = False
     processor_required: bool = False
@@ -72,7 +71,7 @@ class FasterCacheCacher(PrunaCacher):
                     desc="Interval at which to cache spatial attention blocks - 1 disables caching."
                     "Higher is faster but might degrade quality."
                 ),
-            ),
+            )
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -101,12 +100,12 @@ class FasterCacheCacher(PrunaCacher):
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Apply the fastercache algorithm to the model.
+        Apply the PAB algorithm to the model.
 
         Parameters
         ----------
         model : Any
-            The model to apply the fastercache algorithm to.
+            The model to apply the PAB algorithm to.
         smash_config : SmashConfigPrefixWrapper
             The configuration for the caching.
 
@@ -118,84 +117,63 @@ class FasterCacheCacher(PrunaCacher):
         imported_modules = self.import_algorithm_packages()
         # set default values according to https://huggingface.co/docs/diffusers/en/api/cache
         temporal_attention_block_skip_range: Optional[int] = None
-        spatial_attention_timestep_skip_range: Tuple[int, int] = (-1, 681)
-        temporal_attention_timestep_skip_range: Optional[Tuple[int, int]] = None
-        low_frequency_weight_update_timestep_range: Tuple[int, int] = (99, 901)
-        high_frequency_weight_update_timestep_range: Tuple[int, int] = (-1, 301)
-        unconditional_batch_skip_range: int = 5
-        unconditional_batch_timestep_skip_range: Tuple[int, int] = (-1, 641)
+        cross_attention_block_skip_range: Optional[int] = None
+        spatial_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
+        temporal_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
+        cross_attention_timestep_skip_range: Tuple[int, int] = (100, 800)
         spatial_attention_block_identifiers: Tuple[str, ...] = (
-            "blocks.*attn1",
-            "transformer_blocks.*attn1",
-            "single_transformer_blocks.*attn1",
+            "blocks",
+            "transformer_blocks",
         )
-        temporal_attention_block_identifiers: Tuple[str, ...] = ("temporal_transformer_blocks.*attn1",)
-        attention_weight_callback = lambda _: 0.5  # noqa: E731
-        tensor_format: str = "BFCHW"
-        is_guidance_distilled: bool = False
+        temporal_attention_block_identifiers: Tuple[str, ...] = ("temporal_transformer_blocks",)
+        cross_attention_block_identifiers: Tuple[str, ...] = (
+            "blocks",
+            "transformer_blocks",
+        )
 
         # set configs according to https://github.com/huggingface/diffusers/pull/9562
         if is_allegro_pipeline(model):
-            low_frequency_weight_update_timestep_range = (99, 641)
-            spatial_attention_block_identifiers = ("transformer_blocks",)
+            cross_attention_block_skip_range = 6
+            spatial_attention_timestep_skip_range = (100, 700)
+            cross_attention_block_identifiers = ("transformer_blocks",)
         elif is_cogvideo_pipeline(model):
-            low_frequency_weight_update_timestep_range = (99, 641)
             spatial_attention_block_identifiers = ("transformer_blocks",)
-            attention_weight_callback = lambda _: 0.3  # noqa: E731
         elif is_flux_pipeline(model):
-            spatial_attention_timestep_skip_range = (-1, 961)
+            spatial_attention_timestep_skip_range = (100, 950)
             spatial_attention_block_identifiers = (
                 "transformer_blocks",
                 "single_transformer_blocks",
             )
-            tensor_format = "BCHW"
-            is_guidance_distilled = True
         elif is_hunyuan_pipeline(model):
-            spatial_attention_timestep_skip_range = (99, 941)
             spatial_attention_block_identifiers = (
                 "transformer_blocks",
                 "single_transformer_blocks",
             )
-            tensor_format = "BCFHW"
-            is_guidance_distilled = True
         elif is_latte_pipeline(model):
-            temporal_attention_block_skip_range = 2
-            temporal_attention_timestep_skip_range = (-1, 681)
-            low_frequency_weight_update_timestep_range = (99, 641)
-            spatial_attention_block_identifiers = ("transformer_blocks.*attn1",)
-            temporal_attention_block_identifiers = ("temporal_transformer_blocks",)
-        elif is_mochi_pipeline(model):
-            spatial_attention_timestep_skip_range = (-1, 981)
-            low_frequency_weight_update_timestep_range = (301, 961)
-            high_frequency_weight_update_timestep_range = (-1, 851)
-            unconditional_batch_skip_range = 4
-            unconditional_batch_timestep_skip_range = (-1, 975)
+            temporal_attention_block_skip_range = None
+            cross_attention_block_skip_range = None
+            spatial_attention_timestep_skip_range = (100, 700)
             spatial_attention_block_identifiers = ("transformer_blocks",)
-            attention_weight_callback = lambda _: 0.6  # noqa: E731
+            cross_attention_block_identifiers = ("transformer_blocks",)
+        elif is_mochi_pipeline(model):
+            spatial_attention_timestep_skip_range = (400, 987)
+            spatial_attention_block_identifiers = ("transformer_blocks",)
         elif is_wan_pipeline(model):
             spatial_attention_block_identifiers = ("blocks",)
-            tensor_format = "BCFHW"
-            is_guidance_distilled = True
 
-        fastercache_config = imported_modules["FasterCacheConfig"](
+        pab_config = imported_modules["pab_config"](
             spatial_attention_block_skip_range=smash_config["interval"],
             temporal_attention_block_skip_range=temporal_attention_block_skip_range,
+            cross_attention_block_skip_range=cross_attention_block_skip_range,
             spatial_attention_timestep_skip_range=spatial_attention_timestep_skip_range,
             temporal_attention_timestep_skip_range=temporal_attention_timestep_skip_range,
-            low_frequency_weight_update_timestep_range=low_frequency_weight_update_timestep_range,
-            high_frequency_weight_update_timestep_range=high_frequency_weight_update_timestep_range,
-            alpha_low_frequency=1.1,
-            alpha_high_frequency=1.1,
-            unconditional_batch_skip_range=unconditional_batch_skip_range,
-            unconditional_batch_timestep_skip_range=unconditional_batch_timestep_skip_range,
+            cross_attention_timestep_skip_range=cross_attention_timestep_skip_range,
             spatial_attention_block_identifiers=spatial_attention_block_identifiers,
             temporal_attention_block_identifiers=temporal_attention_block_identifiers,
-            attention_weight_callback=attention_weight_callback,
-            tensor_format=tensor_format,
+            cross_attention_block_identifiers=cross_attention_block_identifiers,
             current_timestep_callback=lambda: model.current_timestep,
-            is_guidance_distilled=is_guidance_distilled,
         )
-        model.transformer.enable_cache(fastercache_config)
+        model.transformer.enable_cache(pab_config)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -207,6 +185,6 @@ class FasterCacheCacher(PrunaCacher):
         Dict[str, Any]
             The algorithm packages.
         """
-        from diffusers import FasterCacheConfig
+        from diffusers import PyramidAttentionBroadcastConfig
 
-        return dict(FasterCacheConfig=FasterCacheConfig)
+        return dict(pab_config=PyramidAttentionBroadcastConfig)

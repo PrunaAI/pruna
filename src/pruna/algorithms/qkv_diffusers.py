@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Dict
+from typing import Any
 
-from pruna.algorithms.factorizing import PrunaFactorizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import has_fused_attention_processor, is_diffusers_model
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import ModelContext
 
 
-class QKVDiffusers(PrunaFactorizer):
+class QKVFusing(PrunaAlgorithmBase):
     """
     Implement QKV factorizing for diffusers models.
 
@@ -30,6 +30,7 @@ class QKVDiffusers(PrunaFactorizer):
     """
 
     algorithm_name: str = "qkv_diffusers"
+    group_tags: list[str] = ["factorizer"]
     references: dict[str, str] = {
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",
@@ -44,17 +45,6 @@ class QKVDiffusers(PrunaFactorizer):
         cacher=["deepcache", "fora"],
         compiler=["torch_compile"],
     )
-
-    def get_hyperparameters(self) -> list:
-        """
-        Configure all algorithm-specific hyperparameters with ConfigSpace.
-
-        Returns
-        -------
-        list
-            The hyperparameters.
-        """
-        return list()
 
     def model_check_fn(self, model: Any) -> bool:
         """
@@ -103,14 +93,3 @@ class QKVDiffusers(PrunaFactorizer):
             mc.update_working_model(working_model)
 
         return mc.get_updated_model()
-
-    def import_algorithm_packages(self) -> Dict[str, Any]:
-        """
-        Provide an algorithm packages for the algorithm.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The algorithm packages.
-        """
-        return dict()
