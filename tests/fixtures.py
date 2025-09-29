@@ -155,7 +155,11 @@ def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashCon
     smash_config = SmashConfig()
     smash_config.add_data("LAION256")
 
-    processor = AutoProcessor.from_pretrained(model_id)
+    model_to_processor_id = {
+        "gsprochette/tiny_janus": "deepseek-community/Janus-Pro-1B",
+    }
+    processor_id = model_to_processor_id.get(model_id, model_id)
+    processor = AutoProcessor.from_pretrained(processor_id)
     smash_config.add_processor(processor)
 
     return model, smash_config
