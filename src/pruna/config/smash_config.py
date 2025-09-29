@@ -30,7 +30,7 @@ from transformers import AutoProcessor, AutoTokenizer
 from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
+from pruna.config.smash_space import SMASH_SPACE
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
 from pruna.engine.utils import set_to_best_available_device
 from pruna.logging.logger import pruna_logger
@@ -79,7 +79,6 @@ class SmashConfig:
         cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
         configuration: Configuration | None = None,
     ) -> None:
-        SMASH_SPACE.gather_algorithm_buffer()
         self._configuration: Configuration = (
             SMASH_SPACE.get_default_configuration() if configuration is None else configuration
         )
