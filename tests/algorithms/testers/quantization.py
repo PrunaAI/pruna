@@ -70,7 +70,7 @@ class TestHQQ(AlgorithmTesterBase):
 class TestHQQJanus(AlgorithmTesterBase):
     """Test the HQQ quantizer."""
 
-    models = ["janus_pro"]
+    models = ["tiny_janus_pro"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = HQQQuantizer
