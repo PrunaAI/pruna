@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
-from pruna.config.smash_space import KERNEL
-from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.algorithms.torch_compile.torch_compile import TorchCompile
 
-
-class PrunaKernel(PrunaAlgorithmBase):
-    """Base class for kernel algorithms."""
-
-    algorithm_group = KERNEL
-    save_fn = SAVE_FUNCTIONS.reapply
+__all__ = ["TorchCompile"]

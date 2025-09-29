@@ -16,12 +16,12 @@ from typing import Any, Dict
 
 from ConfigSpace import CategoricalHyperparameter
 
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 
 
-class LLMCompressorQuantizer(PrunaQuantizer):
+class LLMCompressor(PrunaAlgorithmBase):
     """
     Implement AWQ using llmcompressor.
 
@@ -32,11 +32,13 @@ class LLMCompressorQuantizer(PrunaQuantizer):
     """
 
     algorithm_name: str = "awq"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
+    save_fn: None = None
     tokenizer_required: bool = True
     processor_required: bool = False
-    runs_on: list[str] = ["cuda"]
     dataset_required: bool = True
+    runs_on: list[str] = ["cuda"]
     compatible_algorithms: dict[str, list[str]] = dict()
 
     def get_hyperparameters(self) -> list:
