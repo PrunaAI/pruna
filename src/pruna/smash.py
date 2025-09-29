@@ -24,7 +24,6 @@ from pruna.config.pre_smash_routines import (
     ensure_device_consistency,
     execute_algorithm_pre_smash_hooks,
 )
-from pruna.config.smash_space import ALGORITHM_GROUPS
 from pruna.logging.logger import PrunaLoggerContext, pruna_logger
 from pruna.telemetry import track_usage
 
@@ -56,6 +55,8 @@ def smash(
     PrunaModel
         Smashed model wrapped in a `PrunaModel` object.
     """
+    from pruna.config.smash_space import ALGORITHM_GROUPS
+
     with PrunaLoggerContext(verbose=verbose):
         # check the device consistency of the model and the smash config
         ensure_device_consistency(model, smash_config)
