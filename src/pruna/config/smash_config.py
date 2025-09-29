@@ -20,7 +20,7 @@ import shutil
 import tempfile
 from functools import singledispatchmethod
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Dict, Union
 from warnings import warn
 
 import numpy as np
@@ -73,25 +73,16 @@ class SmashConfig:
 
     def __init__(
         self,
-        max_batch_size: int | None = None,
+        configuration: Dict[str, Any] | Configuration | None = None,
         batch_size: int = 1,
         device: str | torch.device | None = None,
         cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
-        configuration: Configuration | None = None,
     ) -> None:
         self._configuration: Configuration = (
-            SMASH_SPACE.get_default_configuration() if configuration is None else configuration
+            configuration if isinstance(configuration, Configuration) else SMASH_SPACE.get_default_configuration()
         )
         self.config_space: ConfigurationSpace = self._configuration.config_space
-        if max_batch_size is not None:
-            warn(
-                "max_batch_size is deprecated. Please use batch_size instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.batch_size = max_batch_size
-        else:
-            self.batch_size = batch_size
+        self.batch_size = batch_size
         self.device = set_to_best_available_device(device)
         self.device_map = None
 
@@ -102,7 +93,7 @@ class SmashConfig:
 
         self.save_fns: list[str] = []
         self.load_fns: list[str] = []
-        self.reapply_after_load: dict[str, str | None] = dict.fromkeys(ALGORITHM_GROUPS)
+        self.reapply_after_load: dict[str, str | None] = {}
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
@@ -115,6 +106,39 @@ class SmashConfig:
 
         # ensure the cache directory is deleted on program exit
         atexit.register(self.cleanup_cache_dir)
+
+        # if configuration was provided as a dictionary, add it as if the user called config.add()
+        if isinstance(configuration, dict):
+            self.add(configuration)
+
+    @classmethod
+    def from_dict(
+        cls,
+        configuration: Dict[str, Any],
+        batch_size: int = 1,
+        device: str | torch.device | None = None,
+        cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
+    ) -> SmashConfig:
+        """
+        Create a SmashConfig from a dictionary.
+
+        Parameters
+        ----------
+        configuration : Dict[str, Any]
+            The dictionary to create the SmashConfig from.
+        batch_size : int, optional
+            The batch size to use for the SmashConfig. Default is 1.
+        device : str | torch.device | None, optional
+            The device to use for the SmashConfig. Default is None.
+        cache_dir_prefix : str | Path, optional
+            The prefix for the cache directory. Default is DEFAULT_CACHE_DIR.
+
+        Returns
+        -------
+        SmashConfig
+            The SmashConfig object instantiated from the dictionary.
+        """
+        return cls(configuration=configuration, batch_size=batch_size, device=device, cache_dir_prefix=cache_dir_prefix)
 
     def __del__(self) -> None:
         """Delete the SmashConfig object."""
@@ -183,33 +207,6 @@ class SmashConfig:
                 continue
 
             setattr(self, name, config_dict.pop(name))
-
-        # Normalize algorithm groups in config dict
-        current_groups = set(config_dict.keys())
-        expected_groups = set(ALGORITHM_GROUPS)
-
-        # Get all applied algorithms and their arguments from the expected groups
-        applied_algorithms = set()
-        for group in expected_groups:
-            if group in config_dict and config_dict[group] is not None:
-                applied_algorithms.add(config_dict[group])
-        applied_algorithm_args = {
-            key for key in config_dict if any(key.startswith(f"{alg}_") for alg in applied_algorithms)
-        }
-
-        # Remove extra groups with warning if they have values
-        for group in current_groups - expected_groups - applied_algorithm_args:
-            if config_dict[group] is not None:
-                pruna_logger.warning(
-                    f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
-                    "This is likely due to a version difference between the saved model and the current library.\n"
-                    "You can use an older version of Pruna to load the model or reconfigure the model."
-                )
-            del config_dict[group]
-
-        # Add missing groups with info message
-        for group in expected_groups - current_groups:
-            config_dict[group] = None
 
         self._configuration = Configuration(SMASH_SPACE, values=config_dict)
 
@@ -281,10 +278,7 @@ class SmashConfig:
         if discarded_args:
             pruna_logger.info(f"Discarded arguments: {discarded_args}")
 
-        # first load the algorithm settings
-        # otherwise fine-grained hyperparameters will not be active yet and we can not set them
-        # lambda returns False for keys in ALGORITHM_GROUPS (and False sorts before True)
-        for k, v in sorted(filtered_config_dict.items(), key=lambda item: item[0] not in ALGORITHM_GROUPS):
+        for k, v in filtered_config_dict.items():
             self[k] = v
 
     def flush_configuration(self) -> None:
@@ -304,7 +298,7 @@ class SmashConfig:
         # flush also saving / load functionality associated with a specific configuration
         self.save_fns = []
         self.load_fns = []
-        self.reapply_after_load = dict.fromkeys(ALGORITHM_GROUPS)
+        self.reapply_after_load = {}
 
         # reset potentially previously used cache directory
         self.reset_cache_dir()
@@ -522,6 +516,7 @@ class SmashConfig:
         >>> config["quantizer"]
         "gptq"
         """
+        # TODO: update docstring
         if name in ADDITIONAL_ARGS:
             return getattr(self, name)
         else:
@@ -553,26 +548,42 @@ class SmashConfig:
         >>> config["quantizer"]
         "gptq"
         """
-        deprecated_hyperparameters = [
-            "whisper_s2t_batch_size",
-            "ifw_batch_size",
-            "higgs_example_batch_size",
-            "diffusers_higgs_example_batch_size",
-            "torch_compile_batch_size",
-        ]
-        if name in deprecated_hyperparameters:
-            warn(
-                f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.batch_size = value
-            return None
-
+        # TODO: update docstring
         if name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
         else:
-            return self._configuration.__setitem__(name, value)
+            # support old way of activating algorithms
+            self.add(value)
+
+    def add(self, request: Any) -> None:
+        """
+        Add a value to the SmashConfig.
+
+        Parameters
+        ----------
+        request : Any
+            The value to add to the SmashConfig.
+        """
+        # TODO: add example to docstring
+        # request wants to activate a single algorithm
+        if isinstance(request, str):
+            self._configuration[request] = True
+        if isinstance(request, list):
+            if not all(isinstance(item, str) for item in request):
+                raise ValueError("Request must be a list of algorithm names.")
+            for item in request:
+                self._configuration[item] = True
+        if isinstance(request, dict):
+            if all(isinstance(item, dict) for item in request.values()):
+                for key, value in request.items():
+                    for k, v in value.items():
+                        if not k.startswith(key):
+                            k = f"{key}_{k}"
+                        self._configuration[k] = v
+            else:
+                for key, value in request.items():
+                    self._configuration[key] = value
+        return
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
         if attr == "_data":
@@ -585,6 +596,7 @@ class SmashConfig:
         return convert_numpy_types(return_value)
 
     def __str__(self) -> str:  # noqa: D105
+        # TODO: print only activated algorithms
         values = dict(self._configuration)
         header = "SmashConfig("
         lines = [
@@ -630,7 +642,8 @@ class SmashConfigPrefixWrapper:
         Any
             The value from the config.
         """
-        if key in ADDITIONAL_ARGS + ALGORITHM_GROUPS:
+        parent_hyperparameters = self._base_config.get_parent_hyperparameters()
+        if key in ADDITIONAL_ARGS + parent_hyperparameters:
             return self._base_config[key]
         actual_key = self._prefix + key
         return self._base_config[actual_key]
