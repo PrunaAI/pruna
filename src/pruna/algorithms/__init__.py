@@ -14,30 +14,60 @@
 
 import importlib
 import inspect
+import logging
 import pkgutil
-from pathlib import Path
 from typing import Any, Dict
 
 import pruna.algorithms as algorithms
-from pruna.config.smash_space import ALGORITHM_GROUPS
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 
-# PRUNA_METHODS holds instances of all available methods for each algorithm group
-PRUNA_ALGORITHMS: Dict[str, Dict[str, Any]] = dict()
+PRUNA_ALGORITHMS = {}
 
-for algorithm_group in ALGORITHM_GROUPS:
-    PRUNA_ALGORITHMS[algorithm_group] = dict()
 
-# iterate through all coarse-grained algorithm types
-for finder, algorithm_types, ispkg in pkgutil.iter_modules(algorithms.__path__):
-    if ispkg:
-        # iterate through all algorithms within an algorithm type
-        for _finder, sub_name, _ispkg in pkgutil.iter_modules([str(Path(algorithms.__path__[0]) / algorithm_types)]):
-            module = importlib.import_module(f"{algorithms.__name__}.{algorithm_types}.{sub_name}")
-            # discover the algorithm class in the file
-            for obj_name, obj in inspect.getmembers(module, inspect.isclass):
-                # Check whether the algorithm is a grandchild of PrunaAlgo in order to skip the algorithm base classes
-                class_names = [cls.__name__ for cls in obj.__mro__]
-                # usually algorithms are grandchildren of PrunaAlgo, except for cases like ctranslate/cgenerate/cwhisper
-                if "PrunaAlgorithmBase" in class_names and class_names.index("PrunaAlgorithmBase") != 1:
-                    # instantiation of the algorithm makes it ready to call and registers HPs
-                    PRUNA_ALGORITHMS[obj.algorithm_group][obj.algorithm_name] = obj()
+def discover_first_grade_algorithms(algorithms_pkg: Any, algorithm_collection: Dict[str, Any]) -> None:
+    """
+    Discover every package/module under `algorithms_pkg` by walking the package.
+
+    Parameters
+    ----------
+    algorithms_pkg : Any
+        The package to discover algorithms in.
+
+    Returns
+    -------
+    None
+        This function does not return anything.
+    """
+    prefix = algorithms_pkg.__name__ + "."
+    for _finder, modname, _ispkg in pkgutil.walk_packages(algorithms_pkg.__path__, prefix):
+        try:
+            module = importlib.import_module(modname)
+        except Exception as e:
+            logging.warning("Skipping %s (import error): %s", modname, e)
+            continue
+
+        # Inspect classes defined in this module (avoid classes only re-exported here)
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            if obj.__module__ != module.__name__:
+                continue
+
+            # Must be a subclass (but not the base itself)
+            if not issubclass(obj, PrunaAlgorithmBase) or obj is PrunaAlgorithmBase:
+                continue
+            # Must be a **direct** child (first-grade)
+            if PrunaAlgorithmBase not in obj.__bases__:
+                continue
+
+            # Skip abstract bases
+            if inspect.isabstract(obj):
+                continue
+
+            # Instantiate & register with the Smash Configuration Space
+            try:
+                instance = obj()
+                algorithm_collection[instance.algorithm_name] = instance
+            except Exception as e:
+                logging.warning("Failed to instantiate %s from %s: %s", obj.__name__, modname, e)
+
+
+discover_first_grade_algorithms(algorithms, PRUNA_ALGORITHMS)

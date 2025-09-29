@@ -20,7 +20,7 @@ import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
 
 from pruna import SmashConfig
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
@@ -30,7 +30,7 @@ from pruna.engine.utils import get_nn_modules
 from pruna.logging.logger import pruna_logger
 
 
-class QuantoQuantizer(PrunaQuantizer):
+class Quanto(PrunaAlgorithmBase):
     """
     Implement Quanto using huggingface optimum-quanto.
 
@@ -41,6 +41,7 @@ class QuantoQuantizer(PrunaQuantizer):
     """
 
     algorithm_name: str = "quanto"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False

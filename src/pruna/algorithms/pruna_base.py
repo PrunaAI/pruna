@@ -35,23 +35,7 @@ class PrunaAlgorithmBase(ABC):
 
     def __init__(self) -> None:
         self.hyperparameters = self.get_hyperparameters()
-
-        # register algorithm in its config group
-        SMASH_SPACE.register_algorithm(self.algorithm_group, self.algorithm_name)
-
-        # register hyperparameters conditional on the algorithm
-        hyperparameters = self.get_hyperparameters()
-        SMASH_SPACE.register_algorithm_arguments(self.algorithm_name, hyperparameters, self.algorithm_group)
-
-        # register allowed combinations
-        SMASH_SPACE.register_allowed_combinations(self.algorithm_name, self.compatible_algorithms)
-
-        # register argument requirements
-        SMASH_SPACE.model_requirements[self.algorithm_name] = dict(
-            dataset_required=self.dataset_required,
-            tokenizer_required=self.tokenizer_required,
-            processor_required=self.processor_required,
-        )
+        SMASH_SPACE.register_algorithm(self.algorithm_name, self.hyperparameters)
         assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
     def __init_subclass__(cls, **kwargs):
@@ -136,8 +120,8 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     @abstractmethod
-    def algorithm_group(self) -> str:
-        """Return the config group (i.e. "quantizer", "pruner" or "compiler") of the algorithm."""
+    def group_tags(self) -> list[str]:
+        """Subclasses need to provide a list of group tags for the algorithm."""
         pass
 
     @abstractmethod

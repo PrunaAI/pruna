@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import inspect
-from typing import Any, Dict
+from typing import Any
 
 import torch
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.quantization import PrunaQuantizer
+from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 
 
-class TorchDynamicQuantizer(PrunaQuantizer):
+class TorchDynamic(PrunaAlgorithmBase):
     """
     Implement dynamic quantization using torch.
 
@@ -33,6 +33,7 @@ class TorchDynamicQuantizer(PrunaQuantizer):
     """
 
     algorithm_name = "torch_dynamic"
+    group_tags: list[str] = ["quantizer"]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
@@ -42,14 +43,6 @@ class TorchDynamicQuantizer(PrunaQuantizer):
     compatible_algorithms: dict[str, list[str]] = dict()
 
     def get_hyperparameters(self) -> list:
-        """
-        Configure all algorithm-specific hyperparameters with ConfigSpace.
-
-        Returns
-        -------
-        list
-            The hyperparameters.
-        """
         return [
             OrdinalHyperparameter(
                 "weight_bits",
@@ -60,40 +53,12 @@ class TorchDynamicQuantizer(PrunaQuantizer):
         ]
 
     def model_check_fn(self, model: Any) -> bool:
-        """
-        Check if the model is supported.
-
-        Parameters
-        ----------
-        model : Any
-            The model to check.
-
-        Returns
-        -------
-        bool
-            True if the model is supported, False otherwise.
-        """
         if isinstance(model, torch.nn.Module):
             return True
 
         return any(isinstance(attr_value, torch.nn.Module) for _, attr_value in inspect.getmembers(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
-        """
-        Quantize the model with torch dynamic quantization.
-
-        Parameters
-        ----------
-        model : Any
-            The model to quantize.
-        smash_config : SmashConfigPrefixWrapper
-            The configuration for the quantization.
-
-        Returns
-        -------
-        Any
-            The quantized model.
-        """
         if isinstance(model, torch.nn.Module):
             device = next(model.parameters()).device.type
             modules_to_quantize: set[type[torch.nn.Module]] = set()
@@ -101,12 +66,7 @@ class TorchDynamicQuantizer(PrunaQuantizer):
                 # Linear layers are not serializable by PyTorch when using CUDA
                 modules_to_quantize = {torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d}
             else:
-                modules_to_quantize = {
-                    torch.nn.Conv1d,
-                    torch.nn.Conv2d,
-                    torch.nn.Conv3d,
-                    torch.nn.Linear,
-                }
+                modules_to_quantize = {torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d, torch.nn.Linear}
 
             quantized_model = torch.quantization.quantize_dynamic(
                 model,
@@ -121,14 +81,3 @@ class TorchDynamicQuantizer(PrunaQuantizer):
                     quantized_attribute = TorchDynamicQuantizer()._apply(attribute_value, smash_config)
                     setattr(model, attribute_name, quantized_attribute)
             return model
-
-    def import_algorithm_packages(self) -> Dict[str, Any]:
-        """
-        Provide a algorithm packages for the algorithm.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The algorithm packages.
-        """
-        return dict()
