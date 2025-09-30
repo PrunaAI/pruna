@@ -464,22 +464,6 @@ class SmashConfig:
             raise
         self._target_module = target_module
 
-    def get_tokenizer_name(self) -> str | None:
-        """
-        Get a tokenizer object from a tokenizer name.
-
-        Returns
-        -------
-        str | None
-            The name of the tokenizer to use.
-        """
-        if self.tokenizer is None:
-            return None
-        if hasattr(self.tokenizer, "tokenizer"):
-            return self.tokenizer.tokenizer.name_or_path
-        else:
-            return self.tokenizer.name_or_path
-
     def lock_batch_size(self) -> None:
         """Lock the batch size in the SmashConfig."""
         self.__locked_batch_size = True
