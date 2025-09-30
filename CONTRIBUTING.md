@@ -47,12 +47,22 @@ git switch -c feat/new-feature
 
 ### 2. Installation
 
-You can now set up a virtual environment of your choice and install the dependencies by running the following command:
+You have two options for installing dependencies:
+
+#### Option A: Using uv with its own virtual environment (recommended)
+
+```bash
+uv sync --extra dev
+```
+This creates a virtual environment in `.venv/` and installs all dependencies there, including pruna itself in editable mode. **Important:** This does NOT install into your current conda environment! You’ll need to use `uv run` for all commands.
+
+#### Option B: Installing into your current environment (conda/pip)
+
+If you want to install directly into your current conda environment or use pip:
 
 ```bash
 pip install -e .
 pip install -e '.[dev]'
-pip install -e '.[tests]'
 ```
 
 You can then also install the pre-commit hooks with:
@@ -78,17 +88,33 @@ Make sure to develop your contribution in a way that is well documented, concise
 
 We have a comprehensive test suite that is designed to catch potential issues before they are merged into Pruna. When you make a contribution, it is highly recommended to not only run the existing tests but also to add new tests that cover your contribution.
 
-You can run the tests by running the following command:
+You can run the tests depending on which installation option you chose:
+
+#### If you used Option A (uv):
+
+```bash
+uv run pytest
+```
+
+For specific test markers:
+
+```bash
+uv run pytest -m "cpu and not slow"
+```
+
+#### If you used Option B (pip/conda):
 
 ```bash
 pytest
 ```
 
-If you want to run only the tests with a specific marker, e.g. fast CPU tests, you can do so by running:
+For specific test markers:
 
 ```bash
 pytest -m "cpu and not slow"
 ```
+
+Note: `uv run` automatically uses uv’s virtual environment in `.venv/`, not your conda environment.
 
 ### 5. Create a Pull Request
 
