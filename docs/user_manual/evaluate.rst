@@ -512,24 +512,6 @@ Let's see how this works in code.
             # Evaluate smashed model (compared against base model)
             smashed_results = eval_agent.evaluate(smashed_pipe)
             print(smashed_results)
-            
-**dino_score**
------------------
-
-- **Description**: Measures the similarity between generated and reference images using DINO ViT-S/16 embeddings.
-- **Type**: Stateful metric
-- **Values**: Mean cosine similarity (float)
-- **Usage**:
-  
-  .. code-block:: python
-
-     from pruna.evaluation.metrics import DinoScore
-
-     metric = DinoScore(device="cuda")
-     metric.update(generated_images, reference_images)
-     result = metric.compute()
-     print(result["value"])  # Mean cosine similarity
-
 
 EvaluationAgent Initialization Options
 --------------------------------------
