@@ -68,7 +68,7 @@ You have two options for installing dependencies:
 
 .. code-block:: bash
 
-    uv sync --extra dev --extra stable-fast --extra gptq
+    uv sync --extra dev
 
 This creates a virtual environment in ``.venv/`` and installs all dependencies there, including pruna itself in editable mode. **Important**: This does NOT install into your current conda environment! You'll need to use ``uv run`` for all commands.
 
@@ -80,7 +80,6 @@ If you want to install directly into your current conda environment or use pip:
 
     pip install -e .
     pip install -e .[dev]
-    pip install -e .[tests]
 
 This installs dependencies directly in your current environment.
 
