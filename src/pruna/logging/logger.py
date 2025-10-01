@@ -151,14 +151,16 @@ def set_logging_level(logger: logging.Logger, level: str | None = None) -> None:
         The logger to configure.
     level : str, optional
         The logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-        If None, read from PRUNA_LOG_LEVEL environment variable.
+        If None, read from the PRUNA_LOG_LEVEL environment variable.
     """
     if level is None:
         level = os.getenv("PRUNA_LOG_LEVEL", "INFO")
 
     level = level.upper()
-    log_level = _LOG_LEVELS.get(level, logging.INFO)
-    logger.setLevel(log_level)
+    if level not in _LOG_LEVELS:
+        raise ValueError(f"Invalid logging level: {level}. Must be one of {list(_LOG_LEVELS.keys())}")
+
+    logger.setLevel(_LOG_LEVELS[level])
 
 
 def setup_pruna_logger() -> logging.Logger:
