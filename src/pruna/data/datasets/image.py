@@ -81,3 +81,26 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])  # type: ignore[misc]
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     return train_ds, val_ds, test_ds  # type: ignore[return-value]
+
+
+def setup_tiny_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the Tiny CIFAR-10 dataset (< 1,000 samples).
+
+    License: unspecified
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The Tiny CIFAR-10 dataset.
+    """
+    train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
+    tiny_train = train_ds.select(range(600))
+    tiny_test = test_ds.select(range(200))
+    train_ds, val_ds = split_train_into_train_val(tiny_train, seed)
+    return train_ds, val_ds, tiny_test

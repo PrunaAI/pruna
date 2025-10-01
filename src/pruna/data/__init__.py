@@ -23,6 +23,7 @@ from pruna.data.datasets.image import (
     setup_cifar10_dataset,
     setup_imagenet_dataset,
     setup_mnist_dataset,
+    setup_tiny_cifar10_dataset,
 )
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
@@ -77,6 +78,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         "image_classification_collate",
         {"img_size": 32},
     ),
+    "TinyCIFAR10": (setup_tiny_cifar10_dataset, "image_classification_collate", {"img_size": 32}),
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
