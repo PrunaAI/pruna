@@ -132,31 +132,6 @@ class CustomFormatter(logging.Formatter):
             return log_message
 
 
-def setup_pruna_logger() -> logging.Logger:
-    """
-    Set up the pruna_logger with a custom formatter that adds colors based on log level.
-
-    Returns
-    -------
-    logging.Logger
-        The pruna_logger.
-    """
-    pruna_logger = logging.getLogger("pruna_logger")
-    set_logging_level()
-
-    if not pruna_logger.handlers:
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(CustomFormatter("%(levelname)s - %(message)s"))
-        pruna_logger.addHandler(console_handler)
-
-    # avoid duplicate logging messages
-    pruna_logger.propagate = False
-
-    return pruna_logger
-
-
-pruna_logger = setup_pruna_logger()
-
 _LOG_LEVELS = {
     "DEBUG": logging.DEBUG,
     "INFO": logging.INFO,
@@ -166,21 +141,45 @@ _LOG_LEVELS = {
 }
 
 
-def set_logging_level(level: str | None = None) -> None:
+def set_logging_level(logger: logging.Logger, level: str | None = None) -> None:
     """
-    Set the logging level for the global pruna_logger.
+    Set the logging level for the given logger.
 
     Parameters
     ----------
+    logger : logging.Logger
+        The logger to configure.
     level : str, optional
         The logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-        If None, tries to read from the PRUNA_LOG_LEVEL environment variable.
+        If None, read from PRUNA_LOG_LEVEL environment variable.
     """
     if level is None:
         level = os.getenv("PRUNA_LOG_LEVEL", "INFO")
 
     level = level.upper()
-    if level not in _LOG_LEVELS:
-        raise ValueError(f"Invalid logging level: {level}. Must be one of {list(_LOG_LEVELS.keys())}")
+    log_level = _LOG_LEVELS.get(level, logging.INFO)
+    logger.setLevel(log_level)
 
-    pruna_logger.setLevel(_LOG_LEVELS[level])
+
+def setup_pruna_logger() -> logging.Logger:
+    """
+    Set up the pruna_logger with a custom formatter that adds colors based on log level.
+
+    Respects PRUNA_LOG_LEVEL environment variable.
+    """
+    pruna_logger = logging.getLogger("pruna_logger")
+
+    if not pruna_logger.handlers:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(CustomFormatter("%(levelname)s - %(message)s"))
+        pruna_logger.addHandler(console_handler)
+
+    # avoid duplicate logging messages
+    pruna_logger.propagate = False
+
+    set_logging_level(pruna_logger)
+
+    return pruna_logger
+
+
+pruna_logger = setup_pruna_logger()
