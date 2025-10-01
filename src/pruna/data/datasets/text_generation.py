@@ -205,13 +205,12 @@ def setup_tiny_imdb_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     """
     full_ds = load_dataset("stanfordnlp/imdb")
 
-    train_ds_full = full_ds["train"].select(range(1000))
-    test_ds = full_ds["test"].select(range(1000))
+    full_train_subset = full_ds["train"].select(range(1000))
 
-    train_split = int(0.8 * len(train_ds_full))
-    train_ds = train_ds_full.select(range(train_split))
-    val_ds = train_ds_full.select(range(train_split, len(train_ds_full)))
+    train_ds = full_train_subset.select(range(0, 800))
+    val_ds = full_train_subset.select(range(800, 1000))
 
+    test_ds = full_ds["test"].select(range(200))
     if len(test_ds) == 0:
         test_ds = copy.deepcopy(val_ds)
 
