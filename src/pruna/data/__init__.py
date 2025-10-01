@@ -36,6 +36,7 @@ from pruna.data.datasets.text_generation import (
     setup_pubchem_dataset,
     setup_smolsmoltalk_dataset,
     setup_smoltalk_dataset,
+    setup_tiny_imdb_dataset,
     setup_wikitext_dataset,
 )
 from pruna.data.datasets.text_to_image import (
@@ -64,4 +65,5 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
 }
