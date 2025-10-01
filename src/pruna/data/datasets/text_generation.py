@@ -22,7 +22,7 @@ from pruna.data.utils import split_train_into_train_val, split_train_into_train_
 from pruna.logging.logger import pruna_logger
 
 
-def setup_wikitext_dataset() -> List[Dataset]:
+def setup_wikitext_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the WikiText dataset.
 
@@ -33,7 +33,41 @@ def setup_wikitext_dataset() -> List[Dataset]:
     List[Dataset]
         The WikiText dataset.
     """
-    return load_dataset("mikasenghaas/wikitext-2", split=["train", "validation", "test"])
+    train_dataset, val_dataset, test_dataset = load_dataset(
+        path="mikasenghaas/wikitext-2",
+        split=["train", "validation", "test"]
+    )
+    return train_dataset, val_dataset, test_dataset
+
+
+def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the TinyWikiText dataset.
+
+    License: unspecified, original license Creative Commons Attribution-ShareAlike License (CC BY-SA).
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use (default 42).
+    num_rows : int
+        The total number of rows in the tiny dataset (default 960).
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The TinyWikiText dataset.
+    """
+    assert num_rows < 1000  # assert the given total number of rows for the tiny wikitext dataset is below 1000
+
+    # load the 'mikasenghaas/wikitext-2' dataset with a total of 21,580 rows using the setup_wikitext_dataset() function
+    train_dataset, val_dataset, test_dataset = setup_wikitext_dataset()
+
+    # randomly select from the wikitext dataset a given total number of rows below 1000, N, split between train/val/test
+    train_dataset_tiny = train_dataset.shuffle(seed=seed).select(range(int(num_rows * 0.8)))  # train = N * 0.8
+    val_dataset_tiny = val_dataset.shuffle(seed=seed).select(range(int(num_rows * 0.1)))  # val = N * 0.1
+    test_dataset_tiny = test_dataset.shuffle(seed=seed).select(range(int(num_rows * 0.1)))  # test = N * 0.1
+    return train_dataset_tiny, val_dataset_tiny, test_dataset_tiny
 
 
 def setup_smoltalk_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:

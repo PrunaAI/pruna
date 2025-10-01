@@ -30,6 +30,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         ("ImageNet", dict(img_size=512)),
         pytest.param("MNIST", dict(img_size=512), marks=pytest.mark.slow),
         ("WikiText", dict(tokenizer=bert_tokenizer)),
+        pytest.param("TinyWikiText", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("SmolTalk", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("SmolSmolTalk", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("PubChem", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
