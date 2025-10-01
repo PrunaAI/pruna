@@ -2,8 +2,7 @@ from typing import Any
 import logging
 import pytest
 
-from pruna.logging import pruna_logger, set_logging_level
-
+from pruna.logging.logger import pruna_logger, set_logging_level
 
 @pytest.mark.cpu
 @pytest.mark.parametrize(
