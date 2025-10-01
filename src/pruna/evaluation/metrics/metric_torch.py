@@ -123,34 +123,18 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
     metric.update(preds)
 
 
-def ssim_update(metric: StructuralSimilarityIndexMeasure, preds: Any, target: Any) -> None:
+def ssim_update(
+        metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure,
+        preds: Any,
+        target: Any
+) -> None:
     """
-    Update handler for SSIM metric.
+    Update handler for SSIM or MS-SSIM metric.
 
     Parameters
     ----------
-    metric : StructuralSimilarityIndexMeasure instance
-        The SSIM metric instance.
-    preds : Any
-        The generated images tensor.
-    target : Any
-        The ground truth images tensor.
-    """
-    if preds.dtype != torch.float32:
-        preds = preds.float()
-    if target.dtype != torch.float32:
-        target = target.float()
-    metric.update(preds, target)
-
-
-def msssim_update(metric: MultiScaleStructuralSimilarityIndexMeasure, preds: Any, target: Any) -> None:
-    """
-    Update handler for MS-SSIM metric.
-
-    Parameters
-    ----------
-    metric : MultiScaleStructuralSimilarityIndexMeasure instance
-        The MS-SSIM metric instance.
+    metric : StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure instance
+        The SSIM or MS-SSIM metric instance.
     preds : Any
         The generated images tensor.
     target : Any
@@ -194,7 +178,7 @@ class TorchMetrics(Enum):
     recall = (partial(Recall), None, "y_gt")
     psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
     ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
-    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), msssim_update, "pairwise_y_gt")
+    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
     arniqa = (partial(ARNIQA), arniqa_update, "y")
     clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
