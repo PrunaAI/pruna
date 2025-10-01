@@ -58,15 +58,20 @@ def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Da
     Tuple[Dataset, Dataset, Dataset]
         The TinyWikiText dataset.
     """
-    assert 10 <= num_rows < 1000  # assert the given total number of rows for the tiny wikitext dataset is below 1000
+    assert 10 <= num_rows < 1000, 'the total number of rows for the tiny wikitext dataset must be below 1000'
 
     # load the 'mikasenghaas/wikitext-2' dataset with a total of 21,580 rows using the setup_wikitext_dataset() function
-    train_dataset, val_dataset, test_dataset = setup_wikitext_dataset()
+    train_ds, val_ds, test_ds = setup_wikitext_dataset()
 
-    # randomly select from the wikitext dataset a given total number of rows below 1000, N, split between train/val/test
-    train_dataset_tiny = train_dataset.shuffle(seed=seed).select(range(int(num_rows * 0.8)))  # train = N * 0.8
-    val_dataset_tiny = val_dataset.shuffle(seed=seed).select(range(int(num_rows * 0.1)))  # val = N * 0.1
-    test_dataset_tiny = test_dataset.shuffle(seed=seed).select(range(int(num_rows * 0.1)))  # test = N * 0.1
+    # assert the wikitext dataset train/val/test splits each have enough rows for reducing to .8/.1/.1, respectively
+    assert len(train_ds) >= int(num_rows * 0.8), f'wikitext cannot be reduced to {num_rows} rows, train split too small'
+    assert len(val_ds) >= int(num_rows * 0.1), f'wikitext cannot be reduced to {num_rows} rows, val split too small'
+    assert len(test_ds) >= int(num_rows * 0.1), f'wikitext cannot be reduced to {num_rows} rows, test split too small'
+
+    # randomly select from the wikitext dataset a total number of rows below 1000 split .8/.1/.1 between train/val/test
+    train_dataset_tiny = train_ds.shuffle(seed=seed).select(range(int(num_rows * 0.8)))
+    val_dataset_tiny = val_ds.shuffle(seed=seed).select(range(int(num_rows * 0.1)))
+    test_dataset_tiny = test_ds.shuffle(seed=seed).select(range(int(num_rows * 0.1)))
     return train_dataset_tiny, val_dataset_tiny, test_dataset_tiny
 
 
