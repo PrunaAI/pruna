@@ -58,7 +58,7 @@ def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Da
     Tuple[Dataset, Dataset, Dataset]
         The TinyWikiText dataset.
     """
-    assert num_rows < 1000  # assert the given total number of rows for the tiny wikitext dataset is below 1000
+    assert 10 <= num_rows < 1000  # assert the given total number of rows for the tiny wikitext dataset is below 1000
 
     # load the 'mikasenghaas/wikitext-2' dataset with a total of 21,580 rows using the setup_wikitext_dataset() function
     train_dataset, val_dataset, test_dataset = setup_wikitext_dataset()
