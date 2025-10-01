@@ -1,8 +1,10 @@
 from typing import Any
 import logging
 import pytest
+import os
 
 from pruna.logging.logger import pruna_logger, set_logging_level
+
 
 @pytest.mark.cpu
 @pytest.mark.parametrize(
@@ -17,7 +19,7 @@ from pruna.logging.logger import pruna_logger, set_logging_level
 )
 def test_set_logging_level_programmatic(level: str, expected: int) -> None:
     """Test setting the pruna_logger level programmatically."""
-    set_logging_level(level)
+    set_logging_level(pruna_logger, level)
     assert pruna_logger.level == expected
 
 
@@ -32,7 +34,7 @@ def test_set_logging_level_programmatic(level: str, expected: int) -> None:
 def test_set_logging_level_env(monkeypatch: Any, env_level: str, expected: int) -> None:
     """Test setting the pruna_logger level via environment variable."""
     monkeypatch.setenv("PRUNA_LOG_LEVEL", env_level)
-    set_logging_level()
+    set_logging_level(pruna_logger)
     assert pruna_logger.level == expected
 
 
@@ -40,4 +42,4 @@ def test_set_logging_level_env(monkeypatch: Any, env_level: str, expected: int) 
 def test_invalid_logging_level() -> None:
     """Test that invalid logging levels raise ValueError."""
     with pytest.raises(ValueError):
-        set_logging_level("INVALID_LEVEL")
+        set_logging_level(pruna_logger, "INVALID_LEVEL")
