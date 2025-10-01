@@ -142,7 +142,7 @@ def setup_pruna_logger() -> logging.Logger:
         The pruna_logger.
     """
     pruna_logger = logging.getLogger("pruna_logger")
-    pruna_logger.setLevel(logging.INFO)
+    set_logging_level()
 
     if not pruna_logger.handlers:
         console_handler = logging.StreamHandler()
