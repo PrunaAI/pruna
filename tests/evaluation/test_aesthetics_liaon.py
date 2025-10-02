@@ -37,8 +37,8 @@ def test_metric_aesthetic_laion_ipynb_sample() -> None:
     """
     Test the aesthetic_laion metric with an image taken from
     https://github.com/LAION-AI/aesthetic-predictor/blob/main/asthetics_predictor.ipynb
-    Result in the original notebook is 4.0330. If you rerun it, you will get 4.4425.
-    Huggingface model, however, gets 5.049.
+    The result in the original notebook is 4.0330; if you rerun it, you will get 4.4425.
+    The Hugging Face model, however, gives 5.049.
     """
     metric = AestheticLAION(device="cpu")
     response = requests.get("https://thumbs.dreamstime.com/b/lovely-cat-as-domestic-animal-view-pictures-182393057.jpg")
