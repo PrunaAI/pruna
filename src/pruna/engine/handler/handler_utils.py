@@ -17,11 +17,14 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
+from pruna.config.smash_config import SmashConfig
+from pruna.engine.handler.handler_autoregressive import AutoregressiveHandler
 from pruna.engine.handler.handler_diffuser import DiffuserHandler
 from pruna.engine.handler.handler_inference import InferenceHandler
 from pruna.engine.handler.handler_pipeline import PipelineHandler
 from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.handler.handler_transformer import TransformerHandler
+from pruna.engine.model_checks import is_janus_llamagen_ar
 from pruna.logging.logger import pruna_logger
 
 HANDLER_EXCEPTIONS: dict[type[InferenceHandler], list[str]] = {
@@ -30,7 +33,7 @@ HANDLER_EXCEPTIONS: dict[type[InferenceHandler], list[str]] = {
 }
 
 
-def register_inference_handler(model: Any) -> InferenceHandler:
+def register_inference_handler(model: Any, smash_config: SmashConfig) -> InferenceHandler:
     """
     Register an inference handler for the model. The handler is chosen based on the model type.
 
@@ -51,12 +54,16 @@ def register_inference_handler(model: Any) -> InferenceHandler:
 
     model_module = model._orig_mod.__module__ if hasattr(model, "_orig_mod") else model.__module__
 
+    # check Janus first to avoid routing it to regular transformer handler
+    if is_janus_llamagen_ar(model):
+        return AutoregressiveHandler(model, smash_config)
+
     # Prefer diffusers handler first to avoid routing diffusers pipelines to generic pipeline handler
-    if "diffusers" in model_module:
+    elif "diffusers" in model_module:
         return DiffuserHandler(call_signature=inspect.signature(model.__call__))
 
     # Transformers models and pipelines
-    if "transformers" in model_module and "Pipeline" in type(model).__name__:
+    elif "transformers" in model_module and "Pipeline" in type(model).__name__:
         # Specific check for text generation pipelines
         if "TextGeneration" in type(model).__name__:
             return PipelineHandler(pipeline=model)

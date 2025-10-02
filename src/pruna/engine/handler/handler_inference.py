@@ -27,6 +27,8 @@ class InferenceHandler(ABC):
     The inference handler is responsible for handling the inference arguments, inputs and outputs for a given model.
     """
 
+    inference_function_name: str = "__call__"  # Name of the function to call for inference
+
     @abstractmethod
     def __init__(self) -> None:
         """Initialize the handler."""
