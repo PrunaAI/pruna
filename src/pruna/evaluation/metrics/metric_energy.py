@@ -105,7 +105,7 @@ class EnvironmentalImpactStats(BaseMetric):
         inputs = model.inference_handler.prepare_inputs(batch)
 
         # Warmup
-        for _ in tqdm(range(self.n_warmup_iterations), desc="Warmup", unit="iter"):
+        for _ in tqdm(range(self.n_warmup_iterations), desc="Warm-up for energy consumption metric", unit="iter"):
             model(inputs, **model.inference_handler.model_args)
 
         tracker.start_task("Inference")

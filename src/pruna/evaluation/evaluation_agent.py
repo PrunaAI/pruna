@@ -201,7 +201,7 @@ class EvaluationAgent:
             return
 
         model.move_to_device(self.device)
-        for batch_idx, batch in enumerate(tqdm(self.task.dataloader, desc="Processing batchs", unit="batch")):
+        for batch_idx, batch in enumerate(tqdm(self.task.dataloader, desc="Processing batches", unit="batch")):
             processed_outputs = model.run_inference(batch, self.device)
 
             batch = move_batch_to_device(batch, self.device)
