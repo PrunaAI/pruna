@@ -167,6 +167,9 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 cpu = []
+evalharness = [
+    "lm-eval>=0.4.0"
+]
 
 [build-system]
 requires = ["hatchling"]
