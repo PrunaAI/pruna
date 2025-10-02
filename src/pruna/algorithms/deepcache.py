@@ -16,7 +16,8 @@ from typing import Any, Dict
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Cacher
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_unet_pipeline
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -31,7 +32,7 @@ class DeepCache(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "deepcache"
-    group_tags: list[str] = ["cacher"]
+    group_tags: list[str] = [Cacher]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/horseee/DeepCache",
@@ -41,11 +42,8 @@ class DeepCache(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_algorithms: dict[str, list[str]] = dict(
-        factorizer=["qkv_diffusers"],
-        compiler=["stable_fast", "torch_compile"],
-        quantizer=["half", "hqq_diffusers", "diffusers_int8", "quanto"],
-    )
+    compatible_before: list[str] = ["qkv_diffusers", "half", "hqq_diffusers", "diffusers_int8", "quanto"]
+    compatible_after: list[str] = ["stable_fast", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """
