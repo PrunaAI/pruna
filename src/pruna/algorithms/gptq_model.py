@@ -17,7 +17,8 @@ from typing import Any, Dict
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.data.utils import recover_text_from_dataloader
@@ -36,14 +37,14 @@ class GPTQ(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "gptq"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {"GitHub": "https://github.com/ModelCloud/GPTQModel"}
     save_fn: None = None
     tokenizer_required: bool = True
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = True
-    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"])
+    compatible_after: list[str] = ["torch_compile"]
     required_install: str = (
         "You must first install the base package with ``pip install pruna`` "
         "before installing the GPTQ extension with ``pip install pruna[gptq] --extra-index-url https://prunaai.pythonanywhere.com/``"

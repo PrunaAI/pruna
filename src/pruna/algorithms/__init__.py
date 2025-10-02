@@ -18,56 +18,8 @@ import logging
 import pkgutil
 from typing import Any, Dict
 
-import pruna.algorithms as algorithms
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna import algorithms
+from pruna.algorithms.base.algorithm_registry import AlgorithmRegistry
 
-PRUNA_ALGORITHMS = {}
-
-
-def discover_first_grade_algorithms(algorithms_pkg: Any, algorithm_collection: Dict[str, Any]) -> None:
-    """
-    Discover every package/module under `algorithms_pkg` by walking the package.
-
-    Parameters
-    ----------
-    algorithms_pkg : Any
-        The package to discover algorithms in.
-
-    Returns
-    -------
-    None
-        This function does not return anything.
-    """
-    prefix = algorithms_pkg.__name__ + "."
-    for _finder, modname, _ispkg in pkgutil.walk_packages(algorithms_pkg.__path__, prefix):
-        try:
-            module = importlib.import_module(modname)
-        except Exception as e:
-            logging.warning("Skipping %s (import error): %s", modname, e)
-            continue
-
-        # Inspect classes defined in this module (avoid classes only re-exported here)
-        for _, obj in inspect.getmembers(module, inspect.isclass):
-            if obj.__module__ != module.__name__:
-                continue
-
-            # Must be a subclass (but not the base itself)
-            if not issubclass(obj, PrunaAlgorithmBase) or obj is PrunaAlgorithmBase:
-                continue
-            # Must be a **direct** child (first-grade)
-            if PrunaAlgorithmBase not in obj.__bases__:
-                continue
-
-            # Skip abstract bases
-            if inspect.isabstract(obj):
-                continue
-
-            # Instantiate & register with the Smash Configuration Space
-            try:
-                instance = obj()
-                algorithm_collection[instance.algorithm_name] = instance
-            except Exception as e:
-                logging.warning("Failed to instantiate %s from %s: %s", obj.__name__, modname, e)
-
-
-discover_first_grade_algorithms(algorithms, PRUNA_ALGORITHMS)
+PRUNA_ALGORITHMS = AlgorithmRegistry()
+PRUNA_ALGORITHMS.discover_algorithms(algorithms)
