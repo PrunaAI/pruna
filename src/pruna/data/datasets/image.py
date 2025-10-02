@@ -66,6 +66,10 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the CIFAR-10 dataset.
 
+    The original CIFAR-10 dataset from uoft-cs/cifar10 has an 'img' column,
+    but this function renames it to 'image' to ensure compatibility with
+    the image_classification_collate function which expects an 'image' column.
+
     License: unspecified
 
     Parameters
@@ -76,8 +80,58 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
-        The CIFAR-10 dataset.
+        The CIFAR-10 dataset with columns: 'image' (PIL Image) and 'label' (int).
+        
+    Note
+    ----
+    This function automatically renames the 'img' column to 'image' for 
+    compatibility with Pruna's collate functions.
     """
     train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
+    
+    # Rename 'img' column to 'image' to match collate function expectations
+    # This ensures compatibility with image_classification_collate function
+    train_ds = train_ds.rename_column("img", "image")
+    test_ds = test_ds.rename_column("img", "image")
+    
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     return train_ds, val_ds, test_ds
+
+
+def setup_tiny_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the Tiny CIFAR-10 dataset (< 1,000 samples).
+
+    The original CIFAR-10 dataset from uoft-cs/cifar10 has an 'img' column,
+    but this function renames it to 'image' to ensure compatibility with
+    the image_classification_collate function which expects an 'image' column.
+
+    License: unspecified
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The Tiny CIFAR-10 dataset with columns: 'image' (PIL Image) and 'label' (int).
+        Contains approximately 600 training samples, split validation, and 200 test samples.
+        
+    Note
+    ----
+    This function automatically renames the 'img' column to 'image' for 
+    compatibility with Pruna's collate functions.
+    """
+    train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
+    
+    # Rename 'img' column to 'image' to match collate function expectations
+    # This ensures compatibility with image_classification_collate function
+    train_ds = train_ds.rename_column("img", "image")
+    test_ds = test_ds.rename_column("img", "image")
+    
+    tiny_train = train_ds.select(range(600))
+    tiny_test = test_ds.select(range(200))
+    train_ds, val_ds = split_train_into_train_val(tiny_train, seed)
+    return train_ds, val_ds, tiny_test
