@@ -16,7 +16,7 @@ from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION, CLIPVariant
         pytest.param("cpu", CLIPVariantAesthetics.vit_l_14, marks=pytest.mark.cpu),
         pytest.param("cpu", CLIPVariantAesthetics.vit_b_32, marks=pytest.mark.cpu),
         pytest.param("cpu", CLIPVariantAesthetics.vit_b_16, marks=pytest.mark.cpu),
-
+        pytest.param("cuda", CLIPVariantAesthetics.vit_l_14, marks=pytest.mark.cuda),
     ],
 )
 def test_aesthetic_laion(device: str, clip_model: str) -> None:
