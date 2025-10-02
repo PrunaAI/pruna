@@ -64,10 +64,11 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     if len(smash_config.load_fns) == 0:
         raise ValueError("Load function has not been set.")
 
-    # load torch artifacts if they exist
-    if LOAD_FUNCTIONS.torch_artifacts.name in smash_config.load_fns:
-        load_torch_artifacts(model_path, **kwargs)
-        smash_config.load_fns.remove(LOAD_FUNCTIONS.torch_artifacts.name)
+    artifact_load_fns = []
+    for load_fn in ARTIFACT_LOAD_FUNCTIONS:
+        if load_fn.name in smash_config.load_fns:
+            artifact_load_fns.append(load_fn)
+            smash_config.load_fns.remove(load_fn.name)
 
     if len(smash_config.load_fns) > 1:
         pruna_logger.error(f"Load functions not used: {smash_config.load_fns[1:]}")
@@ -77,6 +78,9 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     # check if there are any algorithms to reapply
     if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
         model = resmash_fn(model, smash_config)
+
+    for load_fn in artifact_load_fns:
+        load_fn(model_path, model, smash_config, **kwargs)
 
     return model, smash_config
 
@@ -433,7 +437,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         return quantized_model
 
 
-def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
+def load_torch_artifacts(model_path: str | Path, model: Any, smash_config: SmashConfig, **kwargs) -> None:
     """
     Load a torch artifacts from the given model path.
 
@@ -618,3 +622,6 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
         pruna_logger.info(f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}")
 
     return valid_kwargs
+
+
+ARTIFACT_LOAD_FUNCTIONS = [LOAD_FUNCTIONS.torch_artifacts]
