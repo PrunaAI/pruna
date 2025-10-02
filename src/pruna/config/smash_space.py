@@ -70,6 +70,7 @@ class SmashConfigurationSpace(ConfigurationSpace):
         self.is_compiled: bool = False
         self.allowed_combinations: dict[str, dict[str, list[str]]] = dict()
         self.model_requirements: dict[str, dict[str, bool]] = dict()
+        self.algorithms = []
 
     def register_algorithm(self, algorithm_name: str, hyperparameters: list) -> None:
         """
@@ -83,6 +84,7 @@ class SmashConfigurationSpace(ConfigurationSpace):
             The name of the algorithm.
         """
         parent = Boolean(algorithm_name)
+        self.algorithms.append(algorithm_name)
         self.add(parent)
         # Wrap hyperparameter names with config group and algorithm name
         for hp in hyperparameters:
@@ -91,6 +93,12 @@ class SmashConfigurationSpace(ConfigurationSpace):
 
             # Store condition s.t. hyperparameter is active if algorithm is active (is True)
             self.add(EqualsCondition(hp, parent, True))
+
+    def get_all_algorithms(self) -> list[str]:
+        """
+        Get all algorithms.
+        """
+        return list(set(self.algorithms))
 
 
 SMASH_SPACE = SmashConfigurationSpace(name="smash_config", seed=1234)

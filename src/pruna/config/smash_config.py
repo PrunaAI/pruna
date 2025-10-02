@@ -108,8 +108,21 @@ class SmashConfig:
         atexit.register(self.cleanup_cache_dir)
 
         # if configuration was provided as a dictionary, add it as if the user called config.add()
-        if isinstance(configuration, dict):
+        if isinstance(configuration, (dict, list)):
             self.add(configuration)
+
+    @classmethod
+    def from_list(
+        cls,
+        configuration: list[str],
+        batch_size: int = 1,
+        device: str | torch.device | None = None,
+        cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
+    ) -> SmashConfig:
+        """
+        Create a SmashConfig from a Configuration object.
+        """
+        return cls(configuration=configuration, batch_size=batch_size, device=device, cache_dir_prefix=cache_dir_prefix)
 
     @classmethod
     def from_dict(
@@ -492,15 +505,7 @@ class SmashConfig:
         -------
         Any
             Configuration value for the given name
-
-        Examples
-        --------
-        >>> config = SmashConfig()
-        >>> config["quantizer"] = "gptq"
-        >>> config["quantizer"]
-        "gptq"
         """
-        # TODO: update docstring
         if name in ADDITIONAL_ARGS:
             return getattr(self, name)
         else:
@@ -519,24 +524,15 @@ class SmashConfig:
             The name of the configuration setting.
         value : Any
             The value to set for the configuration setting.
-
-        Returns
-        -------
-        None
-            This method updates the internal configuration state but does not return a value.
-
-        Examples
-        --------
-        >>> config = SmashConfig()
-        >>> config["quantizer"] = "gptq"
-        >>> config["quantizer"]
-        "gptq"
         """
-        # TODO: update docstring
         if name in ADDITIONAL_ARGS:
             return setattr(self, name, value)
         else:
             # support old way of activating algorithms
+            if value in SMASH_SPACE.get_all_algorithms():
+                pruna_logger.warning(f"Setting {name} to {value} is deprecated. Please use config.add({value}).")
+            else:
+                pruna_logger.warning(f"Setting {name} deprecated. Please use config.add(dict({name}={value})).")
             self.add(value)
 
     def add(self, request: Any) -> None:
@@ -580,20 +576,27 @@ class SmashConfig:
         return convert_numpy_types(return_value)
 
     def __str__(self) -> str:  # noqa: D105
-        # TODO: print only activated algorithms
-        values = dict(self._configuration)
         header = "SmashConfig("
-        lines = [
-            f"  '{k}': {convert_numpy_types(values[k])!r},"
-            for k in sorted(values, key=self._configuration.config_space.index_of.get)  # type: ignore
-            # determine whether hyperparameter is conditionally active
-            if values[k] is not None or len(self._configuration.config_space.parents_of[k]) > 0
-        ]
+        lines = []
+        for alg in self.get_active_algorithms():
+            lines.append(f"  {alg}")
+            if len(self._configuration.config_space.children_of[alg]) > 0:
+                for child in self._configuration.config_space.children_of[alg]:
+                    child_name = child.name
+                    child_value = self._configuration[child_name]
+                    lines.append(f"      {child_name.removeprefix(alg + '_')}: {convert_numpy_types(child_value)!r},")
+            else:
+                lines.append("      -")
         end = ")"
         return "\n".join([header, *lines, end])
 
     def __repr__(self) -> str:  # noqa: D105
         return self.__str__()
+
+    def get_active_algorithms(self) -> list[str]:
+        """Get all active algorithms in this smash config."""
+        all_algorithms = self.config_space.get_all_algorithms()
+        return [k for k, v in self._configuration.items() if v and k in all_algorithms]
 
 
 class SmashConfigPrefixWrapper:
