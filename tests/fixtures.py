@@ -53,7 +53,7 @@ def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
-    model_id = "PrunaAI/whisper-v3-tiny-random"
+    model_id = "pruna-test/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
         model=model_id,
@@ -182,7 +182,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     "dummy_lambda": dummy_model,
     # image generation AR models
     "tiny_janus_pro": partial(get_automodel_image_text_to_text_transformers, "loulou2/tiny_janus"),
-    "wan_tiny_random": partial(get_diffusers_model, "PrunaAI/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
+    "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "loulou2/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "loulou2/tiny_llama", torch_dtype=torch.bfloat16),
 }
