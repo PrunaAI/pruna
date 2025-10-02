@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import copy
-from typing import List, Tuple
+from typing import Tuple
 
 from datasets import load_dataset
 from torch.utils.data import Dataset
@@ -30,7 +30,7 @@ def setup_wikitext_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
     Returns
     -------
-    List[Dataset]
+    Tuple[Dataset, Dataset, Dataset]
         The WikiText dataset.
     """
     train_dataset, val_dataset, test_dataset = load_dataset(
