@@ -15,8 +15,7 @@
 import copy
 from typing import Tuple
 
-from datasets import load_dataset
-from torch.utils.data import Dataset
+from datasets import load_dataset, Dataset
 
 from pruna.data.utils import split_train_into_train_val, split_train_into_train_val_test
 from pruna.logging.logger import pruna_logger
@@ -58,15 +57,24 @@ def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Da
     Tuple[Dataset, Dataset, Dataset]
         The TinyWikiText dataset split .8/.1/.1 into train/val/test subsets, respectively.
     """
-    assert 10 <= num_rows < 1000, 'the total number of rows for the tiny wikitext dataset must be below 1000'
+    assert 10 <= num_rows < 1000, 'the total number of rows, r, for the tiny wikitext dataset must be 10 <= r < 1000'
 
     # load the 'mikasenghaas/wikitext-2' dataset with a total of 21,580 rows using the setup_wikitext_dataset() function
     train_ds, val_ds, test_ds = setup_wikitext_dataset()
 
     # assert the wikitext dataset train/val/test splits each have enough rows for reducing to .8/.1/.1, respectively
-    assert len(train_ds) >= int(num_rows * 0.8), f'wikitext cannot be reduced to {num_rows} rows, train split too small'
-    assert len(val_ds) >= int(num_rows * 0.1), f'wikitext cannot be reduced to {num_rows} rows, val split too small'
-    assert len(test_ds) >= int(num_rows * 0.1), f'wikitext cannot be reduced to {num_rows} rows, test split too small'
+    assert (
+        train_ds.num_rows >= int(num_rows * 0.8),
+        f'wikitext cannot be reduced to {num_rows} rows, train split too small'
+    )
+    assert (
+        val_ds.num_rows >= int(num_rows * 0.1),
+        f'wikitext cannot be reduced to {num_rows} rows, val split too small'
+    )
+    assert (
+        test_ds.num_rows >= int(num_rows * 0.1),
+        f'wikitext cannot be reduced to {num_rows} rows, test split too small'
+    )
 
     # randomly select from the wikitext dataset a total number of rows below 1000 split .8/.1/.1 between train/val/test
     train_dataset_tiny = train_ds.shuffle(seed=seed).select(range(int(num_rows * 0.8)))
