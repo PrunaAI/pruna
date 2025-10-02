@@ -15,6 +15,7 @@
 from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
 from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.metric_dsg import DSGMetric
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
 from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
@@ -37,4 +38,5 @@ __all__ = [
     "TotalMACsMetric",
     "PairwiseClipScore",
     "CMMD",
+    "DSGMetric",
 ]
