@@ -34,7 +34,7 @@ from pruna.logging.logger import pruna_logger
 
 
 class CLIPVariantAesthetics(Enum):
-    """Maps a CLIP variant supported by LAION Aesthetic Predictor v1 to a CLIP model name in the hugging face hub."""
+    """Maps a CLIP variant supported by the LAION Aesthetic Predictor v1 to a CLIP model name in the Hugging Face Hub."""
 
     vit_l_14 = "openai/clip-vit-large-patch14"
     vit_b_32 = "openai/clip-vit-base-patch32"
@@ -47,9 +47,16 @@ METRIC_AESTHETIC_LAION = "aesthetic_laion"
 @MetricRegistry.register(METRIC_AESTHETIC_LAION)
 class AestheticLAION(StatefulMetric):
     """
-    Calculates the CMMD metric, which is the Maximum Mean Discrepancy between CLIP embeddings of two sets of images.
+     Predicts an image aesthetic quality score using LAION-Aesthetics_Predictor V1.
 
-    from https://arxiv.org/abs/2401.09603, Rethinking FID: Towards a Better Evaluation metric for Image Generation
+    This metric computes CLIP image embeddings and feeds them into a pretrained
+    linear head released by LAION (matched to the chosen CLIP variant). The model
+    returns a scalar score per image (on a ~1–10 scale). The metric
+    aggregates scores across updates by reporting their mean. Higher is better.
+
+    Reference
+    ---------
+    LAION-Aesthetics_Predictor V1: https://github.com/LAION-AI/aesthetic-predictor
 
     Parameters
     ----------
@@ -97,7 +104,7 @@ class AestheticLAION(StatefulMetric):
         """
         Update the metric with new batch data.
 
-        Update computes the CLIP embeddings and aesthetic scores for the given inputs.
+        This computes the CLIP embeddings and aesthetic scores for the given inputs.
 
         Parameters
         ----------
@@ -117,7 +124,7 @@ class AestheticLAION(StatefulMetric):
 
     def compute(self) -> MetricResult:
         """
-        Compute the average Aesthetic LAION metric based on all previous updates.
+        Compute the average Aesthetic LAION metric based on previous updates.
 
         Returns
         -------
@@ -161,7 +168,7 @@ class AestheticLAION(StatefulMetric):
         Returns
         -------
         torch.nn.Linear
-            Pretrained linear head which corresponds to the given CLIP model.
+            A pretrained linear head corresponding to the given CLIP model name.
         """
         home = pathlib.Path("~").expanduser()
         cache_folder = home / ".cache/aesthetic_laion_linear_heads"
