@@ -13,10 +13,10 @@ from pruna.engine.load import load_pruna_model
 from pruna.config.smash_config import SmashConfig
 from diffusers import DiffusionPipeline
 from pruna.engine.pruna_model import PrunaModel
+from huggingface_hub import get_token
 
 
-
-@pytest.mark.skipif("HF_TOKEN" not in os.environ, reason="HF_TOKEN environment variable is not set, skipping tests.")
+@pytest.mark.skipif(get_token() is None, reason="HF_TOKEN environment variable is not set, skipping tests.")
 @pytest.mark.slow
 @pytest.mark.cpu
 def test_save_llm_to_hub() -> None:
@@ -31,7 +31,7 @@ def test_save_llm_to_hub() -> None:
     )
     pruna_model.push_to_hub(upload_repo_id, private=False)
 
-@pytest.mark.skipif("HF_TOKEN" not in os.environ, reason="HF_TOKEN environment variable is not set, skipping tests.")
+@pytest.mark.skipif(get_token() is None, reason="HF_TOKEN environment variable is not set, skipping tests.")
 @pytest.mark.slow
 @pytest.mark.cpu
 def test_save_diffusers_to_hub() -> None:
