@@ -8,8 +8,9 @@ import torch
 from tqdm import tqdm
 from huggingface_hub import hf_hub_download
 
-LOCAL_MODEL_PATH = r"C:\Users\dell inspiron\.cache\FaceScore\FS_model.pt"
-LOCAL_CONFIG_PATH = r"C:\Users\dell inspiron\.cache\FaceScore\med_config.json"
+_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "FaceScore")
+LOCAL_MODEL_PATH = os.path.join(_CACHE_DIR, "FS_model.pt")
+LOCAL_CONFIG_PATH = os.path.join(_CACHE_DIR, "med_config.json")
 
 
 def available_models() -> List[str]:
