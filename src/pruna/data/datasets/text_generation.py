@@ -190,3 +190,28 @@ def setup_c4_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     pruna_logger.info("Received only train and val datasets as iterable datasets, copying validation dataset to test.")
     test_dataset = copy.deepcopy(val_dataset)
     return train_dataset, val_dataset, test_dataset
+
+
+def setup_tiny_imdb_dataset() -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the TinyIMDB dataset (first 1000 rows).
+
+    License: Association for Computational Linguistics
+
+    Returns
+    -------
+    Tuple
+        TinyIMDB train, validation, and test datasets.
+    """
+    full_ds = load_dataset("stanfordnlp/imdb")
+
+    full_train_subset = full_ds["train"].select(range(1000))
+
+    train_ds = full_train_subset.select(range(0, 800))
+    val_ds = full_train_subset.select(range(800, 1000))
+
+    test_ds = full_ds["test"].select(range(200))
+    if len(test_ds) == 0:
+        test_ds = copy.deepcopy(val_ds)
+
+    return train_ds, val_ds, test_ds
