@@ -2,6 +2,10 @@ from typing import Any
 
 import pytest
 import torch
+from torchmetrics.image import (
+    StructuralSimilarityIndexMeasure,
+    MultiScaleStructuralSimilarityIndexMeasure
+)
 
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper, TorchMetrics
 
@@ -100,3 +104,29 @@ def test_check_call_type(metric: str, call_type: str):
         assert metric.call_type == "y"
     else:
         assert not metric.call_type.startswith("pairwise")
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    'metric_name,metric_type',
+    (
+        ('ssim', StructuralSimilarityIndexMeasure),
+        ('msssim', MultiScaleStructuralSimilarityIndexMeasure)
+    )
+)
+def test_ssim_generalization_metric_type(metric_name, metric_type):
+    wrapper = TorchMetricWrapper(metric_name=metric_name)
+    assert isinstance(wrapper.metric, metric_type)
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    'metric_name,invalid_param_args',
+    (
+        pytest.param('ssim', {'betas': [0.0448, 0.2856, 0.3001, 0.2363, 0.1333]}),
+        pytest.param('ssim', {'normalize': 'relu'}),
+        pytest.param('msssim', {'return_full_image': True}),
+        pytest.param('msssim', {'return_contrast_sensitivity': True}),
+    )
+)
+def test_ssim_generalization_invalid_param_type(metric_name, invalid_param_args):
+    with pytest.raises(ValueError):
+        TorchMetricWrapper(metric_name, **invalid_param_args)
