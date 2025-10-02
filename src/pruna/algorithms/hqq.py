@@ -20,7 +20,8 @@ import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
 from transformers import AutoModelForCausalLM
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
@@ -39,7 +40,7 @@ class HQQ(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "hqq"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",
@@ -49,7 +50,8 @@ class HQQ(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(compiler=["torch_compile"], pruner=["torch_structured"])
+    compatible_before: list[str] = ["torch_structured"]
+    compatible_after: list[str] = ["torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

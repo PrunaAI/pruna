@@ -13,7 +13,8 @@
 # limitations under the License.
 from typing import Any
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Factorizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import has_fused_attention_processor, is_diffusers_model
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -30,7 +31,7 @@ class QKVFusing(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "qkv_diffusers"
-    group_tags: list[str] = ["factorizer"]
+    group_tags: list[str] = [Factorizer]
     references: dict[str, str] = {
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",
@@ -40,11 +41,15 @@ class QKVFusing(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        quantizer=["diffusers_int8", "hqq_diffusers", "quanto", "torchao"],
-        cacher=["deepcache", "fora"],
-        compiler=["torch_compile"],
-    )
+    compatible_after: list[str] = [
+        "diffusers_int8",
+        "hqq_diffusers",
+        "quanto",
+        "torchao",
+        "deepcache",
+        "fora",
+        "torch_compile",
+    ]
 
     def model_check_fn(self, model: Any) -> bool:
         """

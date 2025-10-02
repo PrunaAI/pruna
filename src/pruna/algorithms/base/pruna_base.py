@@ -16,10 +16,11 @@ from __future__ import annotations
 
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, Literal
 
 from transformers import Pipeline
 
+from pruna.algorithms.base.algorithm_tags import AlgorithmTag
 from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import SMASH_SPACE
 from pruna.engine.save import (
@@ -36,6 +37,10 @@ class PrunaAlgorithmBase(ABC):
     def __init__(self) -> None:
         self.hyperparameters = self.get_hyperparameters()
         SMASH_SPACE.register_algorithm(self.algorithm_name, self.hyperparameters)
+
+        if (self.incompatible_before or self.incompatible_after) and (self.compatible_before or self.compatible_after):
+            raise ValueError("Algorithms need to provide a list of incompatible or compatible algorithms, not both.")
+
         assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
     def __init_subclass__(cls, **kwargs):
@@ -90,12 +95,6 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     @abstractmethod
-    def compatible_algorithms(self) -> Dict[str, list[str]]:
-        """Subclasses need to provide a list of compatible algorithms."""
-        pass
-
-    @property
-    @abstractmethod
     def save_fn(self) -> SAVE_FUNCTIONS | None:
         """Subclasses need to provide a save_fn for the algorithm."""
         pass
@@ -123,6 +122,26 @@ class PrunaAlgorithmBase(ABC):
     def group_tags(self) -> list[str]:
         """Subclasses need to provide a list of group tags for the algorithm."""
         pass
+
+    @property
+    def incompatible_before(self) -> list[str]:
+        """Subclasses need to provide a list of algorithms that can not be executed before the current algorithm."""
+        return []
+
+    @property
+    def incompatible_after(self) -> list[str]:
+        """Subclasses need to provide a list of algorithms that can not be executed after the current algorithm."""
+        return []
+
+    @property
+    def compatible_before(self) -> list[str]:
+        """Subclasses need to provide a list of algorithms that can be executed before the current algorithm."""
+        return []
+
+    @property
+    def compatible_after(self) -> list[str]:
+        """Subclasses need to provide a list of algorithms that can be executed after the current algorithm."""
+        return []
 
     @abstractmethod
     def model_check_fn(self, model: Any) -> bool:
@@ -261,6 +280,55 @@ class PrunaAlgorithmBase(ABC):
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         return self._apply(model, wrapped_config)
+
+    def _expand(self, items: Iterable[str | AlgorithmTag] | None) -> list[str]:
+        """Expand algorithms/tags -> concrete algorithm names."""
+        if not items:
+            return []
+
+        # avoid circular import
+        from pruna.algorithms import PRUNA_ALGORITHMS
+
+        out: list[str] = []
+        for it in items:
+            if isinstance(it, str):
+                out.append(it)
+            else:
+                out.extend(PRUNA_ALGORITHMS.get_algorithms_by_tag(it))
+        return out
+
+    def _expanded_set(self, items: Iterable[str | AlgorithmTag] | None) -> set[str]:
+        return set(self._expand(items))
+
+    def get_incompatible_algorithms(self) -> list[str]:
+        """Algorithms incompatible with this one."""
+        ib = self._expanded_set(self.incompatible_before)
+        ia = self._expanded_set(self.incompatible_after)
+
+        if ib or ia:
+            # If any explicit incompatibility is provided, use the intersection.
+            return sorted(ib & ia)
+
+        # Otherwise, derive from compatible lists by exclusion.
+        cb = self._expanded_set(self.compatible_before)
+        ca = self._expanded_set(self.compatible_after)
+        allowed = cb | ca
+        all_algorithms = set(SMASH_SPACE.get_all_algorithms())
+        return sorted(all_algorithms - allowed)
+
+    def _required_execution_order(self, side: Literal["before", "after"]) -> list[str]:
+        compat = getattr(self, f"compatible_{side}")
+        opposite = "after" if side == "before" else "before"
+        fallback = getattr(self, f"incompatible_{opposite}")
+        return self._expand(compat or fallback)
+
+    def get_required_before(self) -> list[str]:
+        """Algorithms required to run before this one."""
+        return self._required_execution_order("before")
+
+    def get_required_after(self) -> list[str]:
+        """Algorithms required to run after this one."""
+        return self._required_execution_order("after")
 
 
 def wrap_handle_imports(func):

@@ -19,7 +19,8 @@ import torch.nn as nn
 from accelerate import init_empty_weights
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
@@ -41,7 +42,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "hqq_diffusers"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",
@@ -51,9 +52,8 @@ class HQQDiffusers(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        factorizer=["qkv_diffusers"], cacher=["deepcache", "fastercache", "fora", "pab"], compiler=["torch_compile"]
-    )
+    compatible_before: list[str] = ["qkv_diffusers"]
+    compatible_after: list[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

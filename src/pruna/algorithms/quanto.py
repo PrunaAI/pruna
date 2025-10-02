@@ -20,7 +20,8 @@ import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
 
 from pruna import SmashConfig
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
@@ -41,14 +42,15 @@ class Quanto(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "quanto"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
-    compatible_algorithms: dict[str, list[str]] = dict(factorizer=["qkv_diffusers"], cacher=["deepcache"])
+    compatible_before: list[str] = ["qkv_diffusers"]
+    compatible_after: list[str] = ["deepcache"]
 
     def get_hyperparameters(self) -> list:
         """
