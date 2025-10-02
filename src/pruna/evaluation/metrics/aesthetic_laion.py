@@ -190,4 +190,4 @@ class AestheticLAION(StatefulMetric):
         s = torch.load(path_to_model)
         m.load_state_dict(s)
         m.eval()
-        return m
+        return m.to(self.device)
