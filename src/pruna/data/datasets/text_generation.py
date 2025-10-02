@@ -42,7 +42,7 @@ def setup_wikitext_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
 def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Dataset, Dataset, Dataset]:
     """
-    Setup the TinyWikiText dataset.
+    Setup the TinyWikiText dataset. Splits the dataset .8/.1/.1 into train/val/test subsets, respectively.
 
     License: unspecified, original license Creative Commons Attribution-ShareAlike License (CC BY-SA).
 
@@ -56,7 +56,7 @@ def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Da
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
-        The TinyWikiText dataset.
+        The TinyWikiText dataset split .8/.1/.1 into train/val/test subsets, respectively.
     """
     assert 10 <= num_rows < 1000, 'the total number of rows for the tiny wikitext dataset must be below 1000'
 
