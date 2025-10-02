@@ -189,7 +189,7 @@ class PrunaDataModule(LightningDataModule):
             train_limit, val_limit, test_limit = limit
 
         if isinstance(self.train_dataset, Dataset):
-            self.train_dataset = cast(Dataset, self.train_dataset)  # for mypy
+            self.train_dataset = cast(Dataset, self.train_dataset)  # for ty
             self.val_dataset = cast(Dataset, self.val_dataset)
             self.test_dataset = cast(Dataset, self.test_dataset)
             self.train_dataset = self.train_dataset.select(range(min(len(self.train_dataset), train_limit)))

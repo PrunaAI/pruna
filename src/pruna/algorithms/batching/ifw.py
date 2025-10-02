@@ -111,7 +111,7 @@ class IFWBatcher(PrunaBatcher):
 
         torch_dtype = torch.float16 if smash_config["weight_bits"] == 16 else torch.float32
 
-        # ignore mypy warnings here because we ensure beforehand that processor is not None
+        # ignore ty warnings here because we ensure beforehand that processor is not None
         pruna_logger.info(f"Preparing model for inference with batch size {smash_config.batch_size}")
         smash_config.lock_batch_size()
         pipe = pipeline(

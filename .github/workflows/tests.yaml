@@ -53,8 +53,8 @@ jobs:
           version: "latest"
           src: ${{ steps.changed-files.outputs.all_changed_files }}
 
-      - name: Run mypy on Pruna code
-        run: mypy --show-traceback src/pruna
+      - name: Run Ty type checker on Pruna code
+        run: ty check src/pruna
 
       - name: Run docstring checks with pytest
         run: pytest -m "style"

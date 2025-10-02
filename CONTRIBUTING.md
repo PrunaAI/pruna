@@ -84,7 +84,15 @@ git push origin feat/new-feature
 
 Make sure to develop your contribution in a way that is well documented, concise, and easy to maintain. We will do our best to have your contribution integrated and maintained into Pruna but reserve the right to reject contributions that we do not feel are in the best interest of the project.
 
-### 4. Run the tests
+### 4. Type checking
+
+We use Ty for static type checking. Run:
+
+```bash
+ty check src/pruna
+```
+
+### 5. Run the tests
 
 We have a comprehensive test suite that is designed to catch potential issues before they are merged into Pruna. When you make a contribution, it is highly recommended to not only run the existing tests but also to add new tests that cover your contribution.
 
@@ -114,8 +122,8 @@ For specific test markers:
 pytest -m "cpu and not slow"
 ```
 
-Note: `uv run` automatically uses uv’s virtual environment in `.venv/`, not your conda environment.
+Note: `uv run` automatically uses uv's virtual environment in `.venv/`, not your conda environment.
 
-### 5. Create a Pull Request
+### 6. Create a Pull Request
 
 Once you have made your changes and tested them, you can create a Pull Request. We will then review your Pull Request and get back to you as soon as possible. If there are any questions along the way, please do not hesitate to reach out on [Discord](https://discord.gg/JFQmtFKCjd).
