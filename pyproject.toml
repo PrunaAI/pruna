@@ -118,8 +118,8 @@ dependencies = [
     "piq",
     "opencv-python",
     "kernels",
-    "aenum"
-
+    "aenum",
+    "jaxtyping"
 ]
 
 [project.optional-dependencies]

@@ -66,6 +66,10 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     datasets = setup_fn(seed=123)
     datamodule = PrunaDataModule.from_datasets(datasets, collate_fn, collate_fn_args=collate_fn_args)
     datamodule.limit_datasets(10)
-
+    images, labels = datamodule.train_dataloader().dataset[0]  # or a small batch
+    assert images.shape[1] == 3
+    assert images.shape[2] == collate_fn_args["img_size"]
+    assert images.dtype == torch.float32
+    assert labels.dtype == torch.int64
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
