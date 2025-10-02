@@ -14,6 +14,7 @@
 
 from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
+from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION, CLIPVariantAesthetics
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
 from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
@@ -37,4 +38,6 @@ __all__ = [
     "TotalMACsMetric",
     "PairwiseClipScore",
     "CMMD",
+    "AestheticLAION",
+    "CLIPVariantAesthetics",
 ]
