@@ -535,3 +535,36 @@ Choose your initialization style
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Both direct parameters and Task-based initialization are valid approaches. Choose the one that best fits your project's coding patterns and requirements.
+
+.. _face_score:
+
+FaceScore Metric
+~~~~~~~~~~~~~~~~
+
+The ``face_score`` metric evaluates the quality of human faces in generated images using the FaceScore reward model.
+
+**Dependencies:**
+- Install with: ``pip install batch-face image-reward``
+
+**Model Weights Required:**
+- Download ``FS_model.pt`` and ``med_config.json`` from the official FaceScore repository: https://huggingface.co/OPPOer/FaceScore
+- Place both files in ``C:\Users\<your-username>\.cache\FaceScore\`` (or as specified in the metric code).
+
+**Example Usage:**
+
+.. code-block:: python
+
+    from pruna.evaluation.evaluation_agent import EvaluationAgent
+    from pruna.data.pruna_datamodule import PrunaDataModule
+
+    eval_agent = EvaluationAgent(
+        request=["clip_score", "face_score"],
+        datamodule=PrunaDataModule.from_string('LAION256'),
+        device="cpu"
+    )
+    results = eval_agent.evaluate(model)
+
+**Note:**  
+If the required model files are not present, the metric will raise a clear error with instructions.
+
+FaceScore is a stateful metric and can be used alongside other quality metrics in the Pruna evaluation pipeline.
