@@ -108,7 +108,6 @@ class EvaluationAgent:
         pruna_logger.info("Evaluating isolated inference metrics.")
         results.extend(self.compute_stateless_metrics(model, stateless_metrics))
 
-        model.move_to_device("cpu")
         safe_memory_cleanup()
         if self.evaluation_for_first_model:
             self.first_model_results = results
@@ -153,8 +152,8 @@ class EvaluationAgent:
             model = PrunaModel(model, smash_config=smash_config)
             pruna_logger.info("Evaluating a base model.")
             is_base = True
-
-        model.inference_handler.log_model_info()
+        if hasattr(model, "inference_handler"):  # Distributers do not have an inference handler
+            model.inference_handler.log_model_info()
         if (
             "batch_size" in self.task.datamodule.dataloader_args
             and self.task.datamodule.dataloader_args["batch_size"] != model.smash_config.batch_size
@@ -168,9 +167,6 @@ class EvaluationAgent:
                 "datamodule = PrunaDataModule.from_string(dataset_name, dataloader_args={'batch_size': %d})",
                 model.smash_config.batch_size,
             )
-
-        # ensure the model is on the cpu
-        model.move_to_device("cpu")
 
         return model
 
