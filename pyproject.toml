@@ -153,6 +153,7 @@ dev = [
     "blobfile",
     "pillow>=9.5.0",
     "pre-commit",
+    "trufflehog",
     "twine",
     "pyc-wheel",
     "ruff",
