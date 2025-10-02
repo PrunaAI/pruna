@@ -51,7 +51,7 @@ def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Da
     seed : int
         The seed to use (default 42).
     num_rows : int
-        The total number of rows in the tiny dataset (default 960).
+        The maximum total number of rows in the tiny dataset (default 960).
 
     Returns
     -------
