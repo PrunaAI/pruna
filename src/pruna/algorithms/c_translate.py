@@ -31,7 +31,8 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Compiler
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_causal_lm,
@@ -61,14 +62,14 @@ class CTranslate(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "c_translate"
-    group_tags: list[str] = ["compiler"]
+    group_tags: list[str] = [Compiler]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
-    dataset_required: bool = False
-    compatible_algorithms = dict(batcher=["whisper_s2t"], quantizer=["half"])
+    compatible_before: list[str] = ["half"]
+    compatible_after: list[str] = ["whisper_s2t"]
 
     def __init__(self, task_name: str = "translate") -> None:
         self.task_name = task_name

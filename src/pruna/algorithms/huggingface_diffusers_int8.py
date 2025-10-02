@@ -21,7 +21,8 @@ import torch.nn as nn
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
 from diffusers import BitsAndBytesConfig as DiffusersBitsAndBytesConfig
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
@@ -50,16 +51,15 @@ class DiffusersInt8(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "diffusers_int8"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
     tokenizer_required: bool = False
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     save_fn: None = None
-    compatible_algorithms: dict[str, list[str]] = dict(
-        factorizer=["qkv_diffusers"], cacher=["deepcache", "fastercache", "fora", "pab"], compiler=["torch_compile"]
-    )
+    compatible_before: list[str] = ["qkv_diffusers"]
+    compatible_after: list[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

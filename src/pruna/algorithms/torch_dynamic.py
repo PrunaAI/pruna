@@ -18,7 +18,8 @@ from typing import Any
 import torch
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 
@@ -33,14 +34,15 @@ class TorchDynamic(PrunaAlgorithmBase):
     """
 
     algorithm_name = "torch_dynamic"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict()
+    compatible_before: list[str] = []
+    compatible_after: list[str] = []
 
     def get_hyperparameters(self) -> list:
         return [

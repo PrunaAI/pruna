@@ -25,8 +25,9 @@ from transformers import (
 )
 from transformers.modeling_utils import PreTrainedModel
 
+from pruna.algorithms.base.algorithm_tags import Batcher
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.c_translate import WhisperWrapper
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_speech_seq2seq_model, is_transformers_pipeline_with_speech_recognition
@@ -45,16 +46,14 @@ class WS2T(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "whisper_s2t"
-    group_tags: list[str] = ["batcher"]
+    group_tags: list[str] = [Batcher]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
     tokenizer_required: bool = True
     processor_required: bool = True
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
-    compatible_algorithms: dict[str, list[str]] = dict(
-        compiler=["c_translate", "c_generate", "c_whisper"], quantizer=["half"]
-    )
+    compatible_before: list[str] = ["half", "c_translate", "c_generate", "c_whisper"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -65,9 +64,7 @@ class WS2T(PrunaAlgorithmBase):
         list
             The hyperparameters.
         """
-        return [
-            Boolean("int8", meta=dict(desc="Whether to quantize to int8 for inference.")),
-        ]
+        return [Boolean("int8", meta=dict(desc="Whether to quantize to int8 for inference."))]
 
     def model_check_fn(self, model: Any) -> bool:
         """

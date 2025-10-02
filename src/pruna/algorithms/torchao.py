@@ -17,7 +17,8 @@ from typing import Any, Dict
 
 import torch
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
 from pruna.engine.model_checks import (
@@ -80,20 +81,15 @@ class Torchao(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torchao"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        cacher=["fora"],
-        compiler=["torch_compile"],
-        factorizer=["qkv_diffusers"],
-        pruner=["torch_structured"],
-        kernel=["flash_attn3"],
-    )
+    compatible_before: list[str] = ["qkv_diffusers", "torch_structured"]
+    compatible_after: list[str] = ["flash_attn3", "fora", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

@@ -24,7 +24,8 @@ from kernels import get_kernel
 from packaging.version import Version
 from torch.overrides import TorchFunctionMode
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Kernel
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
@@ -39,7 +40,7 @@ class FlashAttn3(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "flash_attn3"
-    group_tags: list[str] = ["kernel"]
+    group_tags: list[str] = [Kernel]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/Dao-AILab/flash-attention",
@@ -49,9 +50,8 @@ class FlashAttn3(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        compiler=["torch_compile"], cacher=["fora"], quantizer=["torchao"]
-    )
+    compatible_before: list[str] = ["torchao"]
+    compatible_after: list[str] = ["fora", "torch_compile"]
 
     def model_check_fn(self, model: Any) -> bool:
         """

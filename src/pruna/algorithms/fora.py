@@ -19,7 +19,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Cacher
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_flux_pipeline
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -35,19 +36,15 @@ class FORA(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fora"
-    group_tags: list[str] = ["cacher"]
+    group_tags: list[str] = [Cacher]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        compiler=["stable_fast", "torch_compile"],
-        quantizer=["diffusers_int8", "hqq_diffusers", "torchao"],
-        factorizer=["qkv_diffusers"],
-        kernel=["flash_attn3"],
-    )
+    compatible_before: list[str] = ["qkv_diffusers", "diffusers_int8", "hqq_diffusers", "torchao", "flash_attn3"]
+    compatible_after: list[str] = ["stable_fast", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

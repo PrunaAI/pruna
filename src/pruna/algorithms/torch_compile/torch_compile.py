@@ -19,7 +19,8 @@ from typing import Any, Callable
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Compiler
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.torch_compile.generators import CausalLMGenerator, JanusGenerator
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
@@ -47,20 +48,27 @@ class TorchCompile(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_compile"
-    group_tags: list[str] = ["compiler"]
+    group_tags: list[str] = [Compiler]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        factorizer=["qkv_diffusers"],
-        quantizer=["half", "hqq_diffusers", "diffusers_int8", "gptq", "llm_int8", "hqq", "torchao"],
-        cacher=["deepcache", "fora"],
-        pruner=["torch_structured"],
-        kernel=["flash_attn3"],
-    )
+    compatible_before: list[str] = [
+        "qkv_diffusers",
+        "torch_structured",
+        "half",
+        "hqq_diffusers",
+        "diffusers_int8",
+        "gptq",
+        "llm_int8",
+        "hqq",
+        "torchao",
+        "flash_attn3",
+        "deepcache",
+        "fora",
+    ]
 
     def get_hyperparameters(self) -> list:
         """

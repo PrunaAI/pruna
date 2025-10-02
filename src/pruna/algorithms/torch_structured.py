@@ -23,7 +23,8 @@ from transformers.modeling_outputs import ImageClassifierOutput
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
 from transformers.models.opt.modeling_opt import OPTForCausalLM as Opt
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Pruner
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -51,15 +52,15 @@ class TorchStructured(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_structured"
-    group_tags: list[str] = ["pruner"]
+    group_tags: list[str] = [Pruner]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # when performing structured pruning, the tensor sizes can change and disrupt normal saving
     save_fn = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
     processor_required: bool = False
-    runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = True
-    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half", "torchao", "hqq"], compiler=["torch_compile"])
+    runs_on: list[str] = ["cpu", "cuda"]
+    compatible_after: list[str] = ["half", "torchao", "hqq", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

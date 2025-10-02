@@ -17,7 +17,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Batcher, Cacher, Compiler, Factorizer, Kernel, Pruner, Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_allegro_pipeline,
@@ -41,7 +42,7 @@ class PAB(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "pab"
-    group_tags: list[str] = ["cacher"]
+    group_tags: list[str] = [Cacher]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2408.12588",
@@ -51,7 +52,7 @@ class PAB(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["hqq_diffusers", "diffusers_int8"])
+    compatible_before: list[str] = ["hqq_diffusers", "diffusers_int8"]
 
     def get_hyperparameters(self) -> list:
         """

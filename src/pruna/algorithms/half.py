@@ -17,7 +17,8 @@ from typing import Any, Mapping, Sequence
 
 import torch
 
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.algorithm_tags import Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 
@@ -31,7 +32,7 @@ class Half(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "half"
-    group_tags: list[str] = ["quantizer"]
+    group_tags: list[str] = [Quantizer]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
@@ -39,18 +40,17 @@ class Half(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(
-        batcher=["ifw", "whisper_s2t"],
-        cacher=["deepcache"],
-        compiler=[
-            "c_translate",
-            "c_generate",
-            "c_whisper",
-            "stable_fast",
-            "torch_compile",
-        ],
-        pruner=["torch_structured", "torch_unstructured"],
-    )
+    compatible_before: list[str] = ["torch_structured", "torch_unstructured"]
+    compatible_after: list[str] = [
+        "deepcache",
+        "c_translate",
+        "c_generate",
+        "c_whisper",
+        "stable_fast",
+        "torch_compile",
+        "ifw",
+        "whisper_s2t",
+    ]
 
     def model_check_fn(self, model: Any) -> bool:
         """

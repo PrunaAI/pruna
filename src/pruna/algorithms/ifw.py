@@ -19,8 +19,9 @@ from ConfigSpace import Constant, OrdinalHyperparameter
 from transformers import AutomaticSpeechRecognitionPipeline, pipeline
 from transformers.utils import is_flash_attn_2_available
 
+from pruna.algorithms.base.algorithm_tags import Batcher, Cacher, Compiler, Factorizer, Kernel, Pruner, Quantizer
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.c_translate import WhisperWrapper
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
@@ -38,14 +39,14 @@ class IFW(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "ifw"
-    group_tags: list[str] = ["batcher"]
+    group_tags: list[str] = [Batcher]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/transformers"}
     tokenizer_required: bool = True
     processor_required: bool = True
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_algorithms: dict[str, list[str]] = dict(quantizer=["half"])
+    compatible_before: list[str] = ["half"]
 
     def get_hyperparameters(self) -> list:
         """
