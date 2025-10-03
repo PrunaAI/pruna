@@ -30,9 +30,9 @@
 [![Replicate](https://img.shields.io/badge/replicate-black?style=flat-square)][replicate]
 
 <br>
-<!---
+
 <img src="./docs/assets/images/triple_line.png" alt="Pruna AI Logo" width=600, height=30></img>
---->
+
 </div>
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Introduction
@@ -46,12 +46,12 @@ Pruna is a model optimization framework built for developers, enabling you to de
 
 The toolkit is designed with simplicity in mind - requiring just a few lines of code to optimize your models. It supports various model types including LLMs, Diffusion and Flow Matching Models, Vision Transformers, Speech Recognition Models and more.
 
-
+<!--
 <img align="left" width="40" src="docs/assets/images/highlight.png" alt="Pruna Pro"/>
 
 **To move at top speed**, we offer [Pruna Pro](https://docs.pruna.ai/en/stable/docs_pruna_pro/user_manual/pruna_pro.html), our enterprise solution that unlocks advanced optimization features, our `OptimizationAgent`, priority support, and much more.
 <br clear="left"/>
-
+-->
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Installation
 
