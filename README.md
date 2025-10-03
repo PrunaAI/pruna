@@ -30,9 +30,9 @@
 [![Replicate](https://img.shields.io/badge/replicate-black?style=flat-square)][replicate]
 
 <br>
-
+<!---
 <img src="./docs/assets/images/triple_line.png" alt="Pruna AI Logo" width=600, height=30></img>
-
+--->
 </div>
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Introduction
@@ -126,7 +126,7 @@ eval_agent.evaluate(smashed_model)
 ```
 
 This was the minimal example, but you are looking for the maximal example? You can check out our [documentation][documentation] for an overview of all supported [algorithms][docs-algorithms] as well as our tutorials for more use-cases and examples.
-
+<!--
 ## <img src="./docs/assets/images/pruna_heart.png" alt="Pruna Heart" width=20></img> Pruna Pro
 
 Pruna has everything you need to get started on optimizing your own models. To push the efficiency of your models even further, we offer Pruna Pro. To give you a glimpse of what is possible with Pruna Pro, let us consider three of the most widely used diffusers pipelines and see how much smaller and faster we can make them. In addition to popular open-source algorithms, we use our proprietary Auto Caching algorithm. We compare the fidelity of the compressed models. Fidelity measures the similarity between the images of the compressed models and the images of the original model.
@@ -147,7 +147,7 @@ For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto
 
 <img src="./docs/assets/plots/benchmark_hunyuan.svg" alt="HunyuanVideo Benchmark"/>
 
-
+-->
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
 
