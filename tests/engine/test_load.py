@@ -11,7 +11,7 @@ from pruna.config.smash_config import SmashConfig
 @pytest.mark.parametrize(
     "model_name, expected_output, should_raise",
     [
-        ("PrunaAI/test-load-tiny-stable-diffusion-pipe-smashed", "PrunaModel", False),
+        ("pruna-test/test-load-tiny-stable-diffusion-pipe-smashed", "PrunaModel", False),
         ("NonExistentRepo/model", None, True),
     ],
 )
