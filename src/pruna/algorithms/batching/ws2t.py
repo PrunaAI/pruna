@@ -36,19 +36,19 @@ from pruna.logging.logger import pruna_logger
 
 class WS2TBatcher(PrunaBatcher):
     """
-    Implement whisper_s2t processing using the whisper_s2t library.
+    Implement whisper processing using the Faster-Whisper library (systran/faster-whisper).
 
-    WhisperS2T is an optimized speech-to-text pipeline built for Whisper models.
+    Faster-Whisper is an optimized speech-to-text pipeline built for Whisper models.
     Note: WS2T prepares the model for inference with the batch size specified in the smash config. Make sure to set the
     batch size to a value that corresponds to your inference requirements.
     """
 
-    algorithm_name: str = "whisper_s2t"
-    references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
+    algorithm_name: str = "faster_whisper"
+    references: dict[str, str] = {"GitHub": "https://github.com/SYSTRAN/faster-whisper"}
     tokenizer_required: bool = True
     processor_required: bool = True
     dataset_required: bool = False
-    runs_on: list[str] = ["cuda"]
+    runs_on: list[str] = ["cuda", "cpu"]
     compatible_algorithms: dict[str, list[str]] = dict(
         compiler=["c_translate", "c_generate", "c_whisper"], quantizer=["half"]
     )
@@ -144,21 +144,35 @@ class WS2TBatcher(PrunaBatcher):
 
         model_kwargs: Dict[str, Any] = {}
 
+        # Set device based on runs_on configuration
+        device = "cuda" if "cuda" in self.runs_on else "cpu"
+
+        # Map compute_type correctly for faster-whisper
+        if smash_config["int8"]:
+            compute_type = "int8"
+        else:
+            compute_type = "float16"  # default for GPU, use "int8" for CPU if needed
+
         if "n_mels" in locals():
-            model_kwargs["n_mels"] = n_mels
+            model_kwargs["num_mel_bins"] = n_mels  # parameter name
         if "max_speech_len" in locals():
             model_kwargs["max_speech_len"] = max_speech_len
         if "max_text_token_len" in locals():
             model_kwargs["max_text_token_len"] = max_text_token_len
-        if smash_config["int8"]:
-            model_kwargs["compute_type"] = "int8"
 
         with SuppressOutput():
             if task == "whisper_ct":
-                model = imported_modules["load_model"](model_identifier=model.output_dir, backend="ct2", **model_kwargs)
+                # CHANGED: Use WhisperModel constructor instead of load_model function
+                model = imported_modules["WhisperModel"](
+                    model_size_or_path=model.output_dir, device=device, compute_type=compute_type, **model_kwargs
+                )
             else:
-                model = imported_modules["load_model"](
-                    model_identifier=temp_directory_name, backend="hf", **model_kwargs
+                # CHANGED: For HF models, use model path directly
+                model = imported_modules["WhisperModel"](
+                    model_size_or_path=f"openai/whisper-{temp_directory_name}",
+                    device=device,
+                    compute_type=compute_type,
+                    **model_kwargs,
                 )
                 shutil.rmtree(f"openai/whisper-{temp_directory_name}")
 
@@ -182,19 +196,20 @@ class WS2TBatcher(PrunaBatcher):
         Dict[str, Any]
             The algorithm packages.
         """
-        from whisper_s2t import load_model
+        # Import WhisperModel class instead of load_model function
+        from faster_whisper import WhisperModel
 
-        return dict(load_model=load_model)
+        return dict(WhisperModel=WhisperModel)
 
 
 class WhisperS2TWrapper:
     """
-    A wrapper for the WhisperS2T model.
+    A wrapper for the Faster-Whisper model.
 
     Parameters
     ----------
     whisper : PreTrainedModel
-        The underlying WhisperS2T model.
+        The underlying Faster-Whisper model.
     batch_size : int | None
         The batch size for the model.
     """
@@ -229,8 +244,14 @@ class WhisperS2TWrapper:
         ----------
         files : Union[str, List[str]]
             The audio files to transcribe.
-        *args : Additional arguments for the model's `transcribe_with_vad` algorithm.
-        **kwargs : Additional keyword arguments for the model's `transcribe_with_vad` algorithm.
+        *args : Additional arguments for the model's `transcribe` method.
+        **kwargs : Additional keyword arguments for the model's `transcribe` method.
+            Common kwargs:
+            - language: str = None (e.g., "en")
+            - task: str = "transcribe" (or "translate")
+            - vad_filter: bool = False (enable VAD filtering)
+            - beam_size: int = 5
+            - word_timestamps: bool = False
 
         Returns
         -------
@@ -239,5 +260,19 @@ class WhisperS2TWrapper:
         """
         if isinstance(files, str):
             files = [files]
-        results = self.whisper.transcribe_with_vad(files, batch_size=self.batch_size)  # type: ignore[operator]
-        return " ".join([item["text"] for item in results[0]])
+
+        # Use transcribe() method instead of transcribe_with_vad()
+        # Process single file (for compatibility with original single-file design)
+        if len(files) == 1:
+            segments, info = self.whisper.transcribe(files[0], batch_size=self.batch_size, *args, **kwargs)
+            # Collect text from segment generator
+            text = " ".join([segment.text for segment in segments])
+            return text
+        else:
+            # For multiple files, process each separately
+            all_texts = []
+            for audio_file in files:
+                segments, info = self.whisper.transcribe(audio_file, batch_size=self.batch_size, *args, **kwargs)
+                text = " ".join([segment.text for segment in segments])
+                all_texts.append(text)
+            return " ".join(all_texts)
