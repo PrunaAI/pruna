@@ -148,10 +148,7 @@ class WS2TBatcher(PrunaBatcher):
         device = "cuda" if "cuda" in self.runs_on else "cpu"
 
         # Map compute_type correctly for faster-whisper
-        if smash_config["int8"]:
-            compute_type = "int8"
-        else:
-            compute_type = "float16"  # default for GPU, use "int8" for CPU if needed
+        compute_type = "int8" if smash_config["int8"] else "float16"  # default for GPU, use "int8" for CPU if needed
 
         if "n_mels" in locals():
             model_kwargs["num_mel_bins"] = n_mels  # parameter name
