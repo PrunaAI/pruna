@@ -29,6 +29,7 @@ from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
 from pruna.engine.utils import get_device, get_nn_modules, move_to_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
+from pruna.engine.civitai import is_civitai_source, load_pruna_model_from_civitai
 
 
 class PrunaModel:
@@ -366,30 +367,37 @@ class PrunaModel:
             # Local loading
             model, smash_config = load_pruna_model(model_source, **kwargs)
         else:
-            # Hub loading
-            model, smash_config = load_pruna_model_from_pretrained(
-                repo_id=model_source,
-                revision=revision,
-                cache_dir=cache_dir,
-                local_dir=local_dir,
-                library_name=library_name,
-                library_version=library_version,
-                user_agent=user_agent,
-                proxies=proxies,
-                etag_timeout=etag_timeout,
-                force_download=force_download,
-                token=token,
-                local_files_only=local_files_only,
-                allow_patterns=allow_patterns,
-                ignore_patterns=ignore_patterns,
-                max_workers=max_workers,
-                tqdm_class=tqdm_class,
-                headers=headers,
-                endpoint=endpoint,
-                local_dir_use_symlinks=local_dir_use_symlinks,
-                resume_download=resume_download,
-                **kwargs,
-            )
+            # Remote loading: support Civitai shorthand "civitai:<id-or-slug>"
+            if is_civitai_source(model_source):
+                model, smash_config = load_pruna_model_from_civitai(
+                    model_source,
+                    cache_dir=cache_dir,
+                    **kwargs,
+                )
+            else:
+                model, smash_config = load_pruna_model_from_pretrained(
+                    repo_id=model_source,
+                    revision=revision,
+                    cache_dir=cache_dir,
+                    local_dir=local_dir,
+                    library_name=library_name,
+                    library_version=library_version,
+                    user_agent=user_agent,
+                    proxies=proxies,
+                    etag_timeout=etag_timeout,
+                    force_download=force_download,
+                    token=token,
+                    local_files_only=local_files_only,
+                    allow_patterns=allow_patterns,
+                    ignore_patterns=ignore_patterns,
+                    max_workers=max_workers,
+                    tqdm_class=tqdm_class,
+                    headers=headers,
+                    endpoint=endpoint,
+                    local_dir_use_symlinks=local_dir_use_symlinks,
+                    resume_download=resume_download,
+                    **kwargs,
+                )
 
         if not isinstance(model, PrunaModel):
             model = PrunaModel(model=model, smash_config=smash_config)
