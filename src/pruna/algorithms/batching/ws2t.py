@@ -23,7 +23,7 @@ from transformers import (
     AutoTokenizer,
     WhisperForConditionalGeneration,
 )
-from transformers.modeling_utils import PreTrainedModel
+
 
 from pruna.algorithms.batching import PrunaBatcher
 from pruna.algorithms.compilation.c_translate import WhisperWrapper
@@ -205,17 +205,16 @@ class WhisperS2TWrapper:
 
     Parameters
     ----------
-    whisper : PreTrainedModel
+    whisper : WhisperModel
         The underlying Faster-Whisper model.
     batch_size : int | None
         The batch size for the model.
     """
 
-    def __init__(self, whisper: PreTrainedModel, batch_size: int | None = None) -> None:
+    def __init__(self, whisper: WhisperModel, batch_size: int | None = None) -> None:
         self.whisper = whisper
         self.batch_size = batch_size
-        self._device = whisper.device
-        self.output_dir = whisper.output_dir
+        self.output_dir = getattr(whisper, "output_dir", None)
 
     def __getattr__(self, name: str) -> Any:
         """
