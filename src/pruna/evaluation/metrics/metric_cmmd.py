@@ -58,6 +58,7 @@ class CMMD(StatefulMetric):
     default_call_type: str = "gt_y"
     higher_is_better: bool = False
     metric_name: str = METRIC_CMMD
+    modality = ["image"]
 
     def __init__(
         self,
