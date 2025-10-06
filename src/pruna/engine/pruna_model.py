@@ -24,7 +24,7 @@ from tqdm.auto import tqdm as base_tqdm
 
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
-from pruna.engine.load import load_pruna_model, load_pruna_model_from_pretrained
+from pruna.engine.load import filter_load_kwargs, load_pruna_model, load_pruna_model_from_pretrained
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
 from pruna.engine.utils import get_device, get_nn_modules, move_to_device, set_to_eval
 from pruna.logging.filter import apply_warning_filter
@@ -102,6 +102,11 @@ class PrunaModel:
         if not isinstance(batch, tuple):
             batch = (batch, {})
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
+
+        if hasattr(self.inference_handler, "seed_strategy") and self.inference_handler.seed_strategy == "per_sample":
+            self.inference_handler.apply_per_sample_seed()
+
+        self.inference_handler.model_args = filter_load_kwargs(self.model.__call__, self.inference_handler.model_args)
 
         if prepared_inputs is None:
             outputs = self(**self.inference_handler.model_args)
