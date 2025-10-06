@@ -224,6 +224,10 @@ def track_usage(name_or_func: Optional[str | Callable] = None) -> Callable:
 
         return wrapper
 
+    if isinstance(name_or_func, staticmethod):
+        return staticmethod(decorator(name_or_func.__func__))
+    if isinstance(name_or_func, classmethod):
+        return classmethod(decorator(name_or_func.__func__))
     if callable(name_or_func):
         return decorator(name_or_func)
     return decorator
