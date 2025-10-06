@@ -92,7 +92,7 @@ def image_generation_collate(data: Any, img_size: int, output_format: str = "int
     return texts, images_tensor
 
 
-def prompt_collate(data: Any) -> Tuple[List[str], None]:
+def prompt_collate(data: Any) -> Tuple[List[str], Any]:
     """
     Custom collation function for prompt datasets.
 
@@ -108,7 +108,11 @@ def prompt_collate(data: Any) -> Tuple[List[str], None]:
     Tuple[List[str], None]
         The collated data.
     """
-    return [item["text"] for item in data], None
+    #  The text column has the prompt.
+    prompt_list = [v for row in data for k, v in row.items() if k.startswith("text")]
+    #  All the other columns that might include category, scene information, etc.
+    auxiliary_list = [{k: v for k, v in row.items() if not k.startswith("text")} for row in data]
+    return prompt_list, auxiliary_list
 
 
 def audio_collate(data: Any) -> Tuple[List[str], List[str]]:

@@ -135,6 +135,7 @@ class PrunaDataModule(LightningDataModule):
         collate_fn_args: dict = dict(),
         dataloader_args: dict = dict(),
         seed: int = 42,
+        category: str | list[str] | None = None,
     ) -> "PrunaDataModule":
         """
         Create a PrunaDataModule from the dataset name with preimplemented dataset loading.
@@ -165,6 +166,10 @@ class PrunaDataModule(LightningDataModule):
 
         if "seed" in inspect.signature(setup_fn).parameters:
             setup_fn = partial(setup_fn, seed=seed)
+
+        if "category" in inspect.signature(setup_fn).parameters:
+            setup_fn = partial(setup_fn, category=category)
+
         train_ds, val_ds, test_ds = setup_fn()
 
         return cls.from_datasets(

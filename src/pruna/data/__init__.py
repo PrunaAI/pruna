@@ -43,6 +43,7 @@ from pruna.data.datasets.text_to_image import (
     setup_laion256_dataset,
     setup_open_image_dataset,
 )
+from pruna.data.datasets.text_to_video import setup_vbench_dataset
 
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "COCO": (setup_coco_dataset, "image_generation_collate", {"img_size": 512}),
@@ -64,4 +65,5 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "VBench": (setup_vbench_dataset, "prompt_collate", {}),
 }
