@@ -70,6 +70,7 @@ class Task:
         self.stateful_metric_device = self._get_stateful_metric_device_from_task_device()
         self.metrics = _safe_build_metrics(request, self.device, self.stateful_metric_device)
 
+        self.modality = self.validate_and_get_task_modality()
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
 
@@ -153,6 +154,30 @@ def _safe_build_metrics(
                 stateful_metric_device,
             )
         raise e
+
+    def validate_and_get_task_modality(self) -> str:
+        """
+        Check if the task has a single modality of metrics.
+
+        Inference handling is different for different modalities.
+        The task should have one consistent modality across metrics.
+        Stateless metrics and stateful metrics with general modalities are allowed.
+
+        Returns
+        -------
+        str
+            The modality of the task.
+        """
+        stateful_metrics = [metric for metric in self.metrics if isinstance(metric, StatefulMetric)]
+        modalities_no_general = [metric.modality for metric in stateful_metrics if metric.modality != ["general"]]
+        #  We should also allow 0 because the user might have only general modality metrics.
+        if len(modalities_no_general) == 1:
+            modality = modalities_no_general[0][0]
+        elif len(modalities_no_general) == 0:
+            modality = "general"
+        else:
+            raise ValueError("The task should have a single modality of quality metrics.")
+        return modality
 
 
 def get_metrics(

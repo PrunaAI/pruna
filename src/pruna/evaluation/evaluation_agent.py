@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+import tempfile
+from pathlib import Path
+from typing import Any, List, Literal
 
 import torch
 from torch import Tensor
@@ -25,7 +27,8 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
+from pruna.engine.utils import get_device, move_to_device, get_device, safe_memory_cleanup, set_to_best_available_device
+from pruna.evaluation.artifactsavers.utils import assign_artifact_saver
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
@@ -58,6 +61,12 @@ class EvaluationAgent:
         request: str | List[str | BaseMetric | StatefulMetric] | None = None,
         datamodule: PrunaDataModule | None = None,
         device: str | torch.device | None = None,
+        save_artifacts: bool = False,
+        root_dir: str | Path | None = None,
+        num_samples_per_input: int = 1,
+        seed_strategy: Literal["per_evaluation", "per_sample", "no_seed"] = "no_seed",
+        global_seed: int | None = None,
+        saving_kwargs: dict = dict(),
     ) -> None:
         if task is not None:
             if request is not None or datamodule is not None or device is not None:
@@ -70,12 +79,19 @@ class EvaluationAgent:
             if request is None or datamodule is None:
                 raise ValueError("When not using 'task' parameter, both 'request' and 'datamodule' must be provided.")
             self.task = Task(request=request, datamodule=datamodule, device=device)
-
         self.first_model_results: List[MetricResult] = []
         self.subsequent_model_results: List[MetricResult] = []
+        self.seed_strategy = seed_strategy
+        self.num_samples_per_input = num_samples_per_input
+        self.global_seed = global_seed
         self.device = set_to_best_available_device(self.task.device)
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
+        self.save_artifacts: bool = save_artifacts
+        if save_artifacts:
+            self.root_dir = root_dir if root_dir is not None else tempfile.mkdtemp(prefix="inference_outputs")
+            self.artifact_saver = assign_artifact_saver(self.task.modality, self.root_dir)
+            self.saving_kwargs = saving_kwargs
 
     def evaluate(self, model: Any) -> List[MetricResult]:
         """
@@ -153,7 +169,7 @@ class EvaluationAgent:
                 )
 
         else:
-            smash_config = SmashConfig(device="cpu")
+            smash_config = SmashConfig(device=get_device(model))
             model = PrunaModel(model, smash_config=smash_config)
             pruna_logger.info("Evaluating a base model.")
             is_base = True
@@ -183,6 +199,9 @@ class EvaluationAgent:
         self.device = self.task.device
         # Keeping the device map to move model back to the original device, when the agent is finished.
         self.device_map = get_device_map(model)
+        model.set_to_eval()
+        model.inference_handler.configure_seed(self.seed_strategy, self.global_seed)
+
         return model
 
     def update_stateful_metrics(
@@ -212,22 +231,35 @@ class EvaluationAgent:
 
         move_to_device(model, self.device, device_map=self.device_map)
         for batch_idx, batch in enumerate(tqdm(self.task.dataloader, desc="Processing batches", unit="batch")):
-            processed_outputs = model.run_inference(batch)
+            for sample_idx in range(self.num_samples_per_input):
+                processed_outputs = model.run_inference(batch)
+                if self.save_artifacts:
+                    canonical_paths = []
+                    for processed_output in processed_outputs:
+                        canonical_path = self.artifact_saver.save_artifact(processed_output)
+                        canonical_paths.append(canonical_path)
 
-            batch = move_batch_to_device(batch, self.device)
-            processed_outputs = move_batch_to_device(processed_outputs, self.device)
-            (x, gt) = batch
-            # Non-pairwise (aka single) metrics have regular update.
-            for stateful_metric in single_stateful_metrics:
-                stateful_metric.update(x, gt, processed_outputs)
+                batch = move_batch_to_device(batch, self.device)
+                processed_outputs = move_batch_to_device(processed_outputs, self.device)
+                (x, gt) = batch
+                # Non-pairwise (aka single) metrics have regular update.
+                for stateful_metric in single_stateful_metrics:
+                    stateful_metric.update(x, gt, processed_outputs)
+                    if stateful_metric.create_alias:
+                        for prompt_idx, prompt in enumerate(x):
+                            assert isinstance(self.artifact_saver.export_format, str)
+                            alias_filename = stateful_metric.create_filename(
+                                filename=prompt, idx=sample_idx, file_extension=self.artifact_saver.export_format
+                            )
+                            self.artifact_saver.create_alias(canonical_paths[prompt_idx], alias_filename)
 
-            # Cache outputs once in the agent for pairwise metrics to save compute time and memory.
-            if self.task.is_pairwise_evaluation():
-                if self.evaluation_for_first_model:
-                    self.cache.append(processed_outputs)
-                else:
-                    for pairwise_metric in pairwise_metrics:
-                        pairwise_metric.update(x, self.cache[batch_idx], processed_outputs)
+                # Cache outputs once in the agent for pairwise metrics to save compute time and memory.
+                if self.task.is_pairwise_evaluation():
+                    if self.evaluation_for_first_model:
+                        self.cache.append(processed_outputs)
+                    else:
+                        for pairwise_metric in pairwise_metrics:
+                            pairwise_metric.update(x, self.cache[batch_idx], processed_outputs)
 
     def compute_stateful_metrics(
         self, single_stateful_metrics: List[StatefulMetric], pairwise_metrics: List[StatefulMetric]
