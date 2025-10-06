@@ -157,6 +157,19 @@ The load operation will:
 1. Load the model architecture and weights and cast them to the device specified in the SmashConfig
 2. Restore the smash configuration
 
+Loading from Civitai
+--------------------
+
+You can load Stable Diffusion or Flux models from Civitai directly by using the ``civitai:`` prefix with an id or slug. Optionally set the ``CIVITAI_API_KEY`` environment variable for private models or higher rate limits.
+
+.. code-block:: python
+
+    from pruna import PrunaModel
+
+    model = PrunaModel.from_pretrained("civitai:123456")  # or civitai:my-model-slug
+
+Under the hood, |pruna| resolves the model via the Civitai API, downloads and extracts the artifact (preferring Diffusers-format zips), and loads it using the existing Diffusers/Transformers loaders.
+
 Special Considerations
 ----------------------
 

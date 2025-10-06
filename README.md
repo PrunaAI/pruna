@@ -127,14 +127,7 @@ eval_agent.evaluate(smashed_model)
 
 This was the minimal example, but you are looking for the maximal example? You can check out our [documentation][documentation] for an overview of all supported [algorithms][docs-algorithms] as well as our tutorials for more use-cases and examples.
 
-### Loading from Civitai
-
-You can load Stable Diffusion or Flux models from Civitai directly by using the `civitai:` prefix with an id or slug. Optionally set the `CIVITAI_API_KEY` environment variable for private models or higher rate limits.
-
-```python
-from pruna import PrunaModel
-model = PrunaModel.from_pretrained("civitai:123456")  # or civitai:some-model-slug
-```
+<!-- Civitai loading docs moved to docs/user_manual/save_load.rst -->
 
 ## <img src="./docs/assets/images/pruna_heart.png" alt="Pruna Heart" width=20></img> Pruna Pro
 

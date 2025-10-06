@@ -25,7 +25,20 @@ API_BASE_URL = "https://civitai.com/api/v1"
 
 
 def is_civitai_source(source: Optional[str]) -> bool:
-    """Return True if the source string denotes a civitai resource."""
+    """
+    Check whether a source string refers to a Civitai resource.
+
+    Parameters
+    ----------
+    source : str | None
+        The model source identifier as passed to ``PrunaModel.from_pretrained``.
+        When it starts with ``"civitai:"``, it is considered a Civitai source.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``source`` is a string that starts with ``"civitai:"``, ``False`` otherwise.
+    """
     return isinstance(source, str) and source.lower().startswith("civitai:")
 
 
