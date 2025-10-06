@@ -48,6 +48,7 @@ class DiffuserHandler(InferenceHandler):
     ) -> None:
         self.call_signature = call_signature
         self.model_args = model_args if model_args else {}
+        # We want the default output type to be pytorch tensors.
         self.model_args["output_type"] = "pt"
         self.configure_seed(seed_strategy, global_seed)
 
@@ -89,6 +90,7 @@ class DiffuserHandler(InferenceHandler):
         """
         if hasattr(output, "images"):
             generated = output.images
+        #  For video models.
         elif hasattr(output, "frames"):
             generated = output.frames
         else:
