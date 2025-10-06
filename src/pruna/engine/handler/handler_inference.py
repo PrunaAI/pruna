@@ -14,9 +14,11 @@
 
 from __future__ import annotations
 
+import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
+import numpy as np
 import torch
 
 
@@ -116,3 +118,77 @@ class InferenceHandler(ABC):
                 for k, v in batch.items()
             }
         return batch
+
+    def configure_seed(self, seed_strategy: Literal["per_sample", "no_seed"], global_seed: int | None) -> None:
+        """
+        Set the random seed according to the chosen strategy.
+
+        - If `seed_strategy="per_sample"`,the `global_seed` is used as a base to derive a different seed for each
+        sample. This ensures reproducibility while still producing variation across samples,
+        making it the preferred option for benchmarking.
+        - If `seed_strategy="no_seed"`, no seed is set internally.
+        The user is responsible for managing seeds if reproducibility is required.
+
+        Parameters
+        ----------
+        seed_strategy : Literal["per_sample", "no_seed"]
+            The seeding strategy to apply.
+        global_seed : int | None
+            The base seed value to use (if applicable).
+        """
+        self.seed_strategy = seed_strategy
+        validate_seed_strategy(seed_strategy, global_seed)
+        if global_seed is not None:
+            self.global_seed = global_seed
+            set_seed(global_seed)
+        else:
+            remove_seed()
+
+
+def set_seed(seed: int) -> None:
+    """
+    Set the random seed for the current process.
+
+    Parameters
+    ----------
+    seed : int
+        The seed to set.
+    """
+    #  With the default handler, we can't assume anything about the model,
+    #  so we are setting the seed for all RNGs available.
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def remove_seed() -> None:
+    """Remove the seed from the current process."""
+    random.seed(None)
+    np.random.seed(None)
+    #  We can't really remove the seed from the PyTorch RNG, so we are reseeding with torch.seed().
+    #  torch.seed() creates a non-deterministic random number.
+    torch.manual_seed(torch.seed())
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(torch.seed())
+
+
+def validate_seed_strategy(seed_strategy: Literal["per_sample", "no_seed"], global_seed: int | None) -> None:
+    """
+    Check the consistency of the seed strategy and the global seed.
+
+    If the seed strategy is "no_seed", the global seed must be None.
+    If the seed strategy is or "per_sample", the user must provide a global seed.
+
+    Parameters
+    ----------
+    seed_strategy : Literal["per_sample", "no_seed"]
+        The seeding strategy to apply.
+    global_seed : int | None
+        The base seed value to use (if applicable).
+    """
+    if seed_strategy != "no_seed" and global_seed is None:
+        raise ValueError("Global seed must be provided if seed strategy is not 'no_seed'.")
+    elif global_seed is not None and seed_strategy == "no_seed":
+        raise ValueError("Seed strategy cannot be 'no_seed' if global seed is provided.")
