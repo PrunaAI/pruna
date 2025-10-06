@@ -47,6 +47,7 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):  # type: ignore[misc]
 
     higher_is_better: bool = True
     metric_name: str = "pairwise_clip_score"
+    modality = ["image"]
 
     def __init__(self, **kwargs: Any) -> None:
         device = kwargs.pop("device", None)

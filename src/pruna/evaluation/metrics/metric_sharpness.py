@@ -64,6 +64,7 @@ class SharpnessMetric(StatefulMetric):
     higher_is_better: bool = True
     metric_name: str = METRIC_SHARPNESS
     runs_on: List[str] = ["cpu", "cuda"]
+    modality = ["image"]
 
     def __init__(self, *args, kernel_size: int = 3, call_type: str = SINGLE, **kwargs) -> None:
         super().__init__(device=kwargs.pop("device", None))

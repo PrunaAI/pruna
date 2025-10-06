@@ -45,6 +45,8 @@ class StatefulMetric(ABC):
     metric_name: str
     call_type: str
     runs_on: list[str] = ["cuda", "cpu", "mps"]
+    create_alias: bool = False
+    modality: List[str]
 
     def __init__(self, device: str | torch.device | None = None, **kwargs) -> None:
         """Initialize the StatefulMetric class."""
@@ -167,3 +169,21 @@ class StatefulMetric(ABC):
         """
         dvc, _ = split_device(device_to_string(device))
         return dvc in self.runs_on
+
+    def create_filename(self, filename: str, idx: int, file_extension: str) -> str:
+        """
+        Create a filename for the metric.
+
+        Parameters
+        ----------
+        filename: str
+            The name of the file.
+        file_extension: str
+            The extension of the file.
+
+        Returns
+        -------
+        str
+            The filename.
+        """
+        return f"{filename}-{idx}.{file_extension}"
