@@ -14,9 +14,11 @@
 
 from __future__ import annotations
 
+import random
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
+import numpy as np
 import torch
 
 from pruna.data.utils import move_batch_to_device
@@ -98,3 +100,75 @@ class InferenceHandler(ABC):
             return move_batch_to_device(inputs, device)
         except torch.cuda.OutOfMemoryError as e:
             raise e
+
+    def apply_per_sample_seed(self) -> None:
+        """Generate and apply a new random seed derived from global_seed (only valid if seed_strategy="per_sample")."""
+        if self.seed_strategy != "per_sample":
+            raise ValueError("Seed strategy must be 'per_sample' to apply per sample seed.")
+        per_sample_seed = self.global_seed + random.randint(0, 1_000_000)
+        set_seed(per_sample_seed)
+
+    def configure_seed(
+        self, seed_strategy: Literal["per_evaluation", "per_sample", "no_seed"], global_seed: int | None
+    ) -> None:
+        """
+        Set the random seed according to the chosen strategy.
+
+        - If `seed_strategy="per_evaluation"`, the same `global_seed` is applied once and reused
+         for the entire generation run.
+        - If `seed_strategy="per_sample"`, the `global_seed` is used as a base to derive a different seed for each sample
+        This ensures reproducibility while still producing variation across samples, making it the preferred option for
+        benchmarking.
+        - If `seed_strategy="no_seed"`, no seed is set internally. The user is responsible for managing seeds if
+        reproducibility is required.
+
+        Parameters
+        ----------
+        seed_strategy : Literal["per_evaluation", "per_sample", "no_seed"]
+            The seeding strategy to apply.
+        global_seed : int | None
+            The base seed value to use (if applicable).
+        """
+        self.seed_strategy = seed_strategy
+        validate_seed_strategy(seed_strategy, global_seed)
+        if global_seed is not None:
+            self.global_seed = global_seed
+            set_seed(global_seed)
+
+
+def set_seed(seed: int) -> None:
+    """
+    Set the random seed for the current process.
+
+    Parameters
+    ----------
+    seed : int
+        The seed to set.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def validate_seed_strategy(
+    seed_strategy: Literal["per_evaluation", "per_sample", "no_seed"], global_seed: int | None
+) -> None:
+    """
+    Check the consistency of the seed strategy and the global seed.
+
+    If the seed strategy is "no_seed", the global seed must be None.
+    If the seed strategy is "per_evaluation" or "per_sample", the user must provide a global seed.
+
+    Parameters
+    ----------
+    seed_strategy : Literal["per_evaluation", "per_sample", "no_seed"]
+        The seeding strategy to apply.
+    global_seed : int | None
+        The base seed value to use (if applicable).
+    """
+    if seed_strategy != "no_seed" and global_seed is None:
+        raise ValueError("Global seed must be provided if seed strategy is not 'no_seed'.")
+    elif global_seed is not None and seed_strategy == "no_seed":
+        raise ValueError("Seed strategy cannot be 'no_seed' if global seed is provided.")
