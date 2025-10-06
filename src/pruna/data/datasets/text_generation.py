@@ -15,7 +15,7 @@
 import copy
 from typing import Tuple
 
-from datasets import load_dataset, Dataset
+from datasets import Dataset, load_dataset
 
 from pruna.data.utils import split_train_into_train_val, split_train_into_train_val_test
 from pruna.logging.logger import pruna_logger
