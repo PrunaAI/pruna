@@ -6,11 +6,25 @@ download the appropriate artifact (prefer Diffusers pipelines), unpack it into a
 local cache directory, and then delegate loading to existing Pruna loaders.
 """
 
+# Copyright 2025 - Pruna AI GmbH. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
-import io
 import os
 import zipfile
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -127,11 +141,12 @@ def _extract_zip(archive_path: Path, target_dir: Path) -> None:
 
 
 def _ensure_cache_dir(cache_dir: Optional[str | Path]) -> Path:
-    if cache_dir is None:
-        # default to user cache under ~/.cache/pruna/civitai
-        base = Path.home() / ".cache" / "pruna" / "civitai"
-    else:
-        base = Path(cache_dir) / "civitai"
+    # default to user cache under ~/.cache/pruna/civitai
+    base = (
+        Path.home() / ".cache" / "pruna" / "civitai"
+        if cache_dir is None
+        else Path(cache_dir) / "civitai"
+    )
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -170,10 +185,8 @@ def download_civitai_artifact(identifier: str, cache_dir: Optional[str | Path] =
     # If zip, extract into dest_root
     if dest_file.suffix.lower() == ".zip":
         _extract_zip(dest_file, dest_root)
-        try:
+        with suppress(Exception):
             dest_file.unlink(missing_ok=True)
-        except Exception:  # noqa: BLE001
-            pass
 
     # mark complete
     completed_flag.write_text("ok")
@@ -201,10 +214,8 @@ def load_pruna_model_from_civitai(source: str, *, cache_dir: Optional[str | Path
     else:
         # Unknown layout. Surface a helpful error.
         raise FileNotFoundError(
-            "Downloaded Civitai artifact does not contain a recognizable model layout (missing model_index.json or config.json)."
+            "Downloaded Civitai artifact does not contain a recognizable model layout "
+            "(missing model_index.json or config.json)."
         )
 
     return model, smash_config
-
-
-
