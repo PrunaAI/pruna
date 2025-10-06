@@ -103,6 +103,7 @@ class PrunaModel:
             batch = (batch, {})
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
 
+        #  Filtering the model args to only include the ones that are needed for the model call.
         self.inference_handler.model_args = filter_load_kwargs(self.model.__call__, self.inference_handler.model_args)
 
         if prepared_inputs is None:
