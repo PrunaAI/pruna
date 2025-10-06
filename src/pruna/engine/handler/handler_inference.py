@@ -136,6 +136,8 @@ def set_seed(seed: int) -> None:
     seed : int
         The seed to set.
     """
+    #  With the default handler, we can't assume anything about the model,
+    #  so we are setting the seed for all RNGs available.
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -147,6 +149,8 @@ def remove_seed() -> None:
     """Remove the seed from the current process."""
     random.seed(None)
     np.random.seed(None)
+    #  We can't really remove the seed from the PyTorch RNG, so we are reseeding with torch.seed().
+    #  torch.seed() creates a non-deterministic random number.
     torch.manual_seed(torch.seed())
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(torch.seed())
