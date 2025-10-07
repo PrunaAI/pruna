@@ -156,7 +156,7 @@ def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashCon
     smash_config.add_data("LAION256")
 
     model_to_processor_id = {
-        "gsprochette/tiny_janus": "deepseek-community/Janus-Pro-1B",
+        "pruna-test/tiny_janus": "deepseek-community/Janus-Pro-1B",
     }
     processor_id = model_to_processor_id.get(model_id, model_id)
     processor = AutoProcessor.from_pretrained(processor_id)
@@ -191,7 +191,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     ),
     "dummy_lambda": dummy_model,
     # image generation AR models
-    "tiny_janus_pro": partial(get_autoregressive_text_to_image_model, "pruna-test/tiny_janus"),
+    "tiny_janus": partial(get_autoregressive_text_to_image_model, "pruna-test/tiny_janus"),
     "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
