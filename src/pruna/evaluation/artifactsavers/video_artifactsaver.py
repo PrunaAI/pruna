@@ -22,6 +22,7 @@ from typing import Any
 import numpy as np
 import torch
 from diffusers.utils import export_to_gif, export_to_video
+from PIL import Image
 
 from pruna.evaluation.artifactsavers.artifactsaver import ArtifactSaver
 
@@ -62,8 +63,14 @@ class VideoArtifactSaver(ArtifactSaver):
         """
         canonical_filename = f"{int(time.time())}_{secrets.token_hex(4)}.{self.export_format}"
         canonical_path = Path(str(self.root)) / "canonical" / canonical_filename
+
+        #  all diffusers saving utility functions accept a list of PIL.Images, so we convert to PIL to be safe.
         if isinstance(data, torch.Tensor):
             data = np.transpose(data.cpu().numpy(), (0, 2, 3, 1))
+            data = np.clip(data * 255, 0, 255).astype(np.uint8)
+        if isinstance(data, np.ndarray):
+            data = [Image.fromarray(frame.astype(np.uint8)) for frame in data]
+
         if self.export_format == "mp4":
             export_to_video(data, canonical_path, **saving_kwargs)
         elif self.export_format == "gif":
