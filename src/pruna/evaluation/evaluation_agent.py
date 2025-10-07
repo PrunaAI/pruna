@@ -52,6 +52,18 @@ class EvaluationAgent:
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
+    save_artifacts : bool, optional
+        Whether to save the artifacts. Default is False.
+    root_dir : str | Path | None, optional
+        The directory to save the artifacts. Default is None.
+    num_samples_per_input : int, optional
+        The number of samples to generate per input. Default is 1.
+    seed_strategy : Literal["per_sample", "no_seed"], optional
+        The seed strategy to use. Default is "no_seed".
+    global_seed : int | None, optional
+        The global seed to use. Default is None.
+    saving_kwargs : dict, optional
+        The kwargs to pass to the artifact saver. Default is an empty dict.
     """
 
     def __init__(
@@ -64,7 +76,7 @@ class EvaluationAgent:
         save_artifacts: bool = False,
         root_dir: str | Path | None = None,
         num_samples_per_input: int = 1,
-        seed_strategy: Literal["per_evaluation", "per_sample", "no_seed"] = "no_seed",
+        seed_strategy: Literal["per_sample", "no_seed"] = "no_seed",
         global_seed: int | None = None,
         saving_kwargs: dict = dict(),
     ) -> None:
