@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import copy
-from typing import List, Tuple
+from typing import Tuple
 
-from datasets import load_dataset
-from torch.utils.data import Dataset
+from datasets import Dataset, load_dataset
 
 from pruna.data.utils import split_train_into_train_val, split_train_into_train_val_test
 from pruna.logging.logger import pruna_logger
 
 
-def setup_wikitext_dataset() -> List[Dataset]:
+def setup_wikitext_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the WikiText dataset.
 
@@ -30,10 +29,49 @@ def setup_wikitext_dataset() -> List[Dataset]:
 
     Returns
     -------
-    List[Dataset]
+    Tuple[Dataset, Dataset, Dataset]
         The WikiText dataset.
     """
-    return load_dataset("mikasenghaas/wikitext-2", split=["train", "validation", "test"])
+    train_dataset, val_dataset, test_dataset = load_dataset(
+        path="mikasenghaas/wikitext-2",
+        split=["train", "validation", "test"]
+    )
+    return train_dataset, val_dataset, test_dataset
+
+
+def setup_wikitext_tiny_dataset(seed: int = 42, num_rows: int = 960) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the TinyWikiText dataset. Splits the dataset .8/.1/.1 into train/val/test subsets, respectively.
+
+    License: unspecified, original license Creative Commons Attribution-ShareAlike License (CC BY-SA).
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use (default 42).
+    num_rows : int
+        The maximum total number of rows in the tiny dataset (default 960).
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The TinyWikiText dataset split .8/.1/.1 into train/val/test subsets, respectively.
+    """
+    assert 10 <= num_rows < 1000, 'the total number of rows, r, for the tiny wikitext dataset must be 10 <= r < 1000'
+
+    # load the 'mikasenghaas/wikitext-2' dataset with a total of 21,580 rows using the setup_wikitext_dataset() function
+    train_ds, val_ds, test_ds = setup_wikitext_dataset()
+
+    # assert the wikitext dataset train/val/test splits each have enough rows for reducing to .8/.1/.1, respectively
+    assert train_ds.num_rows >= int(num_rows * 0.8), f'wikitext cannot be reduced to {num_rows} rows, train too small'
+    assert val_ds.num_rows >= int(num_rows * 0.1), f'wikitext cannot be reduced to {num_rows} rows, val too small'
+    assert test_ds.num_rows >= int(num_rows * 0.1), f'wikitext cannot be reduced to {num_rows} rows, test too small'
+
+    # randomly select from the wikitext dataset a total number of rows below 1000 split .8/.1/.1 between train/val/test
+    train_dataset_tiny = train_ds.shuffle(seed=seed).select(range(int(num_rows * 0.8)))
+    val_dataset_tiny = val_ds.shuffle(seed=seed).select(range(int(num_rows * 0.1)))
+    test_dataset_tiny = test_ds.shuffle(seed=seed).select(range(int(num_rows * 0.1)))
+    return train_dataset_tiny, val_dataset_tiny, test_dataset_tiny
 
 
 def setup_smoltalk_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
@@ -190,3 +228,28 @@ def setup_c4_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     pruna_logger.info("Received only train and val datasets as iterable datasets, copying validation dataset to test.")
     test_dataset = copy.deepcopy(val_dataset)
     return train_dataset, val_dataset, test_dataset
+
+
+def setup_tiny_imdb_dataset() -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the TinyIMDB dataset (first 1000 rows).
+
+    License: Association for Computational Linguistics
+
+    Returns
+    -------
+    Tuple
+        TinyIMDB train, validation, and test datasets.
+    """
+    full_ds = load_dataset("stanfordnlp/imdb")
+
+    full_train_subset = full_ds["train"].select(range(1000))
+
+    train_ds = full_train_subset.select(range(0, 800))
+    val_ds = full_train_subset.select(range(800, 1000))
+
+    test_ds = full_ds["test"].select(range(200))
+    if len(test_ds) == 0:
+        test_ds = copy.deepcopy(val_ds)
+
+    return train_ds, val_ds, test_ds

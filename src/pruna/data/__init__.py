@@ -36,7 +36,9 @@ from pruna.data.datasets.text_generation import (
     setup_pubchem_dataset,
     setup_smolsmoltalk_dataset,
     setup_smoltalk_dataset,
+    setup_tiny_imdb_dataset,
     setup_wikitext_dataset,
+    setup_wikitext_tiny_dataset,
 )
 from pruna.data.datasets.text_to_image import (
     setup_coco_dataset,
@@ -53,6 +55,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "ImageNet": (setup_imagenet_dataset, "image_classification_collate", {"img_size": 224}),
     "MNIST": (setup_mnist_dataset, "image_classification_collate", {"img_size": 28}),
     "WikiText": (setup_wikitext_dataset, "text_generation_collate", {}),
+    "TinyWikiText": (setup_wikitext_tiny_dataset, "text_generation_collate", {}),
     "SmolTalk": (setup_smoltalk_dataset, "text_generation_collate", {}),
     "SmolSmolTalk": (setup_smolsmoltalk_dataset, "text_generation_collate", {}),
     "PubChem": (setup_pubchem_dataset, "text_generation_collate", {}),
@@ -64,4 +67,5 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
 }

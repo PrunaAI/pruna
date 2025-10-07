@@ -71,6 +71,8 @@ You can then also install the pre-commit hooks with:
 pre-commit install
 ```
 
+**Note:** The pre-commit hooks include TruffleHog for secret detection. TruffleHog must be installed separately as a binary tool. See the [TruffleHog installation instructions](https://github.com/trufflesecurity/trufflehog) for your platform.
+
 ### 3. Develop your contribution
 
 You are now ready to work on your contribution. Check out a branch on your forked repository and start coding! When committing your changes, we recommend following the [Conventional Commit Guidelines](https://www.conventionalcommits.org/en/v1.0.0/).

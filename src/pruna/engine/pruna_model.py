@@ -51,7 +51,7 @@ class PrunaModel:
     ) -> None:
         self.model: Any | None = model
         self.smash_config = smash_config if smash_config is not None else SmashConfig()
-        self.inference_handler = register_inference_handler(self.model)
+        self.inference_handler = register_inference_handler(self.model, self.smash_config)
 
     @track_usage
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -104,12 +104,19 @@ class PrunaModel:
             batch = (batch, {})
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
 
+        inference_function_name = self.inference_handler.inference_function_name
+        if inference_function_name is None or not hasattr(self, inference_function_name):
+            raise ValueError(
+                f"Unrecognized inference function name for model {type(self.model)}: {inference_function_name}"
+            )
+        inference_function = getattr(self, inference_function_name)
+
         if prepared_inputs is None:
-            outputs = self(**self.inference_handler.model_args)
+            outputs = inference_function(**self.inference_handler.model_args)
         elif isinstance(prepared_inputs, dict):
-            outputs = self(**prepared_inputs, **self.inference_handler.model_args)
+            outputs = inference_function(**prepared_inputs, **self.inference_handler.model_args)
         else:
-            outputs = self(prepared_inputs, **self.inference_handler.model_args)
+            outputs = inference_function(prepared_inputs, **self.inference_handler.model_args)
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
