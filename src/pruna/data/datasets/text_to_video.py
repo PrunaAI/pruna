@@ -26,8 +26,13 @@ def setup_vbench_dataset(category: str | List[str] | None = None) -> Tuple[Datas
 
     Parameters
     ----------
-    category: str | List[str] | None
+    category : str | List[str] | None
         The dimension(s) of the dataset to load.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The train, validation and test datasets.
     """
     # Loading the info json file from the package
     full_info_path = files("vbench").joinpath("VBench_full_info.json")
