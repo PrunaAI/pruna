@@ -265,7 +265,7 @@ Underneath you can find the list of all the available datasets.
      - Custom Collate Function
      - Collate Function Arguments
    * - Text Generation
-     - `WikiText <https://huggingface.co/datasets/Salesforce/wikitext>`_, `SmolTalk <https://huggingface.co/datasets/HuggingFaceTB/smoltalk>`_, `SmolSmolTalk <https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk>`_, `PubChem <https://huggingface.co/datasets/alxfgh/PubChem10M_SELFIES>`_, `OpenAssistant <https://huggingface.co/datasets/timdettmers/openassistant-guanaco>`_, `C4 <https://huggingface.co/datasets/allenai/c4>`_
+     - `WikiText <https://huggingface.co/datasets/Salesforce/wikitext>`_, `TinyWikiText <https://huggingface.co/datasets/mikasenghaas/wikitext-2>`_, `SmolTalk <https://huggingface.co/datasets/HuggingFaceTB/smoltalk>`_, `SmolSmolTalk <https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk>`_, `PubChem <https://huggingface.co/datasets/alxfgh/PubChem10M_SELFIES>`_, `OpenAssistant <https://huggingface.co/datasets/timdettmers/openassistant-guanaco>`_, `C4 <https://huggingface.co/datasets/allenai/c4>`_, `TinyIMDB <https://huggingface.co/datasets/stanfordnlp/imdb>`_
      - ``text_generation_collate``
      - ``text: str``
    * - Image Generation
