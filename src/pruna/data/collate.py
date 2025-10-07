@@ -105,13 +105,13 @@ def prompt_collate(data: Any) -> Tuple[List[str], Any]:
 
     Returns
     -------
-    Tuple[List[str], None]
+    Tuple[List[str], Any]
         The collated data.
     """
     #  The text column has the prompt.
-    prompt_list = [v for row in data for k, v in row.items() if k.startswith("text")]
+    prompt_list = [v for row in data for k, v in row.items() if k == "text"]
     #  All the other columns that might include category, scene information, etc.
-    auxiliary_list = [{k: v for k, v in row.items() if not k.startswith("text")} for row in data]
+    auxiliary_list = [{k: v for k, v in row.items() if k != "text"} for row in data]
     return prompt_list, auxiliary_list
 
 
