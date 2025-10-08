@@ -78,6 +78,7 @@ class EvaluationAgent:
         num_samples_per_input: int = 1,
         seed_strategy: Literal["per_sample", "no_seed"] = "no_seed",
         global_seed: int | None = None,
+        artifact_saver_export_format: str | None = None,
         saving_kwargs: dict = dict(),
     ) -> None:
         if task is not None:
@@ -102,7 +103,7 @@ class EvaluationAgent:
         self.save_artifacts: bool = save_artifacts
         if save_artifacts:
             self.root_dir = root_dir if root_dir is not None else tempfile.mkdtemp(prefix="inference_outputs")
-            self.artifact_saver = assign_artifact_saver(self.task.modality, self.root_dir)
+            self.artifact_saver = assign_artifact_saver(self.task.modality, self.root_dir, artifact_saver_export_format)
             self.saving_kwargs = saving_kwargs
 
     def evaluate(self, model: Any) -> List[MetricResult]:

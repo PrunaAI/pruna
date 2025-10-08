@@ -169,10 +169,12 @@ def _safe_build_metrics(
             The modality of the task.
         """
         stateful_metrics = [metric for metric in self.metrics if isinstance(metric, StatefulMetric)]
-        modalities_no_general = [metric.modality for metric in stateful_metrics if metric.modality != ["general"]]
+        modalities_no_general = {
+            modality for metric in stateful_metrics for modality in metric.modality if modality != "general"
+        }
         #  We should also allow 0 because the user might have only general modality metrics.
         if len(modalities_no_general) == 1:
-            modality = modalities_no_general[0][0]
+            modality = modalities_no_general.pop()
         elif len(modalities_no_general) == 0:
             modality = "general"
         else:
