@@ -72,9 +72,9 @@ class VideoArtifactSaver(ArtifactSaver):
             data = [Image.fromarray(frame.astype(np.uint8)) for frame in data]
 
         if self.export_format == "mp4":
-            export_to_video(data, canonical_path, **saving_kwargs)
+            export_to_video(data, str(canonical_path), **saving_kwargs.copy())
         elif self.export_format == "gif":
-            export_to_gif(data, canonical_path, **saving_kwargs)
+            export_to_gif(data, str(canonical_path), **saving_kwargs.copy())
         else:
             raise ValueError(f"Invalid format: {self.export_format}")
         return canonical_path
