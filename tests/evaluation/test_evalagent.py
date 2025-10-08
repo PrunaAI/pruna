@@ -10,6 +10,7 @@ from pruna.engine.pruna_model import PrunaModel
 @pytest.mark.parametrize("model_fixture",
 [pytest.param("wan_tiny_random", marks=pytest.mark.cuda)], indirect=["model_fixture"])
 def test_agent_saves_artifacts(model_fixture):
+    """ Test that the agent runs inference and saves the inference output artifacts correctly."""
     model, smash_config = model_fixture
     # Metrics don't work with bfloat16
     model.to(dtype=torch.float16, device="cuda")
