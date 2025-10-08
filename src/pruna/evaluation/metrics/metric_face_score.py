@@ -54,9 +54,14 @@ class FaceScoreMetric(StatefulMetric):
             # If img is a PIL image, save to temp file
             if hasattr(img, "save"):
                 import tempfile
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=True) as tmp:
+                import os
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                     img.save(tmp.name)
-                    scores, _, _ = self.face_score.get_reward(tmp.name)
+                    tmp_path = tmp.name
+                try:
+                    scores, _, _ = self.face_score.get_reward(tmp_path)
+                finally:
+                    os.remove(tmp_path)
             elif isinstance(img, str):
                 scores, _, _ = self.face_score.get_reward(img)
             else:
