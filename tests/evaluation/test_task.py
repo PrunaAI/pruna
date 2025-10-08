@@ -31,3 +31,19 @@ def _mock_torch_metrics():
 def test_metric_initialization_from_metric_name(metric_name):
     datamodule = PrunaDataModule.from_string("LAION256")
     Task(request=[metric_name], datamodule=datamodule)
+
+@pytest.mark.parametrize("metrics, modality", [
+    (["cmmd", "ssim", "lpips", "latency"], "image"),
+    (["perplexity", "disk_memory"], "text"),
+    ([MetricRegistry().get_metric("accuracy", task="binary"), MetricRegistry().get_metric("recall", task="binary")], "general"),
+    (["background_consistency", "dynamic_degree"], "video")
+])
+def test_task_modality(metrics, modality):
+    datamodule = type("dm", (), {"test_dataloader": lambda self: []})()
+    task = Task(request=metrics, datamodule=datamodule)
+    assert task.modality == modality
+
+def test_task_modality_mixed_raises():
+    datamodule = type("dm", (), {"test_dataloader": lambda self: []})()
+    with pytest.raises(ValueError):
+        Task(request=["cmmd", "background_consistency"], datamodule=datamodule)
