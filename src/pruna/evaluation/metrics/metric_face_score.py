@@ -56,10 +56,11 @@ class FaceScoreMetric(StatefulMetric):
                 import tempfile
                 import os
                 tmp_path = None
+                fd = None
                 try:
-                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                        img.save(tmp.name)
-                        tmp_path = tmp.name
+                    fd, tmp_path = tempfile.mkstemp(suffix=".png")
+                    os.close(fd)  # Close the file handle immediately
+                    img.save(tmp_path)
                     scores, _, _ = self.face_score.get_reward(tmp_path)
                 finally:
                     if tmp_path and os.path.exists(tmp_path):
