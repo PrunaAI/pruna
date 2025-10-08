@@ -104,6 +104,7 @@ class EvaluationAgent:
         if save_artifacts:
             self.root_dir = root_dir if root_dir is not None else tempfile.mkdtemp(prefix="inference_outputs")
             self.artifact_saver = assign_artifact_saver(self.task.modality, self.root_dir, artifact_saver_export_format)
+            # for miscellaneous saving kwargs like fps, etc.
             self.saving_kwargs = saving_kwargs
 
     def evaluate(self, model: Any) -> List[MetricResult]:
@@ -213,6 +214,7 @@ class EvaluationAgent:
         # Keeping the device map to move model back to the original device, when the agent is finished.
         self.device_map = get_device_map(model)
         model.set_to_eval()
+        #  Setup seeding for inference.
         model.inference_handler.configure_seed(self.seed_strategy, self.global_seed)
 
         return model
@@ -248,6 +250,7 @@ class EvaluationAgent:
                 processed_outputs = model.run_inference(batch)
                 if self.save_artifacts:
                     canonical_paths = []
+                    # We have to save the artifacts for each sample in the batch.
                     for processed_output in processed_outputs:
                         canonical_path = self.artifact_saver.save_artifact(processed_output)
                         canonical_paths.append(canonical_path)
@@ -258,7 +261,8 @@ class EvaluationAgent:
                 # Non-pairwise (aka single) metrics have regular update.
                 for stateful_metric in single_stateful_metrics:
                     stateful_metric.update(x, gt, processed_outputs)
-                    if stateful_metric.create_alias:
+                    if self.save_artifacts and stateful_metric.create_alias:
+                        # Again, we have to create an alias for each sample in the batch.
                         for prompt_idx, prompt in enumerate(x):
                             assert isinstance(self.artifact_saver.export_format, str)
                             alias_filename = stateful_metric.create_filename(
@@ -268,6 +272,8 @@ class EvaluationAgent:
 
                 # Cache outputs once in the agent for pairwise metrics to save compute time and memory.
                 if self.task.is_pairwise_evaluation():
+                    if self.num_samples_per_input > 1:
+                        raise ValueError("Pairwise evaluation with multiple samples per input is not supported.")
                     if self.evaluation_for_first_model:
                         self.cache.append(processed_outputs)
                     else:
