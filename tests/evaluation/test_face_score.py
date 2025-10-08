@@ -1,6 +1,6 @@
 import pytest
 import os
-from pruna.evaluation.metrics.face_score import FaceScoreMetric
+from pruna.evaluation.metrics.metric_face_score import FaceScoreMetric
 from PIL import Image
 
 @pytest.mark.cpu

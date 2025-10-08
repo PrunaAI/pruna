@@ -534,10 +534,6 @@ When comparing an optimized model against the baseline, use pairwise metrics to 
 Choose your initialization style
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Both direct parameters and Task-based initialization are valid approaches. Choose the one that best fits your project's coding patterns and requirements.
-
-.. _face_score:
-
 FaceScore Metric
 ~~~~~~~~~~~~~~~~
 
