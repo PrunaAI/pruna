@@ -116,11 +116,13 @@ def test_task_from_string_request():
     (["background_consistency", "dynamic_degree"], "video")
 ])
 def test_task_modality(metrics, modality):
+    """ Test that the task modality is assigned correctly for image, text, general and video metrics."""
     datamodule = type("dm", (), {"test_dataloader": lambda self: []})()
     task = Task(request=metrics, datamodule=datamodule)
     assert task.modality == modality
 
 def test_task_modality_mixed_raises():
+    """ Test that we raise an error if the task modality is mixed."""
     datamodule = type("dm", (), {"test_dataloader": lambda self: []})()
     with pytest.raises(ValueError):
         Task(request=["cmmd", "background_consistency"], datamodule=datamodule)
