@@ -55,20 +55,26 @@ class FaceScoreMetric(StatefulMetric):
             if hasattr(img, "save"):
                 import tempfile
                 import os
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                    img.save(tmp.name)
-                    tmp_path = tmp.name
+                tmp_path = None
                 try:
+                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                        img.save(tmp.name)
+                        tmp_path = tmp.name
                     scores, _, _ = self.face_score.get_reward(tmp_path)
                 finally:
-                    os.remove(tmp_path)
+                    if tmp_path and os.path.exists(tmp_path):
+                        os.remove(tmp_path)
             elif isinstance(img, str):
                 scores, _, _ = self.face_score.get_reward(img)
             else:
                 continue
+            # Accumulate scores for both scalars and iterables
             if isinstance(scores, (list, tuple)):
                 batch_score += sum(scores)
                 batch_count += len(scores)
+            elif isinstance(scores, (int, float)):
+                batch_score += scores
+                batch_count += 1
         self.total_score += batch_score
         self.count += batch_count
 
