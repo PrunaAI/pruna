@@ -105,3 +105,20 @@ def test_task_from_string_request():
     assert isinstance(task.metrics[0], CMMD)
     assert isinstance(task.metrics[1], PairwiseClipScore)
     assert isinstance(task.metrics[2], TorchMetricWrapper)
+
+
+@pytest.mark.parametrize("metrics, modality", [
+    (["cmmd", "ssim", "lpips", "latency"], "image"),
+    (["perplexity", "disk_memory"], "text"),
+    ([MetricRegistry().get_metric("accuracy", task="binary"), MetricRegistry().get_metric("recall", task="binary")], "general"),
+    (["background_consistency", "dynamic_degree"], "video")
+])
+def test_task_modality(metrics, modality):
+    datamodule = type("dm", (), {"test_dataloader": lambda self: []})()
+    task = Task(request=metrics, datamodule=datamodule)
+    assert task.modality == modality
+
+def test_task_modality_mixed_raises():
+    datamodule = type("dm", (), {"test_dataloader": lambda self: []})()
+    with pytest.raises(ValueError):
+        Task(request=["cmmd", "background_consistency"], datamodule=datamodule)
