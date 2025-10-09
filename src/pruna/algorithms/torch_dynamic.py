@@ -18,8 +18,8 @@ from typing import Any
 import torch
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.base.algorithm_tags import Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 
@@ -34,7 +34,7 @@ class TorchDynamic(PrunaAlgorithmBase):
     """
 
     algorithm_name = "torch_dynamic"
-    group_tags: list[str] = [Quantizer]
+    group_tags: list[str] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False

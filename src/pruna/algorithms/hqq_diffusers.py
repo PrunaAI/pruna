@@ -19,8 +19,8 @@ import torch.nn as nn
 from accelerate import init_empty_weights
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.base.algorithm_tags import Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
@@ -42,7 +42,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "hqq_diffusers"
-    group_tags: list[str] = [Quantizer]
+    group_tags: list[str] = [tags.QUANTIZER]
     references: dict[str, str] = {
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",

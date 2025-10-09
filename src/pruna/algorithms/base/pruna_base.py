@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterable, Literal
 
 from transformers import Pipeline
 
-from pruna.algorithms.base.algorithm_tags import AlgorithmTag
+from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.smash_config import SUPPORTED_DEVICES, SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.smash_space import SMASH_SPACE
 from pruna.engine.save import (
@@ -119,7 +119,7 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     @abstractmethod
-    def group_tags(self) -> list[str]:
+    def group_tags(self) -> list[AlgorithmTag]:
         """Subclasses need to provide a list of group tags for the algorithm."""
         pass
 
