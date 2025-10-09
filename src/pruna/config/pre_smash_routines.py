@@ -21,7 +21,7 @@ import networkx as nx
 from networkx import DiGraph
 
 from pruna import SmashConfig
-from pruna.algorithms import PRUNA_ALGORITHMS
+from pruna.algorithms import AlgorithmRegistry
 from pruna.engine.utils import get_device, get_device_map, move_to_device
 from pruna.logging.logger import pruna_logger
 
@@ -87,7 +87,7 @@ def check_model_compatibility(model: Any, smash_config: SmashConfig) -> None:
         The SmashConfig to check the model against.
     """
     for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = PRUNA_ALGORITHMS[algorithm]
+        algorithm_class = AlgorithmRegistry[algorithm]
         if not algorithm_class.model_check_fn(model):
             raise ValueError(f"Model is not compatible with {algorithm_class.algorithm_name}")
         if not any(device in get_device(model) for device in algorithm_class.runs_on):
@@ -107,7 +107,7 @@ def check_algorithm_packages_availability(smash_config: SmashConfig) -> None:
         The SmashConfig object containing the algorithm configuration.
     """
     for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = PRUNA_ALGORITHMS[algorithm]
+        algorithm_class = AlgorithmRegistry[algorithm]
         algorithm_class.import_algorithm_packages()
 
 
@@ -121,7 +121,7 @@ def check_argument_compatibility(smash_config: SmashConfig) -> None:
         The SmashConfig to check the argument consistency with.
     """
     for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = PRUNA_ALGORITHMS[algorithm]
+        algorithm_class = AlgorithmRegistry[algorithm]
 
         if algorithm_class.tokenizer_required and smash_config.tokenizer is None:
             raise ValueError(f"{algorithm} requires a tokenizer. Please provide it with smash_config.add_tokenizer().")
@@ -143,7 +143,7 @@ def check_algorithm_availability(smash_config: SmashConfig) -> None:
         The SmashConfig object containing the algorithm configuration.
     """
     for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = PRUNA_ALGORITHMS[algorithm]
+        algorithm_class = AlgorithmRegistry[algorithm]
         if "pruna_pro" in algorithm_class.__module__:
             raise RuntimeError(f"Algorithm {algorithm} is unavailable with pruna.smash")
 
@@ -161,7 +161,7 @@ def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, alg
     """
     active_algorithms = algorithm_order
     for algorithm in active_algorithms:
-        algorithm_class = PRUNA_ALGORITHMS[algorithm]
+        algorithm_class = AlgorithmRegistry[algorithm]
         algorithm_class.pre_smash_hook(model, smash_config)
 
 
@@ -178,7 +178,7 @@ def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
     algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
 
     for alg_a, alg_b in algorithm_pairs:
-        if alg_a in PRUNA_ALGORITHMS[alg_b].get_incompatible_algorithms():
+        if alg_a in AlgorithmRegistry[alg_b].get_incompatible_algorithms():
             raise ValueError(f"Algorithm {alg_a} is incompatible with {alg_b}")
 
 
@@ -225,9 +225,9 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
         graph.add_node(algorithm)
 
     for alg_a, alg_b in algorithm_pairs:
-        if alg_a in PRUNA_ALGORITHMS[alg_b].get_required_before():
+        if alg_a in AlgorithmRegistry[alg_b].get_required_before():
             graph.add_edge(alg_a, alg_b)
-        if alg_a in PRUNA_ALGORITHMS[alg_b].get_required_after():
+        if alg_a in AlgorithmRegistry[alg_b].get_required_after():
             graph.add_edge(alg_b, alg_a)
 
     return graph
