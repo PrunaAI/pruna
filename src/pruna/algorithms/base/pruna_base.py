@@ -37,10 +37,6 @@ class PrunaAlgorithmBase(ABC):
     def __init__(self) -> None:
         self.hyperparameters = self.get_hyperparameters()
         SMASH_SPACE.register_algorithm(self.algorithm_name, self.hyperparameters)
-
-        if (self.incompatible_before or self.incompatible_after) and (self.compatible_before or self.compatible_after):
-            raise ValueError("Algorithms need to provide a list of incompatible or compatible algorithms, not both.")
-
         assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
     def __init_subclass__(cls, **kwargs):
@@ -122,16 +118,6 @@ class PrunaAlgorithmBase(ABC):
     def group_tags(self) -> list[AlgorithmTag]:
         """Subclasses need to provide a list of group tags for the algorithm."""
         pass
-
-    @property
-    def incompatible_before(self) -> list[str]:
-        """Subclasses need to provide a list of algorithms that can not be executed before the current algorithm."""
-        return []
-
-    @property
-    def incompatible_after(self) -> list[str]:
-        """Subclasses need to provide a list of algorithms that can not be executed after the current algorithm."""
-        return []
 
     @property
     def compatible_before(self) -> list[str]:
@@ -271,7 +257,7 @@ class PrunaAlgorithmBase(ABC):
 
         # save algorithms to reapply after loading
         if self.save_fn == SAVE_FUNCTIONS.save_before_apply or self.save_fn == SAVE_FUNCTIONS.reapply:
-            smash_config.reapply_after_load[self.algorithm_group] = self.algorithm_name
+            smash_config.reapply_after_load[self.algorithm_name] = True
 
         # if the registered save function is None, the original saving function remains
         if self.save_fn is not None and self.save_fn != SAVE_FUNCTIONS.reapply:
@@ -287,14 +273,14 @@ class PrunaAlgorithmBase(ABC):
             return []
 
         # avoid circular import
-        from pruna.algorithms import PRUNA_ALGORITHMS
+        from pruna.algorithms import AlgorithmRegistry
 
         out: list[str] = []
         for it in items:
             if isinstance(it, str):
                 out.append(it)
             else:
-                out.extend(PRUNA_ALGORITHMS.get_algorithms_by_tag(it))
+                out.extend(AlgorithmRegistry.get_algorithms_by_tag(it))
         return out
 
     def _expanded_set(self, items: Iterable[str | AlgorithmTag] | None) -> set[str]:
@@ -302,14 +288,6 @@ class PrunaAlgorithmBase(ABC):
 
     def get_incompatible_algorithms(self) -> list[str]:
         """Algorithms incompatible with this one."""
-        ib = self._expanded_set(self.incompatible_before)
-        ia = self._expanded_set(self.incompatible_after)
-
-        if ib or ia:
-            # If any explicit incompatibility is provided, use the intersection.
-            return sorted(ib & ia)
-
-        # Otherwise, derive from compatible lists by exclusion.
         cb = self._expanded_set(self.compatible_before)
         ca = self._expanded_set(self.compatible_after)
         allowed = cb | ca
@@ -319,8 +297,7 @@ class PrunaAlgorithmBase(ABC):
     def _required_execution_order(self, side: Literal["before", "after"]) -> list[str]:
         compat = getattr(self, f"compatible_{side}")
         opposite = "after" if side == "before" else "before"
-        fallback = getattr(self, f"incompatible_{opposite}")
-        return self._expand(compat or fallback)
+        return self._expand(compat)
 
     def get_required_before(self) -> list[str]:
         """Algorithms required to run before this one."""
