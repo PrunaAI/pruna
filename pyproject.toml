@@ -166,6 +166,7 @@ dev = [
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "sphinx>=4.0.2",
 ]
 cpu = []
 
