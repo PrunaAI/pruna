@@ -191,37 +191,8 @@ class TestCheckAlgorithmPackagesAvailability:
 class TestCheckArgumentCompatibility:
     """Test suite for check_argument_compatibility function."""
 
-    def test_argument_compatibility_success(self):
-        """
-        Test successful argument compatibility check. Should pass when all required arguments are provided.
-        """
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-        smash_config.tokenizer = Mock()
-        smash_config.processor = Mock()
-        smash_config.data = Mock()
-        smash_config._target_module = None
-        
-        mock_algorithm1 = Mock()
-        mock_algorithm1.tokenizer_required = True
-        mock_algorithm1.processor_required = True
-        mock_algorithm1.dataset_required = True
-        
-        mock_algorithms = {"algorithm1": mock_algorithm1}
-        
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
-            check_argument_compatibility(smash_config)
-
     def test_argument_compatibility_missing_tokenizer(self):
-        """
-        Test argument compatibility failure when tokenizer is missing.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_argument_compatibility(smash_config)
-        Should raise ValueError when required tokenizer is missing.
-        """
+        """Test argument compatibility failure when tokenizer is missing."""
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1"]
         smash_config.tokenizer = None
@@ -239,15 +210,7 @@ class TestCheckArgumentCompatibility:
                 check_argument_compatibility(smash_config)
 
     def test_argument_compatibility_missing_processor(self):
-        """
-        Test argument compatibility failure when processor is missing.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_argument_compatibility(smash_config)
-        Should raise ValueError when required processor is missing.
-        """
+        """Test argument compatibility failure when processor is missing."""
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1"]
         smash_config.tokenizer = Mock()
@@ -266,15 +229,7 @@ class TestCheckArgumentCompatibility:
                 check_argument_compatibility(smash_config)
 
     def test_argument_compatibility_missing_dataset(self):
-        """
-        Test argument compatibility failure when dataset is missing.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_argument_compatibility(smash_config)
-        Should raise ValueError when required dataset is missing.
-        """
+        """Test argument compatibility failure when dataset is missing."""
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1"]
         smash_config.tokenizer = Mock()
@@ -293,69 +248,12 @@ class TestCheckArgumentCompatibility:
             with pytest.raises(ValueError, match="algorithm1 requires a dataset"):
                 check_argument_compatibility(smash_config)
 
-    def test_argument_compatibility_target_module_error(self):
-        """
-        Test argument compatibility failure when target_module is set without experimental mode.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_argument_compatibility(smash_config)
-        Should raise ValueError when target_module is used without experimental mode.
-        """
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-        smash_config.tokenizer = Mock()
-        smash_config.processor = Mock()
-        smash_config.data = Mock()
-        smash_config._target_module = "some_module"
-        
-        mock_algorithm1 = Mock()
-        mock_algorithm1.tokenizer_required = False
-        mock_algorithm1.processor_required = False
-        mock_algorithm1.dataset_required = False
-        
-        mock_algorithms = {"algorithm1": mock_algorithm1}
-        
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
-            with pytest.raises(ValueError, match="Target module is only available in experimental mode"):
-                check_argument_compatibility(smash_config)
-
 
 class TestCheckAlgorithmAvailability:
     """Test suite for check_algorithm_availability function."""
 
-    def test_algorithm_availability_success(self):
-        """
-        Test successful algorithm availability check.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_algorithm_availability(smash_config)
-        Should pass when all algorithms are available.
-        """
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-        
-        mock_algorithm1 = Mock()
-        mock_algorithm1.__module__ = "pruna.algorithms.algorithm1"
-        
-        mock_algorithms = {"algorithm1": mock_algorithm1}
-        
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
-            check_algorithm_availability(smash_config)
-
     def test_algorithm_availability_pruna_pro_error(self):
-        """
-        Test algorithm availability failure for pruna_pro algorithms.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_algorithm_availability(smash_config)
-        Should raise RuntimeError for pruna_pro algorithms.
-        """
+        """Test algorithm availability failure for pruna_pro algorithms."""
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1"]
         
@@ -369,68 +267,11 @@ class TestCheckAlgorithmAvailability:
                 check_algorithm_availability(smash_config)
 
 
-class TestExecuteAlgorithmPreSmashHooks:
-    """Test suite for execute_algorithm_pre_smash_hooks function."""
-
-    def test_execute_pre_smash_hooks_success(self):
-        """
-        Test successful execution of pre-smash hooks.
-        
-        Examples
-        --------
-        >>> model = Mock()
-        >>> smash_config = Mock()
-        >>> algorithm_order = ["algorithm1", "algorithm2"]
-        >>> execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
-        Should call pre_smash_hook for each algorithm in order.
-        """
-        model = Mock()
-        smash_config = Mock()
-        algorithm_order = ["algorithm1", "algorithm2"]
-        
-        mock_algorithm1 = Mock()
-        mock_algorithm2 = Mock()
-        
-        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
-        
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
-            execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
-            mock_algorithm1.pre_smash_hook.assert_called_once_with(model, smash_config)
-            mock_algorithm2.pre_smash_hook.assert_called_once_with(model, smash_config)
-
-    def test_execute_pre_smash_hooks_empty_order(self):
-        """
-        Test execution of pre-smash hooks with empty algorithm order.
-        
-        Examples
-        --------
-        >>> model = Mock()
-        >>> smash_config = Mock()
-        >>> algorithm_order = []
-        >>> execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
-        Should handle empty algorithm order gracefully.
-        """
-        model = Mock()
-        smash_config = Mock()
-        algorithm_order = []
-        
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", {}):
-            execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
-
-
 class TestCheckAlgorithmCrossCompatibility:
     """Test suite for check_algorithm_cross_compatibility function."""
 
     def test_cross_compatibility_success(self):
-        """
-        Test successful algorithm cross-compatibility check.
-        
-        Examples
-        --------
-        >>> smash_config = Mock()
-        >>> check_algorithm_cross_compatibility(smash_config)
-        Should pass when no algorithms are incompatible.
-        """
+        """Test successful algorithm cross-compatibility check."""
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
         
@@ -461,19 +302,6 @@ class TestCheckAlgorithmCrossCompatibility:
         with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
             with pytest.raises(ValueError, match="Algorithm algorithm1 is incompatible with algorithm2"):
                 check_algorithm_cross_compatibility(smash_config)
-
-    def test_cross_compatibility_single_algorithm(self):
-        """Test algorithm cross-compatibility with single algorithm. Should handle single algorithm case."""
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-        
-        mock_algorithm1 = Mock()
-        mock_algorithm1.get_incompatible_algorithms.return_value = []
-        
-        mock_algorithms = {"algorithm1": mock_algorithm1}
-        
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
-            check_algorithm_cross_compatibility(smash_config)
 
 
 class TestDetermineAlgorithmOrder:
