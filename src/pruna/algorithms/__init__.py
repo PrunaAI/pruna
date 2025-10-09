@@ -19,7 +19,6 @@ import pkgutil
 from typing import Any, Dict
 
 from pruna import algorithms
-from pruna.algorithms.base.algorithm_registry import AlgorithmRegistry
+from pruna.algorithms.base.registry import AlgorithmRegistry
 
-PRUNA_ALGORITHMS = AlgorithmRegistry()
-PRUNA_ALGORITHMS.discover_algorithms(algorithms)
+AlgorithmRegistry.discover_algorithms(algorithms)

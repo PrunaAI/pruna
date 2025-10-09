@@ -122,7 +122,7 @@ class TestCheckModelCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with patch("pruna.config.pre_smash_routines.get_device", return_value="cuda"):
                 check_model_compatibility(model, smash_config)
 
@@ -138,7 +138,7 @@ class TestCheckModelCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="Model is not compatible with algorithm1"):
                 check_model_compatibility(model, smash_config)
 
@@ -155,7 +155,7 @@ class TestCheckModelCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with patch("pruna.config.pre_smash_routines.get_device", return_value="cuda"):
                 with pytest.raises(ValueError, match="algorithm1 is not compatible with model device cuda"):
                     check_model_compatibility(model, smash_config)
@@ -171,7 +171,7 @@ class TestCheckAlgorithmPackagesAvailability:
         
         mock_algorithm1 = Mock()
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", {"algorithm1": mock_algorithm1}):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", {"algorithm1": mock_algorithm1}):
             check_algorithm_packages_availability(smash_config)
             mock_algorithm1.import_algorithm_packages.assert_called_once()
 
@@ -183,7 +183,7 @@ class TestCheckAlgorithmPackagesAvailability:
         mock_algorithm1 = Mock()
         mock_algorithm1.import_algorithm_packages.side_effect = ImportError("Something went wrong")
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", {"algorithm1": mock_algorithm1}):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", {"algorithm1": mock_algorithm1}):
             with pytest.raises(ImportError, match="Could not import necessary packages for algorithm1"):
                 check_algorithm_packages_availability(smash_config)
 
@@ -205,7 +205,7 @@ class TestCheckArgumentCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="algorithm1 requires a tokenizer"):
                 check_argument_compatibility(smash_config)
 
@@ -224,7 +224,7 @@ class TestCheckArgumentCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="algorithm1 requires a processor"):
                 check_argument_compatibility(smash_config)
 
@@ -244,7 +244,7 @@ class TestCheckArgumentCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="algorithm1 requires a dataset"):
                 check_argument_compatibility(smash_config)
 
@@ -262,7 +262,7 @@ class TestCheckAlgorithmAvailability:
         
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(RuntimeError, match="Algorithm algorithm1 is unavailable with pruna.smash"):
                 check_algorithm_availability(smash_config)
 
@@ -283,7 +283,7 @@ class TestCheckAlgorithmCrossCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             check_algorithm_cross_compatibility(smash_config)
 
     def test_cross_compatibility_incompatible_algorithms(self):
@@ -299,7 +299,7 @@ class TestCheckAlgorithmCrossCompatibility:
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="Algorithm algorithm1 is incompatible with algorithm2"):
                 check_algorithm_cross_compatibility(smash_config)
 
@@ -351,7 +351,7 @@ class TestConstructAlgorithmDirectedGraph:
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             graph = construct_algorithm_directed_graph(smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
@@ -372,7 +372,7 @@ class TestConstructAlgorithmDirectedGraph:
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             graph = construct_algorithm_directed_graph(smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
@@ -393,7 +393,7 @@ class TestConstructAlgorithmDirectedGraph:
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             graph = construct_algorithm_directed_graph(smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
@@ -422,7 +422,7 @@ class TestConstructAlgorithmDirectedGraph:
             "algorithm3": mock_algorithm3
         }
         
-        with patch("pruna.config.pre_smash_routines.PRUNA_ALGORITHMS", mock_algorithms):
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             graph = construct_algorithm_directed_graph(smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2", "algorithm3"}
