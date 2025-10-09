@@ -16,10 +16,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, List, Tuple
 
-import torch
 from jaxtyping import Float, Int
+import torch
 from torchvision import transforms
 from transformers.tokenization_utils import PreTrainedTokenizer as AutoTokenizer
+
 
 def image_format_to_transforms(output_format: str, img_size: int) -> transforms.Compose:
     """
@@ -160,8 +161,10 @@ def audio_collate(data: Any) -> Tuple[List[str], List[str]]:
 
 def image_classification_collate(
     data: Any, img_size: int, output_format: str = "int"
-) -> "Tuple[Float[torch.Tensor, 'batch 3 height width'], Int[torch.Tensor, 'batch']]":
-
+)-> Tuple[
+    Float[torch.Tensor, "batch 3 height width"],
+    Int[torch.Tensor, "batch"]
+]:
     """
     Custom collation function for image classification datasets.
 
@@ -180,8 +183,8 @@ def image_classification_collate(
 
     Returns
     -------
-    Tuple[List[str], torch.Tensor]
-        The collated data with size img_size and normalized to [0, 1].
+    Tuple[Float[torch.Tensor, "batch 3 height width"], Int[torch.Tensor, "batch"]]
+        A tuple of batched images and corresponding labels.
     """
     transformations = image_format_to_transforms(output_format, img_size)
     images, labels = [], []
