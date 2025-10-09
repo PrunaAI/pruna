@@ -13,8 +13,8 @@
 # limitations under the License.
 from typing import Any
 
-from pruna.algorithms.base.algorithm_tags import Factorizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import has_fused_attention_processor, is_diffusers_model
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -31,7 +31,7 @@ class QKVFusing(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "qkv_diffusers"
-    group_tags: list[str] = [Factorizer]
+    group_tags: list[str] = [tags.FACTORIZER]
     references: dict[str, str] = {
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",

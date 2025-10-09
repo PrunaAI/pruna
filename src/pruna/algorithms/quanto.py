@@ -20,8 +20,8 @@ import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
 
 from pruna import SmashConfig
-from pruna.algorithms.base.algorithm_tags import Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
@@ -42,7 +42,7 @@ class Quanto(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "quanto"
-    group_tags: list[str] = [Quantizer]
+    group_tags: list[str] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False

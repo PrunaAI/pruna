@@ -17,8 +17,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.base.algorithm_tags import Batcher, Cacher, Compiler, Factorizer, Kernel, Pruner, Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_allegro_pipeline,
@@ -46,7 +46,7 @@ class FasterCache(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fastercache"
-    group_tags: list[str] = [Cacher]
+    group_tags: list[str] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/Vchitect/FasterCache",
