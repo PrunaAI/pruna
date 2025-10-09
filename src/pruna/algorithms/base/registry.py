@@ -17,8 +17,8 @@ import logging
 import pkgutil
 from typing import Any, Callable, Dict
 
-from pruna.algorithms.base.algorithm_tags import AlgorithmTag
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag
 
 
 class AlgorithmRegistry:
@@ -28,10 +28,10 @@ class AlgorithmRegistry:
     The registry is a dictionary that maps metric names to metric classes.
     """
 
-    def __init__(self) -> None:
-        self._registry: Dict[str, Callable[..., Any]] = {}
+    _registry: Dict[str, Callable[..., Any]] = {}
 
-    def discover_algorithms(self, algorithms_pkg: Any) -> None:
+    @classmethod
+    def discover_algorithms(cls, algorithms_pkg: Any) -> None:
         """
         Discover every package/module under `algorithms_pkg` by walking the package.
 
@@ -72,14 +72,16 @@ class AlgorithmRegistry:
                 # Instantiate & register with the Smash Configuration Space
                 try:
                     instance = obj()
-                    self._registry[instance.algorithm_name] = instance
+                    cls._registry[instance.algorithm_name] = instance
                 except Exception as e:
                     logging.warning("Failed to instantiate %s from %s: %s", obj.__name__, modname, e)
 
-    def __getitem__(self, algorithm_name: str) -> PrunaAlgorithmBase:  # noqa: D105
-        return self._registry[algorithm_name]
+    @classmethod
+    def __class_getitem__(cls, algorithm_name: str) -> PrunaAlgorithmBase:  # noqa: D105
+        return cls._registry[algorithm_name]
 
-    def get_algorithms_by_tag(self, tag: AlgorithmTag) -> list[PrunaAlgorithmBase]:
+    @classmethod
+    def get_algorithms_by_tag(cls, tag: AlgorithmTag) -> list[PrunaAlgorithmBase]:
         """
         Get all algorithms that have the given tag.
 
@@ -93,4 +95,4 @@ class AlgorithmRegistry:
         list[PrunaAlgorithmBase]
             The algorithms that have the given tag.
         """
-        return [alg.algorithm_name for alg in self._registry.values() if tag in alg.group_tags]
+        return [alg.algorithm_name for alg in cls._registry.values() if tag in alg.group_tags]

@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from pruna import PrunaModel, SmashConfig
-from pruna.algorithms import PRUNA_ALGORITHMS
+from pruna.algorithms import AlgorithmRegistry
 from pruna.config.pre_smash_routines import (
     check_algorithm_availability,
     check_algorithm_cross_compatibility,
@@ -82,9 +82,8 @@ def smash(
 
         # iterate through all algorithms groups in a predefined order
         for algorithm in algorithm_order:
-            algorithm_instance = PRUNA_ALGORITHMS[algorithm]
             pruna_logger.info(f"Starting {algorithm}...")
-            model = algorithm_instance.apply(model, smash_config=smash_config)
+            model = AlgorithmRegistry[algorithm].apply(model, smash_config=smash_config)
             pruna_logger.info(f"{algorithm} was applied successfully.")
 
         # wrap the model in a PrunaModel object before returning
