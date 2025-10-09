@@ -66,6 +66,7 @@ repos:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
               echo "Error: pruna_pro found in staged file $file"
               exit 1
@@ -82,6 +83,12 @@ repos:
                   exit 1
               fi
 >>>>>>> 4d5d496 (feat: 2 vbench dimensions and vbench dependencies)
+=======
+              if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
+                  echo "Error: pruna_pro found in staged file $file"
+                  exit 1
+              fi
+>>>>>>> 607edef (feat: 0 vbench dimensions and vbench dependencies)
           done
           '
         language: system
