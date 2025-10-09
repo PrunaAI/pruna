@@ -17,8 +17,8 @@ from typing import Any, Dict
 
 import torch
 
-from pruna.algorithms.base.algorithm_tags import Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.smash_space import CategoricalHyperparameter
 from pruna.engine.model_checks import (
@@ -81,7 +81,7 @@ class Torchao(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torchao"
-    group_tags: list[str] = [Quantizer]
+    group_tags: list[str] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False

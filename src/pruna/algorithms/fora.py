@@ -19,8 +19,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
 
-from pruna.algorithms.base.algorithm_tags import Cacher
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_flux_pipeline
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -36,7 +36,7 @@ class FORA(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fora"
-    group_tags: list[str] = [Cacher]
+    group_tags: list[str] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False

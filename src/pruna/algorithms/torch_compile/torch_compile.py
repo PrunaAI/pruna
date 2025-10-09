@@ -19,8 +19,8 @@ from typing import Any, Callable
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
-from pruna.algorithms.base.algorithm_tags import Compiler
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.algorithms.torch_compile.generators import CausalLMGenerator, JanusGenerator
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
@@ -48,7 +48,7 @@ class TorchCompile(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_compile"
-    group_tags: list[str] = [Compiler]
+    group_tags: list[tags] = [tags.COMPILER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
@@ -68,6 +68,7 @@ class TorchCompile(PrunaAlgorithmBase):
         "flash_attn3",
         "deepcache",
         "fora",
+        "pab",
     ]
 
     def get_hyperparameters(self) -> list:

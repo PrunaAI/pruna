@@ -21,8 +21,8 @@ import torch.nn as nn
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
 from diffusers import BitsAndBytesConfig as DiffusersBitsAndBytesConfig
 
-from pruna.algorithms.base.algorithm_tags import Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
@@ -51,7 +51,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "diffusers_int8"
-    group_tags: list[str] = [Quantizer]
+    group_tags: list[str] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
     tokenizer_required: bool = False
     processor_required: bool = False

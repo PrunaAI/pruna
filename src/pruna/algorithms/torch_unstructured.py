@@ -17,8 +17,8 @@ from typing import Any
 import torch
 from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter
 
-from pruna.algorithms.base.algorithm_tags import Pruner
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 
 
@@ -32,7 +32,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_unstructured"
-    group_tags: list[str] = [Pruner]
+    group_tags: list[str] = [tags.PRUNER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # original model-saving can be retained as is, only parameter values are modified
     save_fn = None

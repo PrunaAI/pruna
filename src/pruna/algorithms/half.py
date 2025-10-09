@@ -17,8 +17,8 @@ from typing import Any, Mapping, Sequence
 
 import torch
 
-from pruna.algorithms.base.algorithm_tags import Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 
@@ -32,7 +32,7 @@ class Half(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "half"
-    group_tags: list[str] = [Quantizer]
+    group_tags: list[str] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
@@ -50,6 +50,7 @@ class Half(PrunaAlgorithmBase):
         "torch_compile",
         "ifw",
         "whisper_s2t",
+        "pab",
     ]
 
     def model_check_fn(self, model: Any) -> bool:
