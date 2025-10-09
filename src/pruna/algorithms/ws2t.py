@@ -25,8 +25,8 @@ from transformers import (
 )
 from transformers.modeling_utils import PreTrainedModel
 
-from pruna.algorithms.base.algorithm_tags import Batcher
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.algorithms.c_translate import WhisperWrapper
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -46,7 +46,7 @@ class WS2T(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "whisper_s2t"
-    group_tags: list[str] = [Batcher]
+    group_tags: list[str] = [tags.BATCHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
     tokenizer_required: bool = True

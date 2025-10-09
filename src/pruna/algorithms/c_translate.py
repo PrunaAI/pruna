@@ -31,8 +31,8 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from pruna.algorithms.base.algorithm_tags import Compiler
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_causal_lm,
@@ -62,7 +62,7 @@ class CTranslate(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "c_translate"
-    group_tags: list[str] = [Compiler]
+    group_tags: list[str] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True

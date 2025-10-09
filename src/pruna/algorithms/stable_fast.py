@@ -15,8 +15,8 @@
 import logging
 from typing import Any, Dict
 
-from pruna.algorithms.base.algorithm_tags import Batcher, Cacher, Compiler, Factorizer, Kernel, Pruner, Quantizer
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_comfy_model, is_diffusers_pipeline, is_flux_pipeline
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -32,7 +32,7 @@ class StableFast(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "stable_fast"
-    group_tags: list[str] = [Compiler]
+    group_tags: list[str] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
     tokenizer_required: bool = False

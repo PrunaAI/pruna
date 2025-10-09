@@ -24,8 +24,8 @@ from kernels import get_kernel
 from packaging.version import Version
 from torch.overrides import TorchFunctionMode
 
-from pruna.algorithms.base.algorithm_tags import Kernel
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
@@ -40,7 +40,7 @@ class FlashAttn3(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "flash_attn3"
-    group_tags: list[str] = [Kernel]
+    group_tags: list[str] = [tags.KERNEL]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/Dao-AILab/flash-attention",
