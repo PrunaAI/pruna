@@ -74,6 +74,7 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
+clip = {git = "https://github.com/openai/CLIP.git", rev = "dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1"}
 
 [project]
 name = "pruna"
@@ -184,6 +185,7 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 cpu = []
+
 
 [build-system]
 requires = ["hatchling"]
