@@ -98,8 +98,12 @@ class SmashConfig:
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
         self._target_module: Any | None = None
+
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
         self._prepare_saving = True
+
+        # internal variable to overwrite the graph-induced order of algorithms if desired
+        self._algorithm_order: list[str] | None = None
 
         # internal variable to indicated that a model has been smashed for a specific batch size
         self.__locked_batch_size = False
@@ -597,6 +601,17 @@ class SmashConfig:
         """Get all active algorithms in this smash config."""
         all_algorithms = self.config_space.get_all_algorithms()
         return [k for k, v in self._configuration.items() if v and k in all_algorithms]
+
+    def overwrite_algorithm_order(self, algorithm_order: list[str]) -> None:
+        """Overwrite the graph-induced order of algorithms if desired."""
+        if not set(algorithm_order) == set(self.get_active_algorithms()):
+            raise ValueError("All active algorithms must be contained in the given algorithm order.")
+        self._algorithm_order = algorithm_order
+
+    def disable_saving(self) -> None:
+        """Disable the saving of the SmashConfig."""
+        pruna_logger.info("Disabling the preparation of saving, smashed model will not be saveable.")
+        self._prepare_saving = False
 
 
 class SmashConfigPrefixWrapper:

@@ -78,10 +78,10 @@ class SmashConfigurationSpace(ConfigurationSpace):
 
         Parameters
         ----------
-        algorithm_group : str
-            The name of the configuration group (e.g., 'quantizer', 'pruner').
-        name : str
+        algorithm_name : str
             The name of the algorithm.
+        hyperparameters : list
+            The hyperparameters of the algorithm.
         """
         parent = Boolean(algorithm_name)
         self.algorithms.append(algorithm_name)

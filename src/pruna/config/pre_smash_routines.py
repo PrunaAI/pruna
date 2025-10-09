@@ -199,9 +199,14 @@ def determine_algorithm_order(smash_config: SmashConfig) -> list[str]:
     list[str]
         The order of the active algorithms to be applied.
     """
+    if smash_config._algorithm_order is not None:
+        return smash_config._algorithm_order
     graph = construct_algorithm_directed_graph(smash_config)
+    remove_reciprocals(graph)
     try:
-        return list(nx.topological_sort(graph))
+        order = list(nx.topological_sort(graph))
+        pruna_logger.info(f"Determined algorithm order: {', '.join(order)}")
+        return order
     except nx.NetworkXUnfeasible:
         raise ValueError("Cycle detected in the algorithm order, the current algorithm configuration is not possible.")
 
@@ -234,3 +239,15 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
             graph.add_edge(alg_b, alg_a)
 
     return graph
+
+
+def remove_reciprocals(G: nx.DiGraph):
+    """
+    Remove reciprocal (bidirectional) edges from a directed graph.
+    """
+    # Undirected view collapses mutual edges into one
+    reciprocal_pairs = {(u, v) for u, v in G.to_undirected().edges() if G.has_edge(u, v) and G.has_edge(v, u)}
+
+    G.remove_edges_from([(u, v) for u, v in reciprocal_pairs])
+    G.remove_edges_from([(v, u) for u, v in reciprocal_pairs])
+    return reciprocal_pairs
