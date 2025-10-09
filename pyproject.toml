@@ -60,6 +60,8 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
+clip = {git = "https://github.com/openai/CLIP.git", rev = "dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1"}
+vbench = {git = "https://github.com/PrunaAI/VBench.git", rev = "6d9f7d7acf33e19b946eb437bf913ed39d7f627f"}
 
 [project]
 name = "pruna"
@@ -118,8 +120,10 @@ dependencies = [
     "piq",
     "opencv-python",
     "kernels",
-    "aenum"
-
+    "aenum",
+    "clip",
+    "vbench",
+    "imageio-ffmpeg",
 ]
 
 [project.optional-dependencies]
@@ -167,6 +171,7 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 cpu = []
+
 
 [build-system]
 requires = ["hatchling"]
