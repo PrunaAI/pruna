@@ -16,9 +16,9 @@
 from pruna.config.smash_config import SmashConfig
 from pruna.engine.pruna_model import PrunaModel
 from pruna.smash import smash
-from pruna.algorithms import PRUNA_ALGORITHMS
+from pruna.algorithms import AlgorithmRegistry
 from importlib_metadata import version
 
 __version__ = version(__name__)
 
-__all__ = ["SmashConfig", "PrunaModel", "smash", "PRUNA_ALGORITHMS", "__version__"]
+__all__ = ["SmashConfig", "PrunaModel", "smash", "AlgorithmRegistry", "__version__"]
