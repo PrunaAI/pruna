@@ -15,4 +15,4 @@
 
 from __future__ import annotations
 
-from .FaceScore import FaceScore
+from .face_score_model import FaceScore

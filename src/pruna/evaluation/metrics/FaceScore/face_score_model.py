@@ -1,5 +1,3 @@
-
-
 # Copyright (c) 2025 PrunaAI. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 from __future__ import annotations
 
@@ -35,11 +32,9 @@ try:
 except ImportError:
     BICUBIC = Image.BICUBIC
 
-
 def _convert_image_to_rgb(image: Image.Image) -> Image.Image:
     """Convert image to RGB."""
     return image.convert("RGB")
-
 
 def _transform(n_px: int) -> Compose:
     """Return a composed transform for preprocessing face images."""
@@ -50,7 +45,6 @@ def _transform(n_px: int) -> Compose:
         ToTensor(),
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
     ])
-
 
 class MLP(nn.Module):
     """Multi-layer perceptron for face scoring."""
@@ -77,7 +71,6 @@ class MLP(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for MLP."""
         return self.layers(x)
-    
 
 class FaceScore(nn.Module):
     """FaceScore reward model for evaluating face quality in images."""
