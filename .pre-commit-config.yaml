@@ -63,10 +63,10 @@ repos:
           grep -v "^D" |
           cut -f2- |
           while IFS= read -r file; do
-            if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
-              echo "Error: pruna_pro found in staged file $file"
-              exit 1
-            fi
+              if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
+                  echo "Error: pruna_pro found in staged file $file"
+                  exit 1
+              fi
           done
           '
         language: system

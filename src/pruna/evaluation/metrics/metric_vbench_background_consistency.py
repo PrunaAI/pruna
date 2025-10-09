@@ -19,9 +19,9 @@ from typing import Any, List
 import clip
 import torch
 import torch.nn.functional as F  # noqa: N812
-from torchvision.transforms.functional import convert_image_dtype
 from vbench.utils import clip_transform, init_submodules
 
+from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -41,6 +41,8 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     ----------
     *args : Any
         The arguments to pass to the metric.
+    device : str | None
+        The device to run the metric on.
     call_type : str
         The call type to use for the metric.
     **kwargs : Any
@@ -50,7 +52,9 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     metric_name: str = METRIC_VBENCH_BACKGROUND_CONSISTENCY
     default_call_type: str = "y"  # We just need the outputs
     higher_is_better: bool = True
-    runs_on: List[str] = ["cuda", "cpu"]
+    # https://github.com/Vchitect/VBench/blob/dc62783c0fb4fd333249c0b669027fe102696682/evaluate.py#L111
+    # explicitly sets the device to cuda. We respect this here.
+    runs_on: List[str] = ["cuda"]
     modality: List[str] = ["video"]
     # state
     similarity_scores: torch.Tensor
@@ -59,10 +63,15 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     def __init__(
         self,
         *args: Any,
+        device: str | None = None,
         call_type: str = SINGLE,
         **kwargs: Any,
     ) -> None:
-        super().__init__(kwargs.pop("device", None))
+        super().__init__(*args, **kwargs)
+
+        if device is not None and str(device).split(":")[0] not in self.runs_on:
+            pruna_logger.error(f"Unsupported device {device}; supported: {self.runs_on}")
+            raise ValueError()
 
         if call_type == PAIRWISE:
             # VBench itself does not support pairwise.
@@ -73,13 +82,13 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         submodules_dict = init_submodules([METRIC_VBENCH_BACKGROUND_CONSISTENCY])
         model_path = submodules_dict[METRIC_VBENCH_BACKGROUND_CONSISTENCY][0]
 
+        self.device = set_to_best_available_device(device)
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
         self.clip_model, self.preprocessor = clip.load(model_path, device=self.device)
-        # Cropping for the CLIP encoder.
         self.video_transform = clip_transform(224)
 
-        self.add_state("similarity_scores_cumsum", torch.tensor(0.0))
+        self.add_state("similarity_scores", torch.tensor(0.0))
         self.add_state("n_samples", torch.tensor(0))
 
     def update(self, x: List[str], gt: Any, outputs: Any) -> None:
@@ -98,23 +107,19 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         outputs = metric_data_processor(x, gt, outputs, self.call_type, device=self.device)
         # Background consistency metric only supports a batch size of 1.
         # To support larger batch sizes, we stack the outputs.
-        outputs = super().validate_batch(outputs[0])
-        # This metric depends on the outputs being uint8.
-        outputs = torch.stack([convert_image_dtype(output, dtype=torch.uint8) for output in outputs])
-        outputs = torch.stack([self.video_transform(output) for output in outputs])
+        outputs = torch.stack([self.video_transform(output) for output in outputs[0]])
         features = torch.stack([self.clip_model.encode_image(output) for output in outputs])
-        features = torch.stack([F.normalize(feature, dim=-1, p=2) for feature in features])
+        features = F.normalize(features, dim=-1, p=2)
 
-        # We vectorize the calculation to avoid for loops.
-        first_feature = features[:, 0, ...].unsqueeze(1).repeat(1, features.shape[1] - 1, 1)
+        first_feature = features[0].unsqueeze(0)
 
-        similarity_to_first = F.cosine_similarity(first_feature, features[:, 1:, ...], dim=-1).clamp(min=0.0)
-        similarity_to_prev = F.cosine_similarity(features[:, :-1, ...], features[:, 1:, ...], dim=-1).clamp(min=0.0)
+        similarity_to_first = F.cosine_similarity(first_feature, features[1:]).clamp(min=0.0)
+        similarity_to_prev = F.cosine_similarity(features[:-1], features[1:]).clamp(min=0.0)
 
         similarities = (similarity_to_first + similarity_to_prev) / 2
 
         # Update stats
-        self.similarity_scores_cumsum += similarities.sum().item()
+        self.similarity_scores += similarities.sum().item()
         self.n_samples += similarities.numel()
 
     def compute(self) -> MetricResult:
@@ -126,13 +131,10 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         MetricResult
             The final score.
         """
-        if self.n_samples == 0:
-            return MetricResult(self.metric_name, self.__dict__, 0.0)
-        score = self.similarity_scores_cumsum / self.n_samples
+        score = self.similarity_scores / self.n_samples
         return MetricResult(self.metric_name, self.__dict__, score)
 
     def reset(self) -> None:
         """Reset the metric states."""
-        super().reset()
-        self.similarity_scores_cumsum = torch.tensor(0.0)
+        self.similarity_scores = torch.tensor(0.0)
         self.n_samples = torch.tensor(0)
