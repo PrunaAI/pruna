@@ -47,6 +47,10 @@ class PrunaDynamicDegree(DynamicDegree):
         ----------
         frames: torch.Tensor
             The video frames to compute the Dynamic Degree score for.
+        interval: int
+            The interval to skip frames. It's possible for each consecutive frame to not have extreme motion,
+            even though the video itself contains large dynamic changes.
+            Therefore it's important to set the inteval to skip frames correctly.
 
         Returns
         -------
@@ -83,10 +87,10 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
     ----------
     *args : Any
         The arguments to be passed to the DynamicDegree class.
-    device: str | None, optional
+    device : str | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
-    call_type: str, default="y"
+    call_type : str, default="y"
         The call type to be used, e.g., 'y' or 'y_gt'. Default is "y".
     interval : int, default=3
         The interval to be used to extract frames from the video.
@@ -153,11 +157,11 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
 
         Parameters
         ----------
-        x: List[str]
+        x : List[str]
             The list of input videos.
-        gt: Any
+        gt : Any
             The ground truth videos.
-        outputs: Any
+        outputs : Any
             The generated videos. Should be a tensor of shape (B, T, C, H, W).
             where B is the batch size, T is the number of frames, C is the number of channels, H is the height,
             and W is the width.
