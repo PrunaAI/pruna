@@ -120,7 +120,7 @@ class AestheticLAION(StatefulMetric):
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         image_features = self._get_embeddings(inputs[0])
         with torch.no_grad():
-            prediction = self.aesthetic_model(image_features)
+            prediction = self.aesthetic_model(image_features).cpu()
             self.total += torch.sum(prediction)
             self.count += prediction.shape[0]
 
