@@ -139,7 +139,11 @@ def bipartite_soft_matching(
         unm_tokens = x[..., t - (unm_idx.shape[-2]) :, :]
 
         # Restore original ordering (approximately)
-        out = torch.zeros(n, src_idx.shape[-2] * 2, c, device=x.device, dtype=x.dtype)
+        out = torch.zeros(n, src_idx.shape[-2], c, device=x.device, dtype=x.dtype)
+        out[..., :r, :] = dst_tokens  # if needed
+        out.scatter_(dim=-2, index=src_idx.expand(n, r, c), src=dst_tokens)
+
+
         out[..., 1::2, :] = dst_tokens
         # Duplicate merged tokens for source positions
         out.scatter_(dim=-2, index=(src_idx * 2).expand(n, r, c), src=dst_tokens.gather(-2, dst_idx.expand(n, r, c)))
@@ -251,4 +255,5 @@ def apply_tome_to_vit(model: torch.nn.Module, r: int = 0) -> torch.nn.Module:
         )
 
     return model
+
 
