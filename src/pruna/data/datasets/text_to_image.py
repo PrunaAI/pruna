@@ -41,7 +41,7 @@ def setup_open_image_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The OpenImage dataset.
     """
-    dataset = load_dataset("data-is-better-together/open-image-preferences-v1")["cleaned"]
+    dataset = load_dataset("data-is-better-together/open-image-preferences-v1")["cleaned"]  # type: ignore[index]
     dataset = dataset.rename_column("image_quality_dev", "image")
     dataset = dataset.rename_column("quality_prompt", "text")
     return split_train_into_train_val_test(dataset, seed)
@@ -61,7 +61,7 @@ def setup_laion256_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The LAION256 dataset.
     """
-    dataset = load_dataset("nannullna/laion_subset")["artwork"]
+    dataset = load_dataset("nannullna/laion_subset")["artwork"]  # type: ignore[index]
     return split_train_into_train_val_test(dataset, seed)
 
 
@@ -120,7 +120,7 @@ def setup_coco_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         example["text"] = example["captions"][0]
         return example
 
-    train_dataset = dataset["train"].map(partial(_process_example, directory_dataset=str(directory_dataset)))
-    val_dataset = dataset["validation"].map(partial(_process_example, directory_dataset=str(directory_dataset)))
+    train_dataset = dataset["train"].map(partial(_process_example, directory_dataset=str(directory_dataset)))  # type: ignore[index]
+    val_dataset = dataset["validation"].map(partial(_process_example, directory_dataset=str(directory_dataset)))  # type: ignore[index]
     val_dataset, test_dataset = split_val_into_val_test(val_dataset, seed)
     return train_dataset, val_dataset, test_dataset

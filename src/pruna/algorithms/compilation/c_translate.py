@@ -168,7 +168,7 @@ class CTranslateCompiler(PrunaCompiler):
         out_dir.mkdir(exist_ok=True)
 
         model.save_pretrained(out_dir)
-        # we can ignore mypy warnings here because we ensure beforehand that processor and tokenizer are not None
+        # we can ignore ty warnings here because we ensure beforehand that processor and tokenizer are not None
         if self.processor_required:
             smash_config.processor.save_pretrained(out_dir)  # type: ignore[attr-defined]
         elif self.tokenizer_required:
