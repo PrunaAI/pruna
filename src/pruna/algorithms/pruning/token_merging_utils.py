@@ -65,7 +65,7 @@ def bipartite_soft_matching(
 
     with torch.no_grad():
         # Compute similarity matrix
-        metric = metric / metric.norm(dim=-1, keepdim=True)
+        metric = metric / (metric.norm(dim=-1, keepdim=True) + 1e-8)
         a, b = metric[..., ::2, :], metric[..., 1::2, :]
         scores = a @ b.transpose(-1, -2)
 
@@ -251,3 +251,4 @@ def apply_tome_to_vit(model: torch.nn.Module, r: int = 0) -> torch.nn.Module:
         )
 
     return model
+
