@@ -26,6 +26,7 @@ from torchmetrics.classification import Accuracy, Precision, Recall
 from torchmetrics.image import (
     FrechetInceptionDistance,
     LearnedPerceptualImagePatchSimilarity,
+    MultiScaleStructuralSimilarityIndexMeasure,
     PeakSignalNoiseRatio,
     StructuralSimilarityIndexMeasure,
 )
@@ -122,14 +123,18 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
     metric.update(preds)
 
 
-def ssim_update(metric: StructuralSimilarityIndexMeasure, preds: Any, target: Any) -> None:
+def ssim_update(
+        metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure,
+        preds: Any,
+        target: Any
+) -> None:
     """
-    Update handler for SSIM metric.
+    Update handler for SSIM or MS-SSIM metric.
 
     Parameters
     ----------
-    metric : StructuralSimilarityIndexMeasure instance
-        The SSIM metric instance.
+    metric : StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure instance
+        The SSIM or MS-SSIM metric instance.
     preds : Any
         The generated images tensor.
     target : Any
@@ -173,6 +178,7 @@ class TorchMetrics(Enum):
     recall = (partial(Recall), None, "y_gt")
     psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
     ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
+    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
     arniqa = (partial(ARNIQA), arniqa_update, "y")
     clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
