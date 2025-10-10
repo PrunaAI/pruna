@@ -59,6 +59,7 @@ class Task:
     ) -> None:
         device = set_to_best_available_device(device)
         self.metrics = get_metrics(request, device)
+        self.modality = self.validate_and_get_task_modality()
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
         if device not in ["cpu", "mps"] and not device.startswith("cuda"):
@@ -108,6 +109,32 @@ class Task:
             True if the task is pairwise, False otherwise.
         """
         return any(metric.is_pairwise() for metric in self.metrics if isinstance(metric, StatefulMetric))
+
+    def validate_and_get_task_modality(self) -> str:
+        """
+        Check if the task has a single modality of metrics.
+
+        Inference handling is different for different modalities.
+        The task should have one consistent modality across metrics.
+        Stateless metrics and stateful metrics with general modalities are allowed.
+
+        Returns
+        -------
+        str
+            The modality of the task.
+        """
+        stateful_metrics = [metric for metric in self.metrics if isinstance(metric, StatefulMetric)]
+        modalities_no_general = {
+            modality for metric in stateful_metrics for modality in metric.modality if modality != "general"
+        }
+        #  We should also allow 0 because the user might have only general modality metrics.
+        if len(modalities_no_general) == 1:
+            modality = modalities_no_general.pop()
+        elif len(modalities_no_general) == 0:
+            modality = "general"
+        else:
+            raise ValueError("The task should have a single modality of quality metrics.")
+        return modality
 
 
 def get_metrics(
