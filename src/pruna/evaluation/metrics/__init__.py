@@ -14,7 +14,7 @@
 
 from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
-from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION, CLIPVariantAesthetics
+from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_dino_score import DinoScore
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
@@ -43,5 +43,4 @@ __all__ = [
     "DinoScore",
     "SharpnessMetric",
     "AestheticLAION",
-    "CLIPVariantAesthetics",
 ]
