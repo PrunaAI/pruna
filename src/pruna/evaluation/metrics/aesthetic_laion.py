@@ -190,6 +190,6 @@ class AestheticLAION(StatefulMetric):
             # Should never happen due to the previous check
             pruna_logger.error(f"Model {clip_model} is not supported by aesthetic predictor.")
             raise ValueError(f"Model {clip_model} is not supported by aesthetic predictor.")
-        aesthetic_linear_head.load_state_dict(torch.load(path_to_model))
+        aesthetic_linear_head.load_state_dict(torch.load(path_to_model, map_location=self.device))
         aesthetic_linear_head.eval()
         return aesthetic_linear_head.to(self.device)
