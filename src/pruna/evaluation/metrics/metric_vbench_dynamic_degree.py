@@ -37,7 +37,7 @@ METRIC_VBENCH_DYNAMIC_DEGREE = "dynamic_degree"
 class PrunaDynamicDegree(DynamicDegree):
     """Helper class to compute Dynamic Degree score for a given video."""
 
-    def infer(self, frames: torch.Tensor) -> bool:
+    def infer(self, frames: torch.Tensor, interval: int) -> bool:
         """
         Compute Dynamic Degree score for a given video.
 
@@ -53,7 +53,11 @@ class PrunaDynamicDegree(DynamicDegree):
         bool
             Whether the video contains large motions.
         """
+        frames = [fr.unsqueeze(0) for fr in frames]
+
+        frames = self.extract_frame(frames, interval=max(1, interval))
         self.set_params(frame=frames[0], count=len(frames))
+
         static_score = []
         for image1, image2 in zip(frames[:-1], frames[1:]):
             padder = InputPadder(image1.shape)
@@ -77,11 +81,22 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
 
     Parameters
     ----------
+    *args : Any
+        The arguments to be passed to the DynamicDegree class.
     device: str | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     call_type: str, default="y"
         The call type to be used, e.g., 'y' or 'y_gt'. Default is "y".
+    interval : int, default=3
+        The interval to be used to extract frames from the video.
+        The default Vbench dimension loads videos from file and preprocesses them to have 8 frames per second.
+        For instance, if the video is 24fps, Vbench will only get every 3rd frame.
+        Here, we deal directly with the model outputs, so we initialize the interval to be 3,
+        which is a reasonable skip interval.
+        Feel free to change this to your needs.
+    **kwargs : Any
+        The keyword arguments to be passed to the DynamicDegree class.
     """
 
     metric_name: str = METRIC_VBENCH_DYNAMIC_DEGREE
@@ -99,6 +114,7 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
         *args: Any,
         device: str | None = None,
         call_type: str = SINGLE,
+        interval: int = 3,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -113,6 +129,7 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
             pruna_logger.error("VBench does not support pairwise metrics. Please use single mode.")
             raise ValueError()
 
+        self.interval = interval
         submodules_dict = init_submodules([METRIC_VBENCH_DYNAMIC_DEGREE])
         model_path = submodules_dict[METRIC_VBENCH_DYNAMIC_DEGREE]["model"]
 
@@ -121,15 +138,13 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
         #  RAFT models expect arguments to be passed as an object with attributes.
         #  So we need to convert the arguments to an EasyDict.
         args_new = EasyDict({"model": model_path, "small": False, "mixed_precision": False, "alternate_corr": False})
-        self.DynamicDegree = PrunaDynamicDegree(args_new, device)
+        self.DynamicDegree = PrunaDynamicDegree(args_new, self.device)
         self.add_state("scores", [])
 
     @torch.no_grad()
     def update(self, x: List[str], gt: Any, outputs: Any) -> None:
         """
         Calculate the dynamic degree score for the given video.
-
-        The video is preprocessed to have approx. 8 frames per second.
 
         Then passed to the RAFT model to calculate the dynamic degree score.
 
@@ -143,11 +158,16 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
         gt: Any
             The ground truth videos.
         outputs: Any
-            The generated videos.
+            The generated videos. Should be a tensor of shape (B, T, C, H, W).
+            where B is the batch size, T is the number of frames, C is the number of channels, H is the height,
+            and W is the width.
         """
         outputs = metric_data_processor(x, gt, outputs, self.call_type, device=self.device)
-        score = self.DynamicDegree.infer(outputs)
-        self.scores.append(score)
+        videos = outputs[0]
+
+        for video in videos:
+            score = self.DynamicDegree.infer(video, self.interval)
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
         """
