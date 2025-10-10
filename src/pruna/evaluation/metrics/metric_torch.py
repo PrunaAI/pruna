@@ -26,9 +26,9 @@ from torchmetrics.classification import Accuracy, Precision, Recall
 from torchmetrics.image import (
     FrechetInceptionDistance,
     LearnedPerceptualImagePatchSimilarity,
+    MultiScaleStructuralSimilarityIndexMeasure,
     PeakSignalNoiseRatio,
     StructuralSimilarityIndexMeasure,
-    MultiScaleStructuralSimilarityIndexMeasure
 )
 from torchmetrics.image.arniqa import ARNIQA
 from torchmetrics.multimodal.clip_iqa import CLIPImageQualityAssessment
