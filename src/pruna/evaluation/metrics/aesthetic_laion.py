@@ -156,7 +156,7 @@ class AestheticLAION(StatefulMetric):
         embeddings = embeddings / embeddings.norm(p=2, dim=-1, keepdim=True)
         return embeddings
 
-    def _get_aesthetic_model(self, clip_model="vit_l_14"):
+    def _get_aesthetic_model(self, clip_model="openai/clip-vit-large-patch14"):
         """
         Load the aesthetic model.
 
