@@ -15,14 +15,13 @@
 from __future__ import annotations
 
 import pathlib
-from enum import Enum
-from typing import Any, List
+from typing import Any, Dict, List, Literal
 from urllib.request import urlretrieve
 
 import torch
 import torch.nn as nn
 from huggingface_hub import model_info
-from huggingface_hub.utils import EntryNotFoundError
+from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
 from pruna.engine.utils import set_to_best_available_device
@@ -31,15 +30,6 @@ from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import metric_data_processor
 from pruna.logging.logger import pruna_logger
-
-
-class CLIPVariantAesthetics(Enum):
-    """Maps a CLIP variant supported by the LAION Aesthetic Predictor v1 to a CLIP model name in the Hugging Face Hub."""
-
-    vit_l_14 = "openai/clip-vit-large-patch14"
-    vit_b_32 = "openai/clip-vit-base-patch32"
-    vit_b_16 = "openai/clip-vit-base-patch16"
-
 
 METRIC_AESTHETIC_LAION = "aesthetic_laion"
 
@@ -77,25 +67,37 @@ class AestheticLAION(StatefulMetric):
     higher_is_better: bool = True
     metric_name: str = METRIC_AESTHETIC_LAION
 
+    model_name_to_aesthetic_head_name: Dict[str, str] = {
+        "openai/clip-vit-large-patch14": "vit_l_14",
+        "openai/clip-vit-base-patch32": "vit_b_32",
+        "openai/clip-vit-base-patch16": "vit_b_16",
+    }
+
     def __init__(
         self,
         *args,
         device: str | torch.device | None = None,
-        clip_model_name: CLIPVariantAesthetics = CLIPVariantAesthetics.vit_l_14,
+        model_name_or_path: Literal[
+            "openai/clip-vit-large-patch14", "openai/clip-vit-base-patch32", "openai/clip-vit-base-patch16"
+        ] = "openai/clip-vit-large-patch14",
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
+        if model_name_or_path not in self.model_name_to_aesthetic_head_name:
+            pruna_logger.error(f"Model {model_name_or_path} does not exist.")
+            raise ValueError(f"Model {model_name_or_path} does not exist.")
+
         self.device = set_to_best_available_device(device)
         try:
-            model_info(clip_model_name.value)
-        except EntryNotFoundError:
-            # Should never happen since enum values are guaranteed to exist
-            pruna_logger.error(f"Model {clip_model_name.value} does not exist.")
-            raise ValueError(f"Model {clip_model_name.value} does not exist.")
+            model_info(model_name_or_path)
+        except (EntryNotFoundError, RepositoryNotFoundError):
+            # Should never happen due to the previous check
+            pruna_logger.error(f"Model {model_name_or_path} does not exist.")
+            raise ValueError(f"Model {model_name_or_path} does not exist.")
 
-        self.clip_model = CLIPVisionModelWithProjection.from_pretrained(clip_model_name.value).to(self.device)
-        self.clip_processor = CLIPImageProcessor.from_pretrained(clip_model_name.value)
-        self.aesthetic_model = self._get_aesthetic_model(clip_model_name.name)
+        self.clip_model = CLIPVisionModelWithProjection.from_pretrained(model_name_or_path).to(self.device)
+        self.clip_processor = CLIPImageProcessor.from_pretrained(model_name_or_path)
+        self.aesthetic_model = self._get_aesthetic_model(model_name_or_path)
 
         self.add_state("total", torch.zeros(1))
         self.add_state("count", torch.zeros(1))
@@ -156,7 +158,7 @@ class AestheticLAION(StatefulMetric):
 
     def _get_aesthetic_model(self, clip_model="vit_l_14"):
         """
-        Load the aethetic model.
+        Load the aesthetic model.
 
         Parameters
         ----------
@@ -172,6 +174,7 @@ class AestheticLAION(StatefulMetric):
         """
         home = pathlib.Path("~").expanduser()
         cache_folder = home / ".cache/aesthetic_laion_linear_heads"
+        clip_model = self.model_name_to_aesthetic_head_name[clip_model]
         path_to_model = cache_folder / ("sa_0_4_" + clip_model + "_linear.pth")
         if not path_to_model.exists():
             cache_folder.mkdir(exist_ok=True, parents=True)
@@ -180,14 +183,13 @@ class AestheticLAION(StatefulMetric):
             )
             urlretrieve(url_model, path_to_model)
         if clip_model == "vit_l_14":
-            m = nn.Linear(768, 1)
+            aesthetic_linear_head = nn.Linear(768, 1)
         elif clip_model == "vit_b_32" or clip_model == "vit_b_16":
-            m = nn.Linear(512, 1)
+            aesthetic_linear_head = nn.Linear(512, 1)
         else:
-            # Should not happen since the enum is used
+            # Should never happen due to the previous check
             pruna_logger.error(f"Model {clip_model} is not supported by aesthetic predictor.")
             raise ValueError(f"Model {clip_model} is not supported by aesthetic predictor.")
-        s = torch.load(path_to_model)
-        m.load_state_dict(s)
-        m.eval()
-        return m.to(self.device)
+        aesthetic_linear_head.load_state_dict(torch.load(path_to_model))
+        aesthetic_linear_head.eval()
+        return aesthetic_linear_head.to(self.device)

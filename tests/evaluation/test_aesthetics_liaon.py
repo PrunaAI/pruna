@@ -7,16 +7,16 @@ import numpy as np
 import pytest
 
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION, CLIPVariantAesthetics
+from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
 
 
 @pytest.mark.parametrize(
     "device, clip_model",
     [
-        pytest.param("cpu", CLIPVariantAesthetics.vit_l_14, marks=pytest.mark.cpu),
-        pytest.param("cpu", CLIPVariantAesthetics.vit_b_32, marks=pytest.mark.cpu),
-        pytest.param("cpu", CLIPVariantAesthetics.vit_b_16, marks=pytest.mark.cpu),
-        pytest.param("cuda", CLIPVariantAesthetics.vit_l_14, marks=pytest.mark.cuda),
+        pytest.param("cpu", "openai/clip-vit-large-patch14", marks=pytest.mark.cpu),
+        pytest.param("cpu", "openai/clip-vit-base-patch32", marks=pytest.mark.cpu),
+        pytest.param("cpu", "openai/clip-vit-base-patch16", marks=pytest.mark.cpu),
+        pytest.param("cuda", "openai/clip-vit-large-patch14", marks=pytest.mark.cuda),
     ],
 )
 def test_aesthetic_laion(device: str, clip_model: str) -> None:
@@ -47,3 +47,15 @@ def test_metric_aesthetic_laion_ipynb_sample() -> None:
     metric.update("lovely cat as domestic animal view pictures", img, img)
     score = metric.compute()
     assert abs(score.result - 5.05) < 1e-2
+
+
+@pytest.mark.cpu
+def test_metric_aesthetic_laion_invalid_params() -> None:
+    """
+    Test the aesthetic_laion metric with an image taken from
+    https://github.com/LAION-AI/aesthetic-predictor/blob/main/asthetics_predictor.ipynb
+    The result in the original notebook is 4.0330; if you rerun it, you will get 4.4425.
+    The Hugging Face model, however, gives 5.049.
+    """
+    with pytest.raises(ValueError, match=r"Model invalid/path-to-model does not exist."):
+        AestheticLAION(model_name_or_path="invalid/path-to-model", device="cpu")
