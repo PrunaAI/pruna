@@ -1,5 +1,5 @@
-metrics_enabled: false
-otlp_endpoint: https://telemetry.sharedservices.pruna.ai/v1/metrics
+metrics_enabled: true
+otlp_endpoint: https://telemetry.staging.pruna.ai/v1/metrics
 otlp_headers:
-  Host: telemetry.sharedservices.pruna.ai
+  Host: telemetry.staging.pruna.ai
 telemetry_log_level: CRITICAL

@@ -6,7 +6,7 @@ import pytest
 import torch
 from huggingface_hub import snapshot_download
 from torchvision.models import get_model as torchvision_get_model
-from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoProcessor, AutoTokenizer, pipeline
 
 from pruna import SmashConfig
 from pruna.data.pruna_datamodule import PrunaDataModule
@@ -53,7 +53,7 @@ def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:
     """Whisper tiny random model for speech recognition."""
-    model_id = "PrunaAI/whisper-v3-tiny-random"
+    model_id = "pruna-test/whisper-v3-tiny-random"
     model = pipeline(
         "automatic-speech-recognition",
         model=model_id,
@@ -144,14 +144,24 @@ def get_torchvision_model(name: str) -> tuple[Any, SmashConfig]:
     return model, smash_config
 
 
-def get_automodel_image_text_to_text_transformers(model_id: str) -> tuple[Any, SmashConfig]:
+def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashConfig]:
     """
-    Get an AutoModelForImageTextToText model.
+    Get an AutoModelForImageTextToText model specialized for image generation.
 
-    This multi-modal model is not only for text generation, but also for AR image generation.
+    This is based on Janus, which hacks AutoModelForImageTextToText for AR image generation.
+    This function loads it with a text-to-image dataset and configuration.
     """
-    model = AutoModelForImageTextToText.from_pretrained(model_id)
+    model = AutoModelForImageTextToText.from_pretrained(model_id, torch_dtype=torch.bfloat16)
     smash_config = SmashConfig()
+    smash_config.add_data("LAION256")
+
+    model_to_processor_id = {
+        "pruna-test/tiny_janus": "deepseek-community/Janus-Pro-1B",
+    }
+    processor_id = model_to_processor_id.get(model_id, model_id)
+    processor = AutoProcessor.from_pretrained(processor_id)
+    smash_config.add_processor(processor)
+
     return model, smash_config
 
 
@@ -181,8 +191,8 @@ MODEL_FACTORY: dict[str, Callable] = {
     ),
     "dummy_lambda": dummy_model,
     # image generation AR models
-    "tiny_janus_pro": partial(get_automodel_image_text_to_text_transformers, "loulou2/tiny_janus"),
-    "wan_tiny_random": partial(get_diffusers_model, "PrunaAI/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
-    "flux_tiny": partial(get_diffusers_model, "loulou2/tiny_flux", torch_dtype=torch.float16),
-    "tiny_llama": partial(get_automodel_transformers, "loulou2/tiny_llama", torch_dtype=torch.bfloat16),
+    "tiny_janus": partial(get_autoregressive_text_to_image_model, "pruna-test/tiny_janus"),
+    "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
+    "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
+    "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
 }

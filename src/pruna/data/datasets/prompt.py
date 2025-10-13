@@ -35,7 +35,7 @@ def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The DrawBench dataset.
     """
-    ds = load_dataset("sayakpaul/drawbench", trust_remote_code=True)["train"]
+    ds = load_dataset("sayakpaul/drawbench", trust_remote_code=True)["train"]  # type: ignore[index]
     ds = ds.rename_column("Prompts", "text")
     pruna_logger.info("DrawBench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
@@ -57,7 +57,7 @@ def setup_parti_prompts_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The Parti Prompts dataset.
     """
-    ds = load_dataset("nateraw/parti-prompts")["train"]
+    ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
@@ -79,7 +79,7 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The GenAI Bench dataset.
     """
-    ds = load_dataset("BaiqiL/GenAI-Bench")["train"]
+    ds = load_dataset("BaiqiL/GenAI-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("GenAI-Bench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
