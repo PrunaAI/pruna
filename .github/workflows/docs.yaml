@@ -35,15 +35,21 @@ jobs:
       - name: Run generation script
         run: python docs/utils/gen_docs.py
 
-      - name: Verify generated file exists
+      - name: Verify generated files exist
         run: |
-          if [ ! -f compression.rst ]; then
+          if [ ! -f docs/user_manual/compression.rst ]; then
             echo "Error: Generated file 'compression.rst' not found!"
             exit 1
           fi
+          if [ ! -f docs/user_manual/compatibility_matrix.rst ]; then
+            echo "Error: Generated file 'compatibility_matrix.rst' not found!"
+            exit 1
+          fi
 
-      - name: Upload generated file
+      - name: Upload generated files
         uses: actions/upload-artifact@v4
         with:
-          name: compression-rst
-          path: compression.rst
+          name: pruna-docs
+          path: |
+            docs/user_manual/compression.rst
+            docs/user_manual/compatibility_matrix.rst
