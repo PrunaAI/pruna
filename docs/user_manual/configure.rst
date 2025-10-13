@@ -140,6 +140,14 @@ The table underneath provides a general overview of the impact of each algorithm
    The :doc:`Algorithm Overview </compression>` page provides a more detailed overview of each algorithm within the different groups,
    as well as additional information on the hardware requirements, compatibility with other algorithms, and required components for each algorithm.
 
+Compatibility of Algorithms
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following table provides an overview of compatibility between various algorithms, indicating which algorithms 
+can be combined or used together
+
+.. include:: compatibility_matrix.rst
+
 Configure Algorithm Groups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 

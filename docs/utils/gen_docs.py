@@ -215,6 +215,30 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
         hyperparameter_counter += 1
     return rows, hyperparameter_counter
 
+def generate_compatibility_table() -> str:
+    """Generate a reStructuredText list-table showing algorithm compatibility."""
+    all_algorithms = []
+    for group in PRUNA_ALGORITHMS.values():
+        all_algorithms.extend(group.values())
+
+    lines = [
+        ".. list-table:: Algorithm Compatibility Matrix",
+        "   :header-rows: 1",
+        "",
+        "   * - Algorithm",
+        "     - Compatible With",
+    ]
+
+    for algo in all_algorithms:
+        name = algo.algorithm_name
+        compatibles = []
+        for lst in algo.compatible_algorithms.values():
+            compatibles.extend(lst)
+        compat_text = ", ".join(f"``{c}``" for c in compatibles) if compatibles else "—"
+        lines.append(f"   * - ``{name}``\n     - {compat_text}")
+
+    return "\n".join(lines)
+
 
 if __name__ == "__main__":
     # Collect all algorithms into a single file.
@@ -223,3 +247,9 @@ if __name__ == "__main__":
             for algorithm in algorithm_group.values():
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
+    print("[Pruna Docs] Generated compression.rst")
+
+    print("[Pruna Docs] Generating compatibility matrix...")
+    with open("compatibility_matrix.rst", "w") as f:
+        f.write(generate_compatibility_table())
+    print("[Pruna Docs] Generated compatibility_matrix.rst")
