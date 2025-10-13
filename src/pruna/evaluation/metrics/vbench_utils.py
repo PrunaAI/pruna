@@ -20,13 +20,16 @@ from typing import Any, Callable, Iterable, List
 
 import numpy as np
 import torch
-from diffusers.utils import export_to_gif, export_to_video, load_video
+from diffusers.utils import export_to_gif, export_to_video
+from diffusers.utils import load_video as diffusers_load_video
 from PIL.Image import Image
 from torchvision.transforms import ToTensor
 from vbench import VBench
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
+from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
 
 
@@ -72,8 +75,28 @@ class VBenchMixin:
         """
         return create_vbench_file_name(sanitize_prompt(prompt), idx, special_str, file_extension)
 
+    def validate_batch(self, batch: torch.Tensor) -> torch.Tensor:
+        """
+        Make sure that the video tensor has correct dimensions.
 
-def load_videos(path: str | Path, return_type: str = "pt") -> List[Image] | np.ndarray | torch.Tensor:
+        Parameters:
+        ----------
+        batch: torch.Tensor
+            The video tensor.
+
+        Returns:
+        -------
+        torch.Tensor
+            The video tensor.
+        """
+        if batch.ndim == 4:
+            return batch.unsqueeze(0)
+        elif batch.ndim != 5:
+            raise ValueError(f"Batch must be 4 or 5 dimensional video tensor with B,T,C,H,W, got {batch.ndim}")
+        return batch
+
+
+def load_video(path: str | Path, return_type: str = "pt") -> List[Image] | np.ndarray | torch.Tensor:
     """
     Load videos from a path.
 
@@ -89,7 +112,7 @@ def load_videos(path: str | Path, return_type: str = "pt") -> List[Image] | np.n
     List[torch.Tensor]
         The videos.
     """
-    video = load_video(str(path))
+    video = diffusers_load_video(str(path))
     if return_type == "pt":
         return torch.stack([ToTensor()(frame) for frame in video])
     elif return_type == "np":
@@ -98,6 +121,25 @@ def load_videos(path: str | Path, return_type: str = "pt") -> List[Image] | np.n
         return video
     else:
         raise ValueError(f"Invalid return_type: {return_type}. Use 'pt', 'np', or 'pil'.")
+
+
+def load_videos_from_path(path: str | Path) -> List[List[Image] | np.ndarray | torch.Tensor]:
+    """
+    Load entire directory of videos.
+
+    Parameters:
+    ----------
+    path : str | Path
+        The path to the directory of videos.
+
+    Returns:
+    -------
+    List[List[Image] | np.ndarray | torch.Tensor]
+        The videos.
+    """
+    path = Path(str(path))
+    videos = torch.stack([load_video(p) for p in path.glob("*.mp4")])
+    return videos
 
 
 def sanitize_prompt(prompt: str) -> str:
@@ -363,3 +405,29 @@ def generate_videos(
 
             del vid
             safe_memory_cleanup()
+
+
+def evaluate_videos(data: Any, metrics: StatefulMetric | List[StatefulMetric]) -> List[MetricResult]:
+    """
+    Evaluation loop helper.
+
+    Parameters:
+    ----------
+    data : Any
+        The data to evaluate.
+    metrics : StatefulMetric | List[StatefulMetric]
+        The metrics to evaluate.
+
+    Returns:
+    -------
+    List[MetricResult]
+        The results of the evaluation.
+    """
+    results = []
+    if isinstance(metrics, StatefulMetric):
+        metrics = [metrics]
+    for metric in metrics:
+        for batch in data:
+            metric.update(batch, batch, batch)
+        results.append(metric.compute())
+    return results
