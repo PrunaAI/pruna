@@ -162,12 +162,12 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
         gt : Any
             The ground truth videos.
         outputs : Any
-            The generated videos. Should be a tensor of shape (B, T, C, H, W).
+            The generated videos. Should be a tensor of shape (T, C, H, W) or (B, T, C, H, W).
             where B is the batch size, T is the number of frames, C is the number of channels, H is the height,
             and W is the width.
         """
         outputs = metric_data_processor(x, gt, outputs, self.call_type, device=self.device)
-        videos = outputs[0]
+        videos = super().validate_batch(outputs[0])
 
         for video in videos:
             score = self.DynamicDegree.infer(video, self.interval)

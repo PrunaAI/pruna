@@ -19,6 +19,7 @@ from typing import Any, List
 import clip
 import torch
 import torch.nn.functional as F  # noqa: N812
+from torchvision.transforms.functional import convert_image_dtype
 from vbench.utils import clip_transform, init_submodules
 
 from pruna.engine.utils import set_to_best_available_device
@@ -107,14 +108,18 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         outputs = metric_data_processor(x, gt, outputs, self.call_type, device=self.device)
         # Background consistency metric only supports a batch size of 1.
         # To support larger batch sizes, we stack the outputs.
-        outputs = torch.stack([self.video_transform(output) for output in outputs[0]])
+        outputs = super().validate_batch(outputs[0])
+        # This metric depends on the outputs being uint8.
+        outputs = torch.stack([convert_image_dtype(output, dtype=torch.uint8) for output in outputs])
+        outputs = torch.stack([self.video_transform(output) for output in outputs])
         features = torch.stack([self.clip_model.encode_image(output) for output in outputs])
-        features = F.normalize(features, dim=-1, p=2)
+        features = torch.stack([F.normalize(feature, dim=-1, p=2) for feature in features])
 
-        first_feature = features[0].unsqueeze(0)
+        # We vectorize the calculation to avoid for loops.
+        first_feature = features[:, 0, ...].unsqueeze(1).repeat(1, features.shape[1] - 1, 1)
 
-        similarity_to_first = F.cosine_similarity(first_feature, features[1:]).clamp(min=0.0)
-        similarity_to_prev = F.cosine_similarity(features[:-1], features[1:]).clamp(min=0.0)
+        similarity_to_first = F.cosine_similarity(first_feature, features[:, 1:, ...], dim=-1).clamp(min=0.0)
+        similarity_to_prev = F.cosine_similarity(features[:, :-1, ...], features[:, 1:, ...], dim=-1).clamp(min=0.0)
 
         similarities = (similarity_to_first + similarity_to_prev) / 2
 
