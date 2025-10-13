@@ -47,12 +47,22 @@ git switch -c feat/new-feature
 
 ### 2. Installation
 
-You can now set up a virtual environment of your choice and install the dependencies by running the following command:
+You have two options for installing dependencies:
+
+#### Option A: Using uv with its own virtual environment (recommended)
+
+```bash
+uv sync --extra dev
+```
+This creates a virtual environment in `.venv/` and installs all dependencies there, including pruna itself in editable mode. **Important:** This does NOT install into your current conda environment! You’ll need to use `uv run` for all commands.
+
+#### Option B: Installing into your current environment (conda/pip)
+
+If you want to install directly into your current conda environment or use pip:
 
 ```bash
 pip install -e .
 pip install -e '.[dev]'
-pip install -e '.[tests]'
 ```
 
 You can then also install the pre-commit hooks with:
@@ -60,6 +70,8 @@ You can then also install the pre-commit hooks with:
 ```bash
 pre-commit install
 ```
+
+**Note:** The pre-commit hooks include TruffleHog for secret detection. TruffleHog must be installed separately as a binary tool. See the [TruffleHog installation instructions](https://github.com/trufflesecurity/trufflehog) for your platform.
 
 ### 3. Develop your contribution
 
@@ -74,22 +86,46 @@ git push origin feat/new-feature
 
 Make sure to develop your contribution in a way that is well documented, concise, and easy to maintain. We will do our best to have your contribution integrated and maintained into Pruna but reserve the right to reject contributions that we do not feel are in the best interest of the project.
 
-### 4. Run the tests
+### 4. Type checking
+
+We use Ty for static type checking. Run:
+
+```bash
+ty check src/pruna
+```
+
+### 5. Run the tests
 
 We have a comprehensive test suite that is designed to catch potential issues before they are merged into Pruna. When you make a contribution, it is highly recommended to not only run the existing tests but also to add new tests that cover your contribution.
 
-You can run the tests by running the following command:
+You can run the tests depending on which installation option you chose:
+
+#### If you used Option A (uv):
+
+```bash
+uv run pytest
+```
+
+For specific test markers:
+
+```bash
+uv run pytest -m "cpu and not slow"
+```
+
+#### If you used Option B (pip/conda):
 
 ```bash
 pytest
 ```
 
-If you want to run only the tests with a specific marker, e.g. fast CPU tests, you can do so by running:
+For specific test markers:
 
 ```bash
 pytest -m "cpu and not slow"
 ```
 
-### 5. Create a Pull Request
+Note: `uv run` automatically uses uv's virtual environment in `.venv/`, not your conda environment.
+
+### 6. Create a Pull Request
 
 Once you have made your changes and tested them, you can create a Pull Request. We will then review your Pull Request and get back to you as soon as possible. If there are any questions along the way, please do not hesitate to reach out on [Discord](https://discord.gg/JFQmtFKCjd).
