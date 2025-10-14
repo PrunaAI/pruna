@@ -27,10 +27,6 @@ class DiffuserHandler(InferenceHandler):
     """
     Handle inference arguments, inputs and outputs for diffusers models.
 
-    A generator with a fixed seed (42) is passed as an argument to the model for reproducibility.
-    The first element of the batch is passed as input to the model.
-    The generated outputs are expected to have .images attribute.
-
     Parameters
     ----------
     call_signature : inspect.Signature
@@ -95,8 +91,8 @@ class DiffuserHandler(InferenceHandler):
             generated = output.frames
         else:
             # Maybe the user is calling the pipeline with return_dict = False,
-            # which then directly returns the generated image / video.
-            generated = output
+            # which then returns the generated image / video in a tuple
+            generated = output[0]
         return generated
 
     def log_model_info(self) -> None:
