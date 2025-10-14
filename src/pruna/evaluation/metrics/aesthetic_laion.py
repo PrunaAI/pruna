@@ -37,16 +37,12 @@ METRIC_AESTHETIC_LAION = "aesthetic_laion"
 @MetricRegistry.register(METRIC_AESTHETIC_LAION)
 class AestheticLAION(StatefulMetric):
     """
-     Predicts an image aesthetic quality score using LAION-Aesthetics_Predictor V1.
+    Predicts an image aesthetic quality score using LAION-Aesthetics_Predictor V1.
 
     This metric computes CLIP image embeddings and feeds them into a pretrained
     linear head released by LAION (matched to the chosen CLIP variant). The model
     returns a scalar score per image (on a ~1–10 scale). The metric
     aggregates scores across updates by reporting their mean. Higher is better.
-
-    Reference
-    ---------
-    LAION-Aesthetics_Predictor V1: https://github.com/LAION-AI/aesthetic-predictor
 
     Parameters
     ----------
@@ -55,10 +51,15 @@ class AestheticLAION(StatefulMetric):
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
-    clip_model_name : CLIPVariantAesthetics
+    model_name_or_path : Literal[
+            "openai/clip-vit-large-patch14", "openai/clip-vit-base-patch32", "openai/clip-vit-base-patch16"]
         The variant of a CLIP model to be used.
     **kwargs : Any
         Additional keyword arguments to pass to the StatefulMetric constructor.
+
+    References
+    ----------
+    LAION-Aesthetics_Predictor V1: https://github.com/LAION-AI/aesthetic-predictor
     """
 
     total: torch.Tensor
