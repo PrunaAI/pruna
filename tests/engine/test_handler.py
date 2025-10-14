@@ -72,8 +72,9 @@ def test_process_output_images(model_fixture, seed, output_attr, return_dict, de
     pipe_output = model(input_text, output_type="pt", generator=torch.Generator("cpu").manual_seed(seed), return_dict=return_dict)
     if output_attr != "none":
         pipe_output = getattr(pipe_output, output_attr)
+        pipe_output = pipe_output[0]
 
-    assert (result == pipe_output[0]).all().item()
+    assert (result == pipe_output).all().item()
 
 
 @pytest.mark.parametrize("model_fixture",
