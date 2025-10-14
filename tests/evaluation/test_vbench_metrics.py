@@ -9,7 +9,7 @@ from pruna.evaluation.metrics.metric_vbench_background_consistency import VBench
 from pruna.evaluation.metrics.metric_vbench_dynamic_degree import VBenchDynamicDegree
 
 
-
+@pytest.mark.cuda
 def test_metric_background_consistency():
     """Test metric background consistency."""
     # let's create a batch of 2 random RGB videos with 2 frames each that's 16 x 16 pixels.
@@ -32,8 +32,8 @@ def test_metric_background_consistency():
 
 @pytest.mark.cuda
 @pytest.mark.parametrize("model_fixture", ["wan_tiny_random"], indirect=["model_fixture"])
-def test_metrtic_dynamic_degree_cuda(model_fixture):
-    """Test metric dynamic degree."""
+def test_metrtic_dynamic_degree_dynamic(model_fixture):
+    """Test metric dynamic degree with an example sample from the vbench dataset that returns a dynamic video."""
     model, smash_config = model_fixture
     model.to("cuda")
     model.to(torch.float32)
@@ -46,11 +46,11 @@ def test_metrtic_dynamic_degree_cuda(model_fixture):
     # a video of a dog running ideally should have a dynamic degree of 1.0 (since it contains large movements)
     assert result.result == 1.0
 
-
-def test_metrtic_dynamic_degree_cpu():
-    """Test metric dynamic degree on CPU."""
+@pytest.mark.cuda
+def test_metric_dynamic_degree_static():
+    """Test metric dynamic degree fail case."""
     # Testing for a lack of movement is much easier than testing for movement.
-    # We can easily do this on CPU, thus also checking the metric on CPU.
+    # We create a completely black video to test the metric.
     video = torch.zeros(1,4,3,64,64) # a completely black video doesn't contain any movements
     metric = VBenchDynamicDegree(interval=1)
     metric.update(video, video, video)

@@ -61,7 +61,7 @@ gptqmodel = [
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
 clip = {git = "https://github.com/openai/CLIP.git", rev = "dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1"}
-vbench = {git = "https://github.com/PrunaAI/VBench.git", rev = "6d9f7d7acf33e19b946eb437bf913ed39d7f627f"}
+vbench = {git = "https://github.com/PrunaAI/VBench.git", rev = "23558f03bfb0eb16d7f310ec0f1ba6733fe3e999"}
 
 [project]
 name = "pruna"

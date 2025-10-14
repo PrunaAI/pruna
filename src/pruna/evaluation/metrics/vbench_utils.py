@@ -24,7 +24,6 @@ from diffusers.utils import export_to_gif, export_to_video
 from diffusers.utils import load_video as diffusers_load_video
 from PIL.Image import Image
 from torchvision.transforms import ToTensor
-from vbench import VBench
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
@@ -46,12 +45,6 @@ class VBenchMixin:
     **kwargs: Any
         The keyword arguments to pass to the metric.
     """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if VBench is None:
-            # Additional debug info to debug installation issues
-            pruna_logger.debug("Initialization failed: VBench is None")
-            raise ImportError("VBench is not installed. Please check your pruna installation.")
 
     def create_filename(self, prompt: str, idx: int, file_extension: str, special_str: str = "") -> str:
         """
@@ -123,9 +116,9 @@ def load_video(path: str | Path, return_type: str = "pt") -> List[Image] | np.nd
         raise ValueError(f"Invalid return_type: {return_type}. Use 'pt', 'np', or 'pil'.")
 
 
-def load_videos_from_path(path: str | Path) -> List[List[Image] | np.ndarray | torch.Tensor]:
+def load_videos_from_path(path: str | Path) -> torch.Tensor:
     """
-    Load entire directory of videos.
+    Load entire directory of mp4 videos as a single tensor ready to be passed to evaluation.
 
     Parameters:
     ----------
@@ -185,7 +178,7 @@ def prepare_batch(batch: str | tuple[str | List[str], Any]) -> str:
     """
     if isinstance(batch, str):
         return batch
-    # for pruna datamodule. always returns a tuple where the first element is the input to the model.
+    # for pruna datamodule. always returns a tuple where the first element is the input (list of prompts) to the model.
     elif isinstance(batch, tuple):
         if not hasattr(batch[0], "__len__"):
             raise ValueError(f"Batch[0] is not a sequence (got {type(batch[0])})")
@@ -308,7 +301,7 @@ def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., 
     Wrap a user-provided sampling function into a uniform callable.
 
     The returned callable has a keyword-only signature:
-        sampler(*, prompt: str, seed: int, device: str|torch.device, **kwargs)
+        sampler(*, prompt: str, seeder: Any, device: str|torch.device, **kwargs)
 
     This wrapper always passes `model` as the first positional argument, so
     custom functions can name their first parameter `model` or `pipeline`, etc.
@@ -323,7 +316,7 @@ def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., 
     """
     if sampling_fn != sample_video_from_pipelines:
         pruna_logger.info(
-            "Using custom sampling function. Ensure it accepts (model, *, prompt, seed, device, **kwargs)."
+            "Using custom sampling function. Ensure it accepts (model, *, prompt, seeder, device, **kwargs)."
         )
 
     # The sampling function may expect the model as "pipeline" so we pass it as an arg and not a kwarg.
@@ -337,7 +330,7 @@ def generate_videos(
     model: Any,
     prompts: str | List[str] | PrunaDataModule,
     split: str = "test",
-    unique_sample_per_video_count: int = 5,
+    unique_sample_per_video_count: int = 1,
     global_seed: int = 42,
     sampling_fn: Callable[..., Any] = sample_video_from_pipelines,
     fps: int = 16,
@@ -351,9 +344,9 @@ def generate_videos(
     Generate N samples per prompt and save them to disk with seed tracking.
 
     This function:
-      1) Normalizes prompts (string, list, or datamodule).
-      2) Uses an RNG seeded with `global_seed` for reproducibility across runs.
-      3) Saves videos as MP4 or GIF.
+      - Normalizes prompts (string, list, or datamodule).
+      - Uses an RNG seeded with `global_seed` for reproducibility across runs.
+      - Saves videos as MP4 or GIF.
 
     Parameters:
     ----------

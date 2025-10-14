@@ -136,10 +136,13 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         MetricResult
             The final score.
         """
+        if self.n_samples == 0:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
         score = self.similarity_scores / self.n_samples
         return MetricResult(self.metric_name, self.__dict__, score)
 
     def reset(self) -> None:
         """Reset the metric states."""
+        super().reset()
         self.similarity_scores = torch.tensor(0.0)
         self.n_samples = torch.tensor(0)
