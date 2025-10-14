@@ -59,9 +59,10 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     if not model_path.exists():
         model_path.mkdir(parents=True, exist_ok=True)
 
-    if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
-        save_torch_artifacts(model, model_path, smash_config)
-        smash_config.save_fns.remove(SAVE_FUNCTIONS.torch_artifacts.name)
+    for artifact_save_fn in ARTIFACT_SAVE_FUNCTIONS:
+        if artifact_save_fn.name in smash_config.save_fns:
+            artifact_save_fn(model, model_path, smash_config)
+            smash_config.save_fns.remove(artifact_save_fn.name)
 
     # in the case of no specialized save functions, we use the model's original save function
     if len(smash_config.save_fns) == 0:
@@ -84,8 +85,10 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     # in the case of multiple, specialized save functions, we default to pickled
     else:
         pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
-        save_fn = SAVE_FUNCTIONS.pickled
-        smash_config.load_fns = [LOAD_FUNCTIONS.pickled.name]
+        for fn in LOAD_FUNCTIONS:
+            if fn not in ARTIFACT_SAVE_FUNCTIONS:
+                smash_config.load_fns.remove(fn.name)
+        smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
     # execute selected save function
     save_fn(model, model_path, smash_config)
@@ -533,3 +536,6 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
         """
         if self.value is not None:
             self.value(*args, **kwargs)
+
+
+ARTIFACT_SAVE_FUNCTIONS = [SAVE_FUNCTIONS.torch_artifacts]
