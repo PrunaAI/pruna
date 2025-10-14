@@ -108,9 +108,6 @@ class PrunaModel:
             )
         inference_function = getattr(self, inference_function_name)
 
-        if hasattr(self.inference_handler, "seed_strategy") and self.inference_handler.seed_strategy == "per_sample":
-            self.inference_handler.apply_per_sample_seed()
-
         self.inference_handler.model_args = filter_load_kwargs(self.model.__call__, self.inference_handler.model_args)
 
         if prepared_inputs is None:

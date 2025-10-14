@@ -65,6 +65,7 @@ repos:
           while IFS= read -r file; do
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
               echo "Error: pruna_pro found in staged file $file"
               exit 1
@@ -74,8 +75,9 @@ repos:
 >>>>>>> 2329abb (feat: metric modalities as sets)
               if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
 =======
+=======
+>>>>>>> 2441e9d (fix: pre commit file fix)
               if [ -f "$file" ] && ["$file" != ".pre-commit-config.yaml"] && grep -q "pruna_pro" "$file"; then
->>>>>>> 306050c (feat: metric modalities as sets)
                   echo "Error: pruna_pro found in staged file $file"
                   exit 1
               fi
