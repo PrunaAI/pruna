@@ -100,6 +100,8 @@ class CMMD(StatefulMetric):
             The output images.
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type, self.device)
+        if inputs[1].dtype == torch.bfloat16:
+            inputs[1] = inputs[1].to(torch.float16)
         gt_embeddings = self._get_embeddings(inputs[0])
         output_embeddings = self._get_embeddings(inputs[1])
 
