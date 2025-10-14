@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from typing import Any, Dict, cast
-from warnings import warn
 
 import torch
 from codecarbon import EmissionsTracker
@@ -23,7 +22,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import move_to_device, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -98,7 +97,7 @@ class EnvironmentalImpactStats(BaseMetric):
         del temp_model
 
         model.set_to_eval()
-        model.move_to_device(self.device)
+        move_to_device(model, self.device)
 
         batch = next(iter(dataloader))
         batch = model.inference_handler.move_inputs_to_device(batch, self.device)
@@ -230,28 +229,3 @@ class CO2EmissionsMetric(EnvironmentalImpactStats):
         # Use EvaluationAgent to share computation across environmental impact metrics.
         raw_results = super().compute(model, dataloader)
         return MetricResult.from_results_dict(self.metric_name, self.__dict__.copy(), cast(Dict[str, Any], raw_results))
-
-
-class EnergyMetric:
-    """
-    Deprecated class.
-
-    Parameters
-    ----------
-    *args : Any
-        Arguments for EnvironmentalImpactStats.
-    **kwargs : Any
-        Keyword arguments for EnvironmentalImpactStats.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        """Forwards to EnvironmentalImpactStats."""
-        warn(
-            "Class EnergyMetric is deprecated and will be removed in 'v0.2.8' release. \n"
-            "It has been replaced by EnvironmentalImpactStats, \n"
-            "which is a shared parent class for 'EnergyConsumedMetric' and 'CO2EmissionsMetric'. \n"
-            "In the future please use 'EnergyConsumedMetric' or 'CO2EmissionsMetric' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return EnvironmentalImpactStats(*args, **kwargs)
