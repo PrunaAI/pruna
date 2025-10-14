@@ -39,11 +39,7 @@ repos:
           grep -v "^D" |
           cut -f2- |
           while IFS= read -r file; do
-<<<<<<< HEAD
-              if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
-=======
               if [ -f "$file" ] && ["$file" != ".pre-commit-config.yaml"] && grep -q "pruna_pro" "$file"; then
->>>>>>> 306050c (feat: metric modalities as sets)
                   echo "Error: pruna_pro found in staged file $file"
                   exit 1
               fi
