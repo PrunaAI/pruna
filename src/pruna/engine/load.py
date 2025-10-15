@@ -202,12 +202,11 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     """
     # determine algorithms to reapply
     smash_config_subset = deepcopy(smash_config)
-    for algorithm_name in smash_config.reapply_after_load.keys():
-        # TODO: double check this in tests
+    for algorithm_name in smash_config.reapply_after_load:
         # hyperparameters for algorithms were copied or discarded upon setting to None
         smash_config_subset[algorithm_name] = True
 
-    # if it isnt already imported, import smash
+    # if it isn't already imported, import smash
     if "pruna.smash" not in sys.modules:
         from pruna.smash import smash
     else:

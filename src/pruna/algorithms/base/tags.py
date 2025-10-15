@@ -22,6 +22,21 @@ class AlgorithmTag(Enum):
 
     This enum provides a type-safe way to categorize algorithms with
     built-in documentation and metadata support.
+
+    Parameters
+    ----------
+    value : callable
+        The load function to be called.
+    names : str
+        The name of the enum member.
+    module : str
+        The module where the enum is defined.
+    qualname : str
+        The qualified name of the enum.
+    type : type
+        The type of the enum.
+    start : int
+        The start index for auto-numbering enum values
     """
 
     QUANTIZER = (
@@ -34,7 +49,7 @@ class AlgorithmTag(Enum):
     )
     FACTORIZER = (
         "factorizer",
-        "Factorization batches several small matrix multiplications into one large fused operation.",
+        "Factorization batches several small matrix multiplications into one large fused operation or splits matrix operations into smaller ones.",
     )
     KERNEL = (
         "kernel",

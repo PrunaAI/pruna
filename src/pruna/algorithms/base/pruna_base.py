@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, Literal
+from typing import Any, Dict, Iterable
 
 from transformers import Pipeline
 
@@ -283,29 +283,42 @@ class PrunaAlgorithmBase(ABC):
                 out.extend(AlgorithmRegistry.get_algorithms_by_tag(it))
         return out
 
-    def _expanded_set(self, items: Iterable[str | AlgorithmTag] | None) -> set[str]:
-        return set(self._expand(items))
-
     def get_incompatible_algorithms(self) -> list[str]:
-        """Algorithms incompatible with this one."""
-        cb = self._expanded_set(self.compatible_before)
-        ca = self._expanded_set(self.compatible_after)
+        """
+        Get algorithms incompatible with this one.
+
+        Returns
+        -------
+        list[str]
+            The incompatible algorithms.
+        """
+        cb = set(self._expand(self.compatible_before))
+        ca = set(self._expand(self.compatible_after))
         allowed = cb | ca
         all_algorithms = set(SMASH_SPACE.get_all_algorithms())
         return sorted(all_algorithms - allowed)
 
-    def _required_execution_order(self, side: Literal["before", "after"]) -> list[str]:
-        compat = getattr(self, f"compatible_{side}")
-        opposite = "after" if side == "before" else "before"
-        return self._expand(compat)
-
     def get_required_before(self) -> list[str]:
-        """Algorithms required to run before this one."""
-        return self._required_execution_order("before")
+        """
+        Get algorithms required to run / be executed before the current algorithm.
+
+        Returns
+        -------
+        list[str]
+            The required algorithms.
+        """
+        return self._expand(self.compatible_before)
 
     def get_required_after(self) -> list[str]:
-        """Algorithms required to run after this one."""
-        return self._required_execution_order("after")
+        """
+        Get algorithms required to run / be executed after the current algorithm.
+
+        Returns
+        -------
+        list[str]
+            The required algorithms.
+        """
+        return self._expand(self.compatible_after)
 
 
 def wrap_handle_imports(func):

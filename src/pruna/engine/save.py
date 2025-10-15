@@ -454,7 +454,7 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     artifacts = torch.compiler.save_cache_artifacts()
 
     assert artifacts is not None
-    artifact_bytes, cache_info = artifacts
+    artifact_bytes, _ = artifacts
 
     # check if the bytes are empty
     if artifact_bytes == b"\x00\x00\x00\x00\x00\x00\x00\x01":

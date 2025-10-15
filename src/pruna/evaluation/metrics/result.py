@@ -30,10 +30,10 @@ class MetricResult:
         The parameters of the metric.
     result : float | int
         The result of the metric.
-    metric_units: Optional[str]
-        The units of the metric.
-    higher_is_better: Optional[bool]
+    higher_is_better : Optional[bool]
         Whether larger values mean better performance.
+    metric_units : Optional[str]
+        The units of the metric.
     """
 
     name: str

@@ -21,7 +21,6 @@ import tempfile
 from functools import singledispatchmethod
 from pathlib import Path
 from typing import Any, Dict, Union
-from warnings import warn
 
 import numpy as np
 import torch
@@ -58,8 +57,8 @@ class SmashConfig:
 
     Parameters
     ----------
-    max_batch_size : int, optional
-        Deprecated. The number of batches to process at once. Default is 1.
+    configuration : Configuration, optional
+        The configuration to be used for smashing. If None, a default configuration will be created.
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
     device : str | torch.device | None, optional
@@ -67,8 +66,6 @@ class SmashConfig:
         If None, the best available device will be used.
     cache_dir_prefix : str, optional
         The prefix for the cache directory. If None, a default cache directory will be created.
-    configuration : Configuration, optional
-        The configuration to be used for smashing. If None, a default configuration will be created.
     """
 
     def __init__(
@@ -125,6 +122,31 @@ class SmashConfig:
     ) -> SmashConfig:
         """
         Create a SmashConfig from a Configuration object.
+
+        Parameters
+        ----------
+        configuration : list[str]
+            The list of algorithm names to create the SmashConfig from.
+        batch_size : int, optional
+            The batch size to use for the SmashConfig. Default is 1.
+        device : str | torch.device | None, optional
+            The device to use for the SmashConfig. Default is None.
+        cache_dir_prefix : str | Path, optional
+            The prefix for the cache directory. Default is DEFAULT_CACHE_DIR.
+
+        Returns
+        -------
+        SmashConfig
+            The SmashConfig object instantiated from the list.
+
+        Examples
+        --------
+        >>> config = SmashConfig.from_list(["fastercache", "diffusers_int8"])
+        >>> config
+        SmashConfig(
+         'fastercache': True,
+         'diffusers_int8': True,
+        )
         """
         return cls(configuration=configuration, batch_size=batch_size, device=device, cache_dir_prefix=cache_dir_prefix)
 
@@ -154,6 +176,15 @@ class SmashConfig:
         -------
         SmashConfig
             The SmashConfig object instantiated from the dictionary.
+
+        Examples
+        --------
+        >>> config = SmashConfig.from_dict({"fastercache": True, "diffusers_int8": True})
+        >>> config
+        SmashConfig(
+         'fastercache': True,
+         'diffusers_int8': True,
+        )
         """
         return cls(configuration=configuration, batch_size=batch_size, device=device, cache_dir_prefix=cache_dir_prefix)
 
@@ -265,38 +296,6 @@ class SmashConfig:
             self.processor.save_pretrained(str(Path(path) / PROCESSOR_SAVE_PATH))
         if self.data is not None:
             pruna_logger.info("Data detected in smash config, this will be detached and not reloaded...")
-
-    def load_dict(self, config_dict: dict) -> None:
-        """
-        Load a dictionary of hyperparameters into the SmashConfig.
-
-        Parameters
-        ----------
-        config_dict : dict
-            The dictionary to load into the SmashConfig.
-
-        Examples
-        --------
-        >>> config = SmashConfig()
-        >>> config.load_dict({'cacher': 'deepcache', 'deepcache_interval': 4})
-        >>> config
-        SmashConfig(
-         'cacher': 'deepcache',
-         'deepcache_interval': 4,
-        )
-        """
-        # check device compatibility
-        if "device" in config_dict:
-            config_dict["device"] = set_to_best_available_device(config_dict["device"])
-
-        # since this function is only used for loading algorithm settings, we will ignore additional arguments
-        filtered_config_dict = {k: v for k, v in config_dict.items() if k not in ADDITIONAL_ARGS}
-        discarded_args = [k for k in config_dict if k in ADDITIONAL_ARGS]
-        if discarded_args:
-            pruna_logger.info(f"Discarded arguments: {discarded_args}")
-
-        for k, v in filtered_config_dict.items():
-            self[k] = v
 
     def flush_configuration(self) -> None:
         """
@@ -547,8 +546,19 @@ class SmashConfig:
         ----------
         request : Any
             The value to add to the SmashConfig.
+
+        Examples
+        --------
+        >>> config = SmashConfig()
+        >>> config = SmashConfig()
+        >>> config.add("fastercache")
+        >>> config.add("diffusers_int8")
+        >>> config
+        SmashConfig(
+         'fastercache': True,
+         'diffusers_int8': True,
+        )
         """
-        # TODO: add example to docstring
         # request wants to activate a single algorithm
         if isinstance(request, str):
             self._configuration[request] = True
@@ -558,14 +568,14 @@ class SmashConfig:
             for item in request:
                 self._configuration[item] = True
         if isinstance(request, dict):
-            if all(isinstance(item, dict) for item in request.values()):
-                for key, value in request.items():
+            for key, value in request.items():
+                if isinstance(value, dict):
+                    self._configuration[key] = True
                     for k, v in value.items():
                         if not k.startswith(key):
                             k = f"{key}_{k}"
                         self._configuration[k] = v
-            else:
-                for key, value in request.items():
+                else:
                     self._configuration[key] = value
         return
 
@@ -598,12 +608,26 @@ class SmashConfig:
         return self.__str__()
 
     def get_active_algorithms(self) -> list[str]:
-        """Get all active algorithms in this smash config."""
+        """
+        Get all active algorithms in this smash config.
+
+        Returns
+        -------
+        list[str]
+            The active algorithms in this smash config.
+        """
         all_algorithms = self.config_space.get_all_algorithms()
         return [k for k, v in self._configuration.items() if v and k in all_algorithms]
 
     def overwrite_algorithm_order(self, algorithm_order: list[str]) -> None:
-        """Overwrite the graph-induced order of algorithms if desired."""
+        """
+        Overwrite the graph-induced order of algorithms if desired.
+
+        Parameters
+        ----------
+        algorithm_order : list[str]
+            The order of algorithms to be applied.
+        """
         if not set(algorithm_order) == set(self.get_active_algorithms()):
             raise ValueError("All active algorithms must be contained in the given algorithm order.")
         self._algorithm_order = algorithm_order
