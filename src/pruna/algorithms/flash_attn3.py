@@ -355,5 +355,5 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
         softmax_scale: float | None = None,
         causal: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        b, s, h, d = q.shape
+        b, s, h, _ = q.shape
         return torch.empty_like(q), q.new_empty((b, s, h))

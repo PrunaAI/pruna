@@ -45,6 +45,14 @@ class TorchDynamic(PrunaAlgorithmBase):
     compatible_after: list[str] = []
 
     def get_hyperparameters(self) -> list:
+        """
+        Get the hyperparameters for the TorchDynamic quantizer.
+
+        Returns
+        -------
+        list
+            A list of hyperparameters.
+        """
         return [
             OrdinalHyperparameter(
                 "weight_bits",
@@ -55,6 +63,19 @@ class TorchDynamic(PrunaAlgorithmBase):
         ]
 
     def model_check_fn(self, model: Any) -> bool:
+        """
+        Check if the model is supported.
+
+        Parameters
+        ----------
+        model : Any
+            The model to check.
+
+        Returns
+        -------
+        bool
+            True if the model is supported, False otherwise.
+        """
         if isinstance(model, torch.nn.Module):
             return True
 
@@ -80,6 +101,6 @@ class TorchDynamic(PrunaAlgorithmBase):
         else:
             for attribute_name, attribute_value in inspect.getmembers(model):
                 if isinstance(attribute_value, torch.nn.Module):
-                    quantized_attribute = TorchDynamicQuantizer()._apply(attribute_value, smash_config)
+                    quantized_attribute = self._apply(attribute_value, smash_config)
                     setattr(model, attribute_name, quantized_attribute)
             return model
