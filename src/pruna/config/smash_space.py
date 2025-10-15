@@ -14,17 +14,11 @@
 
 from __future__ import annotations
 
-import copy
-import itertools
 from typing import Any, Union
 
 from ConfigSpace import (
-    CategoricalHyperparameter,
     ConfigurationSpace,
     EqualsCondition,
-    ForbiddenAndConjunction,
-    ForbiddenEqualsClause,
-    OrConjunction,
 )
 from ConfigSpace.hyperparameters.hyperparameter import Hyperparameter
 
@@ -97,6 +91,11 @@ class SmashConfigurationSpace(ConfigurationSpace):
     def get_all_algorithms(self) -> list[str]:
         """
         Get all algorithms.
+
+        Returns
+        -------
+        list[str]
+            The all algorithms.
         """
         return list(set(self.algorithms))
 

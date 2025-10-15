@@ -153,7 +153,7 @@ def check_algorithm_availability(smash_config: SmashConfig) -> None:
 
 def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, algorithm_order: list[str]) -> None:
     """
-    Loops through all algorithm groups and calls the pre_smash_hook method for each algorithm.
+    Loop through all algorithm groups and calls the pre_smash_hook method for each algorithm.
 
     Parameters
     ----------
@@ -161,6 +161,8 @@ def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, alg
         The model to apply the setup to.
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
+    algorithm_order : list[str]
+        The order of the active algorithms to be applied.
     """
     active_algorithms = algorithm_order
     for algorithm in active_algorithms:
@@ -175,7 +177,7 @@ def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
     Parameters
     ----------
     smash_config : SmashConfig
-        The SmashConfig object containing the algorithm configuration
+        The SmashConfig object containing the algorithm configuration.
     """
     active_algorithms = smash_config.get_active_algorithms()
     algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
@@ -241,13 +243,19 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
     return graph
 
 
-def remove_reciprocals(G: nx.DiGraph):
+def remove_reciprocals(graph: nx.DiGraph):
     """
     Remove reciprocal (bidirectional) edges from a directed graph.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        The directed graph to remove reciprocal edges from.
     """
     # Undirected view collapses mutual edges into one
-    reciprocal_pairs = {(u, v) for u, v in G.to_undirected().edges() if G.has_edge(u, v) and G.has_edge(v, u)}
+    reciprocal_pairs = {
+        (u, v) for u, v in graph.to_undirected().edges() if graph.has_edge(u, v) and graph.has_edge(v, u)
+    }
 
-    G.remove_edges_from([(u, v) for u, v in reciprocal_pairs])
-    G.remove_edges_from([(v, u) for u, v in reciprocal_pairs])
-    return reciprocal_pairs
+    graph.remove_edges_from((u, v) for u, v in reciprocal_pairs)
+    graph.remove_edges_from((v, u) for u, v in reciprocal_pairs)

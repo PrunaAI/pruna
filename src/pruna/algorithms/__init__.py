@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import importlib
-import inspect
-import logging
-import pkgutil
-from typing import Any, Dict
-
 from pruna import algorithms
 from pruna.algorithms.base.registry import AlgorithmRegistry
 
