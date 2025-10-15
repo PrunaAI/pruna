@@ -1,6 +1,6 @@
 import pytest
 
-from pruna.algorithms.kernels.flash_attn3 import FlashAttn3Kernel
+from pruna.algorithms.flash_attn3 import FlashAttn3
 
 from .base_tester import AlgorithmTesterBase
 
@@ -12,5 +12,5 @@ class TestFlashAttn3(AlgorithmTesterBase):
     models = ["flux_tiny", "wan_tiny_random"]
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
-    algorithm_class = FlashAttn3Kernel
+    algorithm_class = FlashAttn3
     metrics = ["latency"]

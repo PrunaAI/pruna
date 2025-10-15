@@ -13,9 +13,9 @@ from .testers.base_tester import AlgorithmTesterBase
 class CombinationsTester(AlgorithmTesterBase):
     """Test the combo tester."""
 
-    def __init__(self, config_dict: dict[str, Any], allow_pickle_files: bool, metric:str) -> None:
+    def __init__(self, algorithms: list[str], allow_pickle_files: bool, metric:str) -> None:
         super().__init__()
-        self.config_dict = config_dict
+        self.algorithms = algorithms
         self._allow_pickle_files = allow_pickle_files
         self._metrics = [metric]
 
@@ -36,36 +36,36 @@ class CombinationsTester(AlgorithmTesterBase):
     def prepare_smash_config(self, smash_config: SmashConfig, device: str) -> None:
         """Prepare the smash config for the test."""
         smash_config["device"] = device
-        smash_config.load_dict(self.config_dict)
+        smash_config.add(self.algorithms)
 
 
 @pytest.mark.cuda
 @pytest.mark.parametrize(
-    "model_fixture, config_dict, allow_pickle_files, metric",
+    "model_fixture, algorithms, allow_pickle_files, metric",
     [
-        ("sd_tiny_random", dict(cacher="deepcache", compiler="stable_fast"), False, 'cmmd'),
-        ("mobilenet_v2", dict(pruner="torch_unstructured", quantizer="half"), True, 'latency'),
-        ("sd_tiny_random", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False, 'cmmd'),
-        ("flux_tiny_random", dict(quantizer="hqq_diffusers", compiler="torch_compile"), False, 'cmmd'),
-        ("sd_tiny_random", dict(quantizer="diffusers_int8", compiler="torch_compile"), False, 'cmmd'),
-        ("tiny_llama", dict(quantizer="gptq", compiler="torch_compile"), True, 'perplexity'),
-        ("llama_3_tiny_random_as_pipeline", dict(quantizer="llm_int8", compiler="torch_compile"), True, 'perplexity'),
-        ("flux_tiny_random", dict(cacher="pab", quantizer="hqq_diffusers"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="pab", quantizer="diffusers_int8"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="fastercache", quantizer="hqq_diffusers"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="fastercache", quantizer="diffusers_int8"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="fora", quantizer="hqq_diffusers"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="fora", quantizer="diffusers_int8"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="fora", compiler="torch_compile"), False, 'cmmd'),
-        ("flux_tiny_random", dict(cacher="fora", compiler="stable_fast"), False, 'cmmd'),
-        ("tiny_janus", dict(quantizer="hqq", compiler="torch_compile"), False, 'cmmd'),
-        pytest.param("flux_tiny", dict(cacher="fora", kernel="flash_attn3", compiler="torch_compile"), False, 'cmmd', marks=pytest.mark.high),
+        ("sd_tiny_random", ["deepcache", "stable_fast"], False, 'cmmd'),
+        ("mobilenet_v2", ["torch_unstructured", "half"], True, 'latency'),
+        ("sd_tiny_random", ["hqq_diffusers", "torch_compile"], False, 'cmmd'),
+        ("flux_tiny_random", ["hqq_diffusers", "torch_compile"], False, 'cmmd'),
+        ("sd_tiny_random", ["diffusers_int8", "torch_compile"], False, 'cmmd'),
+        ("tiny_llama", ["gptq", "torch_compile"], True, 'perplexity'),
+        ("llama_3_tiny_random_as_pipeline", ["llm_int8", "torch_compile"], True, 'perplexity'),
+        ("flux_tiny_random", ["pab", "hqq_diffusers"], False, 'cmmd'),
+        ("flux_tiny_random", ["pab", "diffusers_int8"], False, 'cmmd'),
+        ("flux_tiny_random", ["fastercache", "hqq_diffusers"], False, 'cmmd'),
+        ("flux_tiny_random", ["fastercache", "diffusers_int8"], False, 'cmmd'),
+        ("flux_tiny_random", ["fora", "hqq_diffusers"], False, 'cmmd'),
+        ("flux_tiny_random", ["fora", "diffusers_int8"], False, 'cmmd'),
+        ("flux_tiny_random", ["fora", "torch_compile"], False, 'cmmd'),
+        ("flux_tiny_random", ["fora", "stable_fast"], False, 'cmmd'),
+        ("tiny_janus", ["hqq", "torch_compile"], False, 'cmmd'),
+        pytest.param("flux_tiny", ["fora", "flash_attn3", "torch_compile"], False, 'cmmd', marks=pytest.mark.high),
     ],
     indirect=["model_fixture"],
 )
 def test_full_integration_combo(
-    config_dict: dict[str, Any], allow_pickle_files: bool, model_fixture: tuple[Any, SmashConfig], metric:str
+    algorithms: list[str], allow_pickle_files: bool, model_fixture: tuple[Any, SmashConfig], metric:str
 ) -> None:
     """Test the full integration of the algorithm."""
-    algorithm_tester = CombinationsTester(config_dict, allow_pickle_files, metric)
+    algorithm_tester = CombinationsTester(algorithms, allow_pickle_files, metric)
     run_full_integration(algorithm_tester, device="cuda", model_fixture=model_fixture)
