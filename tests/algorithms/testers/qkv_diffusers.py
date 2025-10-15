@@ -1,4 +1,4 @@
-from pruna.algorithms.factorizing.qkv_diffusers import QKVDiffusers
+from pruna.algorithms.qkv_diffusers import QKVDiffusers
 
 from .base_tester import AlgorithmTesterBase
 
