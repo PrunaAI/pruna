@@ -400,7 +400,9 @@ def generate_videos(
             safe_memory_cleanup()
 
 
-def evaluate_videos(data: Any, metrics: StatefulMetric | List[StatefulMetric]) -> List[MetricResult]:
+def evaluate_videos(
+    data: Any, metrics: StatefulMetric | List[StatefulMetric], prompts: Any | None = None
+) -> List[MetricResult]:
     """
     Evaluation loop helper.
 
@@ -419,8 +421,14 @@ def evaluate_videos(data: Any, metrics: StatefulMetric | List[StatefulMetric]) -
     results = []
     if isinstance(metrics, StatefulMetric):
         metrics = [metrics]
+    if any(metric.call_type != "y" for metric in metrics) and prompts is None:
+        raise ValueError(
+            "You are trying to evaluate metrics that require more than the outputs,but didn't provide prompts."
+        )
     for metric in metrics:
         for batch in data:
-            metric.update(batch, batch, batch)
+            if prompts is None:
+                prompts = batch
+            metric.update(prompts, batch, batch)
         results.append(metric.compute())
     return results
