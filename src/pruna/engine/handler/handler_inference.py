@@ -102,7 +102,21 @@ class InferenceHandler(ABC):
     def set_correct_dtype(
         self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict, dtype: torch.dtype
     ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict:
-        """Set the correct dtype for the batch."""
+        """
+        Set the correct dtype for the batch.
+
+        Parameters
+        ----------
+        batch : List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict
+            The batch to set the dtype for.
+        dtype : torch.dtype
+            The dtype to set.
+
+        Returns
+        -------
+        List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict
+            The batch with the correct dtype.
+        """
         if isinstance(batch, torch.Tensor):
             return batch.to(dtype)
 

@@ -16,11 +16,11 @@ import importlib
 from typing import Any, Dict
 
 import torch
+from ConfigSpace import CategoricalHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.smash_space import CategoricalHyperparameter
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
