@@ -35,6 +35,8 @@ class StatefulMetric(ABC):
 
     metric_name: str
     call_type: str
+    create_alias: bool = False
+    modality: List[str]
 
     def __init__(self) -> None:
         """Initialize the StatefulMetric class."""
@@ -120,3 +122,21 @@ class StatefulMetric(ABC):
             True if the metric is pairwise, False otherwise.
         """
         return self.call_type.startswith("pairwise")
+
+    def create_filename(self, filename: str, idx: int, file_extension: str) -> str:
+        """
+        Create a filename for the metric.
+
+        Parameters
+        ----------
+        filename: str
+            The name of the file.
+        file_extension: str
+            The extension of the file.
+
+        Returns
+        -------
+        str
+            The filename.
+        """
+        return f"{filename}-{idx}.{file_extension}"
