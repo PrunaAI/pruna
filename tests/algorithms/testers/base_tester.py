@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from pruna import PrunaModel, SmashConfig, smash
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import _resolve_cuda_device, get_device, move_to_device, safe_memory_cleanup
 from pruna.evaluation.evaluation_agent import EvaluationAgent
@@ -24,6 +24,7 @@ class AlgorithmTesterBase:
 
     def __init__(self):
         self._saving_path = Path(tempfile.mkdtemp(prefix="pruna_saved_model_"))
+        self.hyperparameters = {}
 
     @property
     @abstractmethod
@@ -88,11 +89,6 @@ class AlgorithmTesterBase:
     def get_algorithm_name(cls) -> str:
         """Get the algorithm name."""
         return cls.algorithm_class.algorithm_name
-
-    @classmethod
-    def get_algorithm_group(cls) -> str:
-        """Get the algorithm group."""
-        return cls.algorithm_class.algorithm_group
 
     @classmethod
     def get_metrics(cls, device: str) -> list[BaseMetric | StatefulMetric]:
@@ -161,8 +157,5 @@ class AlgorithmTesterBase:
     def prepare_smash_config(self, smash_config: SmashConfig, device: str) -> None:
         """Prepare the smash config for the test."""
         smash_config["device"] = device
-        smash_config[self.get_algorithm_group()] = self.get_algorithm_name()
-
-        if hasattr(self, "hyperparameters"):
-            for key, value in self.hyperparameters.items():
-                smash_config[key] = value
+        smash_config.add(self.get_algorithm_name())
+        smash_config.add(self.hyperparameters)

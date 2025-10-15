@@ -47,7 +47,7 @@ def get_negative_examples_from_module(module: Any) -> list[tuple[Any, str]]:
     """Get all negative examples from a module."""
 
     def process_fn(cls: Any, model: str) -> dict[str, Any]:
-        return [cls.get_algorithm_group(), cls.get_algorithm_name(), model]
+        return [cls.get_algorithm_name(), model]
 
     return collect_tester_instances(module, process_fn, "reject_models")
 
@@ -199,6 +199,14 @@ def get_all_imports(package: str) -> list[str]:
                 else:  # Subpackage __init__.py
                     module_name = ".".join(rel_parent.parts)
                     full_import = f"{package}.{module_name}"
+                imports.add(full_import)
+            else:
+                # Include individual module files
+                rel_path = file_path.relative_to(pkg_path)
+                # Remove the .py extension and convert path to module notation
+                module_parts = list(rel_path.parts[:-1]) + [rel_path.stem]
+                module_name = ".".join(module_parts)
+                full_import = f"{package}.{module_name}"
                 imports.add(full_import)
 
     return sorted(imports)
