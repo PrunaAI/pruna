@@ -9,13 +9,7 @@ from typing import Any
 
 
 @pytest.mark.cuda
-@pytest.mark.parametrize(
-    "model_fixture",
-    [
-        pytest.param("opt_tiny_random", marks=pytest.mark.cuda),
-    ],
-    indirect=["model_fixture"],
-)
+@pytest.mark.parametrize("model_fixture", ["opt_tiny_random"], indirect=["model_fixture"])
 def test_pre_smash_hook(monkeypatch: pytest.MonkeyPatch, model_fixture: tuple[Any, SmashConfig]) -> None:
     """Test the pre_smash_hook method."""
     model, smash_config = model_fixture

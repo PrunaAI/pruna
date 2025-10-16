@@ -1,8 +1,10 @@
+import importlib
 import importlib.util
 import inspect
+import pkgutil
 import subprocess
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import numpydoc_validation
 import pytest
@@ -52,21 +54,60 @@ def get_negative_examples_from_module(module: Any) -> list[tuple[Any, str]]:
     return collect_tester_instances(module, process_fn, "reject_models")
 
 
-def collect_tester_instances(
-    module: Any, process_fn: Callable[[Any, str], list[Any]], model_attr: str
-) -> list[tuple[Any, str]]:
-    """Collect all model classes from a module and process them with a function."""
-    parametrizations = []
-    for _, cls in vars(module).items():
-        if inspect.isclass(cls) and module.__name__ in cls.__module__ and "AlgorithmTesterBase" not in cls.__name__:
-            model_parametrizations = getattr(cls, model_attr)
-            markers = getattr(cls, "pytestmark", [])
-            if not isinstance(markers, list):
-                markers = [markers]
-            for model in model_parametrizations:
-                parameters = process_fn(cls, model)
-                idx = f"{cls.__name__}_{model}"
-                parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
+def collect_tester_instances(module: Any, process_fn: Callable[[Any, str], list[Any]], model_attr: str) -> list[Any]:
+    """
+    Collect parametrizations for algorithm tester classes within a package or module.
+
+    Parameters
+    ----------
+    module : Any
+        The module or package that contains algorithm tester definitions.
+    process_fn : Callable[[Any, str], list[Any]]
+        A callable that receives a tester class and a model identifier and returns
+        the positional arguments used to parametrize the test case.
+    model_attr : str
+        The name of the class attribute that lists model identifiers.
+
+    Returns
+    -------
+    list[Any]
+        A list of pytest parameter sets ready to be consumed by parametrized tests.
+
+    Examples
+    --------
+    >>> from pruna.tests.algorithms import testers
+    >>> collect_tester_instances(testers, lambda cls, model: [cls(), model], "models")
+    [...]  # doctest: +ELLIPSIS
+    """
+    parametrizations: list[Any] = []
+    modules_to_inspect: Iterable[Any]
+
+    if hasattr(module, "COLLECTIONS"):
+        modules_to_inspect = getattr(module, "COLLECTIONS")
+    else:
+        modules = [module]
+        if hasattr(module, "__path__"):
+            for _, modname, _ in pkgutil.walk_packages(module.__path__, module.__name__ + "."):
+                submodule = importlib.import_module(modname)
+                modules.append(submodule)
+        modules_to_inspect = modules
+
+    for current_module in modules_to_inspect:
+        for _, cls in vars(current_module).items():
+            if (
+                inspect.isclass(cls)
+                and current_module.__name__ in cls.__module__
+                and "AlgorithmTesterBase" not in cls.__name__
+            ):
+                model_parametrizations = getattr(cls, model_attr, [])
+                markers = getattr(cls, "pytestmark", [])
+                if not isinstance(markers, list):
+                    markers = [markers]
+                for model in model_parametrizations:
+                    parameters = process_fn(cls, model)
+                    idx = f"{cls.__name__}_{model}"
+                    parametrizations.append(pytest.param(*parameters, marks=markers, id=idx))
+
     return parametrizations
 
 
