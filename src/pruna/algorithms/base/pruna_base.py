@@ -36,7 +36,8 @@ class PrunaAlgorithmBase(ABC):
 
     def __init__(self) -> None:
         self.hyperparameters = self.get_hyperparameters()
-        SMASH_SPACE.register_algorithm(self.algorithm_name, self.hyperparameters)
+        if self.algorithm_name not in SMASH_SPACE.get_all_algorithms():
+            SMASH_SPACE.register_algorithm(self.algorithm_name, self.hyperparameters)
         assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
     def __init_subclass__(cls, **kwargs):
