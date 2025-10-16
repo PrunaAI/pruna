@@ -1,4 +1,4 @@
-from pruna.algorithms.qkv_diffusers import QKVDiffusers
+from pruna.algorithms.qkv_diffusers import QKVFusing
 
 from .base_tester import AlgorithmTesterBase
 
@@ -9,5 +9,5 @@ class TestQKVDiffusers(AlgorithmTesterBase):
     models = ["flux_tiny_random"]
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
-    algorithm_class = QKVDiffusers
+    algorithm_class = QKVFusing
     metrics = ["cmmd"]

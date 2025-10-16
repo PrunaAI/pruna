@@ -26,7 +26,7 @@ def test_target_modules(
 ) -> None:
     model, smash_config = model_fixture
     smash_config.add(algorithm)
-    smash_config[f"{algorithm}_target_modules"] = target_modules
+    smash_config.add({f"{algorithm}_target_modules": target_modules})
     smashed_model = smash(model, smash_config)
 
     is_algorithm_applied = {
