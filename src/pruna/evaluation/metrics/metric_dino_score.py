@@ -22,6 +22,7 @@ import torch
 # Ruff complains when we don't import functional as f, but common practice is to import it as F
 import torch.nn.functional as F  # noqa: N812
 from torch import Tensor
+from torchvision import transforms
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -61,7 +62,7 @@ class DinoScore(StatefulMetric):
     metric_name: str = DINO_SCORE
     higher_is_better: bool = True
     runs_on: List[str] = ["cuda", "cpu"]
-    default_call_type: str = "x_y"
+    default_call_type: str = "gt_y"
 
     def __init__(self, device: str | torch.device | None = None, call_type: str = SINGLE):
         super().__init__()
@@ -75,6 +76,13 @@ class DinoScore(StatefulMetric):
         self.model.eval().to(self.device)
         # Add internal state to accumulate similarities
         self.add_state("similarities", default=[])
+        self.processor = transforms.Compose(
+            [
+                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
+                transforms.CenterCrop(224),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ]
+        )
 
     @torch.no_grad()
     def update(self, x: List[Any] | Tensor, gt: Tensor, outputs: torch.Tensor) -> None:
@@ -92,7 +100,8 @@ class DinoScore(StatefulMetric):
         """
         metric_inputs = metric_data_processor(x, gt, outputs, self.call_type)
         inputs, preds = metric_inputs
-
+        inputs = self.processor(inputs)
+        preds = self.processor(preds)
         # Extract embeddings ([CLS] token)
         emb_x = self.model.forward_features(inputs)
         emb_y = self.model.forward_features(preds)
