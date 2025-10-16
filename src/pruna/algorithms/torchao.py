@@ -193,7 +193,7 @@ class Torchao(PrunaAlgorithmBase):
                 return all(name not in excluded_modules for name in fqn.split("."))
 
             if (
-                smash_config["compiler"] == "torch_compile"
+                smash_config["torch_compile"]
                 and smash_config._base_config["torch_compile_mode"] != "max-autotune-no-cudagraphs"
             ):
                 pruna_logger.warning(
@@ -215,10 +215,7 @@ class Torchao(PrunaAlgorithmBase):
                     "Row wise float8 dynamic quantization is still experimental and might not work on your hardware."
                 )
             # Only apply quantization on module list level if torch compile is also applied at that level
-            if (
-                smash_config["compiler"] == "torch_compile"
-                and smash_config._base_config["torch_compile_target"] == "module_list"
-            ):
+            if smash_config["torch_compile"] and smash_config._base_config["torch_compile_target"] == "module_list":
                 # Apply quantization to the entire model
                 imported_modules["quantize"](
                     working_model, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
