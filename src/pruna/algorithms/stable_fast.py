@@ -79,9 +79,10 @@ class StableFast(PrunaAlgorithmBase):
 
         imported_modules = self.import_algorithm_packages()
         config = create_config(model, imported_modules)
-        cacher_type = smash_config["cacher"]
-        if cacher_type in compilation_map:
-            return compilation_map[cacher_type](model, imported_modules, config, smash_config)
+        active_algorithms = smash_config.get_active_algorithms()
+        for algorithm in active_algorithms:
+            if algorithm in compilation_map:
+                return compilation_map[algorithm](model, imported_modules, config, smash_config)
         return compile_stable_fast(model, smash_config, imported_modules)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
