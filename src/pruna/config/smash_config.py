@@ -121,12 +121,12 @@ class SmashConfig:
         cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
     ) -> SmashConfig:
         """
-        Create a SmashConfig from a Configuration object.
+        Create a SmashConfig from a list of algorithm names.
 
         Parameters
         ----------
         configuration : list[str]
-            The list of algorithm names to create the SmashConfig from.
+            The list of algorithm names to create the SmashConfig with.
         batch_size : int, optional
             The batch size to use for the SmashConfig. Default is 1.
         device : str | torch.device | None, optional
@@ -159,7 +159,7 @@ class SmashConfig:
         cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
     ) -> SmashConfig:
         """
-        Create a SmashConfig from a dictionary.
+        Create a SmashConfig from a dictionary of algorithms and their hyperparameters.
 
         Parameters
         ----------
@@ -472,11 +472,8 @@ class SmashConfig:
         target_module : Any
             The target module to prune.
         """
-        if self["pruner"] is None:
+        if not self["torch_structured"]:
             pruna_logger.error("No pruner selected, target module is only supported by torch_structured pruner.")
-            raise
-        elif self["pruner"] != "torch_structured":
-            pruna_logger.error("Target module is only supported for torch_structured pruner.")
             raise
         self._target_module = target_module
 
@@ -538,13 +535,13 @@ class SmashConfig:
                 pruna_logger.warning(f"Setting {name} deprecated. Please use config.add(dict({name}={value})).")
             self.add(value)
 
-    def add(self, request: Any) -> None:
+    def add(self, request: str | list[str] | dict[str, Any]) -> None:
         """
-        Add a value to the SmashConfig.
+        Add an algorithm or specify the hyperparameters of an algorithm to the SmashConfig.
 
         Parameters
         ----------
-        request : Any
+        request : str | list[str] | dict[str, Any]
             The value to add to the SmashConfig.
 
         Examples

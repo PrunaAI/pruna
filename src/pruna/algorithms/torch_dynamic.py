@@ -82,6 +82,21 @@ class TorchDynamic(PrunaAlgorithmBase):
         return any(isinstance(attr_value, torch.nn.Module) for _, attr_value in inspect.getmembers(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
+        """
+        Quantize the model using torch.quantization.quantize_dynamic.
+
+        Parameters
+        ----------
+        model : Any
+            The model to quantize.
+        smash_config : SmashConfigPrefixWrapper
+            The configuration for the quantization.
+
+        Returns
+        -------
+        Any
+            The quantized model.
+        """
         if isinstance(model, torch.nn.Module):
             device = next(model.parameters()).device.type
             modules_to_quantize: set[type[torch.nn.Module]] = set()

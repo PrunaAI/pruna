@@ -153,7 +153,7 @@ def check_algorithm_availability(smash_config: SmashConfig) -> None:
 
 def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, algorithm_order: list[str]) -> None:
     """
-    Loop through all algorithm groups and calls the pre_smash_hook method for each algorithm.
+    Loop through all active algorithms and calls the pre_smash_hook method for each algorithm.
 
     Parameters
     ----------
@@ -235,9 +235,9 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
         graph.add_node(algorithm)
 
     for alg_a, alg_b in algorithm_pairs:
-        if alg_a in AlgorithmRegistry[alg_b].get_required_before():
+        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_before():
             graph.add_edge(alg_a, alg_b)
-        if alg_a in AlgorithmRegistry[alg_b].get_required_after():
+        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_after():
             graph.add_edge(alg_b, alg_a)
 
     return graph

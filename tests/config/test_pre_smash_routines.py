@@ -342,12 +342,12 @@ class TestConstructAlgorithmDirectedGraph:
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
         
         mock_algorithm1 = Mock()
-        mock_algorithm1.get_required_before.return_value = []
-        mock_algorithm1.get_required_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
         
         mock_algorithm2 = Mock()
-        mock_algorithm2.get_required_before.return_value = []
-        mock_algorithm2.get_required_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
@@ -363,12 +363,12 @@ class TestConstructAlgorithmDirectedGraph:
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
         
         mock_algorithm1 = Mock()
-        mock_algorithm1.get_required_before.return_value = []
-        mock_algorithm1.get_required_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
         
         mock_algorithm2 = Mock()
-        mock_algorithm2.get_required_before.return_value = ["algorithm1"]
-        mock_algorithm2.get_required_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before.return_value = ["algorithm1"]
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
@@ -384,12 +384,12 @@ class TestConstructAlgorithmDirectedGraph:
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
         
         mock_algorithm1 = Mock()
-        mock_algorithm1.get_required_before.return_value = []
-        mock_algorithm1.get_required_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
         
         mock_algorithm2 = Mock()
-        mock_algorithm2.get_required_before.return_value = []
-        mock_algorithm2.get_required_after.return_value = ["algorithm1"]
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = ["algorithm1"]
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
@@ -405,16 +405,16 @@ class TestConstructAlgorithmDirectedGraph:
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2", "algorithm3"]
         
         mock_algorithm1 = Mock()
-        mock_algorithm1.get_required_before.return_value = []
-        mock_algorithm1.get_required_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
         
         mock_algorithm2 = Mock()
-        mock_algorithm2.get_required_before.return_value = ["algorithm1"]
-        mock_algorithm2.get_required_after.return_value = ["algorithm3"]
+        mock_algorithm2.get_algorithms_to_run_before.return_value = ["algorithm1"]
+        mock_algorithm2.get_algorithms_to_run_after.return_value = ["algorithm3"]
         
         mock_algorithm3 = Mock()
-        mock_algorithm3.get_required_before.return_value = []
-        mock_algorithm3.get_required_after.return_value = []
+        mock_algorithm3.get_algorithms_to_run_before.return_value = []
+        mock_algorithm3.get_algorithms_to_run_after.return_value = []
         
         mock_algorithms = {
             "algorithm1": mock_algorithm1,

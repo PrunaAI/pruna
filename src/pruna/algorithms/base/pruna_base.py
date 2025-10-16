@@ -267,7 +267,7 @@ class PrunaAlgorithmBase(ABC):
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         return self._apply(model, wrapped_config)
 
-    def _expand(self, items: Iterable[str | AlgorithmTag] | None) -> list[str]:
+    def _expand_tags_into_algorithm_names(self, items: Iterable[str | AlgorithmTag] | None) -> list[str]:
         """Expand algorithms/tags -> concrete algorithm names."""
         if not items:
             return []
@@ -292,13 +292,13 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The incompatible algorithms.
         """
-        cb = set(self._expand(self.compatible_before))
-        ca = set(self._expand(self.compatible_after))
+        cb = set(self._expand_tags_into_algorithm_names(self.compatible_before))
+        ca = set(self._expand_tags_into_algorithm_names(self.compatible_after))
         allowed = cb | ca
         all_algorithms = set(SMASH_SPACE.get_all_algorithms())
         return sorted(all_algorithms - allowed)
 
-    def get_required_before(self) -> list[str]:
+    def get_algorithms_to_run_before(self) -> list[str]:
         """
         Get algorithms required to run / be executed before the current algorithm.
 
@@ -307,9 +307,9 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The required algorithms.
         """
-        return self._expand(self.compatible_before)
+        return self._expand_tags_into_algorithm_names(self.compatible_before)
 
-    def get_required_after(self) -> list[str]:
+    def get_algorithms_to_run_after(self) -> list[str]:
         """
         Get algorithms required to run / be executed after the current algorithm.
 
@@ -318,7 +318,7 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The required algorithms.
         """
-        return self._expand(self.compatible_after)
+        return self._expand_tags_into_algorithm_names(self.compatible_after)
 
 
 def wrap_handle_imports(func):
