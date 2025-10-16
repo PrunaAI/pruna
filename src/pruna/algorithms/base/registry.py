@@ -59,14 +59,11 @@ class AlgorithmRegistry:
                     continue
 
                 # Must be a subclass (but not the base itself)
-                if not issubclass(obj, PrunaAlgorithmBase) or obj is PrunaAlgorithmBase:
-                    continue
-                # Must be a **direct** child (first-grade)
-                if PrunaAlgorithmBase not in obj.__bases__:
+                if obj is PrunaAlgorithmBase:
                     continue
 
-                # Skip abstract bases
-                if inspect.isabstract(obj):
+                # Must inherit from PrunaAlgorithmBase
+                if PrunaAlgorithmBase not in obj.__mro__:
                     continue
 
                 # Instantiate & register with the Smash Configuration Space

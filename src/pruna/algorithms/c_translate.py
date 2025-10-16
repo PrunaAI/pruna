@@ -67,6 +67,7 @@ class CTranslate(PrunaAlgorithmBase):
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True
     processor_required: bool = False
+    dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: list[str] = ["half"]
     compatible_after: list[str] = ["whisper_s2t"]
