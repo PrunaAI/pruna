@@ -589,14 +589,17 @@ class SmashConfig:
         # request wants to activate a single algorithm
         if isinstance(request, str):
             self._configuration[request] = True
+        # request wants to activate a list of algorithms
         if isinstance(request, list):
             if not all(isinstance(item, str) for item in request):
                 raise ValueError("Request must be a list of algorithm names.")
             for item in request:
                 self._configuration[item] = True
+        # request wants to activate a dictionary of algorithms and their hyperparameters
         if isinstance(request, dict):
             for key, value in request.items():
-                if isinstance(value, dict):
+                # target modules are a special case, as they are a hyperparameter but their value is a dict
+                if isinstance(value, dict) and not "target_module" in key:
                     self._configuration[key] = True
                     for k, v in value.items():
                         if not k.startswith(key):
@@ -695,7 +698,7 @@ class SmashConfigPrefixWrapper:
         Any
             The value from the config.
         """
-        parent_hyperparameters = self._base_config.get_parent_hyperparameters()
+        parent_hyperparameters = self._base_config.config_space.get_all_algorithms()
         if key in ADDITIONAL_ARGS + parent_hyperparameters:
             return self._base_config[key]
         actual_key = self._prefix + key
