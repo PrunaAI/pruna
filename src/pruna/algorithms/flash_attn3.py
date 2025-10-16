@@ -104,13 +104,13 @@ class FlashAttn3(PrunaAlgorithmBase):
             # register our "custom" attention function as a backend
             register_custom_backend(imported_packages)
 
-            for j, block in enumerate(model.transformer.blocks):
-                if j > 1:
-                    block.attn1.set_attention_backend("flash_attn3_pruna")
-
-            for j, block in enumerate(model.transformer_2.blocks):
-                if j > 1:
-                    block.attn1.set_attention_backend("flash_attn3_pruna")
+            # replace in all compatible components
+            for component in model.components.values():
+                if hasattr(component, "set_attention_backend") and component.dtype in [
+                    torch.bfloat16,
+                    torch.float16,
+                ]:
+                    component.set_attention_backend("flash_attn3_pruna")
 
         else:
             # wrap the model generate function to replace attention computations with flash_attn3 where possible
