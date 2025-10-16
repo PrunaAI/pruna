@@ -230,6 +230,26 @@ class SmashConfig:
         json_string = config_path.read_text()
         config_dict = json.loads(json_string)
 
+        deprecated_keys = [
+            "quantizer",
+            "pruner",
+            "compiler",
+            "cacher",
+            "batcher",
+            "factorizer",
+            "kernel",
+            "distiller",
+            "recoverer",
+            "enhancer",
+            "distributer",
+            "resampler",
+            "decoder",
+        ]
+        for name in deprecated_keys:
+            if name in config_dict:
+                hyperparameter = config_dict.pop(name)
+                config_dict[hyperparameter] = True
+
         # check device compatibility
         if "device" in config_dict:
             config_dict["device"] = set_to_best_available_device(config_dict["device"])
@@ -256,7 +276,17 @@ class SmashConfig:
 
             setattr(self, name, config_dict.pop(name))
 
-        self._configuration = Configuration(SMASH_SPACE, values=config_dict)
+        # Build a map of today’s hyperparameters so we can drop stale keys
+        space_hparams = {hp.name for hp in SMASH_SPACE.get_hyperparameters()}
+
+        # Keep only values that still exist in the space
+        saved_values = {k: v for k, v in config_dict.items() if k in space_hparams}
+
+        # Seed with the defaults, then overlay the saved values
+        default_values = dict(SMASH_SPACE.get_default_configuration())
+        default_values.update(saved_values)
+
+        self._configuration = Configuration(SMASH_SPACE, values=default_values)
 
         tokenizer_path = Path(path) / TOKENIZER_SAVE_PATH
         if tokenizer_path.exists():
