@@ -371,9 +371,9 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         model_path = Path(model_path)
     pipeline_info_path = model_path / PIPELINE_INFO_FILE_NAME
 
-    from pruna.algorithms.quantization.hqq import HQQQuantizer
+    from pruna.algorithms.hqq import HQQ
 
-    algorithm_packages = HQQQuantizer().import_algorithm_packages()
+    algorithm_packages = HQQ().import_algorithm_packages()
     model_path = Path(model_path)
     hqq_model_dir = model_path / "hqq_language_model"
 
@@ -469,8 +469,8 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     Any
         The loaded diffusers model.
     """
-    from pruna.algorithms.quantization.hqq_diffusers import (
-        HQQDiffusersQuantizer,
+    from pruna.algorithms.hqq_diffusers import (
+        HQQDiffusers,
         construct_base_class,
     )
 
@@ -479,7 +479,7 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         "buffers will not be loaded correctly."
     )
 
-    hf_quantizer = HQQDiffusersQuantizer()
+    hf_quantizer = HQQDiffusers()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
 
     path = Path(path)

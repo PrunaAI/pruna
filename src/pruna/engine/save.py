@@ -347,9 +347,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         save_model_hqq(model.model, model_path, smash_config)
         return
 
-    from pruna.algorithms.quantization.hqq import HQQQuantizer
+    from pruna.algorithms.hqq import HQQ
 
-    algorithm_packages = HQQQuantizer().import_algorithm_packages()
+    algorithm_packages = HQQ().import_algorithm_packages()
 
     # we need to create a separate path for the quantized model
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
@@ -399,8 +399,8 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    from pruna.algorithms.quantization.hqq_diffusers import (
-        HQQDiffusersQuantizer,
+    from pruna.algorithms.hqq_diffusers import (
+        HQQDiffusers,
         construct_base_class,
     )
 
@@ -411,7 +411,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
 
     model_path = Path(model_path)
 
-    hf_quantizer = HQQDiffusersQuantizer()
+    hf_quantizer = HQQDiffusers()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
 
     with (model_path / "dtype_info.json").open("w") as f:
