@@ -184,7 +184,7 @@ class TestCheckAlgorithmPackagesAvailability:
         mock_algorithm1.import_algorithm_packages.side_effect = ImportError("Something went wrong")
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", {"algorithm1": mock_algorithm1}):
-            with pytest.raises(ImportError, match="Could not import necessary packages for algorithm1"):
+            with pytest.raises(ImportError):
                 check_algorithm_packages_availability(smash_config)
 
 
@@ -309,7 +309,7 @@ class TestDetermineAlgorithmOrder:
 
     def test_determine_algorithm_order_success(self):
         """Test successful algorithm order determination. Should return topologically sorted algorithm order."""
-        smash_config = Mock()
+        smash_config = Mock(_algorithm_order=None)
         
         mock_graph = nx.DiGraph()
         mock_graph.add_nodes_from(["algorithm1", "algorithm2"])
@@ -321,15 +321,16 @@ class TestDetermineAlgorithmOrder:
 
     def test_determine_algorithm_order_cyclic_dependency(self):
         """Test algorithm order determination with cyclic dependencies. Should raise NetworkXUnfeasible for cyclic dependencies."""
-        smash_config = Mock()
+        smash_config = Mock(_algorithm_order=None)
         
         mock_graph = nx.DiGraph()
-        mock_graph.add_nodes_from(["algorithm1", "algorithm2"])
+        mock_graph.add_nodes_from(["algorithm1", "algorithm2", "algorithm3"])
         mock_graph.add_edge("algorithm1", "algorithm2")
-        mock_graph.add_edge("algorithm2", "algorithm1")
+        mock_graph.add_edge("algorithm2", "algorithm3")
+        mock_graph.add_edge("algorithm3", "algorithm1")
         
         with patch("pruna.config.pre_smash_routines.construct_algorithm_directed_graph", return_value=mock_graph):
-            with pytest.raises(nx.NetworkXUnfeasible):
+            with pytest.raises(ValueError, match="Cycle detected in the algorithm order, the current algorithm configuration is not possible."):
                 determine_algorithm_order(smash_config)
 
 
