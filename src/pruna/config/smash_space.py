@@ -86,7 +86,7 @@ class SmashConfigurationSpace(ConfigurationSpace):
             self.add(hp)
 
             # Store condition s.t. hyperparameter is active if algorithm is active (is True)
-            self.add(EqualsCondition(hp, parent, True))
+            self.add(IsTrueCondition(hp, parent))
 
     def get_all_algorithms(self) -> list[str]:
         """
