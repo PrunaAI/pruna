@@ -45,9 +45,7 @@ def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> s
             f"| **Can be applied on**: {compatible_devices_str}.",
             f"| **Required**: {required_inputs_str}.",
             f"| **Compatible with**: {compatible_algorithms_str}.",
-            f"| **Required install**: {required_install_str}."
-            if required_install_str
-            else "",
+            f"| **Required install**: {required_install_str}." if required_install_str else "",
         ]
     )
 
@@ -83,20 +81,12 @@ def format_grid_table(rows: list[list[str]]) -> str:
     total_widths = [w + 2 for w in col_widths]
 
     horizontal_border = "+" + "+".join("-" * width for width in total_widths) + "+"
-    header_line = (
-        "|"
-        + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols))
-        + "|"
-    )
+    header_line = "|" + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
     header_separator = "+" + "+".join("=" * width for width in total_widths) + "+"
 
     data_lines = []
     for row in rows[1:]:
-        row_line = (
-            "|"
-            + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols))
-            + "|"
-        )
+        row_line = "|" + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
         data_lines.append(row_line)
         data_lines.append(horizontal_border)
 
@@ -214,6 +204,7 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
         rows.append([param_name, default, values, description])
         hyperparameter_counter += 1
     return rows, hyperparameter_counter
+
 
 def generate_compatibility_table() -> str:
     """Generate a reStructuredText list-table showing algorithm compatibility."""
