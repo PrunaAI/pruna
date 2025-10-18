@@ -45,14 +45,19 @@ class GANQ:
             inp = inp.unsqueeze(0)
 
         if isinstance(self.layer, (nn.Linear, transformers.Conv1D)):
-            if len(inp.shape) == 3:
+
+            # Note: Official implementation uses == 3 condition,
+            # refer here - https://github.com/Evans-Z/GANQ/blob/176a87701fd0e07aea1ccd4f3faff84871d79f44/ganq.py#L39
+            if len(inp.shape) > 2:
                 inp = inp.reshape((-1, inp.shape[-1]))
             inp = inp.t()
 
         inp = inp.float()
         self.XXt += inp @ inp.T
 
-    def fasterquant(self, sparsity=0.0, bits=4, max_epoch=10, pre_process=True, full_rows=0):
+    def fasterquant(
+        self, sparsity=0.0, bits=4, max_epoch=10, pre_process=True, full_rows=0
+    ):
         """Main function to perform GANQ quantization."""
         W = self.layer.weight.data.clone()
         if isinstance(self.layer, nn.Conv2d):
@@ -77,7 +82,9 @@ class GANQ:
 
         if isinstance(self.layer, transformers.Conv1D):
             W = W.t()
-        self.layer.weight.data = W.reshape(self.layer.weight.shape).to(self.layer.weight.data.dtype)
+        self.layer.weight.data = W.reshape(self.layer.weight.shape).to(
+            self.layer.weight.data.dtype
+        )
 
     def free(self):
         """Free up memory."""
