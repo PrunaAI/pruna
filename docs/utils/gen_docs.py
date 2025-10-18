@@ -240,13 +240,15 @@ def generate_compatibility_table() -> str:
 if __name__ == "__main__":
     # Collect all algorithms into a single file.
     with open("compression.rst", "w") as f:
+        # First write the compatibility matrix
+        f.write(generate_compatibility_table())
+        f.write("\n\n")
+
+        # Write algorithm descriptions
         for algorithm_group in PRUNA_ALGORITHMS.values():
             for algorithm in algorithm_group.values():
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
-    logger.info("Generated compression.rst")
 
-    logger.info("Generated compatibility_matrix.rst")
-    with open("compatibility_matrix.rst", "w") as f:
-        f.write(generate_compatibility_table())
+    logger.info("Generated compression.rst with compatibility matrix and algorithm descriptions")
     logger.info("Docs successfully written to docs/user_manual/")

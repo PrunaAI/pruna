@@ -35,26 +35,18 @@ jobs:
       - name: Run generation script
         run: python docs/utils/gen_docs.py
 
-      - name: Verify generated files exist
+      - name: Move generated file to correct directory
+        run: mv compression.rst docs/user_manual/compression.rst
+
+      - name: Verify generated file exists
         run: |
-          DOCS_DIR="docs/user_manual"
-
-          if [ ! -f "$DOCS_DIR/compression.rst" ]; then
-            echo "Error: Expected generated file not found at path: $DOCS_DIR/compression.rst"
+          if [ ! -f docs/user_manual/compression.rst ]; then
+            echo "Error: Generated file 'docs/user_manual/compression.rst' not found!"
             exit 1
           fi
 
-          if [ ! -f "$DOCS_DIR/compatibility_matrix.rst" ]; then
-            echo "Error: Expected generated file not found at path: $DOCS_DIR/compatibility_matrix.rst"
-            exit 1
-          fi
-
-          echo "All required documentation files found in $DOCS_DIR"
-
-      - name: Upload generated files
+      - name: Upload generated docs
         uses: actions/upload-artifact@v4
         with:
           name: pruna-docs
-          path: |
-            docs/user_manual/compression.rst
-            docs/user_manual/compatibility_matrix.rst
+          path: docs/user_manual/compression.rst
