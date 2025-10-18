@@ -37,14 +37,19 @@ jobs:
 
       - name: Verify generated files exist
         run: |
-          if [ ! -f docs/user_manual/compression.rst ]; then
-            echo "Error: Generated file 'compression.rst' not found!"
+          DOCS_DIR="docs/user_manual"
+
+          if [ ! -f "$DOCS_DIR/compression.rst" ]; then
+            echo "Error: Expected generated file not found at path: $DOCS_DIR/compression.rst"
             exit 1
           fi
-          if [ ! -f docs/user_manual/compatibility_matrix.rst ]; then
-            echo "Error: Generated file 'compatibility_matrix.rst' not found!"
+
+          if [ ! -f "$DOCS_DIR/compatibility_matrix.rst" ]; then
+            echo "Error: Expected generated file not found at path: $DOCS_DIR/compatibility_matrix.rst"
             exit 1
           fi
+
+          echo "All required documentation files found in $DOCS_DIR"
 
       - name: Upload generated files
         uses: actions/upload-artifact@v4
