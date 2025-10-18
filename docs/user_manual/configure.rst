@@ -140,8 +140,6 @@ The table underneath provides a general overview of the impact of each algorithm
    The :doc:`Algorithm Overview </compression>` page provides a more detailed overview of each algorithm within the different groups,
    as well as additional information on the hardware requirements, compatibility with other algorithms, and required components for each algorithm.
 
-
-
 Configure Algorithm Groups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
