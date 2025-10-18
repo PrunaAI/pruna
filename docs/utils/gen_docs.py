@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import Any
 
 from ConfigSpace import (
@@ -14,6 +15,11 @@ from ConfigSpace import (
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
+
+logger = logging.getLogger(__name__)
+
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
@@ -238,9 +244,9 @@ if __name__ == "__main__":
             for algorithm in algorithm_group.values():
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
-    print("[Pruna Docs] Generated compression.rst")
+    logger.info("Generated compression.rst")
 
-    print("[Pruna Docs] Generating compatibility matrix...")
+    logger.info("Generated compatibility_matrix.rst")
     with open("compatibility_matrix.rst", "w") as f:
         f.write(generate_compatibility_table())
-    print("[Pruna Docs] Generated compatibility_matrix.rst")
+    logger.info("Docs successfully written to docs/user_manual/")
