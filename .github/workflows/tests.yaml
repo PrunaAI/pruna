@@ -71,7 +71,9 @@ jobs:
 
     env:
       HF_ENDPOINT: https://hf-mirror.com
-
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+      HF_DATASETS_CACHE: ${{ github.workspace }}/.cache/huggingface/datasets
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -82,7 +84,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - uses: ./.github/actions/setup-uv-project
-
+      - name: Cache Hugging Face datasets
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/huggingface/datasets
+            .cache/huggingface/hub
+          key: hf-datasets-${{ runner.os }}-${{ hashFiles('tests/**/*.py') }}
+          restore-keys: |
+            hf-datasets-${{ runner.os }}-
       - name: Set test worker count
         run: echo "PYTEST_WORKERS=$(( $(nproc) - 1 ))" >> "$GITHUB_ENV" # leave 1 for the system process
 
