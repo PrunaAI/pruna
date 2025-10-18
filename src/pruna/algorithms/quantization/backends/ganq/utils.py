@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import torch
+import torch.nn as nn
 
 
 def init_t_4bit(W, seg_levels=[3, 5, 5, 3], seg_boundaries=[0.0, 0.25, 0.5, 0.75, 1.0]):
@@ -29,7 +30,9 @@ def init_t_4bit(W, seg_levels=[3, 5, 5, 3], seg_boundaries=[0.0, 0.25, 0.5, 0.75
         seg_start = W_min + range_vals * seg_start_ratio
         seg_end = W_min + range_vals * seg_end_ratio
         seg_lin = torch.linspace(0, 1, steps=levels, device=W.device)
-        seg_T = seg_start.unsqueeze(1) + (seg_end - seg_start).unsqueeze(1) * seg_lin.unsqueeze(0)
+        seg_T = seg_start.unsqueeze(1) + (seg_end - seg_start).unsqueeze(
+            1
+        ) * seg_lin.unsqueeze(0)
         T_segments.append(seg_T)
 
     return torch.cat(T_segments, dim=1)
@@ -55,10 +58,14 @@ def init_t_3bit(W, sub_counts=[2, 4, 2], fraction_boundaries=[0.0, 0.20, 0.80, 1
         f1 = frac_t[j + 1]
 
         if j == 0:
-            base = torch.linspace(0.0, 1.0, steps=c_j, device=device, dtype=sorted_data.dtype)
+            base = torch.linspace(
+                0.0, 1.0, steps=c_j, device=device, dtype=sorted_data.dtype
+            )
             frac_grid = f0 + base * (f1 - f0)
         else:
-            base_full = torch.linspace(0.0, 1.0, steps=c_j + 1, device=device, dtype=sorted_data.dtype)
+            base_full = torch.linspace(
+                0.0, 1.0, steps=c_j + 1, device=device, dtype=sorted_data.dtype
+            )
             base_segment = base_full[1:]
             frac_grid = f0 + base_segment * (f1 - f0)
 
@@ -75,14 +82,18 @@ def init_t_3bit(W, sub_counts=[2, 4, 2], fraction_boundaries=[0.0, 0.20, 0.80, 1
         splitted_list.append(sub_points)
 
     return (
-        torch.cat(splitted_list, dim=1) if splitted_list else torch.empty((B, 0), device=device, dtype=sorted_data.dtype)
+        torch.cat(splitted_list, dim=1)
+        if splitted_list
+        else torch.empty((B, 0), device=device, dtype=sorted_data.dtype)
     )
 
 
 def norm_params(W):
     """Compute the median and IQR for normalization."""
     median = W.median(dim=1, keepdim=True).values
-    q75, q25 = torch.quantile(W, 0.75, dim=1, keepdim=True), torch.quantile(W, 0.25, dim=1, keepdim=True)
+    q75, q25 = torch.quantile(W, 0.75, dim=1, keepdim=True), torch.quantile(
+        W, 0.25, dim=1, keepdim=True
+    )
     iqr = q75 - q25 + 1e-8
     return median, iqr
 
@@ -95,3 +106,18 @@ def normalize(tensor, median, iqr):
 def denormalize(tensor, median, iqr):
     """Denormalize the tensor using median and IQR."""
     return tensor * iqr + median
+
+
+def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=""):
+    """For a given module, find all sub-modules of specified layer types
+    and return a dictionary of their names and instances."""
+    if type(module) in layers:
+        return {name: module}
+    res = {}
+    for name1, child in module.named_children():
+        res.update(
+            find_layers(
+                child, layers=layers, name=name + "." + name1 if name != "" else name1
+            )
+        )
+    return res
