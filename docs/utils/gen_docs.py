@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import Any
 
 from ConfigSpace import (
@@ -14,6 +15,11 @@ from ConfigSpace import (
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
+
+logger = logging.getLogger(__name__)
+
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
@@ -45,9 +51,7 @@ def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> s
             f"| **Can be applied on**: {compatible_devices_str}.",
             f"| **Required**: {required_inputs_str}.",
             f"| **Compatible with**: {compatible_algorithms_str}.",
-            f"| **Required install**: {required_install_str}."
-            if required_install_str
-            else "",
+            f"| **Required install**: {required_install_str}." if required_install_str else "",
         ]
     )
 
@@ -83,20 +87,12 @@ def format_grid_table(rows: list[list[str]]) -> str:
     total_widths = [w + 2 for w in col_widths]
 
     horizontal_border = "+" + "+".join("-" * width for width in total_widths) + "+"
-    header_line = (
-        "|"
-        + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols))
-        + "|"
-    )
+    header_line = "|" + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
     header_separator = "+" + "+".join("=" * width for width in total_widths) + "+"
 
     data_lines = []
     for row in rows[1:]:
-        row_line = (
-            "|"
-            + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols))
-            + "|"
-        )
+        row_line = "|" + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
         data_lines.append(row_line)
         data_lines.append(horizontal_border)
 
@@ -216,10 +212,43 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
     return rows, hyperparameter_counter
 
 
+def generate_compatibility_table() -> str:
+    """Generate a reStructuredText list-table showing algorithm compatibility."""
+    all_algorithms = []
+    for group in PRUNA_ALGORITHMS.values():
+        all_algorithms.extend(group.values())
+
+    lines = [
+        ".. list-table:: Algorithm Compatibility Matrix",
+        "   :header-rows: 1",
+        "",
+        "   * - Algorithm",
+        "     - Compatible With",
+    ]
+
+    for algo in all_algorithms:
+        name = algo.algorithm_name
+        compatibles = []
+        for lst in algo.compatible_algorithms.values():
+            compatibles.extend(lst)
+        compat_text = ", ".join(f"``{c}``" for c in compatibles) if compatibles else "—"
+        lines.append(f"   * - ``{name}``\n     - {compat_text}")
+
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     # Collect all algorithms into a single file.
     with open("compression.rst", "w") as f:
+        # First write the compatibility matrix
+        f.write(generate_compatibility_table())
+        f.write("\n\n")
+
+        # Write algorithm descriptions
         for algorithm_group in PRUNA_ALGORITHMS.values():
             for algorithm in algorithm_group.values():
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
+
+    logger.info("Generated compression.rst with compatibility matrix and algorithm descriptions")
+    logger.info("Docs successfully written to docs/user_manual/")
