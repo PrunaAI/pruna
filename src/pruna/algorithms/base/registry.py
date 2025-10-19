@@ -53,6 +53,9 @@ class AlgorithmRegistry:
                 logging.warning("Skipping %s (import error): %s", modname, e)
                 continue
 
+            if "global_utils" in modname:
+                continue
+
             # Inspect classes defined in this module (avoid classes only re-exported here)
             for _, obj in inspect.getmembers(module, inspect.isclass):
                 if obj.__module__ != module.__name__:
