@@ -1,12 +1,27 @@
+# Copyright 2025 - Pruna AI GmbH. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
-from typing import Any, List, Dict, Union
+
+from typing import Any, Dict, List, Union
 
 import torch
+
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
-
 
 METRIC_EVALHARNESS = "eval_harness"
 
@@ -51,15 +66,11 @@ class EvalHarnessMetric(BaseMetric):
         self.call_type = call_type
 
     def compute(self, model, dataloader) -> MetricResult:
-        """
-        Run LM Eval Harness and return the aggregated result.
-        """
+        """Run LM Eval Harness and return the aggregated result."""
         try:
             from lm_eval import evaluator
         except ImportError:
-            raise ImportError(
-                "lm_eval package is not installed. Please install it with `pip install lm-eval`."
-            )
+            raise ImportError("lm_eval package is not installed. Please install it with `pip install lm-eval`.")
 
         try:
             eval_results = evaluator.simple_evaluate(
@@ -83,11 +94,7 @@ class EvalHarnessMetric(BaseMetric):
                 continue
 
             task_results = eval_results["results"][task]
-            metric_keys = [
-                k
-                for k in task_results.keys()
-                if k not in {"alias", "samples", "higher_is_better"}
-            ]
+            metric_keys = [k for k in task_results if k not in {"alias", "samples", "higher_is_better"}]
 
             if not metric_keys:
                 pruna_logger.warning(f"No metrics found for task {task}")
