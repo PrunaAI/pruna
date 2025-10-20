@@ -599,7 +599,7 @@ class SmashConfig:
         if isinstance(request, dict):
             for key, value in request.items():
                 # target modules are a special case, as they are a hyperparameter but their value is a dict
-                if isinstance(value, dict) and not "target_module" in key:
+                if isinstance(value, dict) and "target_module" not in key:
                     self._configuration[key] = True
                     for k, v in value.items():
                         if not k.startswith(key):
