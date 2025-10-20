@@ -124,20 +124,7 @@ jobs:
       - name: Set test worker count
         run: echo "PYTEST_WORKERS=$(( $(nproc) - 1 ))" >> "$GITHUB_ENV" # leave 1 for the system process
 
-      - name: Run tests with retries
+ - name: Run tests with pytest-rerunfailures
         run: |
-          echo "Running tests with up to 3 retries using $PYTEST_WORKERS workers..."
-          FAILED=0
-          for i in 1 2 3; do
-            echo "Attempt $i/3..."
-            pytest -n $PYTEST_WORKERS -m "cpu and not slow and not high_cpu" && { FAILED=0; break; } || FAILED=1
-            if [ "$FAILED" -eq 1 ] && [ "$i" -lt 3 ]; then
-              echo "Attempt $i failed. Cleaning incomplete cache and retrying in 10s..."
-              find "${{ github.workspace }}/.cache/huggingface" -type d -name "*.incomplete" -prune -exec rm -rf {} + || true
-              sleep 10
-            fi
-          done
-          if [ "$FAILED" -eq 1 ]; then
-            echo "All 3 attempts failed — exiting with non-zero status."
-            exit 1
-          fi
+          echo "Running tests with up to 3 reruns on failure using $PYTEST_WORKERS workers..."
+          pytest -n $PYTEST_WORKERS -m "cpu and not slow and not high_cpu" --reruns 3 --reruns-delay 10 --maxfail=1
