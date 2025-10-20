@@ -40,6 +40,10 @@ class PrunaAlgorithmBase(ABC):
             SMASH_SPACE.register_algorithm(self.algorithm_name, self.hyperparameters)
         assert all(device in SUPPORTED_DEVICES for device in self.runs_on)
 
+        # Initialize compatibility lists from class-level defaults
+        self._compatible_before = list(type(self).__dict__.get("compatible_before", []))
+        self._compatible_after = list(type(self).__dict__.get("compatible_after", []))
+
     def __init_subclass__(cls, **kwargs):
         """Intercept the instantiation of subclasses of the PrunaAlgorithmBase class."""
         super().__init_subclass__(**kwargs)
@@ -122,13 +126,51 @@ class PrunaAlgorithmBase(ABC):
 
     @property
     def compatible_before(self) -> list[str]:
-        """Subclasses need to provide a list of algorithms that can be executed before the current algorithm."""
-        return []
+        """
+        Get algorithms that can be executed before the current algorithm.
+
+        Returns
+        -------
+        list[str]
+            List of algorithm names that can be executed before this algorithm.
+        """
+        return self._compatible_before
+
+    @compatible_before.setter
+    def compatible_before(self, value: Iterable[str]) -> None:
+        """
+        Set algorithms that can be executed before the current algorithm.
+
+        Parameters
+        ----------
+        value : Iterable[str]
+            Iterable of algorithm names that can be executed before this algorithm.
+        """
+        self._compatible_before = list(value)
 
     @property
     def compatible_after(self) -> list[str]:
-        """Subclasses need to provide a list of algorithms that can be executed after the current algorithm."""
-        return []
+        """
+        Get algorithms that can be executed after the current algorithm.
+
+        Returns
+        -------
+        list[str]
+            List of algorithm names that can be executed after this algorithm.
+        """
+        return self._compatible_after
+
+    @compatible_after.setter
+    def compatible_after(self, value: Iterable[str]) -> None:
+        """
+        Set algorithms that can be executed after the current algorithm.
+
+        Parameters
+        ----------
+        value : Iterable[str]
+            Iterable of algorithm names that can be executed after this algorithm.
+        """
+        self._compatible_after = list(value)
 
     @abstractmethod
     def model_check_fn(self, model: Any) -> bool:
