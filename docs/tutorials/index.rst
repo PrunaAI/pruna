@@ -68,7 +68,7 @@ These tutorials will guide you through the process of using |pruna| to optimize 
       :text-align: center
       :link: ./sd_deepcache.ipynb
 
-      Optimize your ``diffusion`` model with `torchao`.
+      Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
    .. grid-item-card:: Optimize and Deploy Sana diffusers with Pruna and Hugging Face
       :text-align: center
       :link: ./deploying_sana_tutorial.ipynb
