@@ -45,7 +45,6 @@ jobs:
             **/*.py
           files_ignore: |
             tests/**
-            
       - name: Run ruff on changed Pruna code
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: astral-sh/ruff-action@v3
