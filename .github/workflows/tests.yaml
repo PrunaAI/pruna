@@ -124,7 +124,7 @@ jobs:
       - name: Set test worker count
         run: echo "PYTEST_WORKERS=$(( $(nproc) - 1 ))" >> "$GITHUB_ENV" # leave 1 for the system process
 
- - name: Run tests with pytest-rerunfailures
+      - name: Run tests with pytest-rerunfailures
         run: |
           echo "Running tests with up to 3 reruns on failure using $PYTEST_WORKERS workers..."
           pytest -n $PYTEST_WORKERS -m "cpu and not slow and not high_cpu" --reruns 3 --reruns-delay 10 --maxfail=1
