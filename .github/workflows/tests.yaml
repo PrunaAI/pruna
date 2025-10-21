@@ -73,6 +73,7 @@ jobs:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
       HF_DATASETS_CACHE: ${{ github.workspace }}/.cache/huggingface/datasets
+      HUGGINGFACE_HUB_CACHE: ${{ github.workspace }}/.cache/huggingface/hub
 
     steps:
       - name: Checkout code
