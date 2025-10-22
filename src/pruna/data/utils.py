@@ -125,7 +125,7 @@ def move_batch_to_device(batch: Any, device: Union[torch.device, str]) -> Any:
     elif isinstance(batch, dict):
         return {k: move_batch_to_device(v, device) for k, v in batch.items()}
     elif isinstance(batch, (list, tuple)):
-        return type(batch)([move_batch_to_device(v, device) for v in batch])
+        return type(batch)(move_batch_to_device(v, device) for v in batch)
     else:
         return batch
 

@@ -22,7 +22,7 @@ from datasets import Dataset, load_dataset
 
 def setup_vbench_dataset(category: str | List[str] | None = None) -> Tuple[Dataset, Dataset, Dataset]:
     """
-    Setup the VBench dataset from the VBennch full info json file.
+    Setup the VBench dataset from the VBench full info json file.
 
     Parameters
     ----------

@@ -153,6 +153,9 @@ class PrunaDataModule(LightningDataModule):
         seed : int
             The seed to use.
 
+        category : str | list[str] | None
+            The category of the dataset.
+
         Returns
         -------
         PrunaDataModule

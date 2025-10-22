@@ -35,7 +35,6 @@ possibly-missing-attribute = "ignore" # mypy is more permissive with attribute a
 possibly-missing-import = "ignore" # mypy is more permissive with imports
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
-unresolved-attribute = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
