@@ -17,8 +17,6 @@ from pruna.algorithms.pruna_base import PrunaAlgorithmBase
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
 
 logger = logging.getLogger(__name__)
-
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
@@ -96,8 +94,7 @@ def format_grid_table(rows: list[list[str]]) -> str:
         data_lines.append(row_line)
         data_lines.append(horizontal_border)
 
-    table_lines = [horizontal_border, header_line, header_separator] + data_lines
-    return "\n".join(table_lines)
+    return "\n".join([horizontal_border, header_line, header_separator] + data_lines)
 
 
 def get_header_and_description(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
@@ -114,8 +111,7 @@ def get_references(obj: PrunaAlgorithmBase) -> str:
     references = obj.references
     if references:
         return ", ".join(f"`{key} <{value}>`__" for key, value in references.items())
-    else:
-        return "None"
+    return "None"
 
 
 def get_required_inputs(obj: PrunaAlgorithmBase) -> str:
@@ -133,27 +129,27 @@ def get_required_inputs(obj: PrunaAlgorithmBase) -> str:
 def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible devices of a Pruna algorithm."""
     compatible_devices = []
+    name_map = {
+        "cpu": "CPU",
+        "cuda": "CUDA",
+        "mps": "MPS",
+        "accelerate": "Accelerate distributed",
+    }
     for device in obj.runs_on:
-        name_map = {
-            "cpu": "CPU",
-            "cuda": "CUDA",
-            "mps": "MPS",
-            "accelerate": "Accelerate distributed",
-        }
-        compatible_devices.append(name_map[device])
+        compatible_devices.append(name_map.get(device, device))
     return ", ".join(compatible_devices) if compatible_devices else "None"
 
 
 def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
-    """Get the compatible algorithms of a Pruna algorithm with intra-page links."""
+    """Get the compatible algorithms of a Pruna algorithm."""
     compatible_algorithms = []
     for algorithms in obj.compatible_algorithms.values():
-        for a in algorithms:
-            # Add link to compression.html with anchor
-            compatible_algorithms.append(f"`{a} <compression.html#{a}>`__")
-    # Sort alphabetically by algorithm name (case-insensitive)
-    compatible_algorithms.sort(key=lambda x: x.lower())
-    return ", ".join(compatible_algorithms) if compatible_algorithms else "None"
+        compatible_algorithms.extend(algorithms)
+    # Sort alphabetically by algorithm name only
+    compatible_algorithms.sort(key=str.lower)
+    # Format with intra-page RST links
+    linked_algorithms = [f"`{a} <compression.html#{a}>`__" for a in compatible_algorithms]
+    return ", ".join(linked_algorithms) if linked_algorithms else "None"
 
 
 def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
@@ -167,7 +163,6 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
         "``--extra-index-url https://prunaai.pythonanywhere.com/`` "
         "``--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/``"
     )
-
     if required_install:
         if obj.algorithm_name == "gptq":
             return required_install
@@ -176,25 +171,17 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
         else:
             required_install += f" or {base_install}"
         return required_install
-    else:
-        return None
+    return None
 
 
 def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
-    """Get the table rows of a Pruna algorithm hyperparameter section."""
-    rows = []
-    # Table header row
-    rows.append(["**Parameter**", "**Default**", "**Options**", "**Description**"])
+    rows = [["**Parameter**", "**Default**", "**Options**", "**Description**"]]
     hyperparameter_counter = 0
-
     for hp in obj.get_hyperparameters():
         if isinstance(hp, Constant) and not isinstance(hp, UnconstrainedHyperparameter):
-            continue  # Skip constant hyperparameters
-
+            continue
         param_name = f"``{obj.algorithm_name}_{hp.name}``"
-        assert hp.meta is not None and "desc" in hp.meta
-        description = hp.meta["desc"]
-
+        description = hp.meta.get("desc", "")
         if isinstance(hp, (UniformFloatHyperparameter, UniformIntegerHyperparameter)):
             default = str(hp.default_value)
             values = f"Range {hp.lower} to {hp.upper}"
@@ -210,7 +197,6 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
             values = "Unconstrained"
         else:
             raise ValueError(f"Unsupported hyperparameter type: {type(hp)}")
-
         rows.append([param_name, default, values, description])
         hyperparameter_counter += 1
     return rows, hyperparameter_counter
@@ -223,6 +209,7 @@ def generate_compatibility_table() -> str:
         all_algorithms.extend(group.values())
 
     all_algorithms.sort(key=lambda algo: algo.algorithm_name.lower())
+
     lines = [
         ".. list-table:: Algorithm Compatibility Matrix",
         "   :header-rows: 1",
@@ -232,13 +219,12 @@ def generate_compatibility_table() -> str:
     ]
 
     for algo in all_algorithms:
-        name = algo.algorithm_name
         compatibles = []
         for lst in algo.compatible_algorithms.values():
             compatibles.extend(lst)
-        compatibles = sorted(compatibles, key=str.lower)
+        compatibles.sort(key=str.lower)
         compat_text = ", ".join(f"`{c} <compression.html#{c}>`__" for c in compatibles) if compatibles else "—"
-        lines.append(f"   * - ``{name}``\n     - {compat_text}")
+        lines.append(f"   * - ``{algo.algorithm_name}``\n     - {compat_text}")
 
     return "\n".join(lines)
 
