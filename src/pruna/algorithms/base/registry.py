@@ -98,3 +98,17 @@ class AlgorithmRegistry:
             The algorithms that have the given tag.
         """
         return [alg.algorithm_name for alg in cls._registry.values() if tag in alg.group_tags]
+
+    @classmethod
+    def register_algorithm(cls, algorithm: PrunaAlgorithmBase) -> None:
+        """
+        Register an algorithm.
+
+        Parameters
+        ----------
+        algorithm : PrunaAlgorithmBase
+            The algorithm to register.
+        """
+        if algorithm.algorithm_name in self._registry:
+            raise ValueError(f"Algorithm {algorithm.algorithm_name} already registered")
+        self._registry[algorithm.algorithm_name] = algorithm
