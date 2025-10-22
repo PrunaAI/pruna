@@ -1,24 +1,112 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: check-case-conflict
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: check-merge-conflict
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: check-symlinks
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: check-toml
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: check-yaml
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: mixed-line-ending
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: trailing-whitespace
-        exclude: \.md$
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: no-commit-to-branch
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
+    rev: v0.14.1
     hooks:
       - id: ruff-check
         args: [--fix]
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
       - id: ruff-format
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
+
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.90.11
+    hooks:
+      - id: trufflehog
+        name: TruffleHog Secrets Scanner
+        entry: trufflehog
+        language: golang
+        types_or: [python, yaml, json, text]
+        args:
+          [
+            "filesystem",
+            "src",
+            "tests",
+            ".github/workflows",
+            "--results=verified,unknown",
+            "--exclude-paths=.venv",
+            "--fail"
+          ]
+        stages: ["pre-commit", "pre-push"]
+        exclude: |
+          (?x)^(
+          .*\.md$|
+          .*\.svg$|
+          (^|/)venv/|
+          (^|/)\.venv/|
+          .*\.pyc$
+          )
 
   - repo: local
     hooks:
@@ -28,9 +116,12 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$
+          )
 
-  - repo: local
-    hooks:
       - id: check-pruna-pro
         name: Check for pruna_pro
         entry: >
@@ -48,10 +139,9 @@ repos:
         language: system
         stages: [pre-commit]
         types: [python]
-        exclude: "^docs/"
-      - id: trufflehog
-        name: TruffleHog
-        description: Detect secrets in your data.
-        entry: bash -c 'trufflehog git file://. --since-commit HEAD --results=verified,unknown --fail'
-        language: system
-        stages: ["pre-commit", "pre-push"]
+        exclude: |
+          (?x)^(
+            .*\.md$|
+            .*\.svg$|
+            ^docs/
+          )
