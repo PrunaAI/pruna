@@ -41,6 +41,8 @@ def register_inference_handler(model: Any, smash_config: SmashConfig) -> Inferen
     ----------
     model : Any
         The model to register a handler for.
+    smash_config : SmashConfig
+        The SmashConfig object containing the configuration.
 
     Returns
     -------
