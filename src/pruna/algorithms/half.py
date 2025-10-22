@@ -50,7 +50,6 @@ class Half(PrunaAlgorithmBase):
         "torch_compile",
         "ifw",
         "whisper_s2t",
-        "pab",
     ]
 
     def model_check_fn(self, model: Any) -> bool:
