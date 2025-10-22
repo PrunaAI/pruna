@@ -561,9 +561,10 @@ class SmashConfig:
             # support old way of activating algorithms
             if value in SMASH_SPACE.get_all_algorithms():
                 pruna_logger.warning(f"Setting {name} to {value} is deprecated. Please use config.add({value}).")
+                self.add(value)
             else:
                 pruna_logger.warning(f"Setting {name} deprecated. Please use config.add(dict({name}={value})).")
-            self.add(value)
+                self.add({name: value})
 
     def add(self, request: str | list[str] | dict[str, Any]) -> None:
         """
@@ -590,13 +591,13 @@ class SmashConfig:
         if isinstance(request, str):
             self._configuration[request] = True
         # request wants to activate a list of algorithms
-        if isinstance(request, list):
+        elif isinstance(request, list):
             if not all(isinstance(item, str) for item in request):
                 raise ValueError("Request must be a list of algorithm names.")
             for item in request:
                 self._configuration[item] = True
         # request wants to activate a dictionary of algorithms and their hyperparameters
-        if isinstance(request, dict):
+        elif isinstance(request, dict):
             for key, value in request.items():
                 # target modules are a special case, as they are a hyperparameter but their value is a dict
                 if isinstance(value, dict) and "target_module" not in key:
@@ -607,7 +608,8 @@ class SmashConfig:
                         self._configuration[k] = v
                 else:
                     self._configuration[key] = value
-        return
+        else:
+            raise ValueError(f"Unsupported request type: {type(request)}")
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
         if attr == "_data":
