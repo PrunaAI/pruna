@@ -125,7 +125,7 @@ class PrunaAlgorithmBase(ABC):
         pass
 
     @property
-    def compatible_before(self) -> list[str]:
+    def compatible_before(self) -> list[str, AlgorithmTag]:
         """
         Get algorithms that can be executed before the current algorithm.
 
@@ -137,7 +137,7 @@ class PrunaAlgorithmBase(ABC):
         return self._compatible_before
 
     @compatible_before.setter
-    def compatible_before(self, value: Iterable[str]) -> None:
+    def compatible_before(self, value: Iterable[str, AlgorithmTag]) -> None:
         """
         Set algorithms that can be executed before the current algorithm.
 
@@ -149,7 +149,7 @@ class PrunaAlgorithmBase(ABC):
         self._compatible_before = list(value)
 
     @property
-    def compatible_after(self) -> list[str]:
+    def compatible_after(self) -> list[str, AlgorithmTag]:
         """
         Get algorithms that can be executed after the current algorithm.
 
@@ -161,7 +161,7 @@ class PrunaAlgorithmBase(ABC):
         return self._compatible_after
 
     @compatible_after.setter
-    def compatible_after(self, value: Iterable[str]) -> None:
+    def compatible_after(self, value: Iterable[str, AlgorithmTag]) -> None:
         """
         Set algorithms that can be executed after the current algorithm.
 
@@ -310,22 +310,6 @@ class PrunaAlgorithmBase(ABC):
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         return self._apply(model, wrapped_config)
 
-    def _expand_tags_into_algorithm_names(self, items: Iterable[str | AlgorithmTag] | None) -> list[str]:
-        """Expand algorithms/tags -> concrete algorithm names."""
-        if not items:
-            return []
-
-        # avoid circular import
-        from pruna.algorithms import AlgorithmRegistry
-
-        out: list[str] = []
-        for it in items:
-            if isinstance(it, str):
-                out.append(it)
-            else:
-                out.extend(AlgorithmRegistry.get_algorithms_by_tag(it))
-        return out
-
     def get_incompatible_algorithms(self) -> list[str]:
         """
         Get algorithms incompatible with this one.
@@ -335,9 +319,9 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The incompatible algorithms.
         """
-        cb = set(self._expand_tags_into_algorithm_names(self.compatible_before))
-        ca = set(self._expand_tags_into_algorithm_names(self.compatible_after))
-        allowed = cb | ca
+        compatible_before = set(self._expand_tags_into_algorithm_names(self.compatible_before))
+        compatible_after = set(self._expand_tags_into_algorithm_names(self.compatible_after))
+        allowed = compatible_before | compatible_after
         all_algorithms = set(SMASH_SPACE.get_all_algorithms())
         return sorted(all_algorithms - allowed)
 
@@ -350,7 +334,7 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The required algorithms.
         """
-        return self._expand_tags_into_algorithm_names(self.compatible_before)
+        return _expand_tags_into_algorithm_names(self.compatible_before)
 
     def get_algorithms_to_run_after(self) -> list[str]:
         """
@@ -361,7 +345,7 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The required algorithms.
         """
-        return self._expand_tags_into_algorithm_names(self.compatible_after)
+        return _expand_tags_into_algorithm_names(self.compatible_after)
 
 
 def wrap_handle_imports(func):
@@ -403,3 +387,20 @@ def wrap_handle_imports(func):
 
     _wrapper.__wrapped__ = func  # mark the original (helps avoid double-wrapping)
     return _wrapper
+
+
+def _expand_tags_into_algorithm_names(items: Iterable[str | AlgorithmTag] | None) -> list[str]:
+    """Expand algorithms/tags -> concrete algorithm names."""
+    if not items:
+        return []
+
+    # avoid circular import
+    from pruna.algorithms import AlgorithmRegistry
+
+    out: list[str] = []
+    for it in items:
+        if isinstance(it, str):
+            out.append(it)
+        else:
+            out.extend(AlgorithmRegistry.get_algorithms_by_tag(it))
+    return out
