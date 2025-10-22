@@ -1,3 +1,4 @@
+from pruna import PrunaModel
 from pruna.algorithms.hqq import HQQ
 
 from .base_tester import AlgorithmTesterBase
@@ -19,7 +20,7 @@ class TestHQQJanus(AlgorithmTesterBase):
     models = ["tiny_janus"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
-    algorithm_class = HQQQuantizer
+    algorithm_class = HQQ
     metrics = ["cmmd"]
     hyperparameters = {"hqq_compute_dtype": "torch.bfloat16"}
 
