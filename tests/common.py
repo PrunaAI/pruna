@@ -13,7 +13,7 @@ from docutils.nodes import literal_block, section, title
 from transformers import Pipeline
 
 from pruna import SmashConfig
-from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, split_device
 
 EPS_MEMORY_SIZE = 1000
 NO_SPLIT_MODULES_ACCELERATE = ["OPTDecoderLayer"]
@@ -81,7 +81,7 @@ def run_full_integration(
         algorithm_tester.prepare_smash_config(smash_config, device)
         device_map = construct_device_map_manually(model) if device == "accelerate" else None
         move_to_device(model, device=smash_config["device"], device_map=device_map)
-        assert device == get_device(model)
+        assert device == split_device(get_device(model))[0]
         smashed_model = algorithm_tester.execute_smash(model, smash_config)
         algorithm_tester.execute_save(smashed_model)
         safe_memory_cleanup()
