@@ -25,11 +25,11 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import group_metrics_by_inheritance
+from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device_map, group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -109,7 +109,10 @@ class EvaluationAgent:
         pruna_logger.info("Evaluating isolated inference metrics.")
         results.extend(self.compute_stateless_metrics(model, stateless_metrics))
 
-        model.move_to_device("cpu")
+        # Move model back to the original device.
+        move_to_device(model, self.device, device_map=self.device_map)
+        pruna_logger.info(f"Evaluation run has finished. Moved model to {self.device}")
+
         safe_memory_cleanup()
         if self.evaluation_for_first_model:
             self.first_model_results = results
@@ -170,9 +173,16 @@ class EvaluationAgent:
                 model.smash_config.batch_size,
             )
 
-        # ensure the model is on the cpu
-        model.move_to_device("cpu")
+        ensure_device_consistency(model, self.task)
+        model_device = get_device(model)
 
+        # The device map is set before smashing, so for the base models, we need to set it here.
+        if model_device == "accelerate" and is_base and model.smash_config.device_map is None:
+            model.smash_config.device_map = get_device_map(model)
+
+        self.device = self.task.device
+        # Keeping the device map to move model back to the original device, when the agent is finished.
+        self.device_map = get_device_map(model)
         return model
 
     def update_stateful_metrics(
@@ -200,9 +210,9 @@ class EvaluationAgent:
         if not single_stateful_metrics and not pairwise_metrics:
             return
 
-        model.move_to_device(self.device)
+        move_to_device(model, self.device, device_map=self.device_map)
         for batch_idx, batch in enumerate(tqdm(self.task.dataloader, desc="Processing batches", unit="batch")):
-            processed_outputs = model.run_inference(batch, self.device)
+            processed_outputs = model.run_inference(batch)
 
             batch = move_batch_to_device(batch, self.device)
             processed_outputs = move_batch_to_device(processed_outputs, self.device)

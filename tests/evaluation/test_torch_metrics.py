@@ -8,15 +8,22 @@ from torchmetrics.image import (
 )
 
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper, TorchMetrics
+from pruna.data.pruna_datamodule import PrunaDataModule
 
-
-@pytest.mark.cuda
-@pytest.mark.parametrize("dataloader_fixture", ["WikiText"], indirect=True)
-def test_perplexity(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device",
+    [
+        pytest.param("WikiText", "cpu", marks=pytest.mark.cpu),
+        pytest.param("WikiText", "cuda", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_perplexity(datamodule_fixture: PrunaDataModule, device: str) -> None:
     """Test the perplexity."""
-    metric = TorchMetricWrapper("perplexity")
+    metric = TorchMetricWrapper("perplexity", device=device)
+    dataloader = datamodule_fixture.val_dataloader()
 
-    _, gt = next(iter(dataloader_fixture))
+    _, gt = next(iter(dataloader))
 
     vocab_size = 50257
     logits = torch.zeros(gt.shape[0], gt.shape[1], vocab_size)
@@ -30,14 +37,19 @@ def test_perplexity(dataloader_fixture: Any) -> None:
     assert result.result == 1.0
 
 
-@pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
-def test_fid(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device",
+    [
+        pytest.param("LAION256", "cpu", marks=pytest.mark.cpu),
+        pytest.param("LAION256", "cuda", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_fid(datamodule_fixture: PrunaDataModule, device: str) -> None:
     """Test the fid."""
-    metric = TorchMetricWrapper("fid")
-    metric.metric.to("cpu")
-
-    dataloader_iter = iter(dataloader_fixture)
+    metric = TorchMetricWrapper("fid", device=device)
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
 
     _, gt1 = next(dataloader_iter)
     _, gt2 = next(dataloader_iter)
@@ -46,43 +58,69 @@ def test_fid(dataloader_fixture: Any) -> None:
     assert metric.compute().result == pytest.approx(0.0, abs=1e-2)
 
 
-@pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
-def test_clip_score(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device",
+    [
+        pytest.param("LAION256", "cpu", marks=pytest.mark.cpu),
+        pytest.param("LAION256", "cuda", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_clip_score(datamodule_fixture: PrunaDataModule, device: str) -> None:
     """Test the clip score."""
-    metric = TorchMetricWrapper("clip_score")
-    x, gt = next(iter(dataloader_fixture))
+    metric = TorchMetricWrapper("clip_score", device=device)
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
+
+    x, gt = next(dataloader_iter)
     metric.update(x, gt, gt)
     score = metric.compute()
     assert score.result > 0.0 and score.result < 100.0
 
 @pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
-def test_clipiqa(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
+def test_clipiqa(datamodule_fixture: PrunaDataModule) -> None:
     """Test the clipiqa."""
-    metric = TorchMetricWrapper("clipiqa")
-    x, gt = next(iter(dataloader_fixture))
+    metric = TorchMetricWrapper("clipiqa", device="cpu")
+
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
+    x, gt = next(dataloader_iter)
     metric.update(x, gt, gt)
     score = metric.compute()
     assert score.result > 0.0 and score.result < 1.0
 
 
-@pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["ImageNet"], indirect=True)
-@pytest.mark.parametrize("metric", ["accuracy", "recall", "precision"])
-def test_torch_metrics(dataloader_fixture: Any, metric: str) -> None:
+@pytest.mark.parametrize(
+    "datamodule_fixture, device, metric",
+    [
+        pytest.param("ImageNet", "cpu", "accuracy", marks=pytest.mark.cpu),
+        pytest.param("ImageNet", "cuda", "accuracy", marks=pytest.mark.cuda),
+        pytest.param("ImageNet", "cpu", "recall", marks=pytest.mark.cpu),
+        pytest.param("ImageNet", "cuda", "recall", marks=pytest.mark.cuda),
+        pytest.param("ImageNet", "cpu", "precision", marks=pytest.mark.cpu),
+        pytest.param("ImageNet", "cuda", "precision", marks=pytest.mark.cuda),
+    ],
+    indirect=["datamodule_fixture"],
+)
+def test_torch_metrics(datamodule_fixture: PrunaDataModule, device: str, metric: str) -> None:
     """Test the torch metrics accuracy, recall, precision."""
-    metric = TorchMetricWrapper(metric, task="multiclass", num_classes=1000)
-    _, gt = next(iter(dataloader_fixture))
+    metric = TorchMetricWrapper(metric, task="multiclass", num_classes=1000, device=device)
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
+
+    x, gt = next(dataloader_iter)
     metric.update(gt, gt, gt)
     assert metric.compute().result == 1.0
 
 @pytest.mark.cpu
-@pytest.mark.parametrize("dataloader_fixture", ["LAION256"], indirect=True)
-def test_arniqa(dataloader_fixture: Any) -> None:
+@pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
+def test_arniqa(datamodule_fixture: PrunaDataModule) -> None:
     """Test arniqa."""
-    metric = TorchMetricWrapper("arniqa")
-    x, gt = next(iter(dataloader_fixture))
+    metric = TorchMetricWrapper("arniqa", device="cpu")
+    dataloader = datamodule_fixture.val_dataloader()
+    dataloader_iter = iter(dataloader)
+    x, gt = next(dataloader_iter)
     metric.update(x, gt, gt)
 
 @pytest.mark.cpu

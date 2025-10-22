@@ -19,6 +19,9 @@ from typing import Any, Dict, List, Tuple
 
 import torch
 
+from pruna.data.utils import move_batch_to_device
+from pruna.engine.utils import set_to_best_available_device
+
 
 class InferenceHandler(ABC):
     """
@@ -70,9 +73,9 @@ class InferenceHandler(ABC):
 
     def move_inputs_to_device(
         self,
-        inputs: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | Dict[str, Any],
-        device: torch.device | str = "cuda",
-    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor | Dict[str, Any], ...] | Dict[str, Any]:
+        inputs: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...],
+        device: torch.device | str,
+    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...]:
         """
         Recursively move inputs to device.
 
@@ -88,33 +91,10 @@ class InferenceHandler(ABC):
         List[str] | torch.Tensor
             The prepared inputs.
         """
-        if isinstance(inputs, dict):
-            for key, value in inputs.items():
-                if isinstance(value, torch.Tensor):
-                    inputs[key] = value.to(device)
-        if isinstance(inputs, torch.Tensor):
-            return inputs.to(device)
-        elif isinstance(inputs, tuple):
-            return tuple(self.move_inputs_to_device(item, device) for item in inputs)  # type: ignore
-        else:
-            return inputs
-
-    def set_correct_dtype(
-        self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict, dtype: torch.dtype
-    ) -> List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor, ...] | dict:
-        """Set the correct dtype for the batch."""
-        if isinstance(batch, torch.Tensor):
-            return batch.to(dtype)
-
-        if isinstance(batch, list) and all(isinstance(x, str) for x in batch):
-            return batch  # don't touch list of strings
-
-        if isinstance(batch, tuple):
-            return tuple(self.set_correct_dtype(item, dtype) for item in batch)  # type: ignore
-
-        if isinstance(batch, dict):
-            return {
-                k: self.set_correct_dtype(v, dtype) if isinstance(v, (torch.Tensor, list, tuple, dict)) else v
-                for k, v in batch.items()
-            }
-        return batch
+        if device == "accelerate":
+            device = set_to_best_available_device(None)
+        # Using the utility function from the data module
+        try:
+            return move_batch_to_device(inputs, device)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
