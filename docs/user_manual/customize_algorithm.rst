@@ -16,21 +16,15 @@ Add a Custom Algorithm
 
 We’ll use **Superfast**, an example compiler, to demonstrate the process.
 
-Step 1. Identify the Algorithm Group
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The first step is to identify the algorithm group. This is important because it determines the folder in which the algorithm should be placed.
-You can find the list of all algorithm groups in the :doc:`Compression Algorithms <../../compression>` section and determine which group fits your algorithm best by reviewing the algorithm group descriptions.
-
-Step 2. Create the Compiler Class
+Step 1. Create the Compiler Class
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, navigate to ``pruna/algorithms/compilation/`` and create ``superfast.py``.
+First, navigate to ``pruna/algorithms/`` and create ``superfast.py``.
 
-Step 3. Define Compiler Attributes
+Step 2. Define Compiler Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Define the new compiler by inheriting from ``PrunaCompiler`` and define key attributes for the compiler.
+Define the new compiler by inheriting from ``PrunaAlgorithmBase`` and define key attributes for the compiler.
 These attributes are used to provide information about the algorithm to the user, other functions in the package and even the documentation.
 
 .. code-block:: python
@@ -39,10 +33,12 @@ These attributes are used to provide information about the algorithm to the user
     from typing import Any, Dict
     import torch
     from ConfigSpace import CategoricalHyperparameter
-    from pruna.algorithms.compilation import PrunaCompiler
+    from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+    from pruna.algorithms.base.tags import AlgorithmTag
     from pruna.config.smash_config import SmashConfigPrefixWrapper
+    from pruna.engine.save import SAVE_FUNCTIONS
 
-    class SuperfastCompiler(PrunaCompiler):
+    class SuperfastCompiler(PrunaAlgorithmBase):
         """
         Implement Superfast Compiler using the superfast package.
 
@@ -50,27 +46,30 @@ These attributes are used to provide information about the algorithm to the user
         """
 
         algorithm_name = "superfast"
+        group_tags = [AlgorithmTag.COMPILER]
         references = {"GitHub": "/url/to/GitHub"}
         tokenizer_required = False
         processor_required = False
         dataset_required = False
         runs_on = ["cpu", "cuda"]
-        compatible_algorithms = dict(quantizer=["quanto"])
+        compatible_before = ["quanto"]
+        save_fn = SAVE_FUNCTIONS.save_before_apply
 
 
-Step 4. Add Algorithm Attributes
+Step 3. Add Algorithm Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - docstring: The docstring should be concise and describe the algorithm in a way that is easy to understand. The description paragraph of the algorithm will be used to automatically generate the algorithm's documentation.
 - ``algorithm_name``: Identifier used to activate the algorithm, name should be in snake case.
+- ``group_tags``: A list of tags that fit or describe the general group the algorithm belongs to, e.g. ``AlgorithmTag.COMPILER``.
 - ``references``: A dictionary of any references that can be provided for the algorithm, typically a link to the GitHub repository or a paper.
 - ``tokenizer_required``, ``processor_required``, ``dataset_required``: Indicate required components.
 - ``runs_on``: Define which of the hardwares listed in ``SUPPORTED_DEVICES`` are compatible with the algorithm.
-- ``compatible_algorithms``: Lists compatible algorithms, i.e. any algorithm that can be applied on the same model together with the current algorithm. This compatibility should be specified both ways; if “quanto” is compatible with “superfast”, “superfast” must also list “quanto”.
-- Additionally, you might have to specify a saving function. We provide more details on this in the section below.
+- ``compatible_before`` and ``compatible_after``: Lists compatible algorithms, i.e. any algorithm that can be applied on the same model together with the current algorithm. This compatibility should be specified both ways; if “quanto” is compatible with “superfast”, “superfast” must also list “quanto”. These lists are used to determine the order in which algorithms are applied. If the ordering w.r.t. a compatible algorithm does not matter, you can add the compatible algorithm to both lists.
+- ``save_fn``: The saving function to use for the algorithm. This is used to determine how the model should be saved and loaded after the algorithm has been applied. We provide more details on this in the section below.
 
 
-Step 5. Define Hyperparameters
+Step 4. Define Hyperparameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Define hyperparameters using `ConfigSpace <https://automl.github.io/ConfigSpace/latest/reference/hyperparameters/>`_, allowing users to configure the backend and mode.
@@ -86,12 +85,12 @@ Everything that configures the algorithm or specifies the algorithm's behavior s
             CategoricalHyperparameter("mode", choices=["mode1", "mode2"], default_value="mode1", meta=dict(desc="The mode to use for the Superfast compiler.")),
         ]
 
-Users can now configure hyperparameters via ``smash_config["superfast_backend"] = "backend2"``.
+Users can now configure hyperparameters via ``smash_config.add("superfast", {"backend": "backend2"})``.
 Make sure to include descriptions of the hyperparameters with the ``desc`` key in the ``meta`` dictionary.
 This will be used later to document the hyperparameters in the algorithm's documentation.
 
 
-Step 6. Check Model Compatibility
+Step 5. Check Model Compatibility
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Ensure the compiler only runs on supported models. In our example, the Superfast compiler is compatible with any model that is a subclass of ``torch.nn.Module``:
@@ -106,7 +105,7 @@ Ensure the compiler only runs on supported models. In our example, the Superfast
 Users can bypass this check using ``experimental=True`` when calling ``smash``, but results may be unpredictable.
 
 
-Step 7. Handle External Dependencies
+Step 6. Handle External Dependencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If the compiler requires external packages, isolate their imports:
@@ -121,7 +120,7 @@ If the compiler requires external packages, isolate their imports:
 
 Make sure that the dependencies are listed in ``pyproject.toml`` if they are not already included.
 
-Step 8. Implement the Compilation Process
+Step 7. Implement the Compilation Process
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``_apply()`` function integrates superfast with Pruna:
@@ -138,7 +137,7 @@ The ``_apply()`` function integrates superfast with Pruna:
 Note that the ``smash_config`` prefix wrapper automatically prefixes hyperparameters with the algorithm name (``superfast_``).
 If a user sets ``smash_config["superfast_backend"]``, it will be mapped correctly to ``"backend"`` in ``get_hyperparameters()``.
 
-Step 9. Determine the Saving Function
+Step 8. Determine the Saving Function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Saving e.g. a compiled or quantized model can be tricky and requires careful consideration. To determine the correct saving function for your algorithm, consider the decision tree below.
@@ -169,10 +168,10 @@ In contrast, compilation is irreversible—once compiled, a model cannot be save
 If neither approach works, we must introduce a new saving function or use ``SAVE_FUNCTIONS.pickled``. We implement a new saving function following the existing saving-function pattern as well as introducing a matching loading function.
 Otherwise, we can resort to saving the model in pickled format, but be aware that pickled models pose security risks and are generally not trusted by the community.
 
-Step 10. Test the Algorithm
+Step 9. Test the Algorithm
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To integrate the algorithm into the test suite, we navigate to ``tests/algorithms/testers/compilation.py`` and add the following Tester Class:
+To integrate the algorithm into the test suite, we navigate to ``tests/algorithms/testers/superfast.py`` and add the following Tester Class:
 
 .. container:: hidden_code
 
@@ -183,10 +182,10 @@ To integrate the algorithm into the test suite, we navigate to ``tests/algorithm
         import types
         from abc import ABC
 
-        dummy_superfast = types.ModuleType("pruna.algorithms.compilation.superfast")
+        dummy_superfast = types.ModuleType("pruna.algorithms.superfast")
         dummy_superfast.SuperfastCompiler = "dummy_superfast"
-        sys.modules["pruna.algorithms.compilation.superfast"] = dummy_superfast
-        dummy_algorithm_tester = types.ModuleType("pruna.algorithms.testers.compilation")
+        sys.modules["pruna.algorithms.superfast"] = dummy_superfast
+        dummy_algorithm_tester = types.ModuleType("pruna.algorithms.testers")
         dummy_algorithm_tester.AlgorithmTesterBase = ABC
         sys.modules["base_tester"] = dummy_algorithm_tester
 
@@ -194,7 +193,7 @@ To integrate the algorithm into the test suite, we navigate to ``tests/algorithm
 .. code-block:: python
 
     from base_tester import AlgorithmTesterBase
-    from pruna.algorithms.compilation.superfast import SuperfastCompiler
+    from pruna.algorithms.superfast import SuperfastCompiler
     from pruna import PrunaModel
 
     class TestSuperfast(AlgorithmTesterBase):
@@ -232,10 +231,12 @@ Here’s the complete ``superfast.py`` implementation:
     from typing import Any, Dict
     import torch
     from ConfigSpace import CategoricalHyperparameter
-    from pruna.algorithms.compilation import PrunaCompiler
+    from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+    from pruna.algorithms.base.tags import AlgorithmTag
     from pruna.config.smash_config import SmashConfigPrefixWrapper
+    from pruna.engine.save import SAVE_FUNCTIONS
 
-    class SuperfastCompiler(PrunaCompiler):
+    class SuperfastCompiler(PrunaAlgorithmBase):
         """
         Implement Superfast Compiler using the superfast package.
 
@@ -243,12 +244,14 @@ Here’s the complete ``superfast.py`` implementation:
         """
 
         algorithm_name = "superfast"
+        group_tags = [AlgorithmTag.COMPILER]
         references = {"GitHub": "/url/to/GitHub"}
         tokenizer_required = False
         processor_required = False
         dataset_required = False
         runs_on = ["cpu", "cuda"]
-        compatible_algorithms = dict(quantizer=["quanto"])
+        compatible_before = ["quanto"]
+        save_fn = SAVE_FUNCTIONS.save_before_apply
 
         def get_hyperparameters(self) -> list:
             return [
