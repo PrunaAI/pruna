@@ -145,10 +145,14 @@ def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
 
 
 def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
-    """Get the compatible algorithms of a Pruna algorithm."""
+    """Get the compatible algorithms of a Pruna algorithm with intra-page links."""
     compatible_algorithms = []
     for algorithms in obj.compatible_algorithms.values():
-        compatible_algorithms.extend([f"``{a}``" for a in algorithms])
+        for a in algorithms:
+            # Add link to compression.html with anchor
+            compatible_algorithms.append(f"`{a} <compression.html#{a}>`__")
+    # Sort alphabetically by algorithm name (case-insensitive)
+    compatible_algorithms.sort(key=lambda x: x.lower())
     return ", ".join(compatible_algorithms) if compatible_algorithms else "None"
 
 
@@ -218,6 +222,7 @@ def generate_compatibility_table() -> str:
     for group in PRUNA_ALGORITHMS.values():
         all_algorithms.extend(group.values())
 
+    all_algorithms.sort(key=lambda algo: algo.algorithm_name.lower())
     lines = [
         ".. list-table:: Algorithm Compatibility Matrix",
         "   :header-rows: 1",
@@ -231,7 +236,8 @@ def generate_compatibility_table() -> str:
         compatibles = []
         for lst in algo.compatible_algorithms.values():
             compatibles.extend(lst)
-        compat_text = ", ".join(f"``{c}``" for c in compatibles) if compatibles else "—"
+        compatibles = sorted(compatibles, key=str.lower)
+        compat_text = ", ".join(f"`{c} <compression.html#{c}>`__" for c in compatibles) if compatibles else "—"
         lines.append(f"   * - ``{name}``\n     - {compat_text}")
 
     return "\n".join(lines)
