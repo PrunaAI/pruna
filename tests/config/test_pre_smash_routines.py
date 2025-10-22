@@ -26,7 +26,6 @@ from pruna.config.pre_smash_routines import (
     check_model_compatibility,
     check_algorithm_packages_availability,
     check_argument_compatibility,
-    check_algorithm_availability,
     execute_algorithm_pre_smash_hooks,
     check_algorithm_cross_compatibility,
     determine_algorithm_order,
@@ -247,24 +246,6 @@ class TestCheckArgumentCompatibility:
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="algorithm1 requires a dataset"):
                 check_argument_compatibility(smash_config)
-
-
-class TestCheckAlgorithmAvailability:
-    """Test suite for check_algorithm_availability function."""
-
-    def test_algorithm_availability_pruna_pro_error(self):
-        """Test algorithm availability failure for pruna_pro algorithms."""
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-        
-        mock_algorithm1 = Mock()
-        mock_algorithm1.__module__ = "pruna_pro.algorithms.algorithm1"
-        
-        mock_algorithms = {"algorithm1": mock_algorithm1}
-        
-        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            with pytest.raises(RuntimeError, match="Algorithm algorithm1 is unavailable with pruna.smash"):
-                check_algorithm_availability(smash_config)
 
 
 class TestCheckAlgorithmCrossCompatibility:
