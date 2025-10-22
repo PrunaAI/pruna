@@ -175,6 +175,7 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
 
 
 def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
+    """Get the table rows of a Pruna algorithm hyperparameter section."""
     rows = [["**Parameter**", "**Default**", "**Options**", "**Description**"]]
     hyperparameter_counter = 0
     for hp in obj.get_hyperparameters():
