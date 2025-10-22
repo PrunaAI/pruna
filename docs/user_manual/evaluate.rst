@@ -440,8 +440,7 @@ Let's see how this works in code.
             from pruna.evaluation.task import Task
 
             # Load data and set up smash config
-            smash_config = SmashConfig()
-            smash_config["quantizer"] = "hqq_diffusers"
+            smash_config = SmashConfig(["hqq_diffusers"])
 
             # Load the base model
             model_path = "segmind/Segmind-Vega"
@@ -480,8 +479,7 @@ Let's see how this works in code.
             from pruna.evaluation.task import Task
 
             # Load data and set up smash config
-            smash_config = SmashConfig()
-            smash_config["quantizer"] = "hqq_diffusers"
+            smash_config = SmashConfig(["hqq_diffusers"])
 
             # Load the base model
             model_path = "segmind/Segmind-Vega"

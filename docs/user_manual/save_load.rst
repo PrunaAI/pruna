@@ -65,9 +65,7 @@ Let's see what that looks like in code.
     base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and smash your model
-    smash_config = SmashConfig()
-    smash_config["compiler"] = "torch_compile"
-    smash_config["quantizer"] = "hqq_diffusers"
+    smash_config = SmashConfig(["torch_compile", "hqq_diffusers"])
     smashed_model = smash(model=base_model, smash_config=smash_config)
 
     # Save the model
@@ -94,8 +92,7 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
             base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
             # Create and smash your model
-            smash_config = SmashConfig()
-            smash_config["quantizer"] = "hqq_diffusers"
+            smash_config = SmashConfig(["hqq_diffusers"])
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
@@ -112,8 +109,7 @@ To save a smashed model, use the ``PrunaModel.save_pretrained()`` or ``PrunaMode
             base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
             # Create and smash your model
-            smash_config = SmashConfig()
-            smash_config["quantizer"] = "hqq_diffusers"
+            smash_config = SmashConfig(["hqq_diffusers"])
             smashed_model = smash(model=base_model, smash_config=smash_config)
 
             # Save the model
