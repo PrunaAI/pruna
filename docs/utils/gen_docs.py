@@ -20,6 +20,31 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
+def generate_rst_anchor(algorithm_name: str) -> str:
+    """
+    Generate the RST anchor that will be created from a header.
+
+    RST generates anchors by converting headers to lowercase and replacing
+    non-alphanumeric characters with hyphens.
+
+    Parameters
+    ----------
+    algorithm_name: str
+        The algorithm name to convert to an anchor.
+
+    Returns
+    -------
+    str
+        The RST anchor that will be generated from the header.
+    """
+    # RST wraps algorithm names in backticks in the header: ``algorithm_name``
+    # The anchor generation converts this to lowercase and replaces non-alphanumeric chars
+    header_text = f"``{algorithm_name}``"
+    # Convert to lowercase and replace non-alphanumeric with hyphens
+    anchor = header_text.lower().replace("`", "").replace("_", "-")
+    return anchor
+
+
 def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
     """
     Generate a Markdown description of a Pruna algorithm from its instance.
@@ -147,8 +172,8 @@ def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
         compatible_algorithms.extend(algorithms)
     # Sort alphabetically by algorithm name only
     compatible_algorithms.sort(key=str.lower)
-    # Format with intra-page RST links
-    linked_algorithms = [f"`{a} <compression.html#{a}>`__" for a in compatible_algorithms]
+    # Format with intra-page RST links using correct anchors
+    linked_algorithms = [f"`{a} <compression.html#{generate_rst_anchor(a)}>`__" for a in compatible_algorithms]
     return ", ".join(linked_algorithms) if linked_algorithms else "None"
 
 
@@ -182,7 +207,8 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
         if isinstance(hp, Constant) and not isinstance(hp, UnconstrainedHyperparameter):
             continue
         param_name = f"``{obj.algorithm_name}_{hp.name}``"
-        description = hp.meta.get("desc", "")
+        # Fix: Check if meta is None before accessing it
+        description = hp.meta.get("desc", "") if hp.meta is not None else ""
         if isinstance(hp, (UniformFloatHyperparameter, UniformIntegerHyperparameter)):
             default = str(hp.default_value)
             values = f"Range {hp.lower} to {hp.upper}"
@@ -224,7 +250,12 @@ def generate_compatibility_table() -> str:
         for lst in algo.compatible_algorithms.values():
             compatibles.extend(lst)
         compatibles.sort(key=str.lower)
-        compat_text = ", ".join(f"`{c} <compression.html#{c}>`__" for c in compatibles) if compatibles else "—"
+        # Fix: Use correct RST anchor generation
+        compat_text = (
+            ", ".join(f"`{c} <compression.html#{generate_rst_anchor(c)}>`__" for c in compatibles)
+            if compatibles
+            else "—"
+        )
         lines.append(f"   * - ``{algo.algorithm_name}``\n     - {compat_text}")
 
     return "\n".join(lines)
