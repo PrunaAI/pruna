@@ -52,8 +52,8 @@ class PAB(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_before: list[str] = ["hqq_diffusers", "diffusers_int8", "half"]
-    compatible_after: list[str] = ["torch_compile"]
+    compatible_before: list[str] = ["hqq_diffusers", "diffusers_int8"]
+    compatible_after: list[str] = []
 
     def get_hyperparameters(self) -> list:
         """

@@ -80,7 +80,7 @@ def ensure_device_consistency(model, smash_config):
 
 def check_model_compatibility(model: Any, smash_config: SmashConfig) -> None:
     """
-    Check if the model and its device state is compatible with the given configuration.
+    Check if the model and its device state are compatible with the given configuration.
 
     Parameters
     ----------
@@ -89,13 +89,13 @@ def check_model_compatibility(model: Any, smash_config: SmashConfig) -> None:
     smash_config : SmashConfig
         The SmashConfig to check the model against.
     """
-    for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = AlgorithmRegistry[algorithm]
+    for algorithm_name in smash_config.get_active_algorithms():
+        algorithm_class = AlgorithmRegistry[algorithm_name]
         if not algorithm_class.model_check_fn(model):
             raise ValueError(f"Model is not compatible with {algorithm_class.algorithm_name}")
         if get_device_type(model) not in algorithm_dict[current_group][algorithm].runs_on:
             raise ValueError(
-                f"{algorithm} is not compatible with model device {get_device(model)}, "
+                f"{algorithm_name} is not compatible with model device {get_device(model)}, "
                 f"compatible devices are {algorithm_class.runs_on}"
             )
 
@@ -123,32 +123,21 @@ def check_argument_compatibility(smash_config: SmashConfig) -> None:
     smash_config : SmashConfig
         The SmashConfig to check the argument consistency with.
     """
-    for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = AlgorithmRegistry[algorithm]
+    for algorithm_name in smash_config.get_active_algorithms():
+        algorithm = AlgorithmRegistry[algorithm_name]
 
-        if algorithm_class.tokenizer_required and smash_config.tokenizer is None:
-            raise ValueError(f"{algorithm} requires a tokenizer. Please provide it with smash_config.add_tokenizer().")
-        if algorithm_class.processor_required and smash_config.processor is None:
-            raise ValueError(f"{algorithm} requires a processor. Please provide it with smash_config.add_processor().")
-        if algorithm_class.dataset_required and smash_config.data is None:
-            raise ValueError(f"{algorithm} requires a dataset. Please provide it with smash_config.add_data().")
+        if algorithm.tokenizer_required and smash_config.tokenizer is None:
+            raise ValueError(
+                f"{algorithm_name} requires a tokenizer. Please provide it with smash_config.add_tokenizer()."
+            )
+        if algorithm.processor_required and smash_config.processor is None:
+            raise ValueError(
+                f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor()."
+            )
+        if algorithm.dataset_required and smash_config.data is None:
+            raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
         if smash_config._target_module is not None:
             raise ValueError("Target module is only available in experimental mode. Please set experimental=True.")
-
-
-def check_algorithm_availability(smash_config: SmashConfig) -> None:
-    """
-    Check if the algorithm is available in the algorithm dictionary.
-
-    Parameters
-    ----------
-    smash_config : SmashConfig
-        The SmashConfig object containing the algorithm configuration.
-    """
-    for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = AlgorithmRegistry[algorithm]
-        if "pruna_pro" in algorithm_class.__module__:
-            raise RuntimeError(f"Algorithm {algorithm} is unavailable with pruna.smash")
 
 
 def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, algorithm_order: list[str]) -> None:
@@ -229,16 +218,16 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
     """
     graph = DiGraph()
     active_algorithms = smash_config.get_active_algorithms()
-    algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
 
     for algorithm in active_algorithms:
         graph.add_node(algorithm)
 
-    for alg_a, alg_b in algorithm_pairs:
-        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_before():
-            graph.add_edge(alg_a, alg_b)
-        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_after():
-            graph.add_edge(alg_b, alg_a)
+    for algorithm_name_a in active_algorithms:
+        algorithm = AlgorithmRegistry[algorithm_name_a]
+        for algorithm_name_b in algorithm.get_algorithms_to_run_before():
+            graph.add_edge(algorithm_name_b, algorithm_name_a)
+        for algorithm_name_b in algorithm.get_algorithms_to_run_after():
+            graph.add_edge(algorithm_name_a, algorithm_name_b)
 
     return graph
 
@@ -253,9 +242,5 @@ def remove_reciprocals(graph: nx.DiGraph):
         The directed graph to remove reciprocal edges from.
     """
     # Undirected view collapses mutual edges into one
-    reciprocal_pairs = {
-        (u, v) for u, v in graph.to_undirected().edges() if graph.has_edge(u, v) and graph.has_edge(v, u)
-    }
-
-    graph.remove_edges_from((u, v) for u, v in reciprocal_pairs)
-    graph.remove_edges_from((v, u) for u, v in reciprocal_pairs)
+    reciprocal_subgraph = graph.to_undirected(reciprocal=True).to_directed()
+    graph.remove_edges_from(reciprocal_subgraph.edges())

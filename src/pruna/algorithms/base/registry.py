@@ -23,9 +23,9 @@ from pruna.algorithms.base.tags import AlgorithmTag
 
 class AlgorithmRegistry:
     """
-    Registry for metrics.
+    Registry for algorithms.
 
-    The registry is a dictionary that maps metric names to metric classes.
+    The registry is a dictionary that maps algorithm names to algorithm instances.
     """
 
     _registry: Dict[str, Callable[..., Any]] = {}
@@ -46,35 +46,37 @@ class AlgorithmRegistry:
             This function does not return anything.
         """
         prefix = algorithms_pkg.__name__ + "."
-        for _finder, modname, _ispkg in pkgutil.walk_packages(algorithms_pkg.__path__, prefix):
+        for _, modname, _ in pkgutil.walk_packages(algorithms_pkg.__path__, prefix):
             try:
                 module = importlib.import_module(modname)
             except Exception as e:
                 logging.warning("Skipping %s (import error): %s", modname, e)
                 continue
 
+            # Skip global utils module where we might define intermediate instantiations of the algorithm base to unify
+            # functionality but which should not be used as an algorithm itself.
             if "global_utils" in modname:
                 continue
 
             # Inspect classes defined in this module (avoid classes only re-exported here)
-            for _, obj in inspect.getmembers(module, inspect.isclass):
-                if obj.__module__ != module.__name__:
+            for _, algorithm_cls in inspect.getmembers(module, inspect.isclass):
+                if algorithm_cls.__module__ != module.__name__:
                     continue
 
                 # Must be a subclass (but not the base itself)
-                if obj is PrunaAlgorithmBase:
+                if algorithm_cls is PrunaAlgorithmBase:
                     continue
 
                 # Must inherit from PrunaAlgorithmBase
-                if PrunaAlgorithmBase not in obj.__mro__:
+                if PrunaAlgorithmBase not in algorithm_cls.__mro__:
                     continue
 
                 # Instantiate & register with the Smash Configuration Space
                 try:
-                    instance = obj()
+                    instance = algorithm_cls()
                     cls._registry[instance.algorithm_name] = instance
                 except Exception as e:
-                    logging.warning("Failed to instantiate %s from %s: %s", obj.__name__, modname, e)
+                    logging.warning(f"Failed to instantiate {algorithm_cls.__name__} from {modname}: {e}")
 
     @classmethod
     def __class_getitem__(cls, algorithm_name: str) -> PrunaAlgorithmBase:  # noqa: D105

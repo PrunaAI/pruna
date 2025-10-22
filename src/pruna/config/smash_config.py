@@ -57,7 +57,7 @@ class SmashConfig:
 
     Parameters
     ----------
-    configuration : Configuration, optional
+    configuration : list[str] | Dict[str, Any] | Configuration | None, optional
         The configuration to be used for smashing. If None, a default configuration will be created.
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
@@ -70,15 +70,11 @@ class SmashConfig:
 
     def __init__(
         self,
-        configuration: Dict[str, Any] | Configuration | None = None,
+        configuration: list[str] | Dict[str, Any] | Configuration | None = None,
         batch_size: int = 1,
         device: str | torch.device | None = None,
         cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
     ) -> None:
-        self._configuration: Configuration = (
-            configuration if isinstance(configuration, Configuration) else SMASH_SPACE.get_default_configuration()
-        )
-        self.config_space: ConfigurationSpace = self._configuration.config_space
         self.batch_size = batch_size
         self.device = set_to_best_available_device(device)
         self.device_map = None
@@ -108,9 +104,16 @@ class SmashConfig:
         # ensure the cache directory is deleted on program exit
         atexit.register(self.cleanup_cache_dir)
 
-        # if configuration was provided as a dictionary, add it as if the user called config.add()
-        if isinstance(configuration, (dict, list)):
+        self._configuration = SMASH_SPACE.get_default_configuration()
+        if isinstance(configuration, Configuration):
+            self._configuration = configuration
+        elif isinstance(configuration, (dict, list)):
             self.add(configuration)
+        elif configuration is None:
+            pass
+        else:
+            raise ValueError(f"Unsupported configuration type: {type(configuration)}")
+        self.config_space: ConfigurationSpace = self._configuration.config_space
 
     @classmethod
     def from_list(
@@ -205,6 +208,7 @@ class SmashConfig:
             and self.save_fns == other.save_fns
             and self.load_fns == other.load_fns
             and self.reapply_after_load == other.reapply_after_load
+            and self.algorithm_order == other.algorithm_order
         )
 
     def cleanup_cache_dir(self) -> None:
@@ -276,11 +280,9 @@ class SmashConfig:
 
             setattr(self, name, config_dict.pop(name))
 
-        # Build a map of today’s hyperparameters so we can drop stale keys
-        space_hparams = {hp.name for hp in SMASH_SPACE.get_hyperparameters()}
-
-        # Keep only values that still exist in the space
-        saved_values = {k: v for k, v in config_dict.items() if k in space_hparams}
+        # Keep only values that still exist in the space, drop stale keys
+        supported_hparam_names = {hp.name for hp in SMASH_SPACE.get_hyperparameters()}
+        saved_values = {k: v for k, v in config_dict.items() if k in supported_hparam_names}
 
         # Seed with the defaults, then overlay the saved values
         default_values = dict(SMASH_SPACE.get_default_configuration())
@@ -333,8 +335,7 @@ class SmashConfig:
 
         Examples
         --------
-        >>> config = SmashConfig()
-        >>> config['cacher'] = 'deepcache'
+        >>> config = SmashConfig(["fastercache", "diffusers_int8"])
         >>> config.flush_configuration()
         >>> config
         SmashConfig()
@@ -665,7 +666,7 @@ class SmashConfig:
         self._algorithm_order = algorithm_order
 
     def disable_saving(self) -> None:
-        """Disable the saving of the SmashConfig."""
+        """Disable the saving of the SmashConfig to speed up the smashing process."""
         pruna_logger.info("Disabling the preparation of saving, smashed model will not be saveable.")
         self._prepare_saving = False
 
