@@ -36,7 +36,7 @@ class AlgorithmTag(Enum):
     type : type
         The type of the enum.
     start : int
-        The start index for auto-numbering enum values
+        The start index for auto-numbering enum values.
     """
 
     QUANTIZER = (
