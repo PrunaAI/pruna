@@ -5,7 +5,7 @@ import pytest
 from pruna import SmashConfig
 from pruna.engine.pruna_model import PrunaModel
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
-
+from pruna.engine.utils import move_to_device
 
 @pytest.mark.parametrize(
     "model_fixture, device",
@@ -20,6 +20,7 @@ def test_total_macs_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
     model, smash_config = model_fixture
     macs_metric = TotalMACsMetric(device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
+    move_to_device(pruna_model, device)
     macs_results = macs_metric.compute(pruna_model, smash_config.test_dataloader())
     assert macs_results.result > 0
 
@@ -37,5 +38,6 @@ def test_total_params_metric(model_fixture: tuple[Any, SmashConfig], device: str
     model, smash_config = model_fixture
     params_metric = TotalParamsMetric(device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
+    move_to_device(pruna_model, device)
     params_results = params_metric.compute(pruna_model, smash_config.test_dataloader())
     assert params_results.result > 0

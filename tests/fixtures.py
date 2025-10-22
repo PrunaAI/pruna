@@ -38,8 +38,8 @@ def model_fixture(request: pytest.FixtureRequest) -> Any:
 
 
 @pytest.fixture(scope="function")
-def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
-    """Model fixture for testing."""
+def datamodule_fixture(request: pytest.FixtureRequest) -> Any:
+    """PrunaDataModule fixture for testing."""
     if request.param in ["LAION256", "ImageNet"]:
         dm = PrunaDataModule.from_string(request.param)
     elif request.param in ["WikiText"]:
@@ -48,7 +48,9 @@ def dataloader_fixture(request: pytest.FixtureRequest) -> Any:
     else:
         raise ValueError(f"Invalid dataset: {request.param}")
 
-    return dm.val_dataloader()
+    yield weakref.proxy(dm)
+
+    del dm
 
 
 def whisper_tiny_random_model() -> tuple[Any, SmashConfig]:

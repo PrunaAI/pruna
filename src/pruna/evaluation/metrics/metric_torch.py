@@ -36,7 +36,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from torchmetrics.text import Perplexity
 from torchvision import transforms
 
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import device_to_string
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -237,7 +237,6 @@ class TorchMetricWrapper(StatefulMetric):
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 
-            kwargs.pop("device", None)
             return PairwiseClipScore(**kwargs)
         return super().__new__(cls)
 
@@ -250,13 +249,12 @@ class TorchMetricWrapper(StatefulMetric):
         ValueError
             If the metric name is not supported.
         """
-        super().__init__()
+        self.metric_name = metric_name
+        super().__init__(kwargs.pop("device", None))
         try:
-            device = kwargs.pop("device", None)
-            device = set_to_best_available_device(device=device)
             self.metric = TorchMetrics[metric_name](**kwargs)
             with suppress(AttributeError, TypeError):
-                self.metric = self.metric.to(device)
+                self.metric = self.metric.to(self.device)
 
             # Get the specific update function for the metric, or use the default if not found.
             self.update_fn = TorchMetrics[metric_name].update_fn
@@ -266,7 +264,6 @@ class TorchMetricWrapper(StatefulMetric):
         self.call_type = get_call_type(call_type, metric_name)
 
         pruna_logger.info(f"Using call_type: {self.call_type} for metric {metric_name}")
-        self.metric_name = metric_name
         self.higher_is_better = self.metric.higher_is_better if self.metric.higher_is_better is not None else True
 
     def update(self, x: List[Any] | Tensor, gt: List[Any] | Tensor, outputs: Any) -> None:
@@ -353,6 +350,22 @@ class TorchMetricWrapper(StatefulMetric):
             self.__dict__.copy(),
             result_value,
         )
+
+    def move_to_device(self, device: str | torch.device) -> None:
+        """
+        Move the metric to a specific device.
+
+        Parameters
+        ----------
+        device : str | torch.device
+            The device to move the metric to.
+        """
+        if not self.is_device_supported(device):
+            raise ValueError(
+                f"Metric {self.metric_name} does not support device {device}. Must be one of {self.runs_on}."
+            )
+        self.device = device_to_string(device)
+        self.metric = self.metric.to(device)
 
 
 def get_call_type(call_type: str, metric_name: str) -> str:
