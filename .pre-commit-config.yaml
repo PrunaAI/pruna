@@ -52,6 +52,6 @@ repos:
       - id: trufflehog
         name: TruffleHog
         description: Detect secrets in your data.
-        entry: bash -c 'git diff --cached --name-only | xargs -I {} trufflehog filesystem {} --fail'
+        entry: bash -c 'git diff --cached --name-only | xargs -I {} trufflehog filesystem {} --fail --no-update'
         language: system
         stages: ["pre-commit", "pre-push"]
