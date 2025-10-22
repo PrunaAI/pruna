@@ -53,10 +53,10 @@ class BaseMetric(ABC):
                 f"doesn't support device '{dvc}'. Must be one of {self.runs_on}."
             )
 
-        object.__setattr__(self, "_device", dvc)
+        object.__setattr__(self, "_device", device_to_string(dvc))
 
         if hasattr(self, "metric"):  # For memory metrics that internally use the GPUMemoryStats.
-            object.__setattr__(self.metric, "_device", dvc)
+            object.__setattr__(self.metric, "_device", device_to_string(dvc))
 
     @abstractmethod
     def compute(
