@@ -252,7 +252,8 @@ class SmashConfig:
         for name in deprecated_keys:
             if name in config_dict:
                 hyperparameter = config_dict.pop(name)
-                config_dict[hyperparameter] = True
+                if hyperparameter is not None:
+                    config_dict[hyperparameter] = True
 
         # check device compatibility
         if "device" in config_dict:
