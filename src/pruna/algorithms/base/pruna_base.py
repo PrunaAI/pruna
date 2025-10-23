@@ -125,7 +125,7 @@ class PrunaAlgorithmBase(ABC):
         pass
 
     @property
-    def compatible_before(self) -> list[str, AlgorithmTag]:
+    def compatible_before(self) -> list[str | AlgorithmTag]:
         """
         Get algorithms that can be executed before the current algorithm.
 
@@ -137,7 +137,7 @@ class PrunaAlgorithmBase(ABC):
         return self._compatible_before
 
     @compatible_before.setter
-    def compatible_before(self, value: Iterable[str, AlgorithmTag]) -> None:
+    def compatible_before(self, value: Iterable[str | AlgorithmTag]) -> None:
         """
         Set algorithms that can be executed before the current algorithm.
 
@@ -149,7 +149,7 @@ class PrunaAlgorithmBase(ABC):
         self._compatible_before = list(value)
 
     @property
-    def compatible_after(self) -> list[str, AlgorithmTag]:
+    def compatible_after(self) -> list[str | AlgorithmTag]:
         """
         Get algorithms that can be executed after the current algorithm.
 
@@ -161,7 +161,7 @@ class PrunaAlgorithmBase(ABC):
         return self._compatible_after
 
     @compatible_after.setter
-    def compatible_after(self, value: Iterable[str, AlgorithmTag]) -> None:
+    def compatible_after(self, value: Iterable[str | AlgorithmTag]) -> None:
         """
         Set algorithms that can be executed after the current algorithm.
 
