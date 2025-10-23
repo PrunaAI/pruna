@@ -1,65 +1,46 @@
 import pytest
-import torch
-
-from pruna.evaluation.metrics.metric_evalharness import EvalHarnessMetric
+import numpy as np
+from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.result import MetricResult
 
 
 @pytest.mark.cpu
-def test_eval_harness_basic():
-    """Test EvalHarnessMetric on a tiny HF model + task."""
+def test_lm_eval_metric_bleu_like():
+    """Test BLEU metric (string overlap metric)."""
 
-    # Use a very small HF model for speed
-    model_args = {
-        "pretrained": "sshleifer/tiny-gpt2",
-        "revision": "main",
-    }
+    refs = ["the cat is on the mat", "a quick brown fox"]
+    preds = ["the cat is on mat", "a quick brown fox"]
 
-    metric = EvalHarnessMetric(
-        tasks=["lambada_openai"],  # lightweight benchmark
-        model_args=model_args,
-        device=torch.device("cpu"),
-    )
+    metric = LMEvalMetric(metric_name="bleu")
+    metric.update(preds, refs)
+    result = metric.compute()
 
-    # compute ignores Pruna dataloader/model, so pass None
-    result: MetricResult = metric.compute(model=None, dataloader=None)
-
-    print(f"Result: {result}")
-
-    # Assertions
     assert isinstance(result, MetricResult)
-    assert "task_scores" in result.params
-    assert "lambada_openai" in result.params["task_scores"]
-    # Result should be a float between 0 and 1 for accuracy-like tasks
-    score = result.params["task_scores"]["lambada_openai"]
-    assert isinstance(score, float)
-    assert 0.0 <= score <= 1.0
-    # Final score matches average
-    assert result.result == pytest.approx(score, abs=1e-6)
+    assert "num_samples" in result.params
+    assert result.params["num_samples"] == 2
+    assert isinstance(result.result, float)
 
 
 @pytest.mark.cpu
-def test_eval_harness_multiple_tasks():
-    """Test EvalHarnessMetric with multiple tasks aggregated."""
+def test_lm_eval_metric_empty_pairs():
+    """Test that compute() returns 0.0 when no pairs are provided."""
 
-    model_args = {
-        "pretrained": "sshleifer/tiny-gpt2",
-    }
+    metric = LMEvalMetric(metric_name="acc")
+    result = metric.compute()
 
-    tasks = ["lambada_openai", "hellaswag"]
+    assert isinstance(result, MetricResult)
+    assert result.result == 0.0
+    assert result.params["num_samples"] == 0
 
-    metric = EvalHarnessMetric(
-        tasks=tasks,
-        model_args=model_args,
-        device=torch.device("cpu"),
-    )
 
-    result = metric.compute(model=None, dataloader=None)
+@pytest.mark.cpu
+def test_lm_eval_metric_length_mismatch():
+    """Test that mismatched preds/refs raises an error."""
 
-    # It should produce scores for all requested tasks
-    for task in tasks:
-        assert task in result.params["task_scores"]
+    metric = LMEvalMetric(metric_name="acc")
 
-    # Final score is average of per-task scores
-    scores = list(result.params["task_scores"].values())
-    assert result.result == pytest.approx(sum(scores) / len(scores), rel=1e-6)
+    refs = ["a", "b", "c"]
+    preds = ["a", "b"]
+
+    with pytest.raises(ValueError, match="Preds and refs length mismatch"):
+        metric.update(preds, refs)
