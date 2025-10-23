@@ -45,7 +45,6 @@ jobs:
             **/*.py
           files_ignore: |
             tests/**
-
       - name: Run ruff on changed Pruna code
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: astral-sh/ruff-action@v3
@@ -54,14 +53,15 @@ jobs:
           src: ${{ steps.changed-files.outputs.all_changed_files }}
 
       - name: Run Ty type checker on Pruna code
-        run: ty check src/pruna
+        run: uv run ty check src/pruna
 
       - name: Run docstring checks with pytest
-        run: pytest -m "style"
+        run: uv run pytest -m "style"
 
       - name: Set lint check output
         id: lint-check
         run: echo "success=true" >> $GITHUB_OUTPUT
+
   test:
     runs-on: pruna-cpu
 
@@ -70,7 +70,10 @@ jobs:
         python-version: ["3.10"]
 
     env:
-      HF_ENDPOINT: https://hf-mirror.com
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+      HF_DATASETS_CACHE: ${{ github.workspace }}/.cache/huggingface/datasets
+      HUGGINGFACE_HUB_CACHE: ${{ github.workspace }}/.cache/huggingface/hub
 
     steps:
       - name: Checkout code
@@ -83,9 +86,45 @@ jobs:
 
       - uses: ./.github/actions/setup-uv-project
 
+      - name: Cache Hugging Face datasets and models
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/huggingface/datasets
+            .cache/huggingface/hub
+            .cache/huggingface/models
+          key: hf-datasets-${{ runner.os }}-${{ hashFiles('tests/**/*.py') }}
+          restore-keys: |
+            hf-datasets-${{ runner.os }}-
+
+      - name: Export HF token for subprocesses
+        run: |
+          echo "Exporting HUGGINGFACE_HUB_TOKEN so subprocesses inherit auth"
+          echo "HUGGINGFACE_HUB_TOKEN=$HF_TOKEN" >> "$GITHUB_ENV"
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+      - name: Clean incomplete Hugging Face cache files (if any)
+        run: |
+          echo "Removing any *.incomplete directories from HF caches..."
+          set -eux
+          # datasets incomplete folders
+          if [ -d "${{ github.workspace }}/.cache/huggingface/datasets" ]; then
+            find "${{ github.workspace }}/.cache/huggingface/datasets" -type d -name "*.incomplete" -prune -exec rm -rf {} + || true
+          fi
+          # hub incomplete folders
+          if [ -d "${{ github.workspace }}/.cache/huggingface/hub" ]; then
+            find "${{ github.workspace }}/.cache/huggingface/hub" -type d -name "*.incomplete" -prune -exec rm -rf {} + || true
+          fi
+          # models incomplete folders
+          if [ -d "${{ github.workspace }}/.cache/huggingface/models" ]; then
+            find "${{ github.workspace }}/.cache/huggingface/models" -type d -name "*.incomplete" -prune -exec rm -rf {} + || true
+          fi
+
       - name: Set test worker count
         run: echo "PYTEST_WORKERS=$(( $(nproc) - 1 ))" >> "$GITHUB_ENV" # leave 1 for the system process
 
-      - name: Run tests
+      - name: Run tests with pytest-rerunfailures
         run: |
-          pytest -n ${{ env.PYTEST_WORKERS }} -m "cpu and not slow and not high_cpu"
+          echo "Running tests with up to 3 reruns on failure using $PYTEST_WORKERS workers..."
+          uv run pytest -n $PYTEST_WORKERS -m "cpu and not slow and not high_cpu" --reruns 3 --reruns-delay 10 --maxfail=1

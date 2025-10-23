@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from pathlib import Path
 from typing import Tuple
 
 from datasets import Dataset, load_dataset
+from huggingface_hub import snapshot_download
 
 from pruna.data.utils import split_train_into_train_val_test
 from pruna.logging.logger import pruna_logger
@@ -74,14 +74,8 @@ def setup_mini_presentation_audio_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
 
 def _download_audio_and_select_sample(file_id: str) -> Tuple[Dataset, Dataset, Dataset]:
-    load_dataset("reach-vb/random-audios")
-    cache_path = os.environ.get("HUGGINGFACE_HUB_CACHE")
-    if cache_path is None:
-        cache_path = str(Path.home() / ".cache" / "huggingface" / "hub")
-
-    dataset_path = Path(cache_path) / "datasets--reach-vb--random-audios"
-    path_to_podcast_file = str(list(dataset_path.rglob(file_id))[0])
-
+    dataset_path = snapshot_download("reach-vb/random-audios", repo_type="dataset")
+    path_to_podcast_file = str(Path(dataset_path) / file_id)
     ds = Dataset.from_dict({"audio": [{"path": path_to_podcast_file}], "sentence": [""]})
     pruna_logger.info(
         "The AI Podcast dataset only consists of one sample, returning same data for training, validation and testing."

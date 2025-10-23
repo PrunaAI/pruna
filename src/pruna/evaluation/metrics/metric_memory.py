@@ -22,7 +22,13 @@ import torch
 from torch.utils.data import DataLoader
 
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device, set_to_train
+from pruna.engine.utils import (
+    get_device,
+    move_to_device,
+    safe_memory_cleanup,
+    set_to_best_available_device,
+    set_to_train,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -104,6 +110,8 @@ class GPUMemoryStats(BaseMetric):
         List of GPU indices to monitor. If None, all GPUs are assumed.
     """
 
+    runs_on: list[str] = ["cuda"]
+
     def __init__(self, mode: str = DISK_MEMORY, gpu_indices: Optional[List[int]] = None) -> None:
         """
         Initialize the GPUMemoryStats.
@@ -136,6 +144,9 @@ class GPUMemoryStats(BaseMetric):
         MetricResult
             The peak GPU memory usage in MB.
         """
+        model_device = get_device(model)
+        if not self.is_device_supported(model_device):
+            raise ValueError(f"Memory metrics does not support device {model_device}. Must be one of {self.runs_on}.")
         save_path = model.smash_config.cache_dir / "metrics_save"
         model_cls = model.__class__
         model_device_indices = self._detect_model_gpus(model)
@@ -143,7 +154,7 @@ class GPUMemoryStats(BaseMetric):
             pruna_logger.warning("No GPUs found.")
             raise ValueError("No GPUs detected for the model. Memory metric is designed to measure the GPU usage.")
         model.save_pretrained(str(save_path))
-        model.move_to_device("cpu")
+        move_to_device(model, "cpu")
 
         gpu_manager = GPUManager(self.gpu_indices)
         with gpu_manager.manage_resources():
@@ -180,7 +191,7 @@ class GPUMemoryStats(BaseMetric):
             pruna_logger.error("Multiple GPUs detected, but no device map found. Please check the model configuration.")
             raise
         else:
-            model.move_to_device("cuda")
+            move_to_device(model, "cuda")
         return MetricResult(self.mode, self.__dict__.copy(), peak_memory)
 
     def _detect_model_gpus(self, model: PrunaModel) -> List[int]:
@@ -325,7 +336,7 @@ class GPUMemoryStats(BaseMetric):
             The loaded and prepared model.
         """
         model = model_cls.from_pretrained(model_path)
-        model.move_to_device(set_to_best_available_device(None))
+        move_to_device(model, set_to_best_available_device(None))
         if self.mode in {DISK_MEMORY, INFERENCE_MEMORY}:
             model.set_to_eval()
         elif self.mode == TRAINING_MEMORY:
@@ -345,7 +356,7 @@ class GPUMemoryStats(BaseMetric):
         """
         with torch.no_grad() if self.mode == INFERENCE_MEMORY else torch.enable_grad():
             batch = next(iter(dataloader))
-            model.run_inference(batch=batch, device=set_to_best_available_device(None))
+            model.run_inference(batch=batch)
 
 
 @MetricRegistry.register(DISK_MEMORY)
@@ -366,6 +377,7 @@ class DiskMemoryMetric(BaseMetric):
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the DiskMemoryMetric."""
         self.metric = GPUMemoryStats(DISK_MEMORY, gpu_indices)
+        self.runs_on = self.metric.runs_on
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -404,6 +416,7 @@ class InferenceMemoryMetric(BaseMetric):
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the InferenceMemoryMetric."""
         self.metric = GPUMemoryStats(INFERENCE_MEMORY, gpu_indices)
+        self.runs_on = self.metric.runs_on
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """
@@ -442,6 +455,7 @@ class TrainingMemoryMetric(BaseMetric):
     def __init__(self, gpu_indices: Optional[List[int]] = None) -> None:
         """Initialize the TrainingMemoryMetric."""
         self.metric = GPUMemoryStats(TRAINING_MEMORY, gpu_indices)
+        self.runs_on = self.metric.runs_on
 
     def compute(self, model: PrunaModel, dataloader: DataLoader) -> MetricResult:
         """

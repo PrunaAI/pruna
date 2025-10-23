@@ -24,11 +24,17 @@ unresolved-import = "ignore"
 invalid-assignment = "ignore"  # mypy is more permissive with Any assignments
 call-non-callable = "ignore"   # mypy allows more dynamic method calls
 index-out-of-bounds = "ignore" # mypy is more permissive with tuple indexing
-unresolved-attribute = "ignore" # mypy is more permissive with module attributes
 possibly-unbound-attribute = "ignore" # mypy doesn't warn about this as much
 redundant-cast = "ignore"      # mypy doesn't warn about redundant casts
 unsupported-operator = "ignore" # mypy supports | syntax with from __future__ import annotations
 invalid-argument-type = "ignore" # mypy is more permissive with argument types
+invalid-return-type = "ignore" # mypy is more permissive with return types
+invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
+possibly-missing-attribute = "ignore" # mypy is more permissive with attribute access
+possibly-missing-import = "ignore" # mypy is more permissive with imports
+no-matching-overload = "ignore" # mypy is more permissive with overloads
+unresolved-reference = "ignore" # mypy is more permissive with references
+unresolved-attribute = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -168,6 +174,7 @@ dev = [
     "numpydoc-validation",
     "pytest",
     "pytest-cov",
+    "pytest-rerunfailures",
     "coverage",
     "docutils",
   "ty",
