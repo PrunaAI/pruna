@@ -83,7 +83,7 @@ class AlgorithmRegistry:
         return cls._registry[algorithm_name]
 
     @classmethod
-    def get_algorithms_by_tag(cls, tag: AlgorithmTag) -> list[PrunaAlgorithmBase]:
+    def get_algorithms_by_tag(cls, tag: AlgorithmTag) -> list[str]:
         """
         Get all algorithms that have the given tag.
 
@@ -94,8 +94,8 @@ class AlgorithmRegistry:
 
         Returns
         -------
-        list[PrunaAlgorithmBase]
-            The algorithms that have the given tag.
+        list[str]
+            The algorithm names that have the given tag.
         """
         return [alg.algorithm_name for alg in cls._registry.values() if tag in alg.group_tags]
 
