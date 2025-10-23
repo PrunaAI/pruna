@@ -36,6 +36,8 @@ from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
+OUTPUT_DIR = tempfile.mkdtemp(prefix="inference_outputs")
+
 
 class EvaluationAgent:
     """
@@ -102,7 +104,7 @@ class EvaluationAgent:
         self.evaluation_for_first_model: bool = True
         self.save_artifacts: bool = save_artifacts
         if save_artifacts:
-            self.root_dir = root_dir if root_dir is not None else tempfile.mkdtemp(prefix="inference_outputs")
+            self.root_dir = root_dir if root_dir is not None else OUTPUT_DIR
             self.artifact_saver = assign_artifact_saver(self.task.modality, self.root_dir, artifact_saver_export_format)
             # for miscellaneous saving kwargs like fps, etc.
             self.saving_kwargs = saving_kwargs
@@ -264,7 +266,10 @@ class EvaluationAgent:
                     if self.save_artifacts and stateful_metric.create_alias:
                         # Again, we have to create an alias for each sample in the batch.
                         for prompt_idx, prompt in enumerate(x):
-                            assert isinstance(self.artifact_saver.export_format, str)
+                            if self.artifact_saver.export_format is None:
+                                raise ValueError(
+                                    "Export format is not set.Please set the export format for the artifact saver."
+                                )
                             alias_filename = stateful_metric.create_filename(
                                 filename=prompt, idx=sample_idx, file_extension=self.artifact_saver.export_format
                             )

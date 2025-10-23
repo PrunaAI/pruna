@@ -36,6 +36,7 @@ possibly-unbound-attribute = "ignore"
 possibly-missing-import = "ignore" # mypy is more permissive with imports
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
+missing-argument = "ignore"
 possibly-unbound-import = "ignore"
 missing-argument = "ignore"
 
