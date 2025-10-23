@@ -40,7 +40,7 @@ def assign_artifact_saver(
     ArtifactSaver
         The appropriate artifact saver.
     """
-    if modality != "video":
-        raise ValueError(f"Modality {modality} is not supported")
-    else:
+    if modality == "video":
         return VideoArtifactSaver(root=root, export_format=export_format)
+    else:
+        raise ValueError(f"Modality {modality} is not supported")
