@@ -33,8 +33,6 @@ invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
-missing-argument = "ignore"
-unresolved-attribute = "ignore"
 possibly-unbound-import = "ignore"
 
 [tool.coverage.run]
