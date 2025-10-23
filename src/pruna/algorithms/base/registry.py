@@ -109,6 +109,6 @@ class AlgorithmRegistry:
         algorithm : PrunaAlgorithmBase
             The algorithm to register.
         """
-        if algorithm.algorithm_name in self._registry:
+        if algorithm.algorithm_name in cls._registry:
             raise ValueError(f"Algorithm {algorithm.algorithm_name} already registered")
-        self._registry[algorithm.algorithm_name] = algorithm
+        cls._registry[algorithm.algorithm_name] = algorithm

@@ -149,7 +149,11 @@ class CausalLMGenerator:
             # Fallback to older signature if the new one fails
             try:
                 self.past_key_values = StaticCache(
-                    self.model.config, self.batch_size, self.cache_size, self.model.device, self.model.dtype
+                    self.model.config,
+                    self.batch_size,
+                    self.cache_size,
+                    self.model.device,
+                    self.model.dtype,  # type: ignore
                 )
             except TypeError:
                 # If both fail, try minimal signature

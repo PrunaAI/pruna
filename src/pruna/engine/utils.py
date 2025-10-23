@@ -531,7 +531,7 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
     str
         Valid CUDA device string
     """
-    device_type, device_index = split_device(device)
+    _, device_index = split_device(device)
     if not torch.cuda.is_available():
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)

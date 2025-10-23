@@ -165,5 +165,5 @@ class StatefulMetric(ABC):
         bool
             True if the metric is compatible with the device, False otherwise.
         """
-        dvc, idx = split_device(device_to_string(device))
+        dvc, _ = split_device(device_to_string(device))
         return dvc in self.runs_on
