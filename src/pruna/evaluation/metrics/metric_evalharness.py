@@ -14,103 +14,108 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Union
+from typing import Any, List, Tuple
 
-import torch
+import numpy as np
+from lm_eval.api import metrics  # noqa: F401  # needed to register lm-eval metrics
+from lm_eval.api import registry as lm_registry
 
-from pruna.evaluation.metrics.metric_base import BaseMetric
+from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.logging.logger import pruna_logger
 
-METRIC_EVALHARNESS = "eval_harness"
+METRIC_EVALHARNESS = "lm_eval_metric"
 
 
 @MetricRegistry.register(METRIC_EVALHARNESS)
-class EvalHarnessMetric(BaseMetric):
+class LMEvalMetric(StatefulMetric):
     """
-    Wraps the EleutherAI LM Evaluation Harness as a Pruna metric.
+    Generic Pruna wrapper for lm-evaluation-harness metrics.
 
-    This allows you to run benchmark tasks (HellaSwag, MMLU, GSM8k, etc.)
-    and return a scalar score usable in Pruna’s pipeline.
+    This metric accumulates (reference, prediction) pairs and delegates
+    computation to lm-eval’s registered metric and aggregation functions.
 
     Parameters
     ----------
-    tasks : list[str]
-        List of eval harness tasks to run.
-    model_args : dict
-        Arguments for the backend model in eval harness.
-    device : str | torch.device
-        Device to run evaluation on (cuda, cpu, etc.).
+    metric_name : str
+        Name of the lm-eval metric (e.g., "acc", "f1", "bleu", "exact_match").
     call_type : str
-        The call type (default "y").
+        Type of metric call in Pruna (default: "y_gt").
     """
 
-    metric_name: str = METRIC_EVALHARNESS
-    default_call_type: str = "y"
-    higher_is_better: bool = True
-    metric_units: str = "score"
+    pairs: List[Tuple[Any, Any]]  # dynamically added by add_state()
 
-    def __init__(
-        self,
-        tasks: List[str],
-        model_args: Dict[str, Any],
-        device: Union[str, torch.device] = "cuda:0",
-        call_type: str = "y",
-        **kwargs,
-    ):
+    def __init__(self, metric_name: str, call_type: str = "y_gt") -> None:
         super().__init__()
-        self.tasks = tasks
-        self.model_args = model_args
-        self.device = torch.device(device) if isinstance(device, str) else device
+        self.metric_name = metric_name
         self.call_type = call_type
 
-    def compute(self, model, dataloader) -> MetricResult:
-        """Run LM Eval Harness and return the aggregated result."""
-        try:
-            from lm_eval import evaluator
-        except ImportError:
-            raise ImportError("lm_eval package is not installed. Please install it with `pip install lm-eval`.")
+        # not using huggingface evaluate fallback
+        if metric_name not in lm_registry.METRIC_REGISTRY:
+            raise ValueError(f"Metric '{metric_name}' not found in lm-eval registry.")
+
+        self.metric_fn = lm_registry.METRIC_REGISTRY[metric_name]
+        self.agg_fn = lm_registry.get_metric_aggregation(metric_name)
+        self.higher_is_better = lm_registry.is_higher_better(metric_name)
+
+        if self.agg_fn is None:
+            raise ValueError(f"No aggregation function registered for '{metric_name}'.")
+
+        if self.higher_is_better is None:
+            pruna_logger.warning(f"higher_is_better not specified for '{metric_name}', defaulting to True.")
+            self.higher_is_better = True
+
+        self.metric_units = metric_name
+
+        self.add_state("pairs", [])
+
+        pruna_logger.info(f"LMEvalMetric initialized: {metric_name} (higher_is_better={self.higher_is_better})")
+
+    def update(self, preds, refs) -> None:
+        """Accumulate predictions and references for later aggregation."""
+        if len(preds) != len(refs):
+            raise ValueError(f"Preds and refs length mismatch: {len(preds)} vs {len(refs)}")
+
+        self.pairs.extend(zip(refs, preds))
+
+    def compute(self) -> MetricResult:
+        """
+        Compute the lm-eval metric by applying its metric and aggregation functions.
+
+        Returns
+        -------
+        MetricResult
+            Pruna-compatible metric result object.
+        """
+        if not self.pairs:
+            pruna_logger.warning(f"No data to compute {self.metric_name}, returning 0.0")
+            return MetricResult(
+                name=self.metric_name,
+                params={
+                    "num_samples": 0,
+                    "higher_is_better": self.higher_is_better,
+                    "metric_units": self.metric_units,
+                },
+                result=0.0,
+            )
 
         try:
-            eval_results = evaluator.simple_evaluate(
-                model="hf",
-                model_args=self.model_args,
-                tasks=self.tasks,
-                device=str(self.device),
-                batch_size=1,
-            )
+            # lm-eval metrics expect a list of (reference, prediction) tuples
+            raw_items = self.metric_fn(self.pairs)
+            score = self.agg_fn(raw_items)
         except Exception as e:
-            pruna_logger.error(f"Eval Harness failed: {e}")
+            pruna_logger.error(f"Failed computing lm-eval metric {self.metric_name}: {e}")
             raise
 
-        scores, task_scores = [], {}
-
-        preferred_keys = ["acc,none", "acc", "f1", "em"]
-
-        for task in self.tasks:
-            if task not in eval_results["results"]:
-                pruna_logger.warning(f"Task {task} not found in eval results")
-                continue
-
-            task_results = eval_results["results"][task]
-            metric_keys = [k for k in task_results if k not in {"alias", "samples", "higher_is_better"}]
-
-            if not metric_keys:
-                pruna_logger.warning(f"No metrics found for task {task}")
-                continue
-
-            key = next((k for k in preferred_keys if k in metric_keys), metric_keys[0])
-            score = task_results[key]
-            task_scores[task] = score
-            scores.append(score)
-
-        final_score = sum(scores) / len(scores) if scores else 0.0
+        score_value = float(np.mean(list(score.values()))) if isinstance(score, dict) else float(score)
 
         return MetricResult(
-            self.metric_name,
-            {**self.__dict__, "task_scores": task_scores},
-            final_score,
-            higher_is_better=self.higher_is_better,
-            metric_units=self.metric_units,
+            name=self.metric_name,
+            params={
+                "num_samples": len(self.pairs),
+                "higher_is_better": self.higher_is_better,
+                "metric_units": self.metric_units,
+            },
+            result=score_value,
         )
