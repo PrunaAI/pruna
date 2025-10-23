@@ -206,8 +206,8 @@ class TorchCompile(PrunaAlgorithmBase):
             The compiled model.
         """
         with contextlib.suppress(KeyError):
-            if smash_config["ring_attention"]:
-                return compilation_map["ring_attention"](model, smash_config)
+            if smash_config["ring_attn"]:
+                return compilation_map["ring_attn"](model, smash_config)
 
         active_algorithms = smash_config.get_active_algorithms()
         for algorithm in active_algorithms:
