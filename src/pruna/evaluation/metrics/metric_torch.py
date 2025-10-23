@@ -124,7 +124,9 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
 
 
 def ssim_update(
-    metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure, preds: Any, target: Any
+        metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure,
+        preds: Any,
+        target: Any
 ) -> None:
     """
     Update handler for SSIM or MS-SSIM metric.
