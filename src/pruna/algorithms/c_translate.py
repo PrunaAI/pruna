@@ -17,8 +17,8 @@ from __future__ import annotations
 import os
 import sys
 from argparse import Namespace
-from pathlib import Path
 from collections.abc import Iterable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import torch
