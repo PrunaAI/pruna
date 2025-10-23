@@ -14,6 +14,7 @@
 
 import shutil
 import tempfile
+from collections.abc import Iterable
 from typing import Any, Dict
 
 import torch
@@ -50,8 +51,8 @@ class HQQ(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: list[str] = ["torch_structured"]
-    compatible_after: list[str] = ["torch_compile"]
+    compatible_before: Iterable[str] = ["torch_structured"]
+    compatible_after: Iterable[str] = ["torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

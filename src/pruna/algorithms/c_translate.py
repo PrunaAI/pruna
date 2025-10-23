@@ -18,6 +18,7 @@ import os
 import sys
 from argparse import Namespace
 from pathlib import Path
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import torch
@@ -69,8 +70,8 @@ class CTranslate(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
-    compatible_before: list[str] = ["half"]
-    compatible_after: list[str] = ["whisper_s2t"]
+    compatible_before: Iterable[str] = ["half"]
+    compatible_after: Iterable[str] = ["whisper_s2t"]
 
     def __init__(self, task_name: str = "translate") -> None:
         self.task_name = task_name

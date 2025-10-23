@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterable
 from typing import Any, cast
 
 import torch
@@ -55,7 +56,7 @@ class LLMInt8(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     save_fn: None = None
-    compatible_after: list[str] = ["torch_compile"]
+    compatible_after: Iterable[str] = ["torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

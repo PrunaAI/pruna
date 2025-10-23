@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from typing import Any, Dict, Type
 
 import torch
@@ -52,8 +53,8 @@ class HQQDiffusers(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: list[str] = ["qkv_diffusers"]
-    compatible_after: list[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile"]
+    compatible_before: Iterable[str] = ["qkv_diffusers"]
+    compatible_after: Iterable[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

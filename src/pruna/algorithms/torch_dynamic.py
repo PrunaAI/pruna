@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+from collections.abc import Iterable
 from typing import Any
 
 import torch
@@ -41,8 +42,8 @@ class TorchDynamic(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
-    compatible_before: list[str] = []
-    compatible_after: list[str] = []
+    compatible_before: Iterable[str] = []
+    compatible_after: Iterable[str] = []
 
     def get_hyperparameters(self) -> list:
         """

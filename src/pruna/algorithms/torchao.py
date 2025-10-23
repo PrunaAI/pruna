@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import importlib
+from collections.abc import Iterable
 from typing import Any, Dict
 
 import torch
@@ -88,8 +89,8 @@ class Torchao(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: list[str] = ["qkv_diffusers", "torch_structured"]
-    compatible_after: list[str] = ["flash_attn3", "fora", "torch_compile"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "torch_structured"]
+    compatible_after: Iterable[str] = ["flash_attn3", "fora", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

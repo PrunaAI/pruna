@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from typing import Any
 
 import torch
@@ -40,7 +41,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
-    compatible_after: list[str] = ["half"]
+    compatible_after: Iterable[str] = ["half"]
 
     def get_hyperparameters(self) -> list:
         """
