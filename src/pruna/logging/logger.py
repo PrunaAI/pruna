@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from __future__ import annotations
+
 import logging
+import os
 from typing import Any
 
 from colorama import Fore, Style, init
@@ -129,6 +133,35 @@ class CustomFormatter(logging.Formatter):
             return log_message
 
 
+_LOG_LEVELS = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+
+def set_logging_level(level: str | None = None) -> None:
+    """
+    Set the logging level for the global pruna_logger.
+
+    Parameters
+    ----------
+    level : str, optional
+        The logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        If None, tries to read from the PRUNA_LOG_LEVEL environment variable.
+    """
+    if level is None:
+        level = os.getenv("PRUNA_LOG_LEVEL", "INFO")
+
+    level = level.upper()
+    if level not in _LOG_LEVELS:
+        raise ValueError(f"Invalid logging level: {level}. Must be one of {list(_LOG_LEVELS.keys())}")
+
+    pruna_logger.setLevel(_LOG_LEVELS[level])
+
+
 def setup_pruna_logger() -> logging.Logger:
     """
     Set up the pruna_logger with a custom formatter that adds colors based on log level.
@@ -153,3 +186,5 @@ def setup_pruna_logger() -> logging.Logger:
 
 
 pruna_logger = setup_pruna_logger()
+
+set_logging_level()

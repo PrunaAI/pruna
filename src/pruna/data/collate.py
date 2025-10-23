@@ -111,6 +111,33 @@ def prompt_collate(data: Any) -> Tuple[List[str], None]:
     return [item["text"] for item in data], None
 
 
+def prompt_with_auxiliaries_collate(
+    data: Any,
+) -> Tuple[List[str], List[dict[str, Any]]]:
+    """
+    Custom collation function for prompt datasets with auxiliaries.
+
+    Expects a ``text`` column containing the clear-text prompt in the dataset,
+
+    and puts everything else in a dictionary.
+
+    Parameters
+    ----------
+    data : Any
+        The data to collate.
+
+    Returns
+    -------
+    Tuple[List[str], Any]
+        The collated data.
+    """
+    #  The text column has the prompt.
+    prompt_list = [item["text"] for item in data]
+    #  All the other columns that might include category, scene information, etc.
+    auxiliary_list = [{k: v for k, v in row.items() if k != "text"} for row in data]
+    return prompt_list, auxiliary_list
+
+
 def audio_collate(data: Any) -> Tuple[List[str], List[str]]:
     """
     Custom collation function for audio datasets.
@@ -231,10 +258,20 @@ def question_answering_collate(
     questions, answers = [], []
     for sample in data:
         questions.append(
-            tokenizer(sample["question"], max_length=max_seq_len, truncation=True, padding="max_length")["input_ids"]
+            tokenizer(
+                sample["question"],
+                max_length=max_seq_len,
+                truncation=True,
+                padding="max_length",
+            )["input_ids"]
         )
         answers.append(
-            tokenizer(sample["answer"], max_length=max_seq_len, truncation=True, padding="max_length")["input_ids"]
+            tokenizer(
+                sample["answer"],
+                max_length=max_seq_len,
+                truncation=True,
+                padding="max_length",
+            )["input_ids"]
         )
     return torch.tensor(questions), torch.tensor(answers)
 
@@ -246,4 +283,5 @@ pruna_collate_fns: dict[str, Callable] = {
     "text_generation_collate": text_generation_collate,
     "question_answering_collate": question_answering_collate,
     "prompt_collate": prompt_collate,
+    "prompt_with_auxiliaries_collate": prompt_with_auxiliaries_collate,
 }

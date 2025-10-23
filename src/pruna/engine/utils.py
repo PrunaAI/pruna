@@ -130,22 +130,33 @@ def move_to_device(
     device_map : dict[str, str] | None
         The device map to use if the target device is "accelerate".
     """
-    # Convert string device to torch.device for consistent handling
-    device_str = str(device)
-
-    if isinstance(model, Pipeline):
+    if safe_is_instance(model, type(Pipeline)):
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
-        if device_str != "accelerate" and hasattr(model.model, "hf_device_map"):
+        if device != "accelerate" and hasattr(model.model, "hf_device_map"):
             delattr(model.model, "hf_device_map")
         return
 
+    device = device_to_string(device)
+    # To handle the device cases like "cuda:0, cuda:1"
+    device_type, device_index = split_device(device)
+
+    # sanity check for expected device types
+    if device_type in ["cpu", "cuda", "mps"]:
+        device = f"{device_type}:{device_index}" if device_index is not None else device_type
+    elif device_type == "accelerate":
+        pass  # Handle accelerate separately
+    else:
+        raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
+
     # do not cast if the model is already on the correct device
-    if str(get_device(model)) == device_str:
+    if get_device(model) == device:
         return
 
-    if device_str == "accelerate":
+    if device == "accelerate":
+        if hasattr(model, "smash_config") and device_map is None:
+            device_map = model.smash_config.device_map
         if device_map is None:
             raise ValueError("Device map is required when moving to accelerate.")
         cast_model_to_accelerate_device_map(model, device_map)
@@ -154,24 +165,10 @@ def move_to_device(
             remove_all_accelerate_hooks(model)
             # transformers model maintain single-device models with a None map, diffusers does not
             # Parse device index from device string for proper device mapping
-            if device_str.startswith("cuda:"):
-                try:
-                    # Use robust helper for CUDA device parsing
-                    device_index = _resolve_cuda_device(device_str)
-                    model.hf_device_map = {"": int(device_index.split(":")[-1])}
-                except Exception as e:
-                    error_msg = (
-                        f"Failed to parse CUDA device string '{device_str}' when moving model from 'accelerate'. "
-                        f"Error: {str(e)}"
-                    )
-                    if raise_error:
-                        raise ValueError(error_msg) from e
-                    else:
-                        pruna_logger.warning(error_msg)
-                        # Fallback to default device 0 if parsing fails
-                        model.hf_device_map = {"": 0}
+            if device.startswith("cuda:"):
+                model.hf_device_map = {"": device_index}
             else:
-                model.hf_device_map = {"": "cpu" if device_str == "cpu" else 0}
+                model.hf_device_map = {"": "cpu" if device == "cpu" else 0}
         try:
             model.to(device)
             # Avoid circular imports
@@ -179,7 +176,7 @@ def move_to_device(
 
             # Special handling for GPTQ models to ensure all quantization tensors are on the correct device
             if is_gptq_model(model):
-                _ensure_gptq_device_consistency(model, device_str)
+                _ensure_gptq_device_consistency(model, device)
 
         except torch.cuda.OutOfMemoryError as e:
             # there is anyway no way to recover from this error
@@ -345,25 +342,23 @@ def get_device(model: Any) -> str:
     str
         The device or device map of the model.
     """
-    if isinstance(model, Pipeline):
+    if safe_is_instance(model, type(Pipeline)):
         return get_device(model.model)
 
     # a device map that points the whole model to the same device (only key is "") is not considered distributed
     # when casting a model like this with "to" the device map is not maintained, so we rely on the model.device attribute
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None and list(model.hf_device_map.keys()) != [""]:
         model_device = "accelerate"
-
     elif hasattr(model, "device"):
         model_device = model.device
-
     else:
         try:
             model_device = next(model.parameters()).device
         except StopIteration:
             raise ValueError("Could not determine device of model, model has no device attribute.")
 
-    if isinstance(model_device, torch.device):
-        model_device = model_device.type
+    # model_device.type ignores the device index. Added a new function to convert to string.
+    model_device = device_to_string(model_device)
 
     return model_device
 
@@ -505,7 +500,7 @@ def determine_dtype(pipeline: Any) -> torch.dtype:
     return torch.float32
 
 
-def _resolve_cuda_device(device: str) -> str:
+def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None = None) -> str:
     """
     Resolve CUDA device string to a valid CUDA device.
 
@@ -517,26 +512,48 @@ def _resolve_cuda_device(device: str) -> str:
     Returns
     -------
     str
-        Valid CUDA device string with index (e.g. "cuda:0")
+        Valid CUDA device string
     """
-    # If just "cuda", return "cuda:0" for consistency
-    if device == "cuda":
-        return "cuda:0"
+    device_type, device_index = split_device(device)
+    if not torch.cuda.is_available():
+        pruna_logger.warning("'cuda' requested but not available.")
+        return set_to_best_available_device(device=None)
 
-    # Try to extract device index for "cuda:N" format
-    try:
-        if ":" in device:
-            device_idx = int(device.split(":")[-1])
-            # Check if this CUDA device exists
-            torch.cuda.get_device_properties(device_idx)
-            return device
-        return "cuda:0"  # Default to "cuda:0" if no index specified
-    except (ValueError, AssertionError, RuntimeError):
-        pruna_logger.warning(f"Invalid CUDA device index: {device}. Using 'cuda:0' instead.")
-        return "cuda:0"
+    # When we have a dict of available GPUs and space on them,
+    # we set the device to the one with the most free memory.
+    if bytes_free_per_gpu is not None:
+        if device_index != 0:  # Not the default device
+            pruna_logger.warning(
+                "You're requesting a specific CUDA device, "
+                "but the function will return the device with the most free memory."
+            )
+        biggest_free_gpu = max(bytes_free_per_gpu, key=lambda x: bytes_free_per_gpu[x])
+        return f"cuda:{biggest_free_gpu}"
+
+    if device_index is None or device_index >= torch.cuda.device_count():
+        pruna_logger.warning(f"CUDA device {device_index} not available, using device 0")
+        device_index = 0
+    return f"cuda:{device_index}"
 
 
-def set_to_best_available_device(device: str | torch.device | None) -> str:
+def find_bytes_free_per_gpu() -> dict[int, int]:
+    """
+    Compute the number of bytes free per GPU.
+
+    Returns
+    -------
+    dict[int, int]
+        The number of bytes free per GPU.
+    """
+    if torch.cuda.is_available():
+        return {i: torch.cuda.mem_get_info(i)[0] for i in range(torch.cuda.device_count())}
+    else:
+        return {}
+
+
+def set_to_best_available_device(
+    device: str | torch.device | None, bytes_free_per_gpu: dict[int, int] | None = None
+) -> str:
     """
     Set the device to the best available device.
 
@@ -547,40 +564,94 @@ def set_to_best_available_device(device: str | torch.device | None) -> str:
     ----------
     device : str | torch.device | None
         Device to validate (e.g. 'cuda', 'mps', 'cpu').
+    bytes_free_per_gpu : dict[int, int] | None
+        The number of bytes free per GPU.
 
     Returns
     -------
     str
         Best available device name.
     """
-    if isinstance(device, dict):
-        raise ValueError("Device cannot be a device map in `set_to_best_available_device`")
-
-    # check basic string cases
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         pruna_logger.info(f"Using best available device: '{device}'")
         return device
 
-    device_str = str(device)
-    if device_str == "cpu":
+    device = device_to_string(device)
+    device_type, device_index = split_device(device)
+
+    if device_type == "cpu":
         return "cpu"
-    elif device_str == "accelerate":
+    elif device_type == "accelerate":
         if not torch.cuda.is_available() and not torch.backends.mps.is_available():
             raise ValueError("'accelerate' requested but neither CUDA nor MPS is available.")
         return "accelerate"
-    elif device_str.startswith("cuda"):
-        if not torch.cuda.is_available():
-            pruna_logger.warning("'cuda' requested but not available.")
-            return set_to_best_available_device(device=None)
-        return _resolve_cuda_device(device_str)
-    elif device_str.startswith("mps"):
+    elif device_type == "cuda":
+        return _resolve_cuda_device(f"cuda:{device_index}" if device_index is not None else "cuda", bytes_free_per_gpu)
+    elif device_type == "mps":
         if not torch.backends.mps.is_available():
             pruna_logger.warning("'mps' requested but not available.")
             return set_to_best_available_device(device=None)
-        return device_str
+        return "mps"
+
+    raise ValueError(f"Device not supported: '{device}'")
+
+
+def device_to_string(device: str | torch.device) -> str:
+    """
+    Convert a device to a string.
+
+    Parameters
+    ----------
+    device : str | torch.device
+        The device to convert.
+
+    Returns
+    -------
+    str
+        The device as a string.
+    """
+    if isinstance(device, torch.device):
+        return str(device)
+    elif isinstance(device, str):
+        return device
     else:
-        raise ValueError(f"Device not supported: '{device_str}'")
+        raise ValueError(f"Unsupported device type: {type(device)}")
+
+
+def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
+    """
+    Split a device string into a type and index.
+
+    Parameters
+    ----------
+    device : str
+        The device to split.
+    strict : bool
+        Whether to raise an error if the device is not in allowed devices
+
+    Returns
+    -------
+    tuple[str, int | None]
+        The type and index of the device.
+    """
+    device = device.lower()
+    if ":" in device:
+        device_type, device_index_str = device.split(":", 1)
+        if device_type not in ("cuda", "mps") and strict:
+            raise ValueError(f"Unsupported device type '{device_type}'.")
+        try:
+            device_index = int(device_index_str)
+        except ValueError:
+            raise ValueError("Device index must be an integer.")
+        return device_type, device_index
+    if device in ("cuda", "mps"):
+        return device, 0  # treat bare cuda and mps as first device
+    if device in ("cpu", "accelerate"):
+        return device, None
+    if strict:
+        raise ValueError(f"Unsupported device: '{device}'.")
+    return device, None
 
 
 class ModelContext(AbstractContextManager):

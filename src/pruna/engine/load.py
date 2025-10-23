@@ -391,22 +391,23 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     else:
         quantized_path = str(model_path)
 
+    if "compute_dtype" in kwargs:
+        compute_dtype = kwargs.pop("compute_dtype")
+    else:
+        saved_smash_config = SmashConfig()
+        saved_smash_config.load_from_json(model_path)
+        compute_dtype = torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
+
     try:  # Try to use pipeline for HF specific HQQ quantization
         quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
             quantized_path,
             device=smash_config.device,
-            **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
+            **filter_load_kwargs(
+                algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs | {"compute_dtype": compute_dtype}
+            ),
         )
     except Exception:  # Default to generic HQQ pipeline if it fails
         pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
-        if "compute_dtype" in kwargs:
-            compute_dtype = kwargs.pop("compute_dtype")
-        else:
-            saved_smash_config = SmashConfig()
-            saved_smash_config.load_from_json(model_path)
-            compute_dtype = (
-                torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
-            )
         quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
             quantized_path,
             device=smash_config.device,
@@ -417,7 +418,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     original_config = load_json_config(model_path, "config.json")
     if original_config["architectures"][0] == "JanusForConditionalGeneration":
         cls = getattr(transformers, "JanusForConditionalGeneration")
-        model = cls.from_pretrained(model_path, **kwargs)
+        model = cls.from_pretrained(model_path, torch_dtype=compute_dtype, **kwargs)
         model.model.language_model = quantized_model.model
         # some weights of the language_model are not on the correct device, so we move it afterwards.
         move_to_device(model, smash_config.device)

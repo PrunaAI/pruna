@@ -26,7 +26,7 @@ from pruna.config.smash_config import SmashConfig
 from pruna.engine.handler.handler_utils import register_inference_handler
 from pruna.engine.load import load_pruna_model, load_pruna_model_from_pretrained
 from pruna.engine.save import save_pruna_model, save_pruna_model_to_hub
-from pruna.engine.utils import get_device, get_nn_modules, move_to_device, set_to_eval
+from pruna.engine.utils import get_device, get_nn_modules, set_to_eval
 from pruna.logging.filter import apply_warning_filter
 from pruna.telemetry import increment_counter, track_usage
 
@@ -50,7 +50,7 @@ class PrunaModel:
     ) -> None:
         self.model: Any | None = model
         self.smash_config = smash_config if smash_config is not None else SmashConfig()
-        self.inference_handler = register_inference_handler(self.model)
+        self.inference_handler = register_inference_handler(self.model, self.smash_config)
 
     @track_usage
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -75,7 +75,7 @@ class PrunaModel:
             with torch.no_grad():
                 return self.model.__call__(*args, **kwargs)
 
-    def run_inference(self, batch: Any, device: torch.device | str | None = None) -> Any:
+    def run_inference(self, batch: Any) -> Any:
         """
         Run inference on the model.
 
@@ -83,8 +83,6 @@ class PrunaModel:
         ----------
         batch : Any
             The batch to run inference on.
-        device : torch.device | str | None
-            The device to run inference on. If None, the best available device will be used.
 
         Returns
         -------
@@ -103,12 +101,19 @@ class PrunaModel:
             batch = (batch, {})
         prepared_inputs = self.inference_handler.prepare_inputs(batch)
 
+        inference_function_name = self.inference_handler.inference_function_name
+        if inference_function_name is None or not hasattr(self, inference_function_name):
+            raise ValueError(
+                f"Unrecognized inference function name for model {type(self.model)}: {inference_function_name}"
+            )
+        inference_function = getattr(self, inference_function_name)
+
         if prepared_inputs is None:
-            outputs = self(**self.inference_handler.model_args)
+            outputs = inference_function(**self.inference_handler.model_args)
         elif isinstance(prepared_inputs, dict):
-            outputs = self(**prepared_inputs, **self.inference_handler.model_args)
+            outputs = inference_function(**prepared_inputs, **self.inference_handler.model_args)
         else:
-            outputs = self(prepared_inputs, **self.inference_handler.model_args)
+            outputs = inference_function(prepared_inputs, **self.inference_handler.model_args)
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
@@ -172,17 +177,6 @@ class PrunaModel:
     def set_to_eval(self) -> None:
         """Set the model to evaluation mode."""
         set_to_eval(self.model)
-
-    def move_to_device(self, device: str) -> None:
-        """
-        Move the model to a specific device.
-
-        Parameters
-        ----------
-        device : str
-            The device to move the model to.
-        """
-        move_to_device(self.model, device)
 
     def save_pretrained(self, model_path: str) -> None:
         """

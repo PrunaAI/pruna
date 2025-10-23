@@ -124,7 +124,7 @@ class WS2TBatcher(PrunaBatcher):
 
         temp_directory_name = "whisper"
 
-        # ignore mypy warnings here because we ensure beforehand that processor is not None
+        # ignore ty warnings here because we ensure beforehand that processor is not None
         processor: Any = smash_config.processor  # type: ignore[attr-defined]
 
         if task == "audio_text_transcription":

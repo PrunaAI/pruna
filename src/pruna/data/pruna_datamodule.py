@@ -135,6 +135,7 @@ class PrunaDataModule(LightningDataModule):
         collate_fn_args: dict = dict(),
         dataloader_args: dict = dict(),
         seed: int = 42,
+        category: str | list[str] | None = None,
     ) -> "PrunaDataModule":
         """
         Create a PrunaDataModule from the dataset name with preimplemented dataset loading.
@@ -152,6 +153,9 @@ class PrunaDataModule(LightningDataModule):
         seed : int
             The seed to use.
 
+        category : str | list[str] | None
+            The category of the dataset.
+
         Returns
         -------
         PrunaDataModule
@@ -165,6 +169,10 @@ class PrunaDataModule(LightningDataModule):
 
         if "seed" in inspect.signature(setup_fn).parameters:
             setup_fn = partial(setup_fn, seed=seed)
+
+        if "category" in inspect.signature(setup_fn).parameters:
+            setup_fn = partial(setup_fn, category=category)
+
         train_ds, val_ds, test_ds = setup_fn()
 
         return cls.from_datasets(
@@ -189,7 +197,7 @@ class PrunaDataModule(LightningDataModule):
             train_limit, val_limit, test_limit = limit
 
         if isinstance(self.train_dataset, Dataset):
-            self.train_dataset = cast(Dataset, self.train_dataset)  # for mypy
+            self.train_dataset = cast(Dataset, self.train_dataset)  # for ty
             self.val_dataset = cast(Dataset, self.val_dataset)
             self.test_dataset = cast(Dataset, self.test_dataset)
             self.train_dataset = self.train_dataset.select(range(min(len(self.train_dataset), train_limit)))
