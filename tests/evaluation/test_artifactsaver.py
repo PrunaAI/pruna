@@ -7,7 +7,7 @@ import torch
 
 from pruna.evaluation.artifactsavers.video_artifactsaver import VideoArtifactSaver
 from pruna.evaluation.artifactsavers.utils import assign_artifact_saver
-from pruna.evaluation.metrics.vbench_utils import load_videos
+from pruna.evaluation.metrics.vbench_utils import load_video
 from PIL import Image
 import itertools
 
@@ -23,7 +23,7 @@ def test_create_alias():
         # Then, we create an alias for the video.
         alias = saver.create_alias(source_filename, "alias_filename")
         # Finally, we reload the alias and check that it is the same as the original video.
-        reloaded_alias_video = load_videos(str(alias), return_type = "np")
+        reloaded_alias_video = load_video(str(alias), return_type = "np")
 
         assert(reloaded_alias_video.shape == dummy_video.shape)
         assert alias.exists()
