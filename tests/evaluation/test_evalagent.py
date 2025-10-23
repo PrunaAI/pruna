@@ -7,13 +7,12 @@ from pruna.engine.pruna_model import PrunaModel
 
 
 @pytest.mark.cuda
-@pytest.mark.parametrize("model_fixture",
-[pytest.param("wan_tiny_random", marks=pytest.mark.cuda)], indirect=["model_fixture"])
-def test_agent_saves_artifacts(model_fixture):
+@pytest.mark.parametrize("model_fixture, export_format",
+[pytest.param("wan_tiny_random", "mp4", marks=pytest.mark.cuda),
+pytest.param("wan_tiny_random", "gif", marks=pytest.mark.cuda)], indirect=["model_fixture"])
+def test_agent_saves_artifacts(model_fixture, export_format):
     """ Test that the agent runs inference and saves the inference output artifacts correctly."""
     model, smash_config = model_fixture
-    # Metrics don't work with bfloat16
-    model.to(dtype=torch.float16, device="cuda")
     # Artifact path
     temp_path = tempfile.mkdtemp()
 
@@ -29,15 +28,15 @@ def test_agent_saves_artifacts(model_fixture):
         device="cuda",
         save_artifacts=True,
         root_dir=temp_path,
-        artifact_saver_export_format="mp4",
-        saving_kwargs={"fps":4}
+        saving_kwargs={"fps":4},
+        artifact_saver_export_format=export_format,
     )
 
     pruna_model = PrunaModel(model, smash_config)
-    pruna_model.inference_handler.model_args["num_inference_steps"] = 2
+    pruna_model.inference_handler.model_args["num_inference_steps"] = 1
 
     agent.evaluate(model=pruna_model)
-    mp4_files = list(Path(temp_path).rglob("*.mp4"))
+    files = list(Path(temp_path).rglob(f"*.{export_format}"))
 
     # Check that we saved the correct number of files
-    assert len(mp4_files) == data_points
+    assert len(files) == data_points
