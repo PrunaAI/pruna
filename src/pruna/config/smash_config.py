@@ -208,7 +208,7 @@ class SmashConfig:
             and self.save_fns == other.save_fns
             and self.load_fns == other.load_fns
             and self.reapply_after_load == other.reapply_after_load
-            and self.algorithm_order == other.algorithm_order
+            and self._algorithm_order == other._algorithm_order
         )
 
     def cleanup_cache_dir(self) -> None:

@@ -319,8 +319,8 @@ class PrunaAlgorithmBase(ABC):
         list[str]
             The incompatible algorithms.
         """
-        compatible_before = set(self._expand_tags_into_algorithm_names(self.compatible_before))
-        compatible_after = set(self._expand_tags_into_algorithm_names(self.compatible_after))
+        compatible_before = set(_expand_tags_into_algorithm_names(self.compatible_before))
+        compatible_after = set(_expand_tags_into_algorithm_names(self.compatible_after))
         allowed = compatible_before | compatible_after
         all_algorithms = set(SMASH_SPACE.get_all_algorithms())
         return sorted(all_algorithms - allowed)
