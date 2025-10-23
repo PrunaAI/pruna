@@ -218,16 +218,16 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
     """
     graph = DiGraph()
     active_algorithms = smash_config.get_active_algorithms()
+    algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
 
     for algorithm in active_algorithms:
         graph.add_node(algorithm)
 
-    for algorithm_name_a in active_algorithms:
-        algorithm = AlgorithmRegistry[algorithm_name_a]
-        for algorithm_name_b in algorithm.get_algorithms_to_run_before():
-            graph.add_edge(algorithm_name_b, algorithm_name_a)
-        for algorithm_name_b in algorithm.get_algorithms_to_run_after():
-            graph.add_edge(algorithm_name_a, algorithm_name_b)
+    for alg_a, alg_b in algorithm_pairs:
+        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_before():
+            graph.add_edge(alg_a, alg_b)
+        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_after():
+            graph.add_edge(alg_b, alg_a)
 
     return graph
 

@@ -32,7 +32,7 @@ from pruna.config.pre_smash_routines import (
     construct_algorithm_directed_graph,
 )
 
-
+@pytest.mark.cpu
 class TestEnsureDeviceConsistency:
     """Test suite for ensure_device_consistency function."""
 
@@ -104,7 +104,7 @@ class TestEnsureDeviceConsistency:
                 assert smash_config.device == "cuda"
                 mock_logger.warning.assert_called_once()
 
-
+@pytest.mark.cpu
 class TestCheckModelCompatibility:
     """Test suite for check_model_compatibility function."""
 
@@ -159,7 +159,7 @@ class TestCheckModelCompatibility:
                 with pytest.raises(ValueError, match="algorithm1 is not compatible with model device cuda"):
                     check_model_compatibility(model, smash_config)
 
-
+@pytest.mark.cpu
 class TestCheckAlgorithmPackagesAvailability:
     """Test suite for check_algorithm_packages_availability function."""
 
@@ -186,7 +186,7 @@ class TestCheckAlgorithmPackagesAvailability:
             with pytest.raises(ImportError):
                 check_algorithm_packages_availability(smash_config)
 
-
+@pytest.mark.cpu
 class TestCheckArgumentCompatibility:
     """Test suite for check_argument_compatibility function."""
 
@@ -247,7 +247,7 @@ class TestCheckArgumentCompatibility:
             with pytest.raises(ValueError, match="algorithm1 requires a dataset"):
                 check_argument_compatibility(smash_config)
 
-
+@pytest.mark.cpu
 class TestCheckAlgorithmCrossCompatibility:
     """Test suite for check_algorithm_cross_compatibility function."""
 
@@ -284,7 +284,7 @@ class TestCheckAlgorithmCrossCompatibility:
             with pytest.raises(ValueError, match="Algorithm algorithm1 is incompatible with algorithm2"):
                 check_algorithm_cross_compatibility(smash_config)
 
-
+@pytest.mark.cpu
 class TestDetermineAlgorithmOrder:
     """Test suite for determine_algorithm_order function."""
 
@@ -314,7 +314,7 @@ class TestDetermineAlgorithmOrder:
             with pytest.raises(ValueError, match="Cycle detected in the algorithm order, the current algorithm configuration is not possible."):
                 determine_algorithm_order(smash_config)
 
-
+@pytest.mark.cpu
 class TestConstructAlgorithmDirectedGraph:
     """Test suite for construct_algorithm_directed_graph function."""
 
