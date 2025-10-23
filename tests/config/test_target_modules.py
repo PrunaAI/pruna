@@ -9,24 +9,24 @@ from pruna.config.target_modules import TARGET_MODULES_TYPE
 
 @pytest.mark.cuda
 @pytest.mark.parametrize(
-    "model_fixture, algorithm_group, algorithm, target_modules, expected_number_of_targeted_modules",
+    "model_fixture, algorithm, target_modules, expected_number_of_targeted_modules",
     [
-        ("flux_tiny_random", "quantizer", "quanto", None, 28),
-        ("flux_tiny_random", "quantizer", "quanto", {"include": ["transformer*"]}, 28),
-        ("flux_tiny_random", "quantizer", "quanto", {"include": ["transformer*"], "exclude": ["*norm*"]}, 24),
-        ("flux_tiny_random", "quantizer", "diffusers_int8", None, 28),
-        ("flux_tiny_random", "quantizer", "diffusers_int8", {"include": ["transformer*"], "exclude": ["*norm*"]}, 24),
-        ("llama_3_tiny_random", "quantizer", "llm_int8", None, 14),
-        ("llama_3_tiny_random_as_pipeline", "quantizer", "llm_int8", {"include": ["model.*"], "exclude": ["*v_proj*"]}, 13),
+        ("flux_tiny_random", "quanto", None, 28),
+        ("flux_tiny_random", "quanto", {"include": ["transformer*"]}, 28),
+        ("flux_tiny_random", "quanto", {"include": ["transformer*"], "exclude": ["*norm*"]}, 24),
+        ("flux_tiny_random", "diffusers_int8", None, 28),
+        ("flux_tiny_random", "diffusers_int8", {"include": ["transformer*"], "exclude": ["*norm*"]}, 24),
+        ("llama_3_tiny_random", "llm_int8", None, 14),
+        ("llama_3_tiny_random_as_pipeline", "llm_int8", {"include": ["model.*"], "exclude": ["*v_proj*"]}, 13),
     ],
     indirect=["model_fixture"],
 )
 def test_target_modules(
-    model_fixture: tuple, algorithm_group: str, algorithm: str, target_modules: TARGET_MODULES_TYPE | None, expected_number_of_targeted_modules: int
+    model_fixture: tuple, algorithm: str, target_modules: TARGET_MODULES_TYPE | None, expected_number_of_targeted_modules: int
 ) -> None:
     model, smash_config = model_fixture
-    smash_config[algorithm_group] = algorithm
-    smash_config[f"{algorithm}_target_modules"] = target_modules
+    smash_config.add(algorithm)
+    smash_config.add({f"{algorithm}_target_modules": target_modules})
     smashed_model = smash(model, smash_config)
 
     is_algorithm_applied = {
@@ -49,8 +49,8 @@ def test_target_modules(
 ])
 def test_target_modules_format_accept(target_modules: dict[str, list[str]]):
     smash_config = SmashConfig()
-    smash_config["quantizer"] = "quanto"
-    smash_config["quanto_target_modules"] = target_modules
+    smash_config.add("quanto")
+    smash_config.add({"quanto_target_modules": target_modules})
     assert smash_config['quanto_target_modules'] == target_modules
 
 @pytest.mark.cpu
@@ -62,6 +62,6 @@ def test_target_modules_format_accept(target_modules: dict[str, list[str]]):
 ])
 def test_target_modules_format_reject(target_modules: TARGET_MODULES_TYPE, expected_error: type):
     smash_config = SmashConfig()
-    smash_config["quantizer"] = "quanto"
+    smash_config.add("quanto")
     with pytest.raises(expected_error):
-        smash_config["quanto_target_modules"] = target_modules
+        smash_config.add({"quanto_target_modules": target_modules})
