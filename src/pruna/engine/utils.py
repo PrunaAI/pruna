@@ -679,19 +679,11 @@ class ModelContext(AbstractContextManager):
     ----------
     model : ModelMixin
         The model to handle. Can be a transformer model, UNet, or other ModelMixin.
+    read_only : bool
+            Whether the model is read-only.
     """
 
     def __init__(self, model: "ModelMixin", read_only: bool = False) -> None:
-        """
-        Context manager for handling the model.
-
-        Parameters
-        ----------
-        model : ModelMixin
-            The model to handle. Can be a transformer model, UNet, or other pipeline.
-        read_only : bool
-            Whether the model is read-only.
-        """
         self.model = model
         self.read_only = read_only
         self.smashed_working_model = None
