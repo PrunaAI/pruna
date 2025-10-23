@@ -328,6 +328,23 @@ def cast_model_to_accelerate_device_map(model, device_map):
     model.hf_device_map = device_map.copy()
 
 
+def get_device_type(model: Any) -> str:
+    """
+    Get the device type of the model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to get the device type from.
+
+    Returns
+    -------
+    str
+        The device type of the model.
+    """
+    return split_device(get_device(model))[0]
+
+
 def get_device(model: Any) -> str:
     """
     Get the device of the model.
