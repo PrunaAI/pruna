@@ -14,6 +14,7 @@
 
 import contextlib
 import os
+from collections.abc import Iterable
 from typing import Any, Callable
 
 import torch
@@ -55,7 +56,7 @@ class TorchCompile(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
-    compatible_before: list[str] = [
+    compatible_before: Iterable[str] = [
         "qkv_diffusers",
         "torch_structured",
         "half",

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import tempfile
+from collections.abc import Iterable
 from typing import Any, Dict
 
 from ConfigSpace import OrdinalHyperparameter
@@ -44,7 +45,7 @@ class GPTQ(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = True
-    compatible_after: list[str] = ["torch_compile"]
+    compatible_after: Iterable[str] = ["torch_compile"]
     required_install: str = (
         "You must first install the base package with ``pip install pruna`` "
         "before installing the GPTQ extension with ``pip install pruna[gptq] --extra-index-url https://prunaai.pythonanywhere.com/``"

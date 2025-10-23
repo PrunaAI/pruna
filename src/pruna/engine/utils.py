@@ -645,7 +645,7 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     device : str
         The device to split.
     strict : bool
-        Whether to raise an error if the device is not in allowed devices
+        Whether to raise an error if the device is not in allowed devices.
 
     Returns
     -------
@@ -689,6 +689,8 @@ class ModelContext(AbstractContextManager):
         ----------
         model : ModelMixin
             The model to handle. Can be a transformer model, UNet, or other pipeline.
+        read_only : bool
+            Whether the model is read-only.
         """
         self.model = model
         self.read_only = read_only

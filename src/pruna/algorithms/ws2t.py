@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Any, Dict, List, Union
 
 from tokenizers import Tokenizer
@@ -53,7 +54,7 @@ class WS2T(PrunaAlgorithmBase):
     processor_required: bool = True
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
-    compatible_before: list[str] = ["half", "c_translate", "c_generate", "c_whisper"]
+    compatible_before: Iterable[str] = ["half", "c_translate", "c_generate", "c_whisper"]
 
     def get_hyperparameters(self) -> list:
         """

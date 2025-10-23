@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+from collections.abc import Iterable
 from typing import Any, Dict
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -39,7 +40,7 @@ class StableFast(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: list[str] = ["half", "deepcache", "fora"]
+    compatible_before: Iterable[str] = ["half", "deepcache", "fora"]
     required_install: str = "``pip install pruna[stable-fast]``"
 
     def model_check_fn(self, model: Any) -> bool:

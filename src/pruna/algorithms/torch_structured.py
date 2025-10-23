@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -60,7 +61,7 @@ class TorchStructured(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = True
     runs_on: list[str] = ["cpu", "cuda"]
-    compatible_after: list[str] = ["half", "torchao", "hqq", "torch_compile"]
+    compatible_after: Iterable[str] = ["half", "torchao", "hqq", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

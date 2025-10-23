@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import functools
+from collections.abc import Iterable
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
@@ -43,8 +44,8 @@ class FORA(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: list[str] = ["qkv_diffusers", "diffusers_int8", "hqq_diffusers", "torchao", "flash_attn3"]
-    compatible_after: list[str] = ["stable_fast", "torch_compile"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "diffusers_int8", "hqq_diffusers", "torchao", "flash_attn3"]
+    compatible_after: Iterable[str] = ["stable_fast", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
         """

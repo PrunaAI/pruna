@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any, Dict
 
 import torch
@@ -49,8 +50,8 @@ class Quanto(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
-    compatible_before: list[str] = ["qkv_diffusers"]
-    compatible_after: list[str] = ["deepcache"]
+    compatible_before: Iterable[str] = ["qkv_diffusers"]
+    compatible_after: Iterable[str] = ["deepcache"]
 
     def get_hyperparameters(self) -> list:
         """

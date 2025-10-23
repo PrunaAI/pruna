@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from typing import Any, Dict
 
 from ConfigSpace import CategoricalHyperparameter
@@ -40,8 +41,8 @@ class LLMCompressor(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = True
     runs_on: list[str] = ["cuda"]
-    compatible_before: list[str] = []
-    compatible_after: list[str] = []
+    compatible_before: Iterable[str] = []
+    compatible_after: Iterable[str] = []
 
     def get_hyperparameters(self) -> list:
         """

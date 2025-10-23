@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any, Dict, Optional, Tuple
 
 from ConfigSpace import OrdinalHyperparameter
@@ -56,7 +57,7 @@ class FasterCache(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_before: list[str] = ["hqq_diffusers", "diffusers_int8"]
+    compatible_before: Iterable[str] = ["hqq_diffusers", "diffusers_int8"]
 
     def get_hyperparameters(self) -> list:
         """

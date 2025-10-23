@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections.abc import Iterable
 from typing import Any
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -41,7 +42,7 @@ class QKVFusing(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_after: list[str] = [
+    compatible_after: Iterable[str] = [
         "diffusers_int8",
         "hqq_diffusers",
         "quanto",
