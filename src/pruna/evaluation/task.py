@@ -168,18 +168,15 @@ def _safe_build_metrics(
         str
             The modality of the task.
         """
-        stateful_metrics = [metric for metric in self.metrics if isinstance(metric, StatefulMetric)]
-        modalities_no_general = {
-            modality for metric in stateful_metrics for modality in metric.modality if modality != "general"
-        }
-        #  We should also allow 0 because the user might have only general modality metrics.
-        if len(modalities_no_general) == 1:
-            modality = modalities_no_general.pop()
-        elif len(modalities_no_general) == 0:
-            modality = "general"
-        else:
-            raise ValueError("The task should have a single modality of quality metrics.")
-        return modality
+        modality_intersection = set.intersection(
+            *[metric.modality for metric in self.metrics if isinstance(metric, StatefulMetric)]
+        )
+        if len(modality_intersection) == 1:
+            return modality_intersection.pop()
+        elif len(modality_intersection) == 0:
+            raise ValueError("The task should have a single modality across all quality metrics.")
+        else:  # More than one modality, fine for evaluation, can't save artifacts (for now).
+            return "general"
 
 
 def get_metrics(

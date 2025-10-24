@@ -43,8 +43,11 @@ from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
     CALL_TYPES,
+    IMAGE,
+    MODALITIES,
     PAIRWISE,
     SINGLE,
+    TEXT,
     get_pairwise_pairing,
     get_single_pairing,
     metric_data_processor,
@@ -210,19 +213,19 @@ class TorchMetrics(Enum):
         The starting value for the enum.
     """
 
-    fid = (partial(FrechetInceptionDistance), fid_update, "gt_y", ["image"])
-    kid = (partial(KernelInceptionDistance), kid_update, "gt_y", ["image"],kid_compute)
-    accuracy = (partial(Accuracy), None, "y_gt", ["general"])
-    perplexity = (partial(Perplexity), None, "y_gt", ["text"])
-    clip_score = (partial(CLIPScore), None, "y_x", ["image"])
-    precision = (partial(Precision), None, "y_gt", ["general"])
-    recall = (partial(Recall), None, "y_gt", ["general"])
-    psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt", ["image"])
-    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", ["image"])
-    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", ["image"])
-    lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt", ["image"])
-    arniqa = (partial(ARNIQA), arniqa_update, "y", ["image"])
-    clipiqa = (partial(CLIPImageQualityAssessment), None, "y", ["image"])
+    fid = (partial(FrechetInceptionDistance), fid_update, "gt_y", {IMAGE})
+    kid = (partial(KernelInceptionDistance), kid_update, "gt_y", {IMAGE},kid_compute)
+    accuracy = (partial(Accuracy), None, "y_gt", MODALITIES)
+    perplexity = (partial(Perplexity), None, "y_gt", {TEXT})
+    clip_score = (partial(CLIPScore), None, "y_x", {IMAGE})
+    precision = (partial(Precision), None, "y_gt", MODALITIES)
+    recall = (partial(Recall), None, "y_gt", MODALITIES)
+    psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt", {IMAGE})
+    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", {IMAGE})
+    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", {IMAGE})
+    lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt", {IMAGE})
+    arniqa = (partial(ARNIQA), arniqa_update, "y", {IMAGE})
+    clipiqa = (partial(CLIPImageQualityAssessment), None, "y", {IMAGE})
 
     def __init__(self, *args, **kwargs) -> None:
         self.tm = self.value[0]
