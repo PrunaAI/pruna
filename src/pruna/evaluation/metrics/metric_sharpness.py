@@ -24,7 +24,7 @@ from torch import Tensor
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import IMAGE, SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_SHARPNESS = "sharpness"
@@ -64,7 +64,7 @@ class SharpnessMetric(StatefulMetric):
     higher_is_better: bool = True
     metric_name: str = METRIC_SHARPNESS
     runs_on: List[str] = ["cpu", "cuda"]
-    modality = ["image"]
+    modality = {IMAGE}
 
     def __init__(self, *args, kernel_size: int = 3, call_type: str = SINGLE, **kwargs) -> None:
         super().__init__(device=kwargs.pop("device", None))
