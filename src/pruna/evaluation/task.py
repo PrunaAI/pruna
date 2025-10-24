@@ -154,8 +154,11 @@ class Task:
         str
             The modality of the task.
         """
+<<<<<<< HEAD
         if not self.get_single_stateful_metrics() and not self.get_pairwise_stateful_metrics():
             return "general"
+=======
+>>>>>>> ccb1b25 (feat: metric modalities as sets)
         modality_intersection = set.intersection(
             *[metric.modality for metric in self.metrics if isinstance(metric, StatefulMetric)]
         )
@@ -165,6 +168,7 @@ class Task:
             raise ValueError("The task should have a single modality across all quality metrics.")
         else:  # More than one modality, fine for evaluation, can't save artifacts (for now).
             return "general"
+<<<<<<< HEAD
 
 
 def _safe_build_metrics(
@@ -179,6 +183,8 @@ def _safe_build_metrics(
                 stateful_metric_device,
             )
         raise e
+=======
+>>>>>>> ccb1b25 (feat: metric modalities as sets)
 
 
 def get_metrics(

@@ -172,6 +172,9 @@ class TorchMetrics(Enum):
     """
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ccb1b25 (feat: metric modalities as sets)
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y", {IMAGE})
     accuracy = (partial(Accuracy), None, "y_gt", MODALITIES)
     perplexity = (partial(Perplexity), None, "y_gt", {TEXT})
@@ -184,6 +187,7 @@ class TorchMetrics(Enum):
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt", {IMAGE})
     arniqa = (partial(ARNIQA), arniqa_update, "y", {IMAGE})
     clipiqa = (partial(CLIPImageQualityAssessment), None, "y", {IMAGE})
+<<<<<<< HEAD
 =======
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
     accuracy = (partial(Accuracy), None, "y_gt")
@@ -198,6 +202,8 @@ class TorchMetrics(Enum):
     arniqa = (partial(ARNIQA), arniqa_update, "y")
     clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
 >>>>>>> 7d11666 (Kid metric added (#435))
+=======
+>>>>>>> ccb1b25 (feat: metric modalities as sets)
 
     def __init__(self, *args, **kwargs) -> None:
         self.tm = self.value[0]

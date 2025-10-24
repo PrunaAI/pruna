@@ -55,6 +55,16 @@ repos:
 
   - repo: local
     hooks:
+      - id: ty
+        name: type checking using ty
+        entry: uvx ty check .
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: \.py$
+
+  - repo: local
+    hooks:
       - id: check-pruna-pro
         name: Check for pruna_pro
         entry: >
@@ -67,10 +77,14 @@ repos:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 781a3a4 (feat: metric modalities as sets)
             if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
               echo "Error: pruna_pro found in staged file $file"
               exit 1
             fi
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> 2329abb (feat: metric modalities as sets)
@@ -89,6 +103,8 @@ repos:
                   exit 1
               fi
 >>>>>>> 607edef (feat: 0 vbench dimensions and vbench dependencies)
+=======
+>>>>>>> 781a3a4 (feat: metric modalities as sets)
           done
           '
         language: system
