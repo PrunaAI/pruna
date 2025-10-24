@@ -39,7 +39,7 @@ class HalfQuantizer(PrunaQuantizer):
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
     compatible_algorithms: dict[str, list[str]] = dict(
-        batcher=["ifw", "whisper_s2t"],
+        batcher=["ifw", "faster_whisper"],
         cacher=["deepcache"],
         compiler=[
             "c_translate",
