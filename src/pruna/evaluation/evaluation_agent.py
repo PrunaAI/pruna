@@ -27,7 +27,7 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import get_device, move_to_device, get_device, safe_memory_cleanup, set_to_best_available_device
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.artifactsavers.utils import assign_artifact_saver
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
