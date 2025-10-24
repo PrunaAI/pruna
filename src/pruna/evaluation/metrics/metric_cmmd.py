@@ -25,7 +25,7 @@ from pruna.engine.utils import device_to_string
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import IMAGE, SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_CMMD = "cmmd"
@@ -58,7 +58,7 @@ class CMMD(StatefulMetric):
     default_call_type: str = "gt_y"
     higher_is_better: bool = False
     metric_name: str = METRIC_CMMD
-    modality = ["image"]
+    modality = {IMAGE}
 
     def __init__(
         self,
