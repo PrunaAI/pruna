@@ -26,7 +26,7 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import PAIRWISE, metric_data_processor
+from pruna.evaluation.metrics.utils import IMAGE, PAIRWISE, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 
@@ -47,7 +47,7 @@ class PairwiseClipScore(CLIPScore, StatefulMetric):  # type: ignore[misc]
 
     higher_is_better: bool = True
     metric_name: str = "pairwise_clip_score"
-    modality = ["image"]
+    modality = {IMAGE}
 
     def __init__(self, **kwargs: Any) -> None:
         device = kwargs.pop("device", None)

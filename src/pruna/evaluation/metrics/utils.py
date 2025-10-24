@@ -41,6 +41,11 @@ from pruna.logging.logger import pruna_logger
 SINGLE = "single"
 PAIRWISE = "pairwise"
 CALL_TYPES = (SINGLE, PAIRWISE)
+IMAGE = "image"
+VIDEO = "video"
+TEXT = "text"
+
+MODALITIES = {IMAGE, VIDEO, TEXT}
 
 
 def metric_data_processor(

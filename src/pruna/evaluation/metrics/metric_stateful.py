@@ -46,7 +46,7 @@ class StatefulMetric(ABC):
     call_type: str
     runs_on: list[str] = ["cuda", "cpu", "mps"]
     create_alias: bool = False
-    modality: List[str]
+    modality: set[str]
 
     def __init__(self, device: str | torch.device | None = None, **kwargs) -> None:
         """Initialize the StatefulMetric class."""
