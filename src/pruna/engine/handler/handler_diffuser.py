@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import torch
 
-from pruna.engine.handler.handler_inference import InferenceHandler, validate_seed_strategy
+from pruna.engine.handler.handler_inference import InferenceHandler
 from pruna.logging.logger import pruna_logger
 
 
@@ -93,35 +93,27 @@ class DiffuserHandler(InferenceHandler):
             # Maybe the user is calling the pipeline with return_dict = False,
             # which then returns the generated image / video in a tuple
             generated = output[0]
-        return generated
+        return generated.float()
 
     def log_model_info(self) -> None:
         """Log information about the inference handler."""
         pruna_logger.info(
             "Detected diffusers model. Using DiffuserHandler.\n- The first element of the batch is passed as input.\n"
+            "Inference outputs are expected to have either have an `images` attribute or a `frames` attribute."
+            "Or be a tuple with the generated image / video as the first element."
         )
 
-    def configure_seed(self, seed_strategy: Literal["per_sample", "no_seed"], global_seed: int | None) -> None:
+    def set_seed(self, seed: int) -> None:
         """
-        Set the random seed according to the chosen strategy.
-
-        - If `seed_strategy="per_sample"`,the `global_seed` is used as a base to derive a different seed for each
-        sample. This ensures reproducibility while still producing variation across samples,
-        making it the preferred option for benchmarking.
-        - If `seed_strategy="no_seed"`, no seed is set internally.
-        The user is responsible for managing seeds if reproducibility is required.
+        Set the random seed for the current process.
 
         Parameters
         ----------
-        seed_strategy : Literal["per_sample", "no_seed"]
-            The seeding strategy to apply.
-        global_seed : int | None
-            The base seed value to use (if applicable).
+        seed : int
+            The seed to set.
         """
-        self.seed_strategy = seed_strategy
-        validate_seed_strategy(seed_strategy, global_seed)
-        if global_seed is not None:
-            self.global_seed = global_seed
-            self.model_args["generator"] = torch.Generator("cpu").manual_seed(global_seed)
-        else:
-            self.model_args["generator"] = None  # Remove the seed.
+        self.model_args["generator"] = torch.Generator("cpu").manual_seed(seed)
+
+    def remove_seed(self) -> None:
+        """Remove the seed from the current process."""
+        self.model_args["generator"] = None

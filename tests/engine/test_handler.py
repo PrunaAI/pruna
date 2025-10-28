@@ -1,11 +1,11 @@
-import types
+import numpy as np
 import pytest
 import torch
 from pruna.engine.handler.handler_inference import (
-    set_seed,
     validate_seed_strategy,
 )
 from pruna.engine.handler.handler_diffuser import DiffuserHandler
+from pruna.engine.handler.handler_standard import StandardHandler
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import move_to_device
 #  Default handler tests, mainly for checking seeding.
@@ -25,14 +25,16 @@ def test_validate_seed_strategy_invalid(strategy, seed):
     with pytest.raises(ValueError):
         validate_seed_strategy(strategy, seed)
 
-
 def test_set_seed_reproducibility():
-    '''Test to see set_seed is reproducible'''
-    set_seed(42)
-    a = torch.randn(3)
-    set_seed(42)
-    b = torch.randn(3)
-    assert torch.equal(a, b)
+    inference_handler = StandardHandler()
+    inference_handler.set_seed(42)
+    torch_random_tensor = torch.randn(3)
+    numpy_random_tensor = np.random.randn(3)
+    inference_handler.set_seed(42)
+    torch_expected = torch.randn(3)
+    numpy_expected = np.random.randn(3)
+    assert torch.equal(torch_random_tensor, torch_expected)
+    assert np.array_equal(numpy_random_tensor, numpy_expected)
 
 
 # Diffuser handler tests, checking output processing and seeding.
