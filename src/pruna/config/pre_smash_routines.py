@@ -14,11 +14,14 @@
 
 from __future__ import annotations
 
+import itertools
 from typing import Any, cast
 
+import networkx as nx
+from networkx import DiGraph
+
 from pruna import SmashConfig
-from pruna.algorithms import PRUNA_ALGORITHMS
-from pruna.config.smash_space import SMASH_SPACE
+from pruna.algorithms import AlgorithmRegistry
 from pruna.engine.utils import get_device, get_device_map, move_to_device, split_device
 from pruna.logging.logger import pruna_logger
 
@@ -75,13 +78,9 @@ def ensure_device_consistency(model, smash_config):
         raise ValueError(f"Invalid device: {smash_config.device}")
 
 
-def check_model_compatibility(
-    model: Any,
-    smash_config: SmashConfig,
-    algorithm_dict: dict[str, Any] = PRUNA_ALGORITHMS,
-) -> None:
+def check_model_compatibility(model: Any, smash_config: SmashConfig) -> None:
     """
-    Check if the model is compatible with the given configuration.
+    Check if the model and its device state are compatible with the given configuration.
 
     Parameters
     ----------
@@ -89,83 +88,61 @@ def check_model_compatibility(
         The model to check for compatibility with the SmashConfig.
     smash_config : SmashConfig
         The SmashConfig to check the model against.
-    algorithm_dict : dict[str, Any]
-        The algorithm dictionary to hold all algorithm instances.
     """
-    # algorithm groups are subject to change, make sure we have the latest version
-    from pruna.config.smash_space import ALGORITHM_GROUPS
-
-    # iterate through compiler, quantizer, ...
-    for current_group in ALGORITHM_GROUPS:
-        algorithm = smash_config[current_group]
-        if algorithm is not None:
-            check_algorithm_availability(algorithm, current_group, algorithm_dict)
-            # test if all required packages are installed, if not this will raise an ImportError
-            algorithm_dict[current_group][algorithm].import_algorithm_packages()
-            check_argument_compatibility(smash_config, algorithm)
-            # check for model-algorithm compatibility with the model_check_fn
-            if not algorithm_dict[current_group][algorithm].model_check_fn(model):
-                raise ValueError(
-                    f"Model is not compatible with {algorithm_dict[current_group][algorithm].algorithm_name}"
-                )
-            if split_device(cast(str, get_device(model)))[0] not in algorithm_dict[current_group][algorithm].runs_on:
-                raise ValueError(
-                    f"{algorithm} is not compatible with device {get_device(model)}, "
-                    f"compatible devices are {algorithm_dict[current_group][algorithm].runs_on}"
-                )
+    for algorithm_name in smash_config.get_active_algorithms():
+        algorithm_class = AlgorithmRegistry[algorithm_name]
+        if not algorithm_class.model_check_fn(model):
+            raise ValueError(f"Model is not compatible with {algorithm_class.algorithm_name}")
+        if split_device(cast(str, get_device(model)))[0] not in algorithm_class.runs_on:
+            raise ValueError(
+                f"{algorithm_name} is not compatible with model device {get_device(model)}, "
+                f"compatible devices are {algorithm_class.runs_on}"
+            )
 
 
-def check_argument_compatibility(smash_config: SmashConfig, algorithm_name: str) -> None:
+def check_algorithm_packages_availability(smash_config: SmashConfig) -> None:
     """
-    Check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for an algorithm.
+    Check if the algorithm packages are available for the given configuration.
+
+    Parameters
+    ----------
+    smash_config : SmashConfig
+        The SmashConfig object containing the algorithm configuration.
+    """
+    for algorithm in smash_config.get_active_algorithms():
+        algorithm_class = AlgorithmRegistry[algorithm]
+        algorithm_class.import_algorithm_packages()
+
+
+def check_argument_compatibility(smash_config: SmashConfig) -> None:
+    """
+    Check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for all active algorithms.
 
     Parameters
     ----------
     smash_config : SmashConfig
         The SmashConfig to check the argument consistency with.
-    algorithm_name : str
-        The algorithm name that is about to be activated.
     """
-    algorithm_requirements = SMASH_SPACE.model_requirements[algorithm_name]
-    if algorithm_requirements["tokenizer_required"] and smash_config.tokenizer is None:
-        raise ValueError(f"{algorithm_name} requires a tokenizer. Please provide it with smash_config.add_tokenizer().")
-    if algorithm_requirements["processor_required"] and smash_config.processor is None:
-        raise ValueError(f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor().")
-    if algorithm_requirements["dataset_required"] and smash_config.data is None:
-        raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
-    if smash_config._target_module is not None:
-        raise ValueError("Target module is only available in experimental mode. Please set experimental=True.")
+    for algorithm_name in smash_config.get_active_algorithms():
+        algorithm = AlgorithmRegistry[algorithm_name]
+
+        if algorithm.tokenizer_required and smash_config.tokenizer is None:
+            raise ValueError(
+                f"{algorithm_name} requires a tokenizer. Please provide it with smash_config.add_tokenizer()."
+            )
+        if algorithm.processor_required and smash_config.processor is None:
+            raise ValueError(
+                f"{algorithm_name} requires a processor. Please provide it with smash_config.add_processor()."
+            )
+        if algorithm.dataset_required and smash_config.data is None:
+            raise ValueError(f"{algorithm_name} requires a dataset. Please provide it with smash_config.add_data().")
+        if smash_config._target_module is not None:
+            raise ValueError("Target module is only available in experimental mode. Please set experimental=True.")
 
 
-def check_algorithm_availability(algorithm: str, algorithm_group: str, algorithm_dict: dict[str, Any]) -> None:
+def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, algorithm_order: list[str]) -> None:
     """
-    Check if the algorithm is available in the algorithm dictionary.
-
-    Parameters
-    ----------
-    algorithm : str
-        The algorithm to check for availability.
-    algorithm_group : str
-        The algorithm group to check for availability.
-    algorithm_dict : dict[str, Any]
-        The algorithm dictionary to check for availability.
-
-    Raises
-    ------
-    ValueError
-        If the algorithm is not available in the algorithm dictionary.
-    """
-    if algorithm_group not in algorithm_dict:
-        raise RuntimeError(f"Algorithm group {algorithm_group} is unavailable with pruna.smash")
-    if algorithm not in algorithm_dict[algorithm_group]:
-        raise RuntimeError(f"Algorithm {algorithm} is unavailable with pruna.smash")
-
-
-def execute_algorithm_pre_smash_hooks(
-    model: Any, smash_config: SmashConfig, algorithm_dict: dict[str, Any] = PRUNA_ALGORITHMS
-) -> None:
-    """
-    Loops through all algorithm groups and calls the pre_smash_hook method for each algorithm.
+    Loop through all active algorithms and calls the pre_smash_hook method for each algorithm.
 
     Parameters
     ----------
@@ -173,15 +150,97 @@ def execute_algorithm_pre_smash_hooks(
         The model to apply the setup to.
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
-    algorithm_dict : dict[str, Any], optional
-        Dictionary mapping algorithm groups to algorithm instances. Defaults to PRUNA_ALGORITHMS.
+    algorithm_order : list[str]
+        The order of the active algorithms to be applied.
     """
-    # algorithm groups are subject to change, make sure we have the latest version
-    from pruna.config.smash_space import ALGORITHM_GROUPS
+    active_algorithms = algorithm_order
+    for algorithm in active_algorithms:
+        algorithm_class = AlgorithmRegistry[algorithm]
+        algorithm_class.pre_smash_hook(model, smash_config)
 
-    # iterate through compiler, quantizer, ...
-    for current_group in ALGORITHM_GROUPS:
-        algorithm = smash_config[current_group]
-        if algorithm is not None:
-            check_algorithm_availability(algorithm, current_group, algorithm_dict)
-            algorithm_dict[current_group][algorithm].pre_smash_hook(model, smash_config)
+
+def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
+    """
+    Check if the active algorithms are compatible with each other.
+
+    Parameters
+    ----------
+    smash_config : SmashConfig
+        The SmashConfig object containing the algorithm configuration.
+    """
+    active_algorithms = smash_config.get_active_algorithms()
+    algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
+
+    for alg_a, alg_b in algorithm_pairs:
+        if alg_a in AlgorithmRegistry[alg_b].get_incompatible_algorithms():
+            raise ValueError(f"Algorithm {alg_a} is incompatible with {alg_b}")
+
+
+def determine_algorithm_order(smash_config: SmashConfig) -> list[str]:
+    """
+    Determine the order of the active algorithms based on their ordering requirements.
+
+    Parameters
+    ----------
+    smash_config : SmashConfig
+        The SmashConfig object containing the algorithm configuration.
+
+    Returns
+    -------
+    list[str]
+        The order of the active algorithms to be applied.
+    """
+    if smash_config._algorithm_order is not None:
+        return smash_config._algorithm_order
+    graph = construct_algorithm_directed_graph(smash_config)
+    remove_reciprocals(graph)
+    try:
+        order = list(nx.topological_sort(graph))
+        pruna_logger.info(f"Determined algorithm order: {', '.join(order)}")
+        return order
+    except nx.NetworkXUnfeasible:
+        raise ValueError("Cycle detected in the algorithm order, the current algorithm configuration is not possible.")
+
+
+def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
+    """
+    Construct a directed graph of the algorithms to be applied based on their ordering requirements.
+
+    Parameters
+    ----------
+    smash_config : SmashConfig
+        The SmashConfig object containing the algorithm configuration.
+
+    Returns
+    -------
+    nx.DiGraph
+        The directed graph of the algorithms to be applied.
+    """
+    graph = DiGraph()
+    active_algorithms = smash_config.get_active_algorithms()
+    algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
+
+    for algorithm in active_algorithms:
+        graph.add_node(algorithm)
+
+    for alg_a, alg_b in algorithm_pairs:
+        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_before():
+            graph.add_edge(alg_a, alg_b)
+        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_after():
+            graph.add_edge(alg_b, alg_a)
+
+    return graph
+
+
+def remove_reciprocals(graph: nx.DiGraph):
+    """
+    Remove reciprocal (bidirectional) edges from a directed graph.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        The directed graph to remove reciprocal edges from.
+    """
+    # Undirected view collapses mutual edges into one
+    reciprocal_subgraph = graph.to_undirected(reciprocal=True).to_directed()
+    graph.remove_edges_from(reciprocal_subgraph.edges())

@@ -36,6 +36,11 @@ def temporary_log_level(logger_name: str, level: Union[int, str] = "WARNING"):
         The temporary logging level to set. Can be an integer (e.g., logging.WARNING)
         or a string (e.g., "WARNING", "ERROR", "INFO", "DEBUG", "CRITICAL").
 
+    Yields
+    ------
+    Generator
+        A generator that yields nothing.
+
     Examples
     --------
     >>> # Suppress INFO messages from torchao during quantization
@@ -80,6 +85,11 @@ def suppress_logging(logger_name: str, level: Union[int, str] = "WARNING"):
     level : Union[int, str], default="WARNING"
         The minimum logging level to allow. Messages below this level will be
         suppressed. Can be an integer or string.
+
+    Yields
+    ------
+    Generator
+        A generator that yields nothing.
 
     Examples
     --------

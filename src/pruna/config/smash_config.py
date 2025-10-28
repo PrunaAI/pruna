@@ -20,8 +20,7 @@ import shutil
 import tempfile
 from functools import singledispatchmethod
 from pathlib import Path
-from typing import Any, Union
-from warnings import warn
+from typing import Any, Dict, Union
 
 import numpy as np
 import torch
@@ -30,7 +29,7 @@ from transformers import AutoProcessor, AutoTokenizer
 from transformers.processing_utils import ProcessorMixin
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
-from pruna.config.smash_space import ALGORITHM_GROUPS, SMASH_SPACE
+from pruna.config.smash_space import SMASH_SPACE
 from pruna.data.pruna_datamodule import PrunaDataModule, TokenizerMissingError
 from pruna.engine.utils import set_to_best_available_device
 from pruna.logging.logger import pruna_logger
@@ -58,8 +57,8 @@ class SmashConfig:
 
     Parameters
     ----------
-    max_batch_size : int, optional
-        Deprecated. The number of batches to process at once. Default is 1.
+    configuration : list[str] | Dict[str, Any] | Configuration | None, optional
+        The configuration to be used for smashing. If None, a default configuration will be created.
     batch_size : int, optional
         The number of batches to process at once. Default is 1.
     device : str | torch.device | None, optional
@@ -67,32 +66,16 @@ class SmashConfig:
         If None, the best available device will be used.
     cache_dir_prefix : str, optional
         The prefix for the cache directory. If None, a default cache directory will be created.
-    configuration : Configuration, optional
-        The configuration to be used for smashing. If None, a default configuration will be created.
     """
 
     def __init__(
         self,
-        max_batch_size: int | None = None,
+        configuration: list[str] | Dict[str, Any] | Configuration | None = None,
         batch_size: int = 1,
         device: str | torch.device | None = None,
         cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
-        configuration: Configuration | None = None,
     ) -> None:
-        SMASH_SPACE.gather_algorithm_buffer()
-        self._configuration: Configuration = (
-            SMASH_SPACE.get_default_configuration() if configuration is None else configuration
-        )
-        self.config_space: ConfigurationSpace = self._configuration.config_space
-        if max_batch_size is not None:
-            warn(
-                "max_batch_size is deprecated. Please use batch_size instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.batch_size = max_batch_size
-        else:
-            self.batch_size = batch_size
+        self.batch_size = batch_size
         self.device = set_to_best_available_device(device)
         self.device_map = None
 
@@ -103,19 +86,110 @@ class SmashConfig:
 
         self.save_fns: list[str] = []
         self.load_fns: list[str] = []
-        self.reapply_after_load: dict[str, str | None] = dict.fromkeys(ALGORITHM_GROUPS)
+        self.reapply_after_load: dict[str, str | None] = {}
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
         self._target_module: Any | None = None
+
         # internal variable *to save time* by avoiding compilers saving models for inference-only smashing
         self._prepare_saving = True
+
+        # internal variable to overwrite the graph-induced order of algorithms if desired
+        self._algorithm_order: list[str] | None = None
 
         # internal variable to indicated that a model has been smashed for a specific batch size
         self.__locked_batch_size = False
 
         # ensure the cache directory is deleted on program exit
         atexit.register(self.cleanup_cache_dir)
+
+        self._configuration = SMASH_SPACE.get_default_configuration()
+        if isinstance(configuration, Configuration):
+            self._configuration = configuration
+        elif isinstance(configuration, (dict, list)):
+            self.add(configuration)
+        elif configuration is None:
+            pass
+        else:
+            raise ValueError(f"Unsupported configuration type: {type(configuration)}")
+        self.config_space: ConfigurationSpace = self._configuration.config_space
+
+    @classmethod
+    def from_list(
+        cls,
+        configuration: list[str],
+        batch_size: int = 1,
+        device: str | torch.device | None = None,
+        cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
+    ) -> SmashConfig:
+        """
+        Create a SmashConfig from a list of algorithm names.
+
+        Parameters
+        ----------
+        configuration : list[str]
+            The list of algorithm names to create the SmashConfig with.
+        batch_size : int, optional
+            The batch size to use for the SmashConfig. Default is 1.
+        device : str | torch.device | None, optional
+            The device to use for the SmashConfig. Default is None.
+        cache_dir_prefix : str | Path, optional
+            The prefix for the cache directory. Default is DEFAULT_CACHE_DIR.
+
+        Returns
+        -------
+        SmashConfig
+            The SmashConfig object instantiated from the list.
+
+        Examples
+        --------
+        >>> config = SmashConfig.from_list(["fastercache", "diffusers_int8"])
+        >>> config
+        SmashConfig(
+         'fastercache': True,
+         'diffusers_int8': True,
+        )
+        """
+        return cls(configuration=configuration, batch_size=batch_size, device=device, cache_dir_prefix=cache_dir_prefix)
+
+    @classmethod
+    def from_dict(
+        cls,
+        configuration: Dict[str, Any],
+        batch_size: int = 1,
+        device: str | torch.device | None = None,
+        cache_dir_prefix: str | Path = DEFAULT_CACHE_DIR,
+    ) -> SmashConfig:
+        """
+        Create a SmashConfig from a dictionary of algorithms and their hyperparameters.
+
+        Parameters
+        ----------
+        configuration : Dict[str, Any]
+            The dictionary to create the SmashConfig from.
+        batch_size : int, optional
+            The batch size to use for the SmashConfig. Default is 1.
+        device : str | torch.device | None, optional
+            The device to use for the SmashConfig. Default is None.
+        cache_dir_prefix : str | Path, optional
+            The prefix for the cache directory. Default is DEFAULT_CACHE_DIR.
+
+        Returns
+        -------
+        SmashConfig
+            The SmashConfig object instantiated from the dictionary.
+
+        Examples
+        --------
+        >>> config = SmashConfig.from_dict({"fastercache": True, "diffusers_int8": True})
+        >>> config
+        SmashConfig(
+         'fastercache': True,
+         'diffusers_int8': True,
+        )
+        """
+        return cls(configuration=configuration, batch_size=batch_size, device=device, cache_dir_prefix=cache_dir_prefix)
 
     def __del__(self) -> None:
         """Delete the SmashConfig object."""
@@ -134,6 +208,7 @@ class SmashConfig:
             and self.save_fns == other.save_fns
             and self.load_fns == other.load_fns
             and self.reapply_after_load == other.reapply_after_load
+            and self._algorithm_order == other._algorithm_order
         )
 
     def cleanup_cache_dir(self) -> None:
@@ -158,6 +233,27 @@ class SmashConfig:
         config_path = Path(path) / SMASH_CONFIG_FILE_NAME
         json_string = config_path.read_text()
         config_dict = json.loads(json_string)
+
+        deprecated_keys = [
+            "quantizer",
+            "pruner",
+            "compiler",
+            "cacher",
+            "batcher",
+            "factorizer",
+            "kernel",
+            "distiller",
+            "recoverer",
+            "enhancer",
+            "distributer",
+            "resampler",
+            "decoder",
+        ]
+        for name in deprecated_keys:
+            if name in config_dict:
+                hyperparameter = config_dict.pop(name)
+                if hyperparameter is not None:
+                    config_dict[hyperparameter] = True
 
         # check device compatibility
         if "device" in config_dict:
@@ -185,34 +281,15 @@ class SmashConfig:
 
             setattr(self, name, config_dict.pop(name))
 
-        # Normalize algorithm groups in config dict
-        current_groups = set(config_dict.keys())
-        expected_groups = set(ALGORITHM_GROUPS)
+        # Keep only values that still exist in the space, drop stale keys
+        supported_hparam_names = {hp.name for hp in SMASH_SPACE.get_hyperparameters()}
+        saved_values = {k: v for k, v in config_dict.items() if k in supported_hparam_names}
 
-        # Get all applied algorithms and their arguments from the expected groups
-        applied_algorithms = set()
-        for group in expected_groups:
-            if group in config_dict and config_dict[group] is not None:
-                applied_algorithms.add(config_dict[group])
-        applied_algorithm_args = {
-            key for key in config_dict if any(key.startswith(f"{alg}_") for alg in applied_algorithms)
-        }
+        # Seed with the defaults, then overlay the saved values
+        default_values = dict(SMASH_SPACE.get_default_configuration())
+        default_values.update(saved_values)
 
-        # Remove extra groups with warning if they have values
-        for group in current_groups - expected_groups - applied_algorithm_args:
-            if config_dict[group] is not None:
-                pruna_logger.warning(
-                    f"Removing non-existing algorithm group: {group}, with value: {config_dict[group]}.\n"
-                    "This is likely due to a version difference between the saved model and the current library.\n"
-                    "You can use an older version of Pruna to load the model or reconfigure the model."
-                )
-            del config_dict[group]
-
-        # Add missing groups with info message
-        for group in expected_groups - current_groups:
-            config_dict[group] = None
-
-        self._configuration = Configuration(SMASH_SPACE, values=config_dict)
+        self._configuration = Configuration(SMASH_SPACE, values=default_values)
 
         tokenizer_path = Path(path) / TOKENIZER_SAVE_PATH
         if tokenizer_path.exists():
@@ -253,49 +330,13 @@ class SmashConfig:
         if self.data is not None:
             pruna_logger.info("Data detected in smash config, this will be detached and not reloaded...")
 
-    def load_dict(self, config_dict: dict) -> None:
-        """
-        Load a dictionary of hyperparameters into the SmashConfig.
-
-        Parameters
-        ----------
-        config_dict : dict
-            The dictionary to load into the SmashConfig.
-
-        Examples
-        --------
-        >>> config = SmashConfig()
-        >>> config.load_dict({'cacher': 'deepcache', 'deepcache_interval': 4})
-        >>> config
-        SmashConfig(
-         'cacher': 'deepcache',
-         'deepcache_interval': 4,
-        )
-        """
-        # check device compatibility
-        if "device" in config_dict:
-            config_dict["device"] = set_to_best_available_device(config_dict["device"])
-
-        # since this function is only used for loading algorithm settings, we will ignore additional arguments
-        filtered_config_dict = {k: v for k, v in config_dict.items() if k not in ADDITIONAL_ARGS}
-        discarded_args = [k for k in config_dict if k in ADDITIONAL_ARGS]
-        if discarded_args:
-            pruna_logger.info(f"Discarded arguments: {discarded_args}")
-
-        # first load the algorithm settings
-        # otherwise fine-grained hyperparameters will not be active yet and we can not set them
-        # lambda returns False for keys in ALGORITHM_GROUPS (and False sorts before True)
-        for k, v in sorted(filtered_config_dict.items(), key=lambda item: item[0] not in ALGORITHM_GROUPS):
-            self[k] = v
-
     def flush_configuration(self) -> None:
         """
         Remove all algorithm hyperparameters from the SmashConfig.
 
         Examples
         --------
-        >>> config = SmashConfig()
-        >>> config['cacher'] = 'deepcache'
+        >>> config = SmashConfig(["fastercache", "diffusers_int8"])
         >>> config.flush_configuration()
         >>> config
         SmashConfig()
@@ -305,7 +346,7 @@ class SmashConfig:
         # flush also saving / load functionality associated with a specific configuration
         self.save_fns = []
         self.load_fns = []
-        self.reapply_after_load = dict.fromkeys(ALGORITHM_GROUPS)
+        self.reapply_after_load = {}
 
         # reset potentially previously used cache directory
         self.reset_cache_dir()
@@ -463,29 +504,10 @@ class SmashConfig:
         target_module : Any
             The target module to prune.
         """
-        if self["pruner"] is None:
+        if not self["torch_structured"]:
             pruna_logger.error("No pruner selected, target module is only supported by torch_structured pruner.")
             raise
-        elif self["pruner"] != "torch_structured":
-            pruna_logger.error("Target module is only supported for torch_structured pruner.")
-            raise
         self._target_module = target_module
-
-    def get_tokenizer_name(self) -> str | None:
-        """
-        Get a tokenizer object from a tokenizer name.
-
-        Returns
-        -------
-        str | None
-            The name of the tokenizer to use.
-        """
-        if self.tokenizer is None:
-            return None
-        if hasattr(self.tokenizer, "tokenizer"):
-            return self.tokenizer.tokenizer.name_or_path
-        else:
-            return self.tokenizer.name_or_path
 
     def lock_batch_size(self) -> None:
         """Lock the batch size in the SmashConfig."""
@@ -515,13 +537,6 @@ class SmashConfig:
         -------
         Any
             Configuration value for the given name
-
-        Examples
-        --------
-        >>> config = SmashConfig()
-        >>> config["quantizer"] = "gptq"
-        >>> config["quantizer"]
-        "gptq"
         """
         if name in ADDITIONAL_ARGS:
             return getattr(self, name)
@@ -541,39 +556,62 @@ class SmashConfig:
             The name of the configuration setting.
         value : Any
             The value to set for the configuration setting.
+        """
+        if name in ADDITIONAL_ARGS:
+            return setattr(self, name, value)
+        else:
+            # support old way of activating algorithms
+            if value in SMASH_SPACE.get_all_algorithms():
+                pruna_logger.warning(f"Setting {name} to {value} is deprecated. Please use config.add({value}).")
+                self.add(value)
+            else:
+                pruna_logger.warning(f"Setting {name} deprecated. Please use config.add(dict({name}={value})).")
+                self.add({name: value})
 
-        Returns
-        -------
-        None
-            This method updates the internal configuration state but does not return a value.
+    def add(self, request: str | list[str] | dict[str, Any]) -> None:
+        """
+        Add an algorithm or specify the hyperparameters of an algorithm to the SmashConfig.
+
+        Parameters
+        ----------
+        request : str | list[str] | dict[str, Any]
+            The value to add to the SmashConfig.
 
         Examples
         --------
         >>> config = SmashConfig()
-        >>> config["quantizer"] = "gptq"
-        >>> config["quantizer"]
-        "gptq"
+        >>> config = SmashConfig()
+        >>> config.add("fastercache")
+        >>> config.add("diffusers_int8")
+        >>> config
+        SmashConfig(
+         'fastercache': True,
+         'diffusers_int8': True,
+        )
         """
-        deprecated_hyperparameters = [
-            "whisper_s2t_batch_size",
-            "ifw_batch_size",
-            "higgs_example_batch_size",
-            "diffusers_higgs_example_batch_size",
-            "torch_compile_batch_size",
-        ]
-        if name in deprecated_hyperparameters:
-            warn(
-                f"The {name} hyperparameter is deprecated. You can use SmashConfig(batch_size={value}) instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self.batch_size = value
-            return None
-
-        if name in ADDITIONAL_ARGS:
-            return setattr(self, name, value)
+        # request wants to activate a single algorithm
+        if isinstance(request, str):
+            self._configuration[request] = True
+        # request wants to activate a list of algorithms
+        elif isinstance(request, list):
+            if not all(isinstance(item, str) for item in request):
+                raise ValueError("Request must be a list of algorithm names.")
+            for item in request:
+                self._configuration[item] = True
+        # request wants to activate a dictionary of algorithms and their hyperparameters
+        elif isinstance(request, dict):
+            for key, value in request.items():
+                # target modules are a special case, as they are a hyperparameter but their value is a dict
+                if isinstance(value, dict) and "target_module" not in key:
+                    self._configuration[key] = True
+                    for k, v in value.items():
+                        if not k.startswith(key):
+                            k = f"{key}_{k}"
+                        self._configuration[k] = v
+                else:
+                    self._configuration[key] = value
         else:
-            return self._configuration.__setitem__(name, value)
+            raise ValueError(f"Unsupported request type: {type(request)}")
 
     def __getattr__(self, attr: str) -> object:  # noqa: D105
         if attr == "_data":
@@ -586,19 +624,52 @@ class SmashConfig:
         return convert_numpy_types(return_value)
 
     def __str__(self) -> str:  # noqa: D105
-        values = dict(self._configuration)
         header = "SmashConfig("
-        lines = [
-            f"  '{k}': {convert_numpy_types(values[k])!r},"
-            for k in sorted(values, key=self._configuration.config_space.index_of.get)  # type: ignore
-            # determine whether hyperparameter is conditionally active
-            if values[k] is not None or len(self._configuration.config_space.parents_of[k]) > 0
-        ]
+        lines = []
+        for alg in self.get_active_algorithms():
+            lines.append(f"  {alg}")
+            if len(self._configuration.config_space.children_of[alg]) > 0:
+                for child in self._configuration.config_space.children_of[alg]:
+                    child_name = child.name
+                    child_value = self._configuration[child_name]
+                    lines.append(f"      {child_name.removeprefix(alg + '_')}: {convert_numpy_types(child_value)!r},")
+            else:
+                lines.append("      -")
         end = ")"
         return "\n".join([header, *lines, end])
 
     def __repr__(self) -> str:  # noqa: D105
         return self.__str__()
+
+    def get_active_algorithms(self) -> list[str]:
+        """
+        Get all active algorithms in this smash config.
+
+        Returns
+        -------
+        list[str]
+            The active algorithms in this smash config.
+        """
+        all_algorithms = self.config_space.get_all_algorithms()
+        return [k for k, v in self._configuration.items() if v and k in all_algorithms]
+
+    def overwrite_algorithm_order(self, algorithm_order: list[str]) -> None:
+        """
+        Overwrite the graph-induced order of algorithms if desired.
+
+        Parameters
+        ----------
+        algorithm_order : list[str]
+            The order of algorithms to be applied.
+        """
+        if not set(algorithm_order) == set(self.get_active_algorithms()):
+            raise ValueError("All active algorithms must be contained in the given algorithm order.")
+        self._algorithm_order = algorithm_order
+
+    def disable_saving(self) -> None:
+        """Disable the saving of the SmashConfig to speed up the smashing process."""
+        pruna_logger.info("Disabling the preparation of saving, smashed model will not be saveable.")
+        self._prepare_saving = False
 
 
 class SmashConfigPrefixWrapper:
@@ -631,7 +702,8 @@ class SmashConfigPrefixWrapper:
         Any
             The value from the config.
         """
-        if key in ADDITIONAL_ARGS + ALGORITHM_GROUPS:
+        parent_hyperparameters = self._base_config.config_space.get_all_algorithms()
+        if key in ADDITIONAL_ARGS + parent_hyperparameters:
             return self._base_config[key]
         actual_key = self._prefix + key
         return self._base_config[actual_key]
