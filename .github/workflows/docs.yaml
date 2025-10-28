@@ -43,7 +43,7 @@ jobs:
           fi
 
       - name: Upload generated file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: compression-rst
           path: compression.rst
