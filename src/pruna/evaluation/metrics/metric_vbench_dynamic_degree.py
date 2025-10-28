@@ -66,6 +66,7 @@ class PrunaDynamicDegree(DynamicDegree):
         for image1, image2 in zip(frames[:-1], frames[1:]):
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1, image2)
+            # 20 iterations as the original DynamicDegree implementation.
             _, flow_up = self.model(image1, image2, iters=20, test_mode=True)
             max_rad = self.get_score(image1, flow_up)
             static_score.append(max_rad)
@@ -111,7 +112,7 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
     runs_on: List[str] = ["cuda"]
     modality: List[str] = ["video"]
     # state
-    scores: List[float]
+    scores: List[bool]
 
     def __init__(
         self,

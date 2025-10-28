@@ -55,7 +55,7 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     higher_is_better: bool = True
     # https://github.com/Vchitect/VBench/blob/dc62783c0fb4fd333249c0b669027fe102696682/evaluate.py#L111
     # explicitly sets the device to cuda. We respect this here.
-    runs_on: List[str] = ["cuda"]
+    runs_on: List[str] = ["cuda, cpu"]
     modality: List[str] = ["video"]
     # state
     similarity_scores: torch.Tensor
@@ -87,9 +87,10 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
         self.clip_model, self.preprocessor = clip.load(model_path, device=self.device)
+        # Cropping for the CLIP encoder.
         self.video_transform = clip_transform(224)
 
-        self.add_state("similarity_scores", torch.tensor(0.0))
+        self.add_state("similarity_scores_cumsum", torch.tensor(0.0))
         self.add_state("n_samples", torch.tensor(0))
 
     def update(self, x: List[str], gt: Any, outputs: Any) -> None:
@@ -124,7 +125,7 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         similarities = (similarity_to_first + similarity_to_prev) / 2
 
         # Update stats
-        self.similarity_scores += similarities.sum().item()
+        self.similarity_scores_cumsum += similarities.sum().item()
         self.n_samples += similarities.numel()
 
     def compute(self) -> MetricResult:
@@ -138,11 +139,11 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         """
         if self.n_samples == 0:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
-        score = self.similarity_scores / self.n_samples
+        score = self.similarity_scores_cumsum / self.n_samples
         return MetricResult(self.metric_name, self.__dict__, score)
 
     def reset(self) -> None:
         """Reset the metric states."""
         super().reset()
-        self.similarity_scores = torch.tensor(0.0)
+        self.similarity_scores_cumsum = torch.tensor(0.0)
         self.n_samples = torch.tensor(0)
