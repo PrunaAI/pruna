@@ -14,12 +14,12 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from pruna import SmashConfig
 from pruna.algorithms import PRUNA_ALGORITHMS
 from pruna.config.smash_space import SMASH_SPACE
-from pruna.engine.utils import get_device, get_device_map, move_to_device, split_device
+from pruna.engine.utils import get_device, get_device_map, get_device_type, move_to_device, split_device
 from pruna.logging.logger import pruna_logger
 
 
@@ -108,7 +108,7 @@ def check_model_compatibility(
                 raise ValueError(
                     f"Model is not compatible with {algorithm_dict[current_group][algorithm].algorithm_name}"
                 )
-            if split_device(cast(str, get_device(model)))[0] not in algorithm_dict[current_group][algorithm].runs_on:
+            if get_device_type(model) not in algorithm_dict[current_group][algorithm].runs_on:
                 raise ValueError(
                     f"{algorithm} is not compatible with device {get_device(model)}, "
                     f"compatible devices are {algorithm_dict[current_group][algorithm].runs_on}"
