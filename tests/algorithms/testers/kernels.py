@@ -13,4 +13,4 @@ class TestFlashAttn3(AlgorithmTesterBase):
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = FlashAttn3Kernel
-    metrics = ["latency"]
+    metrics = ["background_consistency"]
