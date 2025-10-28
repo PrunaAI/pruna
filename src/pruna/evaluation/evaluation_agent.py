@@ -264,11 +264,13 @@ class EvaluationAgent:
                 for stateful_metric in single_stateful_metrics:
                     stateful_metric.update(x, gt, processed_outputs)
                     if self.save_artifacts and stateful_metric.create_alias:
-                        # Again, we have to create an alias for each sample in the batch.
+                        # The evaluation agent saves the artifacts with a canonical filenaming convention.
+                        # If the user wants to save the artifact with a different filename,
+                        # here we give them the option to create an alias for the file.
                         for prompt_idx, prompt in enumerate(x):
                             if self.artifact_saver.export_format is None:
                                 raise ValueError(
-                                    "Export format is not set.Please set the export format for the artifact saver."
+                                    "Export format is not set. Please set the export format for the artifact saver."
                                 )
                             alias_filename = stateful_metric.create_filename(
                                 filename=prompt, idx=sample_idx, file_extension=self.artifact_saver.export_format

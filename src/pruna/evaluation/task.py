@@ -168,6 +168,8 @@ def _safe_build_metrics(
         str
             The modality of the task.
         """
+        if not self.get_single_stateful_metrics() and not self.get_pairwise_stateful_metrics():
+            return "general"
         modality_intersection = set.intersection(
             *[metric.modality for metric in self.metrics if isinstance(metric, StatefulMetric)]
         )

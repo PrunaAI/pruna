@@ -39,7 +39,7 @@ def test_assign_artifact_saver_video(tmp_path: Path):
 def test_assign_artifact_saver_invalid():
     """ Test that we raise an error if the artifact saver is assigned incorrectly."""
     with pytest.raises(ValueError):
-        assign_artifact_saver("text")
+        assign_artifact_saver("nonexistent_modality")
 
 @pytest.mark.parametrize(
     "export_format, save_from_type, save_from_dtype",

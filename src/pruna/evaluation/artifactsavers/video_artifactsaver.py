@@ -55,6 +55,8 @@ class VideoArtifactSaver(ArtifactSaver):
         ----------
         data: Any
             The data to save.
+        saving_kwargs: dict
+            The additional kwargs to pass to the saving utility function.
 
         Returns
         -------
