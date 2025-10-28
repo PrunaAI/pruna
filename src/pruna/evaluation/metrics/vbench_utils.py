@@ -127,7 +127,7 @@ def load_videos_from_path(path: str | Path) -> torch.Tensor:
 
     Returns:
     -------
-    List[List[Image] | np.ndarray | torch.Tensor]
+    torch.Tensor
         The videos.
     """
     path = Path(str(path))
@@ -221,6 +221,8 @@ def _normalize_prompts(
     ----------
     prompts : str | List[str] | PrunaDataModule
         The prompts to normalize.
+    split : str
+        The dataset split to sample from.
 
     Returns:
     -------
@@ -247,7 +249,9 @@ def _ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
 
-def create_vbench_file_name(prompt: str, idx: int, special_str: str = "", postfix: str = ".mp4") -> str:
+def create_vbench_file_name(
+    prompt: str, idx: int, special_str: str = "", save_format: str = ".mp4", max_filename_length: int = 255
+) -> str:
     """
     Create a file name for the video in accordance with the VBench format.
 
@@ -259,18 +263,26 @@ def create_vbench_file_name(prompt: str, idx: int, special_str: str = "", postfi
         The index of the video. Vbench uses 5 seeds for each prompt.
     special_str: str
         A special string to add to the file name if you wish to add a specific identifier.
-    postfix: str
+    save_format: str
         The format of the video file. Vbench supports mp4 and gif.
+    max_filename_length: int
+        The maximum length allowed for the file name.
 
     Returns:
     -------
     str
         The file name for the video.
     """
-    return f"{prompt}{special_str}-{str(idx)}{postfix}"
+    filename = f"{prompt}{special_str}-{str(idx)}{save_format}"
+    if len(filename) > max_filename_length:
+        pruna_logger.debug(
+            f"File name {filename} is too long. Maximum length is {max_filename_length} characters. Truncating filename."
+        )
+        filename = filename[:max_filename_length]
+    return filename
 
 
-def sample_video_from_pipelines(pipeline: Any, seeder: Any, prompt: str, device: str | torch.device = None, **kwargs):
+def sample_video_from_pipelines(pipeline: Any, seeder: Any, prompt: str, **kwargs):
     """
     Sample a video from diffusers pipeline.
 
@@ -290,8 +302,13 @@ def sample_video_from_pipelines(pipeline: Any, seeder: Any, prompt: str, device:
     torch.Tensor
         The video tensor.
     """
+    is_return_dict = kwargs.pop("return_dict", True)
     with torch.inference_mode():
-        out = pipeline(prompt=prompt, generator=seeder, **kwargs).frames[0]
+        if is_return_dict:
+            out = pipeline(prompt=prompt, generator=seeder, **kwargs).frames[0]
+        else:
+            # If return_dict is False, the pipeline returns a tuple of (frames, metadata).
+            out = pipeline(prompt=prompt, generator=seeder, **kwargs)[0]
 
     return out
 
@@ -336,6 +353,7 @@ def generate_videos(
     fps: int = 16,
     save_dir: str | Path = "./saved_videos",
     save_format: str = "mp4",
+    filename_fn: Callable = create_vbench_file_name,
     special_str: str = "",
     device: str | torch.device = None,
     **model_kwargs,
@@ -369,8 +387,12 @@ def generate_videos(
         The directory to save the videos to.
     save_format : str
         The format to save the videos in. VBench supports mp4 and gif.
+    filename_fn: Callable
+        The function to create the file name.
     special_str : str
         A special string to add to the file name if you wish to add a specific identifier.
+    device : str | torch.device | None
+        The device to sample on. If None, the best available device will be used.
     **model_kwargs : Any
         Additional keyword arguments to pass to the sampling function.
     """
@@ -390,7 +412,7 @@ def generate_videos(
     for batch in prompt_iterable:
         prompt = prepare_batch(batch)
         for idx in range(unique_sample_per_video_count):
-            file_name = create_vbench_file_name(sanitize_prompt(prompt), idx, special_str, file_extension)
+            file_name = filename_fn(sanitize_prompt(prompt), idx, special_str, file_extension)
             out_path = save_dir / file_name
 
             vid = sampler(prompt=prompt, seeder=seed_rng, device=device, **model_kwargs)
@@ -412,6 +434,8 @@ def evaluate_videos(
         The data to evaluate.
     metrics : StatefulMetric | List[StatefulMetric]
         The metrics to evaluate.
+    prompts : Any | None
+        The prompts to evaluate.
 
     Returns:
     -------
@@ -423,12 +447,13 @@ def evaluate_videos(
         metrics = [metrics]
     if any(metric.call_type != "y" for metric in metrics) and prompts is None:
         raise ValueError(
-            "You are trying to evaluate metrics that require more than the outputs,but didn't provide prompts."
+            "You are trying to evaluate metrics that require more than the outputs, but didn't provide prompts."
         )
     for metric in metrics:
         for batch in data:
             if prompts is None:
                 prompts = batch
             metric.update(prompts, batch, batch)
+            prompts = None
         results.append(metric.compute())
     return results
