@@ -117,13 +117,13 @@ class PrunaModel:
         outputs = self.inference_handler.process_output(outputs)
         return outputs
 
-    def is_instance(self, instance_type: type) -> bool:
+    def is_instance(self, instance_type: Any) -> bool:
         """
         Compare the model to the given instance type.
 
         Parameters
         ----------
-        instance_type : type
+        instance_type : Any
             The type to compare the model to.
 
         Returns

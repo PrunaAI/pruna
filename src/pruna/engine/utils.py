@@ -88,7 +88,7 @@ def get_nn_modules(model: Any) -> dict[str | None, torch.nn.Module]:
         }
 
 
-def safe_is_instance(model: Any, instance_type: type) -> bool:
+def safe_is_instance(model: Any, instance_type: Any) -> bool:
     """
     Safely check if the model is an instance of the given type.
 
@@ -130,7 +130,7 @@ def move_to_device(
     device_map : dict[str, str] | None
         The device map to use if the target device is "accelerate".
     """
-    if safe_is_instance(model, type(Pipeline)):
+    if safe_is_instance(model, Pipeline):
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
@@ -359,7 +359,7 @@ def get_device(model: Any) -> str:
     str
         The device or device map of the model.
     """
-    if safe_is_instance(model, type(Pipeline)):
+    if safe_is_instance(model, Pipeline):
         return get_device(model.model)
 
     # a device map that points the whole model to the same device (only key is "") is not considered distributed

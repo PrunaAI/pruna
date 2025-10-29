@@ -7,6 +7,8 @@ from pruna.engine.utils import move_to_device
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 
 @pytest.mark.cuda
+# We need to mark this test as high because it requires modern architectures
+@pytest.mark.high
 @pytest.mark.parametrize(
     "model_fixture",
     [
@@ -24,6 +26,8 @@ def test_disk_memory_metric(model_fixture: tuple[Any, SmashConfig]) -> None:
     assert disk_memory_results.result > 0
 
 @pytest.mark.cuda
+# We need to mark this test as high because it requires modern architectures
+@pytest.mark.high
 @pytest.mark.parametrize(
     "model_fixture",
     [
@@ -41,6 +45,8 @@ def test_inference_memory_metric(model_fixture: tuple[Any, SmashConfig]) -> None
     assert inference_memory_results.result > 0
 
 @pytest.mark.cuda
+# We need to mark this test as high because it requires modern architectures
+@pytest.mark.high
 @pytest.mark.parametrize(
     "model_fixture",
     [
