@@ -215,7 +215,7 @@ def filter_targeted_modules(
     target_modules: TARGET_MODULES_TYPE,
 ) -> TARGET_MODULES_TYPE:
     """
-    Expand the target modules to exclude modules incompatible with FLUTE kernels.
+    Expand the target modules to exclude modules based on the provided function.
 
     Parameters
     ----------
