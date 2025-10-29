@@ -68,13 +68,13 @@ class AlgorithmRegistry:
                     continue
 
                 # Must inherit from PrunaAlgorithmBase
-                if PrunaAlgorithmBase not in algorithm_cls.__mro__:
+                if not issubclass(algorithm_cls, PrunaAlgorithmBase):
                     continue
 
                 # Instantiate & register with the Smash Configuration Space
                 try:
                     instance = algorithm_cls()
-                    cls._registry[instance.algorithm_name] = instance
+                    cls.register_algorithm(instance)
                 except Exception as e:
                     logging.warning(f"Failed to instantiate {algorithm_cls.__name__} from {modname}: {e}")
 
