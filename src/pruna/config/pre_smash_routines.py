@@ -90,13 +90,13 @@ def check_model_compatibility(model: Any, smash_config: SmashConfig) -> None:
         The SmashConfig to check the model against.
     """
     for algorithm_name in smash_config.get_active_algorithms():
-        algorithm_class = AlgorithmRegistry[algorithm_name]
-        if not algorithm_class.model_check_fn(model):
-            raise ValueError(f"Model is not compatible with {algorithm_class.algorithm_name}")
-        if get_device_type(model) not in algorithm_dict[current_group][algorithm].runs_on:
+        algorithm = AlgorithmRegistry[algorithm_name]
+        if not algorithm.model_check_fn(model):
+            raise ValueError(f"Model is not compatible with {algorithm.algorithm_name}")
+        if get_device_type(model) not in algorithm.runs_on:
             raise ValueError(
                 f"{algorithm_name} is not compatible with model device {get_device(model)}, "
-                f"compatible devices are {algorithm_class.runs_on}"
+                f"compatible devices are {algorithm.runs_on}"
             )
 
 
@@ -109,9 +109,9 @@ def check_algorithm_packages_availability(smash_config: SmashConfig) -> None:
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
     """
-    for algorithm in smash_config.get_active_algorithms():
-        algorithm_class = AlgorithmRegistry[algorithm]
-        algorithm_class.import_algorithm_packages()
+    for algorithm_name in smash_config.get_active_algorithms():
+        algorithm = AlgorithmRegistry[algorithm_name]
+        algorithm.import_algorithm_packages()
 
 
 def check_argument_compatibility(smash_config: SmashConfig) -> None:
@@ -153,10 +153,9 @@ def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, alg
     algorithm_order : list[str]
         The order of the active algorithms to be applied.
     """
-    active_algorithms = algorithm_order
-    for algorithm in active_algorithms:
-        algorithm_class = AlgorithmRegistry[algorithm]
-        algorithm_class.pre_smash_hook(model, smash_config)
+    for algorithm_name in algorithm_order:
+        algorithm = AlgorithmRegistry[algorithm_name]
+        algorithm.pre_smash_hook(model, smash_config)
 
 
 def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
@@ -176,7 +175,34 @@ def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
             raise ValueError(f"Algorithm {alg_a} is incompatible with {alg_b}")
 
 
-def determine_algorithm_order(smash_config: SmashConfig) -> list[str]:
+def check_directional_compatibility_violations(graph: nx.DiGraph, algorithm_order: list[str]) -> list[tuple[str, str]]:
+    """
+    Check if a given algorithm order violates directional compatibility constraints.
+
+    Parameters
+    ----------
+    graph : nx.DiGraph
+        The SmashConfig object containing the algorithm configuration.
+    algorithm_order : list[str]
+        The proposed algorithm order to check.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        A list of violations, where each tuple contains (alg_before, alg_after) indicating
+        that alg_before appears before alg_after in the order but should actually run after it.
+    """
+    violations = []
+    for i, alg_before in enumerate(algorithm_order):
+        for j, alg_after in enumerate(algorithm_order):
+            # alg_before comes before alg_after in the provided order
+            # Check if there's an edge from alg_after to alg_before in the graph
+            if i < j and not graph.has_edge(alg_before, alg_after):
+                violations.append((alg_before, alg_after))
+    return violations
+
+
+def determine_algorithm_order(smash_config: SmashConfig, experimental: bool = False) -> list[str]:
     """
     Determine the order of the active algorithms based on their ordering requirements.
 
@@ -184,15 +210,34 @@ def determine_algorithm_order(smash_config: SmashConfig) -> list[str]:
     ----------
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
+    experimental : bool, optional
+        Whether to allow experimental configurations that violate directional compatibility.
+        Default is False.
 
     Returns
     -------
     list[str]
         The order of the active algorithms to be applied.
+
+    Raises
+    ------
+    ValueError
+        If the algorithm order violates directional compatibility and experimental is False.
     """
-    if smash_config._algorithm_order is not None:
-        return smash_config._algorithm_order
     graph = construct_algorithm_directed_graph(smash_config)
+    if smash_config._algorithm_order is not None:
+        # If experimental mode is not enabled, the order still needs to adhere to directional compatibility constraints
+        violations = check_directional_compatibility_violations(graph, smash_config._algorithm_order)
+
+        if violations and not experimental:
+            raise ValueError(
+                f"The provided algorithm order violates directional compatibility constraints:\n"
+                f"{violations}\n"
+                f"To override these constraints, set experimental=True in your smash call."
+            )
+
+        return smash_config._algorithm_order
+
     remove_reciprocals(graph)
     try:
         order = list(nx.topological_sort(graph))

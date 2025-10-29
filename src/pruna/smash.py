@@ -73,7 +73,7 @@ def smash(
             check_argument_compatibility(smash_config)
 
         # determine algorithm order based on requirements of individual algorithms
-        algorithm_order = determine_algorithm_order(smash_config)
+        algorithm_order = determine_algorithm_order(smash_config, experimental=experimental)
         # perform any necessary setup steps before the smashing process begins
         execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
 
