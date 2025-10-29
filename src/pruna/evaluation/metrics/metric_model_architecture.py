@@ -142,6 +142,15 @@ class ModelArchitectureStats(BaseMetric):
         -------
         Tuple[Any, ...]
             The dummy inputs.
+
+        Notes
+        -----
+        We have to reorder the arguments to match the module's forward method signature
+        Example: If forward(self, x, y, z=None) and we have:
+          dummy_args = [tensor1, tensor2] # ruff: noqa: ERA001
+          dummy_kwargs = {'z': tensor3} # ruff: noqa: ERA001
+        This ensures we return (tensor1, tensor2, tensor3) in the correct order
+        rather than passing z as a keyword argument
         """
         dummy_args: list[torch.Tensor | None] = []
 
@@ -166,14 +175,6 @@ class ModelArchitectureStats(BaseMetric):
                 dummy_kwargs[k] = None
 
         ordered_args = []
-        """
-        Reorder arguments to match the module's forward method signature
-        Example: If forward(self, x, y, z=None) and we have:
-          dummy_args = [tensor1, tensor2] # ruff: noqa: ERA001
-          dummy_kwargs = {'z': tensor3} # ruff: noqa: ERA001
-        This ensures we return (tensor1, tensor2, tensor3) in the correct order
-        rather than passing z as a keyword argument
-        """
         for param in sig.parameters.values():
             if param.name in kwargs_info:
                 ordered_args.append(dummy_kwargs[param.name])
