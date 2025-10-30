@@ -164,10 +164,21 @@ def image_classification_collate(
     """
     Custom collation function for image classification datasets.
 
+    Parameters
+    ----------
+    data : Any
+        The data to collate.
+    img_size : int
+        The size of the image to resize to.
+    output_format : str
+        The output format, in ["int", "float", "normalized"].
+        With "int", output tensors have integer values between 0 and 255. With "float", they have float values
+        between 0 and 1. With "normalized", they have float values between -1 and 1.
+
     Returns:
     -------
-        images: Float tensor of shape [batch, 3, height, width]
-        labels: Int tensor of shape [batch]
+    Tuple[torch.Tensor, torch.Tensor]
+        The collated data.
     """
     transformations = image_format_to_transforms(output_format, img_size)
     images, labels = [], []
