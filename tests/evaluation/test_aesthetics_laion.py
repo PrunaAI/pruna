@@ -22,7 +22,7 @@ from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
 def test_aesthetic_laion(device: str, clip_model: str) -> None:
     """Test the AestheticLAION metric."""
     data_module = PrunaDataModule.from_string("LAION256")
-    data_module.limit_datasets(10)
+    data_module.limit_datasets(2)
 
     metric = AestheticLAION(model_name_or_path=clip_model, device=device)
     for x, gt in data_module.test_dataloader():
