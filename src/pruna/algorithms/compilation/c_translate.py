@@ -65,7 +65,7 @@ class CTranslateCompiler(PrunaCompiler):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_algorithms = dict(batcher=["whisper_s2t"], quantizer=["half"])
+    compatible_algorithms = dict(batcher=["faster_whisper"], quantizer=["half"])
 
     def __init__(self, task_name: str = "translate") -> None:
         self.task_name = task_name
