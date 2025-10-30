@@ -81,10 +81,6 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     -------
     Tuple[Dataset, Dataset, Dataset]
         The CIFAR-10 dataset with columns: 'image' (PIL Image) and 'label' (int).
-    Note
-    ----
-    This function automatically renames the 'img' column to 'image' for
-    compatibility with Pruna's collate functions.
     """
     train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
 
@@ -117,11 +113,6 @@ def setup_tiny_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The Tiny CIFAR-10 dataset with columns: 'image' (PIL Image) and 'label' (int).
         Contains approximately 600 training samples, split validation, and 200 test samples.
-
-    Note
-    ----
-    This function automatically renames the 'img' column to 'image' for
-    compatibility with Pruna's collate functions.
     """
     train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
 
