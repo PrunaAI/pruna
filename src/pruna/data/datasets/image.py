@@ -17,10 +17,10 @@ from typing import Tuple
 from datasets import load_dataset
 from torch.utils.data import Dataset
 
-from pruna.data.utils import split_train_into_train_val, split_val_into_val_test
+from pruna.data.utils import split_train_into_train_val, split_val_into_val_test, stratify_dataset
 
 
-def setup_mnist_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+def setup_mnist_dataset(seed: int, fraction: float = 1.0) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the MNIST dataset.
 
@@ -31,17 +31,26 @@ def setup_mnist_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     seed : int
         The seed to use.
 
+    fraction : float
+        The fraction of the dataset to use.
+
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
         The MNIST dataset.
     """
     train_ds, test_ds = load_dataset("ylecun/mnist", split=["train", "test"])  # type: ignore[misc]
+
+    train_ds = stratify_dataset(train_ds, "label", fraction, seed)
+    test_ds = stratify_dataset(test_ds, "label", fraction, seed)
+
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
+    val_ds, test_ds = split_val_into_val_test(val_ds, seed)
+
     return train_ds, val_ds, test_ds  # type: ignore[return-value]
 
 
-def setup_imagenet_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+def setup_imagenet_dataset(seed: int, fraction: float = 1.0) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the ImageNet dataset.
 
@@ -52,17 +61,22 @@ def setup_imagenet_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     seed : int
         The seed to use.
 
+    fraction : float
+        The fraction of the dataset to use.
+
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
         The ImageNet dataset.
     """
     train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"])  # type: ignore[misc]
+    train_ds = stratify_dataset(train_ds, "label", fraction, seed)
+    val = stratify_dataset(val, "label", fraction, seed)
     val_ds, test_ds = split_val_into_val_test(val, seed)
     return train_ds, val_ds, test_ds  # type: ignore[return-value]
 
 
-def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+def setup_cifar10_dataset(seed: int, fraction: float = 1.0) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the CIFAR-10 dataset.
 
@@ -77,6 +91,9 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     seed : int
         The seed to use.
 
+    fraction : float
+        The fraction of the dataset to use.
+
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
@@ -89,39 +106,8 @@ def setup_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     train_ds = train_ds.rename_column("img", "image")
     test_ds = test_ds.rename_column("img", "image")
 
+    train_ds = stratify_dataset(train_ds, "label", fraction, seed)
+    test_ds = stratify_dataset(test_ds, "label", fraction, seed)
+
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     return train_ds, val_ds, test_ds  # type: ignore[return-value]
-
-
-def setup_tiny_cifar10_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
-    """
-    Setup the Tiny CIFAR-10 dataset (< 1,000 samples).
-
-    The original CIFAR-10 dataset from uoft-cs/cifar10 has an 'img' column,
-    but this function renames it to 'image' to ensure compatibility with
-    the image_classification_collate function which expects an 'image' column.
-
-    License: unspecified
-
-    Parameters
-    ----------
-    seed : int
-        The seed to use.
-
-    Returns
-    -------
-    Tuple[Dataset, Dataset, Dataset]
-        The Tiny CIFAR-10 dataset with columns: 'image' (PIL Image) and 'label' (int).
-        Contains approximately 600 training samples, split validation, and 200 test samples.
-    """
-    train_ds, test_ds = load_dataset("uoft-cs/cifar10", split=["train", "test"])
-
-    # Rename 'img' column to 'image' to match collate function expectations
-    # This ensures compatibility with image_classification_collate function
-    train_ds = train_ds.rename_column("img", "image")
-    test_ds = test_ds.rename_column("img", "image")
-
-    tiny_train = train_ds.select(range(600))
-    tiny_test = test_ds.select(range(200))
-    train_ds, val_ds = split_train_into_train_val(tiny_train, seed)
-    return train_ds, val_ds, tiny_test
