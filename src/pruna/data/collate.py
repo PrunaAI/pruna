@@ -14,11 +14,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, Union
 
 import torch
+from jaxtyping import Float, Int
 from torchvision import transforms
 from transformers.tokenization_utils import PreTrainedTokenizer as AutoTokenizer
+
+ImageShape = "batch 3 img_size img_size"
+LabelShape = "batch"
 
 
 def image_format_to_transforms(output_format: str, img_size: int) -> transforms.Compose:
@@ -54,7 +58,9 @@ def image_format_to_transforms(output_format: str, img_size: int) -> transforms.
         raise ValueError(f"Invalid output format: {output_format}")
 
 
-def image_generation_collate(data: Any, img_size: int, output_format: str = "int") -> Tuple[List[str], torch.Tensor]:
+def image_generation_collate(
+    data: Any, img_size: int, output_format: str = "int"
+) -> Tuple[List[str], Union[Float[torch.Tensor, ImageShape], Int[torch.Tensor, ImageShape]]]:
     """
     Custom collation function for text-to-image generation datasets.
 
@@ -160,7 +166,7 @@ def audio_collate(data: Any) -> Tuple[List[str], List[str]]:
 
 def image_classification_collate(
     data: Any, img_size: int, output_format: str = "int"
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[Float[torch.Tensor, ImageShape], Int[torch.Tensor, LabelShape]]:
     """
     Custom collation function for image classification datasets.
 
@@ -175,7 +181,7 @@ def image_classification_collate(
         With "int", output tensors have integer values between 0 and 255. With "float", they have float values
         between 0 and 1. With "normalized", they have float values between -1 and 1.
 
-    Returns:
+    Returns
     -------
     Tuple[torch.Tensor, torch.Tensor]
         The collated data.
