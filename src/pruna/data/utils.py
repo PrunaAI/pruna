@@ -181,3 +181,30 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
             raise ValueError()
         texts.extend(out)
     return texts
+
+
+def stratify_dataset(dataset: Dataset, column: str, fraction: float, seed: int) -> Dataset:
+    """
+    Stratify the dataset into a fraction of the dataset.
+
+    Parameters
+    ----------
+    dataset : Dataset
+        The dataset to stratify.
+    column : str
+        The column to stratify by.
+    fraction : float
+        The fraction of the dataset to stratify.
+    seed : int
+        The seed to use for splitting the dataset.
+
+    Returns
+    -------
+    Dataset
+        The stratified dataset.
+    """
+    if fraction < 1.0:
+        split_result = dataset.train_test_split(test_size=1 - fraction, stratify_by_column="label", seed=seed)
+        dataset = split_result["train"]
+
+    return dataset
