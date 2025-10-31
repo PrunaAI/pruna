@@ -19,6 +19,7 @@ from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, Throughp
 from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
+from pruna.evaluation.metrics.metric_mse import MSEMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 
@@ -35,6 +36,7 @@ __all__ = [
     "InferenceMemoryMetric",
     "TotalParamsMetric",
     "TotalMACsMetric",
+    "MSEMetric",
     "PairwiseClipScore",
     "CMMD",
 ]
