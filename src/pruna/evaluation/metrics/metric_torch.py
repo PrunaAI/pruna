@@ -25,6 +25,7 @@ from torchmetrics import Metric
 from torchmetrics.classification import Accuracy, Precision, Recall
 from torchmetrics.image import (
     FrechetInceptionDistance,
+    KernelInceptionDistance,
     LearnedPerceptualImagePatchSimilarity,
     MultiScaleStructuralSimilarityIndexMeasure,
     PeakSignalNoiseRatio,
@@ -76,6 +77,23 @@ def fid_update(metric: FrechetInceptionDistance, reals: Any, fakes: Any) -> None
     ----------
     metric : FrechetInceptionDistance instance
         The FID metric instance.
+    reals : Any
+        The ground truth images tensor.
+    fakes : Any
+        The generated images tensor.
+    """
+    metric.update(reals, real=True)
+    metric.update(fakes, real=False)
+
+
+def kid_update(metric: KernelInceptionDistance, reals: Any, fakes: Any) -> None:
+    """
+    Update handler for KID metric.
+
+    Parameters
+    ----------
+    metric : KernelInceptionDistance instance
+        The KID metric instance.
     reals : Any
         The ground truth images tensor.
     fakes : Any
@@ -171,6 +189,7 @@ class TorchMetrics(Enum):
     """
 
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
+    kid = (partial(KernelInceptionDistance), kid_update, "gt_y")
     accuracy = (partial(Accuracy), None, "y_gt")
     perplexity = (partial(Perplexity), None, "y_gt")
     clip_score = (partial(CLIPScore), None, "y_x")
@@ -340,6 +359,11 @@ class TorchMetricWrapper(StatefulMetric):
             The computed metric value.
         """
         result = self.metric.compute()
+
+        # Handle KID which returns a tuple (mean, std)
+        if self.metric_name == "kid" and isinstance(result, tuple) and len(result) == 2:
+        # Extract mean from tuple (KID returns (mean, std))
+            result = result[0]
 
         # Normally we have a single score for each metric for the entire dataset.
         # For IQA metrics we have a single score per image, so we need to convert the tensor to a list.
