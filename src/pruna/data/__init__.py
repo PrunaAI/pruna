@@ -78,9 +78,24 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         "image_classification_collate",
         {"img_size": 32},
     ),
-    "TinyCIFAR10": (partial(setup_cifar10_dataset, fraction=0.1), "image_classification_collate", {"img_size": 32}),
-    "TinyMNIST": (partial(setup_mnist_dataset, fraction=0.1), "image_classification_collate", {"img_size": 28}),
-    "TinyImageNet": (partial(setup_imagenet_dataset, fraction=0.1), "image_classification_collate", {"img_size": 224}),
+    # our full CIFAR10 has 50k train and 10k test
+    "TinyCIFAR10": (
+        partial(setup_cifar10_dataset, train_sample_size=800, test_sample_size=100),
+        "image_classification_collate",
+        {"img_size": 32},
+    ),
+    #  our full MNIST has 60k train and 10k test
+    "TinyMNIST": (
+        partial(setup_mnist_dataset, train_sample_size=800, test_sample_size=100),
+        "image_classification_collate",
+        {"img_size": 28},
+    ),
+    # our full ImageNet has 100k train and 10k val
+    "TinyImageNet": (
+        partial(setup_imagenet_dataset, train_sample_size=1000, test_sample_size=100),
+        "image_classification_collate",
+        {"img_size": 224},
+    ),
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),

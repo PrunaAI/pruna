@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import random
 from typing import Any, Tuple, Union
 
 import torch
@@ -183,28 +184,58 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
     return texts
 
 
-def stratify_dataset(dataset: Dataset, column: str, fraction: float, seed: int) -> Dataset:
+def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42) -> Dataset:
     """
-    Stratify the dataset into a fraction of the dataset.
+    Stratify the dataset into a specific size.
 
     Parameters
     ----------
     dataset : Dataset
         The dataset to stratify.
-    column : str
-        The column to stratify by.
-    fraction : float
-        The fraction of the dataset to stratify.
+    sample_size : int
+        The size to stratify.
     seed : int
-        The seed to use for splitting the dataset.
+        The seed to use for sampling the dataset.
 
     Returns
     -------
     Dataset
         The stratified dataset.
     """
-    if fraction < 1.0:
-        split_result = dataset.train_test_split(test_size=1 - fraction, stratify_by_column="label", seed=seed)
-        dataset = split_result["train"]
+    dataset_length = len(dataset)
+    if dataset_length < sample_size:
+        pruna_logger.warning(
+            "Dataset length is less than the size to stratify."
+            f"Using the entire dataset. ({dataset_length} < {sample_size})"
+        )
+        return dataset
 
+    indices = list(range(dataset_length))
+    random.Random(seed).shuffle(indices)
+    selected_indices = indices[:sample_size]
+    dataset = dataset.select(selected_indices)
     return dataset
+
+
+def define_sample_size_for_dataset(dataset: Dataset, fraction: float, sample_size: int | None = None) -> int:
+    """
+    Define the sample size for the dataset.
+
+    Parameters
+    ----------
+    dataset : Dataset
+        The dataset to define the sample size for.
+    fraction : float
+        The fraction of the dataset to sample.
+    sample_size : int | None
+        The sample size to use.
+
+    Returns
+    -------
+    int
+        The sample size for the dataset.
+    """
+    if fraction < 1.0 and (sample_size is not None):
+        raise ValueError("Fraction and sample sizes cannot be used together.")
+    sample_size = int(len(dataset) * fraction) if fraction < 1.0 else sample_size or len(dataset)
+    return sample_size
