@@ -71,6 +71,14 @@ class TransformerHandler(InferenceHandler):
         Any
             The processed output.
         """
+        try:
+            from ctranslate2._ext import GenerationResult
+
+            if isinstance(output, list) and isinstance(output[0], GenerationResult):
+                return output[0].logits
+        except ImportError:
+            if isinstance(output, list):
+                return output[0]
         return output.logits.float()
 
     def log_model_info(self) -> None:

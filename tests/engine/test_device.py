@@ -1,7 +1,7 @@
 import pytest
 import torch
 from pruna.config.smash_config import SmashConfig
-from pruna.engine.utils import move_to_device, get_device
+from pruna.engine.utils import move_to_device, get_device, get_device_type
 from diffusers import FluxTransformer2DModel, FluxPipeline
 from typing import Any
 from ..common import construct_device_map_manually
@@ -60,9 +60,9 @@ def test_device_casting(input_device: str | torch.device, target_device: str | t
     """Test that the device can be cast to the target device."""
     model, _ = model_fixture
     move_to_device(model, input_device)
-    assert get_device(model) == input_device
+    assert get_device_type(model) == input_device
     move_to_device(model, target_device)
-    assert get_device(model) == target_device
+    assert get_device_type(model) == target_device
 
 
 

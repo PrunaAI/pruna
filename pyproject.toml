@@ -134,6 +134,8 @@ dependencies = [
     "opencv-python",
     "kernels",
     "aenum",
+    "vbench-pruna",
+    "imageio-ffmpeg",
     "jaxtyping"
 ]
 
