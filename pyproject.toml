@@ -134,7 +134,7 @@ dependencies = [
     "opencv-python",
     "kernels",
     "aenum",
-    "vbench-pruna",
+    "vbench-pruna; sys_platform != 'darwin'",
     "imageio-ffmpeg",
     "jaxtyping"
 ]
