@@ -32,7 +32,7 @@ def test_metric_background_consistency():
 
 @pytest.mark.cuda
 @pytest.mark.parametrize("model_fixture", ["wan_tiny_random"], indirect=["model_fixture"])
-def test_metrtic_dynamic_degree_dynamic(model_fixture):
+def test_metric_dynamic_degree_dynamic(model_fixture):
     """Test metric dynamic degree with an example sample from the vbench dataset that returns a dynamic video."""
     model, smash_config = model_fixture
     model.to("cuda")
