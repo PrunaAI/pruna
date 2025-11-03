@@ -22,7 +22,7 @@ import torch.nn.functional as F  # noqa: N812
 from torchvision.transforms.functional import convert_image_dtype
 from vbench.utils import clip_transform, init_submodules
 
-from pruna.engine.utils import set_to_best_available_device
+from pruna.engine.utils import get_device_type, set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -70,8 +70,8 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        if device is not None and str(device).split(":")[0] not in self.runs_on:
-            pruna_logger.error(f"Unsupported device {device}; supported: {self.runs_on}")
+        if device is not None and get_device_type(device) not in self.runs_on:
+            pruna_logger.error(f"Unsupported device {get_device_type(device)}; supported: {self.runs_on}")
             raise ValueError()
 
         if call_type == PAIRWISE:
