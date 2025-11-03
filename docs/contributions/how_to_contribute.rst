@@ -106,7 +106,7 @@ Make sure to develop your contribution in a way that is well documented, concise
 We will do our best to have your contribution integrated and maintained into |pruna| but reserve the right to reject contributions that we do not feel are in the best interest of the project.
 
 Tensor Annotations with jaxtyping
------
+---------------------------------
 
 We use `jaxtyping <https://github.com/google/jaxtyping>`_ to annotate PyTorch tensors with both shape and dtype information, mainly in collate functions, dataloaders, and model interfaces. This improves readability, helps catch shape/type mismatches early, and makes functions more self-documenting. Contributors are encouraged to follow this style when defining tensor inputs or outputs—for details and examples, see the official jaxtyping documentation.
 
