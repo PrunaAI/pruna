@@ -198,9 +198,11 @@ class InferenceTimeStats(BaseMetric):
         # Measurement
         list_elapsed_times = []
         with tqdm(total=self.n_iterations, desc="Measuring inference time", unit="iter") as pbar:
+
             def measure_with_progress(m, x):
                 list_elapsed_times.append(self._time_inference(m, x))
                 pbar.update(1)
+
             self._measure(model, dataloader, self.n_iterations, measure_with_progress)
 
         total_elapsed_time = sum(list_elapsed_times)
