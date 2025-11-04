@@ -87,7 +87,7 @@ You can then also install the pre-commit hooks with
 
 .. code-block:: bash
 
-    pre-commit install
+    prek install
 
 1. Develop your contribution
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

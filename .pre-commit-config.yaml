@@ -3,6 +3,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-added-large-files
+        exclude: uv.lock
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-symlinks
@@ -51,6 +52,7 @@ repos:
         stages: [pre-commit]
         types: [python]
         exclude: "^docs/"
+
       - id: trufflehog
         name: TruffleHog
         description: Detect secrets in your data.
