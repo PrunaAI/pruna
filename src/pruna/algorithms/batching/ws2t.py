@@ -13,17 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
-import shutil
-from pathlib import Path
+import os
 from typing import Any, Dict, List, Union
 
-from tokenizers import Tokenizer
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
-    AutoTokenizer,
     WhisperForConditionalGeneration,
 )
-from transformers.modeling_utils import PreTrainedModel
 
 from pruna.algorithms.batching import PrunaBatcher
 from pruna.algorithms.compilation.c_translate import WhisperWrapper
@@ -36,19 +32,19 @@ from pruna.logging.logger import pruna_logger
 
 class WS2TBatcher(PrunaBatcher):
     """
-    Implement whisper_s2t processing using the whisper_s2t library.
+    Implement whisper processing using the Faster-Whisper library (systran/faster-whisper).
 
-    WhisperS2T is an optimized speech-to-text pipeline built for Whisper models.
+    Faster-Whisper is an optimized speech-to-text pipeline built for Whisper models.
     Note: WS2T prepares the model for inference with the batch size specified in the smash config. Make sure to set the
     batch size to a value that corresponds to your inference requirements.
     """
 
-    algorithm_name: str = "whisper_s2t"
-    references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
+    algorithm_name: str = "faster_whisper"
+    references: dict[str, str] = {"GitHub": "https://github.com/SYSTRAN/faster-whisper"}
     tokenizer_required: bool = True
     processor_required: bool = True
     dataset_required: bool = False
-    runs_on: list[str] = ["cuda"]
+    runs_on: list[str] = ["cuda", "cpu"]
     compatible_algorithms: dict[str, list[str]] = dict(
         compiler=["c_translate", "c_generate", "c_whisper"], quantizer=["half"]
     )
@@ -101,9 +97,10 @@ class WS2TBatcher(PrunaBatcher):
             The smashed model.
         """
         imported_modules = self.import_algorithm_packages()
+
         # Infer task from model type
+        original_model = model
         if isinstance(model, WhisperWrapper):
-            # This means it has already been optimized using c_translate2
             task = "whisper_ct"
         elif isinstance(model, AutomaticSpeechRecognitionPipeline):
             model = model.model
@@ -112,66 +109,66 @@ class WS2TBatcher(PrunaBatcher):
             task = "whisper_ct"
         else:
             pruna_logger.error("Model type not supported.")
+            raise ValueError("Model type not supported.")
 
-        output_dir = None if not hasattr(model, "output_dir") else model.output_dir
+        import tempfile
 
-        # Requirements from WhisperS2T
-        if model.config.num_mel_bins == 128:
-            n_mels = 128
-        elif "distil" in model.config._name_or_path:
-            max_speech_len = 15.0
-            max_text_token_len = 128
-
-        temp_directory_name = "whisper"
-
-        # ignore ty warnings here because we ensure beforehand that processor is not None
-        processor: Any = smash_config.processor  # type: ignore[attr-defined]
-
-        if task == "audio_text_transcription":
-            model.save_pretrained(f"openai/whisper-{temp_directory_name}")
-            processor.save_pretrained(f"openai/whisper-{temp_directory_name}")
-        elif task == "whisper_ct" and hasattr(processor.tokenizer, "name_or_path"):
-            # this requires a little trick, a transformers tokenizer can not be directly converted
-            # we can either go via a download or via a file and then parsing out the Tokenizer
-            if Path(processor.tokenizer.name_or_path).exists():
-                processor = AutoTokenizer.from_pretrained(processor.tokenizer.name_or_path, use_fast=True)
-                processor = processor.backend_tokenizer
-            else:
-                processor = Tokenizer.from_pretrained(processor.tokenizer.name_or_path)
-            processor.save(str(Path(model.output_dir) / "tokenizer.json"))
+        # Determine model path
+        if task == "whisper_ct" and hasattr(original_model, "output_dir") and original_model.output_dir is not None:
+            # WhisperWrapper already has CTranslate2 format
+            model_path = original_model.output_dir
+            output_dir = original_model.output_dir
+            pruna_logger.info(f"Using pre-converted CTranslate2 model from {model_path}")
         else:
-            pruna_logger.error("Please pass a Huggingface Whisper Processor.")
+            # Need to convert HuggingFace model to CTranslate2 format
+            temp_dir = tempfile.mkdtemp()
+            pruna_logger.info(f"Converting model to CTranslate2 format in {temp_dir}")
 
-        model_kwargs: Dict[str, Any] = {}
+            # Save HuggingFace model temporarily
+            hf_model_dir = os.path.join(temp_dir, "hf_model")
+            model.save_pretrained(hf_model_dir)
+            if hasattr(smash_config, "processor") and smash_config.processor is not None:
+                smash_config.processor.save_pretrained(hf_model_dir)
 
-        if "n_mels" in locals():
-            model_kwargs["n_mels"] = n_mels
-        if "max_speech_len" in locals():
-            model_kwargs["max_speech_len"] = max_speech_len
-        if "max_text_token_len" in locals():
-            model_kwargs["max_text_token_len"] = max_text_token_len
-        if smash_config["int8"]:
-            model_kwargs["compute_type"] = "int8"
+            # Convert to CTranslate2 format
+            ct2_model_dir = os.path.join(temp_dir, "ct2_model")
+            try:
+                import ctranslate2
+
+                converter = ctranslate2.converters.TransformersConverter(hf_model_dir)
+                converter.convert(ct2_model_dir, force=True)
+                model_path = ct2_model_dir
+                output_dir = ct2_model_dir
+                pruna_logger.info("Successfully converted model to CTranslate2 format")
+            except Exception as e:
+                pruna_logger.error(f"Failed to convert model to CTranslate2 format: {e}")
+                raise
+
+        # Whisper model defaults
+        n_mels = getattr(model.config, "num_mel_bins", 80)
+        max_speech_len = 30.0
+        max_text_token_len = 448
+
+        # Initialize WhisperModel with only supported parameters
+        device = "cuda" if "cuda" in self.runs_on else "cpu"
+        compute_type = "int8" if smash_config["int8"] else "float16"
+
+        pruna_logger.info(f"Initializing Faster-Whisper model with device={device}, compute_type={compute_type}")
 
         with SuppressOutput():
-            if task == "whisper_ct":
-                model = imported_modules["load_model"](model_identifier=model.output_dir, backend="ct2", **model_kwargs)
-            else:
-                model = imported_modules["load_model"](
-                    model_identifier=temp_directory_name, backend="hf", **model_kwargs
-                )
-                shutil.rmtree(f"openai/whisper-{temp_directory_name}")
+            whisper_model = imported_modules["WhisperModel"](
+                model_size_or_path=model_path, device=device, compute_type=compute_type
+            )
 
-        model.output_dir = output_dir
-        if "n_mels" in locals():
-            model.n_mels = n_mels
-        if "max_speech_len" in locals():
-            model.max_speech_len = max_speech_len
-        if "max_text_token_len" in locals():
-            model.max_text_token_len = max_text_token_len
+        # Store metadata on the model object after initialization
+        whisper_model.output_dir = output_dir
+        whisper_model.n_mels = n_mels
+        whisper_model.max_speech_len = max_speech_len
+        whisper_model.max_text_token_len = max_text_token_len
+
         pruna_logger.info(f"Preparing model for inference with batch size {smash_config.batch_size}...")
         smash_config.lock_batch_size()
-        return WhisperS2TWrapper(model, smash_config.batch_size)
+        return WhisperS2TWrapper(whisper_model, smash_config.batch_size)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
@@ -182,28 +179,27 @@ class WS2TBatcher(PrunaBatcher):
         Dict[str, Any]
             The algorithm packages.
         """
-        from whisper_s2t import load_model
+        from faster_whisper import WhisperModel
 
-        return dict(load_model=load_model)
+        return dict(WhisperModel=WhisperModel)
 
 
 class WhisperS2TWrapper:
     """
-    A wrapper for the WhisperS2T model.
+    A wrapper for the Faster-Whisper model.
 
     Parameters
     ----------
-    whisper : PreTrainedModel
-        The underlying WhisperS2T model.
+    whisper : WhisperModel
+        The underlying Faster-Whisper model.
     batch_size : int | None
         The batch size for the model.
     """
 
-    def __init__(self, whisper: PreTrainedModel, batch_size: int | None = None) -> None:
+    def __init__(self, whisper: Any, batch_size: int | None = None) -> None:
         self.whisper = whisper
         self.batch_size = batch_size
-        self._device = whisper.device
-        self.output_dir = whisper.output_dir
+        self.output_dir = getattr(whisper, "output_dir", None)
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -229,8 +225,15 @@ class WhisperS2TWrapper:
         ----------
         files : Union[str, List[str]]
             The audio files to transcribe.
-        *args : Additional arguments for the model's `transcribe_with_vad` algorithm.
-        **kwargs : Additional keyword arguments for the model's `transcribe_with_vad` algorithm.
+        *args : Additional arguments for the model's `transcribe` method.
+        **kwargs : Additional keyword arguments for the model's `transcribe` method.
+            Common kwargs:
+            - processor: WhisperProcessor for HF models
+            - language: str = None (e.g., "en")
+            - task: str = "transcribe" or "translate"
+            - vad_filter: bool = False
+            - beam_size: int = 5
+            - word_timestamps: bool = False
 
         Returns
         -------
@@ -239,5 +242,41 @@ class WhisperS2TWrapper:
         """
         if isinstance(files, str):
             files = [files]
-        results = self.whisper.transcribe_with_vad(files, batch_size=self.batch_size)  # type: ignore[operator]
-        return " ".join([item["text"] for item in results[0]])
+
+        all_texts: List[str] = []
+
+        # Determine if Faster-Whisper model
+        is_faster_whisper = hasattr(self.whisper, "transcribe") and callable(self.whisper.transcribe)
+
+        for audio_file in files:
+            if is_faster_whisper:
+                # Faster-Whisper inference
+                segments, _info = self.whisper.transcribe(audio_file, batch_size=self.batch_size, *args, **kwargs)
+                # Convert generator to list to avoid iteration issues
+                segments_list = list(segments)
+                text = " ".join([segment.text for segment in segments_list])
+            else:
+                # HuggingFace Whisper inference
+                import torch
+                import torchaudio
+                from transformers import WhisperProcessor
+
+                # Memory-safe audio loading
+                waveform, sr = torchaudio.load(audio_file)
+                if sr != 16000:
+                    waveform = torchaudio.functional.resample(waveform, orig_freq=sr, new_freq=16000)
+                waveform = waveform.mean(dim=0)  # Convert to mono
+
+                # Use provided processor or load default HF processor
+                processor: WhisperProcessor = kwargs.get(
+                    "processor", WhisperProcessor.from_pretrained("openai/whisper-large-v3", use_fast=True)
+                )
+
+                inputs = processor(waveform, sampling_rate=16000, return_tensors="pt").to(self.whisper.device)
+                with torch.no_grad():
+                    generated_ids = self.whisper.generate(**inputs)
+                    text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+            all_texts.append(text)
+
+        return " ".join(all_texts)
