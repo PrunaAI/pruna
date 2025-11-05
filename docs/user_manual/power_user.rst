@@ -93,6 +93,7 @@ The ``experimental=True`` flag allows you to bypass certain safety checks before
 3. **Argument Compatibility**: Verifies that required arguments (tokenizer, processor, dataset) are provided for algorithms that need them
 
 .. note::
+
    Even with ``experimental=True``, basic safety checks are still performed:
    - Algorithm availability checks
    - Device consistency checks
@@ -112,6 +113,7 @@ The ``experimental=True`` flag allows you to bypass certain safety checks before
     )
 
 .. warning::
+
    Setting ``experimental=True`` can lead to:
    - Undefined behavior
    - Difficult-to-debug errors
@@ -137,7 +139,9 @@ The ``overwrite_algorithm_order()`` method allows you to manually specify the or
     from pruna import SmashConfig
     from pruna.smash import smash
 
-    smash_config = SmashConfig(["torchao", "torch_structured", "torch_compile"])
+    smash_config = SmashConfig(  
+        ["torchao", "torch_structured", "torch_compile"]  
+    ) 
 
     # Overwrite the automatic algorithm order
     smash_config.overwrite_algorithm_order([
@@ -157,4 +161,5 @@ When overwriting the algorithm order, you must:
 * **Respect dependencies**: You may need to set ``experimental=True`` if your custom configuration and order violate algorithm compatibility requirements
 
 .. warning::
+
    Changing the default algorithm order can lead to unexpected behavior or errors if the algorithms are applied in an incompatible sequence.

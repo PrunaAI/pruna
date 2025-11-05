@@ -37,7 +37,7 @@
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Introduction
 
-Pruna is a model optimization framework built for developers, enabling you to deliver faster, more efficient models with minimal overhead. It provides a comprehensive suite of compression algorithms to make your models:
+Pruna is a model optimization framework built for developers, enabling you to deliver faster, more efficient models with minimal overhead. It provides a comprehensive suite of compression algorithms including [caching](https://docs.pruna.ai/en/stable/compression.html#cachers), [quantization](https://docs.pruna.ai/en/stable/compression.html#quantizers), [pruning](https://docs.pruna.ai/en/stable/compression.html#pruners), [distillation](https://docs.pruna.ai/en/stable/compression.html#distillers) and [compilation](https://docs.pruna.ai/en/stable/compression.html#compilers) techniques to make your models:
 
 - **Faster**: Accelerate inference times through advanced optimization techniques
 - **Smaller**: Reduce model size while maintaining quality
