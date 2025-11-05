@@ -100,6 +100,18 @@ class AlgorithmRegistry:
         return [alg.algorithm_name for alg in cls._registry.values() if tag in alg.group_tags]
 
     @classmethod
+    def get_all_algorithms(cls) -> list[PrunaAlgorithmBase]:
+        """
+        Get all algorithms.
+
+        Returns
+        -------
+        list[str]
+            The all algorithm names.
+        """
+        return list(cls._registry.values())
+
+    @classmethod
     def register_algorithm(cls, algorithm: PrunaAlgorithmBase) -> None:
         """
         Register an algorithm.

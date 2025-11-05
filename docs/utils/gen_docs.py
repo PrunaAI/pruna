@@ -12,8 +12,9 @@ from ConfigSpace import (
     UniformIntegerHyperparameter,
 )
 
-from pruna.algorithms import PRUNA_ALGORITHMS
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.registry import AlgorithmRegistry
+from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
 
 logger = logging.getLogger(__name__)
@@ -168,7 +169,7 @@ def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
 def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible algorithms of a Pruna algorithm."""
     compatible_algorithms = []
-    for algorithms in obj.compatible_algorithms.values():
+    for algorithms in obj.get_compatible_algorithms():
         compatible_algorithms.extend(algorithms)
     # Sort alphabetically by algorithm name only
     compatible_algorithms.sort(key=str.lower)
@@ -231,9 +232,7 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
 
 def generate_compatibility_table() -> str:
     """Generate a reStructuredText list-table showing algorithm compatibility."""
-    all_algorithms = []
-    for group in PRUNA_ALGORITHMS.values():
-        all_algorithms.extend(group.values())
+    all_algorithms = AlgorithmRegistry.get_all_algorithms()
 
     all_algorithms.sort(key=lambda algo: algo.algorithm_name.lower())
 
@@ -247,7 +246,7 @@ def generate_compatibility_table() -> str:
 
     for algo in all_algorithms:
         compatibles = []
-        for lst in algo.compatible_algorithms.values():
+        for lst in algo.get_compatible_algorithms():
             compatibles.extend(lst)
         compatibles.sort(key=str.lower)
         # Fix: Use correct RST anchor generation
@@ -269,8 +268,9 @@ if __name__ == "__main__":
         f.write("\n\n")
 
         # Write algorithm descriptions
-        for algorithm_group in PRUNA_ALGORITHMS.values():
-            for algorithm in algorithm_group.values():
+        for tag in AlgorithmTag.__members__.values():
+            for algorithm_name in AlgorithmRegistry.get_algorithms_by_tag(tag):
+                algorithm = AlgorithmRegistry[algorithm_name]
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
 
