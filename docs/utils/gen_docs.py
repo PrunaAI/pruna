@@ -75,7 +75,9 @@ def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> s
             f"| **Can be applied on**: {compatible_devices_str}.",
             f"| **Required**: {required_inputs_str}.",
             f"| **Compatible with**: {compatible_algorithms_str}.",
-            f"| **Required install**: {required_install_str}." if required_install_str else "",
+            f"| **Required install**: {required_install_str}."
+            if required_install_str
+            else "",
         ]
     )
 
@@ -111,12 +113,20 @@ def format_grid_table(rows: list[list[str]]) -> str:
     total_widths = [w + 2 for w in col_widths]
 
     horizontal_border = "+" + "+".join("-" * width for width in total_widths) + "+"
-    header_line = "|" + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
+    header_line = (
+        "|"
+        + "|".join(" " + rows[0][i].ljust(col_widths[i]) + " " for i in range(num_cols))
+        + "|"
+    )
     header_separator = "+" + "+".join("=" * width for width in total_widths) + "+"
 
     data_lines = []
     for row in rows[1:]:
-        row_line = "|" + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols)) + "|"
+        row_line = (
+            "|"
+            + "|".join(" " + row[i].ljust(col_widths[i]) + " " for i in range(num_cols))
+            + "|"
+        )
         data_lines.append(row_line)
         data_lines.append(horizontal_border)
 
@@ -168,13 +178,14 @@ def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
 
 def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible algorithms of a Pruna algorithm."""
-    compatible_algorithms = []
-    for algorithms in obj.get_compatible_algorithms():
-        compatible_algorithms.extend(algorithms)
+    compatible_algorithms = obj.get_compatible_algorithms()
     # Sort alphabetically by algorithm name only
     compatible_algorithms.sort(key=str.lower)
     # Format with intra-page RST links using correct anchors
-    linked_algorithms = [f"`{a} <compression.html#{generate_rst_anchor(a)}>`__" for a in compatible_algorithms]
+    linked_algorithms = [
+        f"`{a} <compression.html#{generate_rst_anchor(a)}>`__"
+        for a in compatible_algorithms
+    ]
     return ", ".join(linked_algorithms) if linked_algorithms else "None"
 
 
@@ -251,7 +262,10 @@ def generate_compatibility_table() -> str:
         compatibles.sort(key=str.lower)
         # Fix: Use correct RST anchor generation
         compat_text = (
-            ", ".join(f"`{c} <compression.html#{generate_rst_anchor(c)}>`__" for c in compatibles)
+            ", ".join(
+                f"`{c} <compression.html#{generate_rst_anchor(c)}>`__"
+                for c in compatibles
+            )
             if compatibles
             else "—"
         )
@@ -274,5 +288,7 @@ if __name__ == "__main__":
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
 
-    logger.info("Generated compression.rst with compatibility matrix and algorithm descriptions")
+    logger.info(
+        "Generated compression.rst with compatibility matrix and algorithm descriptions"
+    )
     logger.info("Docs successfully written to docs/user_manual/")
