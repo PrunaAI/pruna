@@ -531,7 +531,7 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
     str
         Valid CUDA device string
     """
-    device_type, device_index = split_device(device)
+    _, device_index = split_device(device)
     if not torch.cuda.is_available():
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
@@ -645,7 +645,7 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     device : str
         The device to split.
     strict : bool
-        Whether to raise an error if the device is not in allowed devices
+        Whether to raise an error if the device is not in allowed devices.
 
     Returns
     -------
@@ -679,17 +679,11 @@ class ModelContext(AbstractContextManager):
     ----------
     model : ModelMixin
         The model to handle. Can be a transformer model, UNet, or other ModelMixin.
+    read_only : bool
+            Whether the model is read-only.
     """
 
     def __init__(self, model: "ModelMixin", read_only: bool = False) -> None:
-        """
-        Context manager for handling the model.
-
-        Parameters
-        ----------
-        model : ModelMixin
-            The model to handle. Can be a transformer model, UNet, or other pipeline.
-        """
         self.model = model
         self.read_only = read_only
         self.smashed_working_model = None

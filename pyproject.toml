@@ -3,7 +3,7 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408", "PTH123"]
+ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408", "PTH123", "N813"]
 select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA", "PTH"]
 preview = true # enable preview features for copyright checking
 
@@ -11,6 +11,7 @@ preview = true # enable preview features for copyright checking
 "*.ipynb" = ["ERA", "CPY", "T"]  # commented out code is intended for tutorials
 "tests/*" = ["T20", "CPY"]  # print statements are intended for tests
 "docs/*" = ["CPY"]
+"src/pruna/algorithms/base/tags.py" = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -30,11 +31,9 @@ unsupported-operator = "ignore" # mypy supports | syntax with from __future__ im
 invalid-argument-type = "ignore" # mypy is more permissive with argument types
 invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
-possibly-missing-attribute = "ignore" # mypy is more permissive with attribute access
-possibly-missing-import = "ignore" # mypy is more permissive with imports
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
-missing-argument = "ignore"
+possibly-unbound-import = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
