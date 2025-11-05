@@ -122,7 +122,7 @@ class TestCheckModelCompatibility:
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            with patch("pruna.config.pre_smash_routines.get_device", return_value="cuda"):
+            with patch("pruna.config.pre_smash_routines.get_device_type", return_value="cuda"):
                 check_model_compatibility(model, smash_config)
 
     def test_model_compatibility_model_check_failure(self):
@@ -155,9 +155,10 @@ class TestCheckModelCompatibility:
         mock_algorithms = {"algorithm1": mock_algorithm1}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            with patch("pruna.config.pre_smash_routines.get_device", return_value="cuda"):
-                with pytest.raises(ValueError, match="algorithm1 is not compatible with model device cuda"):
-                    check_model_compatibility(model, smash_config)
+            with patch("pruna.config.pre_smash_routines.get_device_type", return_value="cuda"):
+                with patch("pruna.config.pre_smash_routines.get_device", return_value="cuda"):
+                    with pytest.raises(ValueError, match="algorithm1 is not compatible with model device cuda"):
+                        check_model_compatibility(model, smash_config)
 
 @pytest.mark.cpu
 class TestCheckAlgorithmPackagesAvailability:
