@@ -38,7 +38,6 @@ no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
 missing-argument = "ignore"
 possibly-unbound-import = "ignore"
-missing-argument = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
