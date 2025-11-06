@@ -43,8 +43,7 @@ Let's see what that looks like in code.
     model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
-    smash_config = SmashConfig()
-    smash_config["quantizer"] = "hqq_diffusers"
+    smash_config = SmashConfig(["hqq_diffusers"])
 
     # Smash the model
     optimized_model = smash(model=model, smash_config=smash_config)
@@ -83,14 +82,13 @@ After loading the model, we can define a ``SmashConfig`` to customize the optimi
 This ``SmashConfig`` is a dictionary-like object that configures which optimizations to apply to your model.
 You can specify multiple optimization algorithms from different categories like batching, caching and quantization.
 
-For now, let's just use a ``quantizer`` to accelerate the model during inference.
+For now, let's just use the ``hqq_diffusers`` quantizer to accelerate the model during inference.
 
 .. code-block:: python
 
     from pruna import SmashConfig
 
-    smash_config = SmashConfig()
-    smash_config["quantizer"] = "hqq_diffusers"  # Accelerate the model with caching
+    smash_config = SmashConfig(["hqq_diffusers"])
 
 Pruna supports a wide range of algorithms for specific optimizations, all with different trade-offs.
 To understand how to configure the right one for your scenario, see :doc:`Define a SmashConfig </docs_pruna/user_manual/configure>`.
@@ -111,8 +109,7 @@ Let's use the ``smash()`` function to apply the configured optimizations:
     base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
-    smash_config = SmashConfig()
-    smash_config["quantizer"] = "hqq_diffusers"
+    smash_config = SmashConfig(["hqq_diffusers"])
 
     # Smash the model
     optimized_model = smash(model=base_model, smash_config=smash_config)
@@ -188,8 +185,7 @@ Example 1: Diffusion Model Optimization
     model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega")
 
     # Create and configure SmashConfig
-    smash_config = SmashConfig()
-    smash_config["quantizer"] = "hqq_diffusers"
+    smash_config = SmashConfig(["hqq_diffusers"])
 
     # Optimize the model
     optimized_model = smash(model=model, smash_config=smash_config)
@@ -213,9 +209,7 @@ Example 2: Large Language Model Optimization
     pipe = pipeline("text-generation", model=model_id)
 
     # Create and configure SmashConfig
-    smash_config = SmashConfig()
-    smash_config["compiler"] = "torch_compile"
-    smash_config["quantizer"] = "hqq"
+    smash_config = SmashConfig(["hqq", "torch_compile"])
 
     # Optimize the model
     optimized_model = smash(model=pipe.model, smash_config=smash_config)
@@ -239,11 +233,9 @@ Example 3: Speech Recognition Optimization
     model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True).to("cuda")
 
     # Create and configure SmashConfig
-    smash_config = SmashConfig()
+    smash_config = SmashConfig(["c_whisper", "whisper_s2t"])
     smash_config.add_processor(model_id)  # Required for Whisper
     smash_config.add_tokenizer(model_id)
-    smash_config["compiler"] = "c_whisper"
-    smash_config["batcher"] = "whisper_s2t"
 
     # Optimize the model
     optimized_model = smash(model=model, smash_config=smash_config)

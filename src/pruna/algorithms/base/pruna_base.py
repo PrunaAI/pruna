@@ -310,20 +310,32 @@ class PrunaAlgorithmBase(ABC):
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         return self._apply(model, wrapped_config)
 
+    def get_compatible_algorithms(self) -> list[str]:
+        """
+        Get algorithms compatible with the current algorithm.
+
+        Returns
+        -------
+        list[str]
+            The compatible algorithms.
+        """
+        return list(
+            set(
+                _expand_tags_into_algorithm_names(self.compatible_before)
+                + _expand_tags_into_algorithm_names(self.compatible_after)
+            )
+        )
+
     def get_incompatible_algorithms(self) -> list[str]:
         """
-        Get algorithms incompatible with this one.
+        Get algorithms incompatible with the current algorithm.
 
         Returns
         -------
         list[str]
             The incompatible algorithms.
         """
-        compatible_before = set(_expand_tags_into_algorithm_names(self.compatible_before))
-        compatible_after = set(_expand_tags_into_algorithm_names(self.compatible_after))
-        allowed = compatible_before | compatible_after
-        all_algorithms = set(SMASH_SPACE.get_all_algorithms())
-        return sorted(all_algorithms - allowed)
+        return list(set(SMASH_SPACE.get_all_algorithms()) - set(self.get_compatible_algorithms()))
 
     def get_algorithms_to_run_before(self) -> list[str]:
         """
