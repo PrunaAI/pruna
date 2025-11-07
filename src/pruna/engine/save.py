@@ -85,10 +85,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     # in the case of multiple, specialized save functions, we default to pickled
     else:
         pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
-        for fn in LOAD_FUNCTIONS:
-            if fn not in ARTIFACT_SAVE_FUNCTIONS:
-                smash_config.load_fns.remove(fn.name)
-        smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
+        save_fn = SAVE_FUNCTIONS.pickled
 
     # execute selected save function
     save_fn(model, model_path, smash_config)
