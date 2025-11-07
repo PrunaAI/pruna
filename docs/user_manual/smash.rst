@@ -31,6 +31,7 @@ Basic Optimization Workflow
 Let's see what that looks like in code.
 
 .. code-block:: python
+    :class: noextract
 
     from diffusers import DiffusionPipeline
 
@@ -100,6 +101,7 @@ The ``smash()`` function is the core of Pruna. It takes your model and ``SmashCo
 Let's use the ``smash()`` function to apply the configured optimizations:
 
 .. code-block:: python
+    :class: noextract
 
     from pruna import SmashConfig, smash
 
@@ -125,6 +127,7 @@ Step 4: Evaluate the optimized model with the ``EvaluationAgent``
 To evaluate the optimized model, we can use the same interface as the original model.
 
 .. code-block:: python
+    :class: noextract
 
     from pruna.data.pruna_datamodule import PrunaDataModule
     from pruna.evaluation.evaluation_agent import EvaluationAgent
@@ -156,6 +159,7 @@ Step 5: Run inference with the optimized model
 To run inference with the optimized model, we can use the same interface as the original model.
 
 .. code-block:: python
+    :class: noextract
 
     from pruna.engine.pruna_model import PrunaModel
 
@@ -176,7 +180,7 @@ Example 1: Diffusion Model Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
-
+    :class: noextract
     from diffusers import DiffusionPipeline
 
     from pruna import SmashConfig, smash
@@ -199,6 +203,7 @@ Example 2: Large Language Model Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
+    :class: noextract
 
     from transformers import pipeline
 
@@ -221,6 +226,7 @@ Example 3: Speech Recognition Optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
+    :class: noextract
 
     import requests
     import torch

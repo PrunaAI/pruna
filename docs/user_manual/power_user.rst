@@ -18,6 +18,8 @@ It specifies exactly which parts of the model the algorithm should operate on.
 
 .. code-block:: python
 
+    from typing import Dict, List, Literal
+
     TARGET_MODULES_TYPE = Dict[Literal["include", "exclude"], List[str]]
 
 The parameter is a dictionary with two keys, ``include`` and ``exclude``, each mapping to a list of pattern strings to match module paths.
@@ -100,9 +102,9 @@ The ``experimental=True`` flag allows you to bypass certain safety checks before
    - Algorithm package availability checks
 
 .. code-block:: python
+    :class: noextract
 
-    from pruna import SmashConfig
-    from pruna.smash import smash
+    from pruna import SmashConfig, smash
 
     smash_config = SmashConfig(["quanto"])
 
@@ -135,9 +137,9 @@ However, in some cases you may want to override this automatic ordering and spec
 The ``overwrite_algorithm_order()`` method allows you to manually specify the order in which algorithms should be applied.
 
 .. code-block:: python
+    :class: noextract
 
-    from pruna import SmashConfig
-    from pruna.smash import smash
+    from pruna import SmashConfig, smash
 
     smash_config = SmashConfig(  
         ["torchao", "torch_structured", "torch_compile"]  
