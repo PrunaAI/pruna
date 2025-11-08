@@ -55,6 +55,8 @@ def test_device_is_set_correctly_for_metrics(device:str):
 
 
 @pytest.mark.cuda
+# We need to mark this test as cuda because it requires modern architectures
+@pytest.mark.high
 @pytest.mark.parametrize(
     "inference_device, stateful_metric_device, task_device",
     [

@@ -69,11 +69,16 @@ These tutorials will guide you through the process of using |pruna| to optimize 
       :link: ./sd_deepcache.ipynb
 
       Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
+   .. grid-item-card:: Optimize and Deploy Sana diffusers with Pruna and Hugging Face
+      :text-align: center
+      :link: ./deploying_sana_tutorial.ipynb
+
+      Optimize and deploy you diffusion model with `torchao` and `gradio`.
 
    .. grid-item-card:: Smashing at Finer Granularity with Target Modules
       :text-align: center
       :link: ./target_modules_quanto.ipynb
-      
+
       Learn how to use the ``target_modules`` parameter to target specific modules in your model.
 
 .. toctree::

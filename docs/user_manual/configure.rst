@@ -48,13 +48,7 @@ Let's see what that looks like in code.
 
     from pruna import SmashConfig
 
-    smash_config = SmashConfig()
-
-    # Activate IFW batching
-    smash_config['batcher'] = 'ifw'
-
-    # Set IFW batching parameters
-    smash_config['ifw_weight_bits'] = 16
+    smash_config = SmashConfig({"ifw": {"weight_bits": 16}})
 
     # Add a tokenizer and processor
     model_id = 'openai/whisper-tiny'
@@ -143,19 +137,14 @@ The table underneath provides a general overview of the impact of each algorithm
 Configure Algorithm Groups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To activate an algorithm, you assign its name to the corresponding algorithm group in the ``SmashConfig``.
-The group names are outlined in the table above and the specific algorithms are shown in the :doc:`Algorithm Overview </compression>` page.
+To activate an algorithm, you simply pass its name to the ``SmashConfig`` as a string.
 
-Let's activate the ``ifw`` algorithm as a ``batcher``:
+Let's activate the ``ifw`` algorithm:
 
 .. code-block:: python
 
     from pruna import SmashConfig
-
-    smash_config = SmashConfig()
-
-    # Activate IFW batching
-    smash_config['batcher'] = 'ifw'
+    smash_config = SmashConfig(["ifw"])
 
 Configure Algorithm Hyperparameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,19 +152,13 @@ Configure Algorithm Hyperparameters
 Each algorithm has its own set of hyperparameters that control its behavior.
 These are automatically prefixed with the algorithm name and can also be found underneath each algorithm in the :doc:`Algorithm Overview </compression>`.
 
-Let's add the ``ifw_weight_bits`` and ``ifw_group_size`` hyperparameters for the ``ifw`` we defined above:
+Let's add the ``weight_bits`` and ``group_size`` hyperparameters for the ``ifw`` we defined above:
 
 .. code-block:: python
 
     from pruna import SmashConfig
 
-    smash_config = SmashConfig()
-
-    # Activate IFW batching
-    smash_config['batcher'] = 'ifw'
-
-    # Set IFW batching parameters
-    smash_config['ifw_weight_bits'] = 16
+    smash_config = SmashConfig({"ifw": {"weight_bits": 16}})
 
 Configure Components
 --------------------

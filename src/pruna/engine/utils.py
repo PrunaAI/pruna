@@ -88,7 +88,7 @@ def get_nn_modules(model: Any) -> dict[str | None, torch.nn.Module]:
         }
 
 
-def safe_is_instance(model: Any, instance_type: type) -> bool:
+def safe_is_instance(model: Any, instance_type: Any) -> bool:
     """
     Safely check if the model is an instance of the given type.
 
@@ -130,7 +130,7 @@ def move_to_device(
     device_map : dict[str, str] | None
         The device map to use if the target device is "accelerate".
     """
-    if safe_is_instance(model, type(Pipeline)):
+    if safe_is_instance(model, Pipeline):
         move_to_device(model.model, device, raise_error, device_map)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
@@ -328,6 +328,23 @@ def cast_model_to_accelerate_device_map(model, device_map):
     model.hf_device_map = device_map.copy()
 
 
+def get_device_type(model: Any) -> str:
+    """
+    Get the device type of the model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to get the device type from.
+
+    Returns
+    -------
+    str
+        The device type of the model.
+    """
+    return split_device(get_device(model))[0]
+
+
 def get_device(model: Any) -> str:
     """
     Get the device of the model.
@@ -342,7 +359,7 @@ def get_device(model: Any) -> str:
     str
         The device or device map of the model.
     """
-    if safe_is_instance(model, type(Pipeline)):
+    if safe_is_instance(model, Pipeline):
         return get_device(model.model)
 
     # a device map that points the whole model to the same device (only key is "") is not considered distributed
@@ -514,7 +531,7 @@ def _resolve_cuda_device(device: str, bytes_free_per_gpu: dict[int, int] | None 
     str
         Valid CUDA device string
     """
-    device_type, device_index = split_device(device)
+    _, device_index = split_device(device)
     if not torch.cuda.is_available():
         pruna_logger.warning("'cuda' requested but not available.")
         return set_to_best_available_device(device=None)
@@ -628,7 +645,7 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     device : str
         The device to split.
     strict : bool
-        Whether to raise an error if the device is not in allowed devices
+        Whether to raise an error if the device is not in allowed devices.
 
     Returns
     -------
@@ -662,17 +679,11 @@ class ModelContext(AbstractContextManager):
     ----------
     model : ModelMixin
         The model to handle. Can be a transformer model, UNet, or other ModelMixin.
+    read_only : bool
+            Whether the model is read-only.
     """
 
     def __init__(self, model: "ModelMixin", read_only: bool = False) -> None:
-        """
-        Context manager for handling the model.
-
-        Parameters
-        ----------
-        model : ModelMixin
-            The model to handle. Can be a transformer model, UNet, or other pipeline.
-        """
         self.model = model
         self.read_only = read_only
         self.smashed_working_model = None

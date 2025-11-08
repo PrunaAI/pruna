@@ -14,7 +14,9 @@
 
 from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
+from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
 from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.metric_dino_score import DinoScore
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
 from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
@@ -38,5 +40,7 @@ __all__ = [
     "TotalMACsMetric",
     "PairwiseClipScore",
     "CMMD",
+    "DinoScore",
     "SharpnessMetric",
+    "AestheticLAION",
 ]

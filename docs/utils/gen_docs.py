@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import Any
 
 from ConfigSpace import (
@@ -11,9 +12,38 @@ from ConfigSpace import (
     UniformIntegerHyperparameter,
 )
 
-from pruna.algorithms import PRUNA_ALGORITHMS
-from pruna.algorithms.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+from pruna.algorithms.base.registry import AlgorithmRegistry
+from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+
+def generate_rst_anchor(algorithm_name: str) -> str:
+    """
+    Generate the RST anchor that will be created from a header.
+
+    RST generates anchors by converting headers to lowercase and replacing
+    non-alphanumeric characters with hyphens.
+
+    Parameters
+    ----------
+    algorithm_name: str
+        The algorithm name to convert to an anchor.
+
+    Returns
+    -------
+    str
+        The RST anchor that will be generated from the header.
+    """
+    # RST wraps algorithm names in backticks in the header: ``algorithm_name``
+    # The anchor generation converts this to lowercase and replaces non-alphanumeric chars
+    header_text = f"``{algorithm_name}``"
+    # Convert to lowercase and replace non-alphanumeric with hyphens
+    anchor = header_text.lower().replace("`", "").replace("_", "-")
+    return anchor
 
 
 def generate_algorithm_desc(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
@@ -100,8 +130,7 @@ def format_grid_table(rows: list[list[str]]) -> str:
         data_lines.append(row_line)
         data_lines.append(horizontal_border)
 
-    table_lines = [horizontal_border, header_line, header_separator] + data_lines
-    return "\n".join(table_lines)
+    return "\n".join([horizontal_border, header_line, header_separator] + data_lines)
 
 
 def get_header_and_description(obj: PrunaAlgorithmBase, name_suffix: str = "") -> str:
@@ -118,8 +147,7 @@ def get_references(obj: PrunaAlgorithmBase) -> str:
     references = obj.references
     if references:
         return ", ".join(f"`{key} <{value}>`__" for key, value in references.items())
-    else:
-        return "None"
+    return "None"
 
 
 def get_required_inputs(obj: PrunaAlgorithmBase) -> str:
@@ -137,23 +165,28 @@ def get_required_inputs(obj: PrunaAlgorithmBase) -> str:
 def get_compatible_devices(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible devices of a Pruna algorithm."""
     compatible_devices = []
+    name_map = {
+        "cpu": "CPU",
+        "cuda": "CUDA",
+        "mps": "MPS",
+        "accelerate": "Accelerate distributed",
+    }
     for device in obj.runs_on:
-        name_map = {
-            "cpu": "CPU",
-            "cuda": "CUDA",
-            "mps": "MPS",
-            "accelerate": "Accelerate distributed",
-        }
-        compatible_devices.append(name_map[device])
+        compatible_devices.append(name_map.get(device, device))
     return ", ".join(compatible_devices) if compatible_devices else "None"
 
 
 def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
     """Get the compatible algorithms of a Pruna algorithm."""
-    compatible_algorithms = []
-    for algorithms in obj.compatible_algorithms.values():
-        compatible_algorithms.extend([f"``{a}``" for a in algorithms])
-    return ", ".join(compatible_algorithms) if compatible_algorithms else "None"
+    compatible_algorithms = obj.get_compatible_algorithms()
+    # Sort alphabetically by algorithm name only
+    compatible_algorithms.sort(key=str.lower)
+    # Format with intra-page RST links using correct anchors
+    linked_algorithms = [
+        f"`{a} <compression.html#{generate_rst_anchor(a)}>`__"
+        for a in compatible_algorithms
+    ]
+    return ", ".join(linked_algorithms) if linked_algorithms else "None"
 
 
 def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
@@ -167,7 +200,6 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
         "``--extra-index-url https://prunaai.pythonanywhere.com/`` "
         "``--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/``"
     )
-
     if required_install:
         if obj.algorithm_name == "gptq":
             return required_install
@@ -176,25 +208,19 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
         else:
             required_install += f" or {base_install}"
         return required_install
-    else:
-        return None
+    return None
 
 
 def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
     """Get the table rows of a Pruna algorithm hyperparameter section."""
-    rows = []
-    # Table header row
-    rows.append(["**Parameter**", "**Default**", "**Options**", "**Description**"])
+    rows = [["**Parameter**", "**Default**", "**Options**", "**Description**"]]
     hyperparameter_counter = 0
-
     for hp in obj.get_hyperparameters():
         if isinstance(hp, Constant) and not isinstance(hp, UnconstrainedHyperparameter):
-            continue  # Skip constant hyperparameters
-
+            continue
         param_name = f"``{obj.algorithm_name}_{hp.name}``"
-        assert hp.meta is not None and "desc" in hp.meta
-        description = hp.meta["desc"]
-
+        # Fix: Check if meta is None before accessing it
+        description = hp.meta.get("desc", "") if hp.meta is not None else ""
         if isinstance(hp, (UniformFloatHyperparameter, UniformIntegerHyperparameter)):
             default = str(hp.default_value)
             values = f"Range {hp.lower} to {hp.upper}"
@@ -210,16 +236,59 @@ def get_table_rows(obj: PrunaAlgorithmBase) -> tuple[list[list[str]], int]:
             values = "Unconstrained"
         else:
             raise ValueError(f"Unsupported hyperparameter type: {type(hp)}")
-
         rows.append([param_name, default, values, description])
         hyperparameter_counter += 1
     return rows, hyperparameter_counter
 
 
+def generate_compatibility_table() -> str:
+    """Generate a reStructuredText list-table showing algorithm compatibility."""
+    all_algorithms = AlgorithmRegistry.get_all_algorithms()
+
+    all_algorithms.sort(key=lambda algo: algo.algorithm_name.lower())
+
+    lines = [
+        ".. list-table:: Algorithm Compatibility Matrix",
+        "   :header-rows: 1",
+        "",
+        "   * - Algorithm",
+        "     - Compatible With",
+    ]
+
+    for algo in all_algorithms:
+        compatibles = []
+        for lst in algo.get_compatible_algorithms():
+            compatibles.extend(lst)
+        compatibles.sort(key=str.lower)
+        # Fix: Use correct RST anchor generation
+        compat_text = (
+            ", ".join(
+                f"`{c} <compression.html#{generate_rst_anchor(c)}>`__"
+                for c in compatibles
+            )
+            if compatibles
+            else "—"
+        )
+        lines.append(f"   * - ``{algo.algorithm_name}``\n     - {compat_text}")
+
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     # Collect all algorithms into a single file.
     with open("compression.rst", "w") as f:
-        for algorithm_group in PRUNA_ALGORITHMS.values():
-            for algorithm in algorithm_group.values():
+        # First write the compatibility matrix
+        f.write(generate_compatibility_table())
+        f.write("\n\n")
+
+        # Write algorithm descriptions
+        for tag in AlgorithmTag.__members__.values():
+            for algorithm_name in AlgorithmRegistry.get_algorithms_by_tag(tag):
+                algorithm = AlgorithmRegistry[algorithm_name]
                 f.write(generate_algorithm_desc(algorithm))
                 f.write("\n\n")
+
+    logger.info(
+        "Generated compression.rst with compatibility matrix and algorithm descriptions"
+    )
+    logger.info("Docs successfully written to docs/user_manual/")

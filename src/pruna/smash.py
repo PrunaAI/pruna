@@ -17,14 +17,16 @@ from __future__ import annotations
 from typing import Any
 
 from pruna import PrunaModel, SmashConfig
-from pruna.algorithms import PRUNA_ALGORITHMS
+from pruna.algorithms import AlgorithmRegistry
 from pruna.config.pre_smash_routines import (
-    check_algorithm_availability,
+    check_algorithm_cross_compatibility,
+    check_algorithm_packages_availability,
+    check_argument_compatibility,
     check_model_compatibility,
+    determine_algorithm_order,
     ensure_device_consistency,
     execute_algorithm_pre_smash_hooks,
 )
-from pruna.config.smash_space import ALGORITHM_GROUPS
 from pruna.logging.logger import PrunaLoggerContext, pruna_logger
 from pruna.telemetry import track_usage
 
@@ -59,25 +61,27 @@ def smash(
     with PrunaLoggerContext(verbose=verbose):
         # check the device consistency of the model and the smash config
         ensure_device_consistency(model, smash_config)
+        # check if the algorithm packages are available for the given configuration
+        check_algorithm_packages_availability(smash_config)
 
-        # check if the model type is compatible with the given configuration
         if not experimental:
+            # check if the algorithms are compatible with each other
+            check_algorithm_cross_compatibility(smash_config)
+            # check if the model type is compatible with the given configuration
             check_model_compatibility(model, smash_config)
+            # check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for an algorithm
+            check_argument_compatibility(smash_config)
 
+        # determine algorithm order based on requirements of individual algorithms
+        algorithm_order = determine_algorithm_order(smash_config, experimental=experimental)
         # perform any necessary setup steps before the smashing process begins
-        execute_algorithm_pre_smash_hooks(model, smash_config)
+        execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
 
         # iterate through all algorithms groups in a predefined order
-        for algorithm_group in ALGORITHM_GROUPS:
-            current_algorithm = smash_config[algorithm_group]
-
-            if current_algorithm is not None:
-                check_algorithm_availability(current_algorithm, algorithm_group, PRUNA_ALGORITHMS)
-                # apply the active algorithm to the model
-                pruna_logger.info(f"Starting {algorithm_group} {current_algorithm}...")
-                algorithm_instance = PRUNA_ALGORITHMS[algorithm_group][current_algorithm]
-                model = algorithm_instance.apply(model, smash_config=smash_config)
-                pruna_logger.info(f"{algorithm_group} {current_algorithm} was applied successfully.")
+        for algorithm in algorithm_order:
+            pruna_logger.info(f"Starting {algorithm}...")
+            model = AlgorithmRegistry[algorithm].apply(model, smash_config=smash_config)
+            pruna_logger.info(f"{algorithm} was applied successfully.")
 
         # wrap the model in a PrunaModel object before returning
         smashed_model = PrunaModel(model, smash_config=smash_config)

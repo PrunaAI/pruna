@@ -37,6 +37,10 @@ class AutoregressiveHandler(InferenceHandler):
 
     Parameters
     ----------
+    model : Any
+        The model to handle.
+    smash_config : SmashConfig
+        The SmashConfig object containing the configuration.
     model_args : Dict[str, Any]
         The arguments to pass to the model.
     """
