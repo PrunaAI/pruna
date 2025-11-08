@@ -46,13 +46,6 @@ Pruna is a model optimization framework built for developers, enabling you to de
 
 The toolkit is designed with simplicity in mind - requiring just a few lines of code to optimize your models. It supports various model types including LLMs, Diffusion and Flow Matching Models, Vision Transformers, Speech Recognition Models and more.
 
-<!--
-<img align="left" width="40" src="docs/assets/images/highlight.png" alt="Pruna Pro"/>
-
-**To move at top speed**, we offer [Pruna Pro](https://docs.pruna.ai/en/stable/docs_pruna_pro/user_manual/pruna_pro.html), our enterprise solution that unlocks advanced optimization features, our `OptimizationAgent`, priority support, and much more.
-<br clear="left"/>
--->
-
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Installation
 
 Pruna is currently available for installation on Linux, MacOS and Windows. However, some algorithms impose restrictions on the operating system and might not be available on all platforms.
@@ -97,9 +90,7 @@ Then, use Pruna's `smash` function to optimize your model. Pruna provides a vari
 from pruna import smash, SmashConfig
 
 # Create and smash your model
-smash_config = SmashConfig()
-smash_config["cacher"] = "deepcache"
-smash_config["compiler"] = "stable_fast"
+smash_config = SmashConfig(["deepcache", "stable_fast"])
 smashed_model = smash(model=base_model, smash_config=smash_config)
 ```
 
@@ -126,28 +117,6 @@ eval_agent.evaluate(smashed_model)
 ```
 
 This was the minimal example, but you are looking for the maximal example? You can check out our [documentation][documentation] for an overview of all supported [algorithms][docs-algorithms] as well as our tutorials for more use-cases and examples.
-<!--
-## <img src="./docs/assets/images/pruna_heart.png" alt="Pruna Heart" width=20></img> Pruna Pro
-
-Pruna has everything you need to get started on optimizing your own models. To push the efficiency of your models even further, we offer Pruna Pro. To give you a glimpse of what is possible with Pruna Pro, let us consider three of the most widely used diffusers pipelines and see how much smaller and faster we can make them. In addition to popular open-source algorithms, we use our proprietary Auto Caching algorithm. We compare the fidelity of the compressed models. Fidelity measures the similarity between the images of the compressed models and the images of the original model.
-
-### Stable Diffusion XL
-
-For [Stable Diffusion XL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0), we compare Auto Caching with [DeepCache](https://github.com/horseee/DeepCache) (available with Pruna). We combine these caching algorithms with torch.compile to get an additional **9%** reduction in inference latency, and we use [HQQ](https://github.com/mobiusml/hqq) 8-bit quantization to reduce the size of the model from **8.8GB** to **6.7GB**.
-
-<img src="./docs/assets/plots/benchmark_sdxl.svg" alt="SDXL Benchmark"/>
-
-### FLUX [dev]
-For [FLUX [dev]](https://huggingface.co/black-forest-labs/FLUX.1-dev), we compare Auto Caching with the popular [TeaCache](https://github.com/ali-vilab/TeaCache) algorithm. In this case, we used [Stable Fast](https://github.com/chengzeyi/stable-fast) to reduce the latency of Auto Caching by additional **13%**, and [HQQ](https://github.com/mobiusml/hqq) with 8-bit reduced the size of FLUX from **33GB** to **23GB**.
-
-<img src="./docs/assets/plots/benchmark_flux.svg" alt="FLUX [dev] Benchmark"/>
-
-### HunyuanVideo
-For [HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo), we compare Auto Caching with [TeaCache](https://github.com/ali-vilab/TeaCache). Applying [HQQ](https://github.com/mobiusml/hqq) 8-bit quantization to the model reduced the size from **41GB** to **29GB**.
-
-<img src="./docs/assets/plots/benchmark_hunyuan.svg" alt="HunyuanVideo Benchmark"/>
-
--->
 
 ## <img src="./docs/assets/images/pruna_cool.png" alt="Pruna Cool" width=20></img> Algorithm Overview
 

@@ -3,7 +3,7 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408", "PTH123"]
+ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408", "PTH123", "N813"]
 select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA", "PTH"]
 preview = true # enable preview features for copyright checking
 
@@ -11,6 +11,7 @@ preview = true # enable preview features for copyright checking
 "*.ipynb" = ["ERA", "CPY", "T"]  # commented out code is intended for tutorials
 "tests/*" = ["T20", "CPY"]  # print statements are intended for tests
 "docs/*" = ["CPY"]
+"src/pruna/algorithms/base/tags.py" = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -25,16 +26,14 @@ invalid-assignment = "ignore"  # mypy is more permissive with Any assignments
 call-non-callable = "ignore"   # mypy allows more dynamic method calls
 index-out-of-bounds = "ignore" # mypy is more permissive with tuple indexing
 unresolved-attribute = "ignore" # mypy is more permissive with module attributes
-possibly-unbound-variable = "ignore" # mypy doesn't warn about this as much
 redundant-cast = "ignore"      # mypy doesn't warn about redundant casts
 unsupported-operator = "ignore" # mypy supports | syntax with from __future__ import annotations
 invalid-argument-type = "ignore" # mypy is more permissive with argument types
 invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
-possibly-missing-attribute = "ignore" # mypy is more permissive with attribute access
-possibly-missing-import = "ignore" # mypy is more permissive with imports
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
+possibly-unbound-import = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -78,7 +77,7 @@ gptqmodel = [
 
 [project]
 name = "pruna"
-version = "0.2.10"
+version = "0.2.11"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
@@ -134,8 +133,10 @@ dependencies = [
     "piq",
     "opencv-python",
     "kernels",
-    "aenum"
-
+    "aenum",
+    "vbench-pruna; sys_platform != 'darwin'",
+    "imageio-ffmpeg",
+    "jaxtyping"
 ]
 
 [project.optional-dependencies]

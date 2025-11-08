@@ -35,7 +35,11 @@ def setup_vbench_dataset(category: str | List[str] | None = None) -> Tuple[Datas
         The train, validation and test datasets.
     """
     # Loading the info json file from the package
-    full_info_path = files("vbench").joinpath("VBench_full_info.json")
+    try:
+        full_info_path = files("vbench").joinpath("VBench_full_info.json")
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("VBench is not installed. Please install it with `pip install vbench-pruna`.")
+
     with as_file(full_info_path) as real_path:
         dataset = load_dataset("json", data_files=str(real_path), split="train")
 

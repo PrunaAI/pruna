@@ -104,6 +104,11 @@ def is_targeted(path: str, target_modules: TARGET_MODULES_TYPE) -> bool:
         The path to check.
     target_modules : TARGET_MODULES_TYPE
         The target modules specifying which modules are targeted.
+
+    Returns
+    -------
+    bool
+        True if the path is targeted, False otherwise.
     """
     include = target_modules.get("include", ["*"])
     exclude = target_modules.get("exclude", [])
@@ -118,10 +123,10 @@ def expand_list_of_targeted_paths(target_modules: TARGET_MODULES_TYPE, model: An
 
     Parameters
     ----------
-    model : Any
-        The model to get the module paths from.
     target_modules : TARGET_MODULES_TYPE
         The target modules to convert to a list of module paths.
+    model : Any
+        The model to get the module paths from.
 
     Returns
     -------
@@ -210,7 +215,7 @@ def filter_targeted_modules(
     target_modules: TARGET_MODULES_TYPE,
 ) -> TARGET_MODULES_TYPE:
     """
-    Expand the target modules to exclude modules incompatible with FLUTE kernels.
+    Expand the target modules to exclude modules based on the provided function.
 
     Parameters
     ----------

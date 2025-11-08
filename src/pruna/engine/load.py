@@ -202,11 +202,11 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     """
     # determine algorithms to reapply
     smash_config_subset = deepcopy(smash_config)
-    for algorithm_group, algorithm in smash_config.reapply_after_load.items():
+    for algorithm_name in smash_config.reapply_after_load:
         # hyperparameters for algorithms were copied or discarded upon setting to None
-        smash_config_subset[algorithm_group] = algorithm
+        smash_config_subset[algorithm_name] = True
 
-    # if it isnt already imported, import smash
+    # if it isn't already imported, import smash
     if "pruna.smash" not in sys.modules:
         from pruna.smash import smash
     else:
@@ -371,9 +371,9 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         model_path = Path(model_path)
     pipeline_info_path = model_path / PIPELINE_INFO_FILE_NAME
 
-    from pruna.algorithms.quantization.hqq import HQQQuantizer
+    from pruna.algorithms.hqq import HQQ
 
-    algorithm_packages = HQQQuantizer().import_algorithm_packages()
+    algorithm_packages = HQQ().import_algorithm_packages()
     model_path = Path(model_path)
     hqq_model_dir = model_path / "hqq_language_model"
 
@@ -469,8 +469,8 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     Any
         The loaded diffusers model.
     """
-    from pruna.algorithms.quantization.hqq_diffusers import (
-        HQQDiffusersQuantizer,
+    from pruna.algorithms.hqq_diffusers import (
+        HQQDiffusers,
         construct_base_class,
     )
 
@@ -479,7 +479,7 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         "buffers will not be loaded correctly."
     )
 
-    hf_quantizer = HQQDiffusersQuantizer()
+    hf_quantizer = HQQDiffusers()
     auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
 
     path = Path(path)
