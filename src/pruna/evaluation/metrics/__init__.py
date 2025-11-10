@@ -24,6 +24,8 @@ from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, 
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metric_vbench_background_consistency import VBenchBackgroundConsistency
+from pruna.evaluation.metrics.metric_vbench_dynamic_degree import VBenchDynamicDegree
 
 __all__ = [
     "MetricRegistry",
@@ -43,4 +45,6 @@ __all__ = [
     "DinoScore",
     "SharpnessMetric",
     "AestheticLAION",
+    "VBenchBackgroundConsistency",
+    "VBenchDynamicDegree",
 ]
