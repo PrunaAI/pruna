@@ -22,7 +22,6 @@ import torch.nn.functional as F  # noqa: N812
 from torchvision.transforms.functional import convert_image_dtype
 from vbench.utils import clip_transform, init_submodules
 
-from pruna.engine.utils import get_device_type, set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -42,8 +41,6 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     ----------
     *args : Any
         The arguments to pass to the metric.
-    device : str | None
-        The device to run the metric on.
     call_type : str
         The call type to use for the metric.
     **kwargs : Any
@@ -53,9 +50,7 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     metric_name: str = METRIC_VBENCH_BACKGROUND_CONSISTENCY
     default_call_type: str = "y"  # We just need the outputs
     higher_is_better: bool = True
-    # https://github.com/Vchitect/VBench/blob/dc62783c0fb4fd333249c0b669027fe102696682/evaluate.py#L111
-    # explicitly sets the device to cuda. We respect this here.
-    runs_on: List[str] = ["cuda, cpu"]
+    runs_on: List[str] = ["cuda", "cpu"]
     modality: List[str] = ["video"]
     # state
     similarity_scores: torch.Tensor
@@ -64,15 +59,10 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     def __init__(
         self,
         *args: Any,
-        device: str | None = None,
         call_type: str = SINGLE,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, **kwargs)
-
-        if device is not None and get_device_type(device) not in self.runs_on:
-            pruna_logger.error(f"Unsupported device {get_device_type(device)}; supported: {self.runs_on}")
-            raise ValueError()
+        super().__init__(kwargs.pop("device", None))
 
         if call_type == PAIRWISE:
             # VBench itself does not support pairwise.
@@ -83,7 +73,6 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
         submodules_dict = init_submodules([METRIC_VBENCH_BACKGROUND_CONSISTENCY])
         model_path = submodules_dict[METRIC_VBENCH_BACKGROUND_CONSISTENCY][0]
 
-        self.device = set_to_best_available_device(device)
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
         self.clip_model, self.preprocessor = clip.load(model_path, device=self.device)

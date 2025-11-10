@@ -1,12 +1,14 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import pytest
 import torch
 import numpy as np
 
-
 from pruna.evaluation.metrics.metric_vbench_background_consistency import VBenchBackgroundConsistency
 from pruna.evaluation.metrics.metric_vbench_dynamic_degree import VBenchDynamicDegree
+from pruna.evaluation.metrics.utils import PAIRWISE
+from pruna.evaluation.metrics.registry import MetricRegistry
 
 
 @pytest.mark.cuda
@@ -56,3 +58,107 @@ def test_metric_dynamic_degree_static():
     metric.update(video, video, video)
     result = metric.compute()
     assert result.result == 0.0
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", [VBenchDynamicDegree, VBenchBackgroundConsistency])
+def test_metric_pairwise_call_type(vbench_metric):
+    """Test that VBenchBackgroundConsistency raises ValueError for PAIRWISE call_type."""
+    with pytest.raises(ValueError):
+        vbench_metric(call_type=PAIRWISE)
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", ['background_consistency', 'dynamic_degree'])
+def test_vbench_metrics_invalid_tensor_dimensions(vbench_metric):
+    """Test that validate_batch raises ValueError for invalid tensor dimensions."""
+    metric = MetricRegistry.get_metric(vbench_metric)
+    # Test 3D tensor (should fail)
+    invalid_tensor = torch.randn(2, 3, 16)
+    with pytest.raises(ValueError, match="4 or 5 dimensional"):
+        metric.validate_batch(invalid_tensor)
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", ["background_consistency", "dynamic_degree"])
+def test_vbench_metrics_compute_without_updates(vbench_metric):
+    """Test compute() returns 0.0 when no updates have been made."""
+    metric = MetricRegistry.get_metric(vbench_metric)
+    result = metric.compute()
+    assert result.result == 0.0
+    assert result.name == vbench_metric
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", ["background_consistency", "dynamic_degree"])
+def test_vbench_metrics_4d_tensor(vbench_metric):
+    """Test that 4D tensors (B, C, H, W) are properly converted to 5D."""
+    # 4D tensor should be converted to 5D by validate_batch
+    four_d_video = torch.randn(2, 3, 16, 16)  # Missing time dimension
+    metric = MetricRegistry.get_metric(vbench_metric)
+    metric.update(four_d_video, four_d_video, four_d_video)
+    result = metric.compute()
+    assert result.result >= 0.0
+    assert result.name == vbench_metric
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", ["background_consistency", "dynamic_degree"])
+def test_vbench_metrics_different_batch_sizes(vbench_metric):
+    """Test background consistency with different batch sizes."""
+    metric = MetricRegistry.get_metric(vbench_metric)
+    for batch_size in [1, 2, 3]:
+        video_batch = torch.randn(batch_size, 5, 3, 64, 64)
+        metric.update(video_batch, video_batch, video_batch)
+        result = metric.compute()
+        assert 0.0 <= result.result <= 1.0
+        metric.reset()
+
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", ["background_consistency", "dynamic_degree"])
+def test_vbench_metrics_different_resolutions(vbench_metric):
+    """Test background consistency with different video resolutions."""
+    resolutions = [(64, 64), (128, 128), (224, 224)]
+    for h, w in resolutions:
+        video = torch.randn(1, 5, 3, h, w)
+        metric = MetricRegistry.get_metric(vbench_metric)
+        metric.update(video, video, video)
+        result = metric.compute()
+        assert 0.0 <= result.result <= 1.0
+        metric.reset()
+
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("vbench_metric", ["background_consistency", "dynamic_degree"])
+def test_vbench_metrics_reset_clears_state(vbench_metric):
+    """Test that reset() properly clears the metric state."""
+    metric = MetricRegistry.get_metric(vbench_metric)
+    video = torch.randn(1, 5, 3, 64, 64)
+
+    # First update and compute
+    metric.update(video, video, video)
+    result1 = metric.compute()
+
+    # Reset and verify state is cleared
+    metric.reset()
+    result2 = metric.compute()
+    assert result2.result == 0.0  # Should be 0.0 after reset with no updates
+
+    # Update again and verify it works
+    metric.update(video, video, video)
+    result3 = metric.compute()
+    assert result3.result >= 0.0
+
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("interval", [1, 3, 5, 10])
+def test_metric_dynamic_degree_different_intervals(interval):
+    """Test dynamic degree with different interval values."""
+    video = torch.zeros(1, 12, 3, 64, 64)  # 12 frames to allow various intervals
+    metric = VBenchDynamicDegree(interval=interval)
+    metric.update(video, video, video)
+    result = metric.compute()
+    assert 0.0 <= result.result <= 1.0  # Score should be in valid range
