@@ -169,9 +169,10 @@ def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashCon
 
 def get_pre_quantized_model(model_id: str) -> tuple[Any, SmashConfig]:
     """
-    Get a pre-quantized model.
+    Create a SmashConfig with a new attribute for the path to the (already) quantized model.
 
-    The fixture emits a dummy model and a SmashConfig carrying path to quantized model.
+    The fixture emits a dummy model (for dtype and device checking) and a SmashConfig
+    carrying path to quantized model on the hub.
     """
 
     class DummyModel(torch.nn.Linear):
