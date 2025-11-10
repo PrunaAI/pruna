@@ -37,13 +37,6 @@ class VBenchMixin:
     Mixin class for VBench metrics.
 
     Handles benchmark specific initilizations and artifact saving conventions.
-
-    Parameters
-    ----------
-    *args: Any
-        The arguments to pass to the metric.
-    **kwargs: Any
-        The keyword arguments to pass to the metric.
     """
 
     def create_filename(self, prompt: str, idx: int, file_extension: str, special_str: str = "") -> str:
@@ -52,13 +45,13 @@ class VBenchMixin:
 
         Parameters
         ----------
-        prompt: str
+        prompt : str
             The prompt to create the filename from.
-        idx: int
+        idx : int
             The index of the video. Vbench uses 5 seeds for each prompt.
-        file_extension: str
+        file_extension : str
             The file extension to use. Vbench supports mp4 and gif.
-        special_str: str
+        special_str : str
             A special string to add to the filename if you wish to add a specific identifier.
 
         Returns
@@ -72,12 +65,12 @@ class VBenchMixin:
         """
         Make sure that the video tensor has correct dimensions.
 
-        Parameters:
+        Parameters
         ----------
-        batch: torch.Tensor
+        batch : torch.Tensor
             The video tensor.
 
-        Returns:
+        Returns
         -------
         torch.Tensor
             The video tensor.
@@ -93,14 +86,14 @@ def load_video(path: str | Path, return_type: str = "pt") -> List[Image] | np.nd
     """
     Load videos from a path.
 
-    Parameters:
+    Parameters
     ----------
-    path: str | Path
+    path : str | Path
         The path to the videos.
-    return_type: str
+    return_type : str
         The type to return the videos as. Can be "pt", "np", "pil".
 
-    Returns:
+    Returns
     -------
     List[torch.Tensor]
         The videos.
@@ -120,12 +113,12 @@ def load_videos_from_path(path: str | Path) -> torch.Tensor:
     """
     Load entire directory of mp4 videos as a single tensor ready to be passed to evaluation.
 
-    Parameters:
+    Parameters
     ----------
     path : str | Path
         The path to the directory of videos.
 
-    Returns:
+    Returns
     -------
     torch.Tensor
         The videos.
@@ -142,12 +135,12 @@ def sanitize_prompt(prompt: str) -> str:
     Replaces characters illegal in filenames and collapses whitespace so that
     generated files are portable across file systems.
 
-    Parameters:
+    Parameters
     ----------
     prompt : str
         The prompt to sanitize.
 
-    Returns:
+    Returns
     -------
     str
         The sanitized prompt.
@@ -165,13 +158,12 @@ def prepare_batch(batch: str | tuple[str | List[str], Any]) -> str:
     Pruna datamodules are expected to yield tuples where the first element is
     a sequence of inputs; this utility enforces batch_size == 1 for simplicity.
 
-
-    Parameters:
+    Parameters
     ----------
-    batch: str | tuple[str | List[str], Any]
+    batch : str | tuple[str | List[str], Any]
         The batch to prepare.
 
-    Returns:
+    Returns
     -------
     str
         The prompt string.
@@ -193,12 +185,12 @@ def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
     """
     Normalize the save format to be used in the generate_videos function.
 
-    Parameters:
+    Parameters
     ----------
     save_format : str
         The format to save the videos in. VBench supports mp4 and gif.
 
-    Returns:
+    Returns
     -------
     tuple[str, Callable]
         The normalized save format and the save function.
@@ -217,14 +209,14 @@ def _normalize_prompts(
     """
     Normalize prompts to an iterable format to be used in the generate_videos function.
 
-    Parameters:
+    Parameters
     ----------
     prompts : str | List[str] | PrunaDataModule
         The prompts to normalize.
     split : str
         The dataset split to sample from.
 
-    Returns:
+    Returns
     -------
     Iterable[str]
         The normalized prompts.
@@ -241,7 +233,7 @@ def _ensure_dir(p: Path) -> None:
     """
     Ensure the directory exists.
 
-    Parameters:
+    Parameters
     ----------
     p : Path
         The path to ensure the directory exists.
@@ -255,20 +247,20 @@ def create_vbench_file_name(
     """
     Create a file name for the video in accordance with the VBench format.
 
-    Parameters:
+    Parameters
     ----------
-    prompt: str
+    prompt : str
         The prompt to create the file name from.
-    idx: int
+    idx : int
         The index of the video. Vbench uses 5 seeds for each prompt.
-    special_str: str
+    special_str : str
         A special string to add to the file name if you wish to add a specific identifier.
-    save_format: str
+    save_format : str
         The format of the video file. Vbench supports mp4 and gif.
-    max_filename_length: int
+    max_filename_length : int
         The maximum length allowed for the file name.
 
-    Returns:
+    Returns
     -------
     str
         The file name for the video.
@@ -286,18 +278,18 @@ def sample_video_from_pipelines(pipeline: Any, seeder: Any, prompt: str, **kwarg
     """
     Sample a video from diffusers pipeline.
 
-    Parameters:
+    Parameters
     ----------
-    pipeline: Any
+    pipeline : Any
         The pipeline to sample from.
-    prompt: str
-        The prompt to sample from.
-    seeder: Any
+    seeder : Any
         The seeding generator.
-    **kwargs: Any
+    prompt : str
+        The prompt to sample from.
+    **kwargs : Any
         Additional keyword arguments to pass to the pipeline.
 
-    Returns:
+    Returns
     -------
     torch.Tensor
         The video tensor.
@@ -323,13 +315,17 @@ def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., 
     This wrapper always passes `model` as the first positional argument, so
     custom functions can name their first parameter `model` or `pipeline`, etc.
 
-    Parameters:
+    Parameters
     ----------
-    model: Any
+    model : Any
         The model to sample from.
-    sampling_fn: Callable[..., Any]
+    sampling_fn : Callable[..., Any]
         The sampling function to wrap.
 
+    Returns
+    -------
+    Callable[..., Any]
+        The wrapped sampling function.
     """
     if sampling_fn != sample_video_from_pipelines:
         pruna_logger.info(
@@ -366,7 +362,7 @@ def generate_videos(
       - Uses an RNG seeded with `global_seed` for reproducibility across runs.
       - Saves videos as MP4 or GIF.
 
-    Parameters:
+    Parameters
     ----------
     model : Any
         The model to sample from.
@@ -387,7 +383,7 @@ def generate_videos(
         The directory to save the videos to.
     save_format : str
         The format to save the videos in. VBench supports mp4 and gif.
-    filename_fn: Callable
+    filename_fn : Callable
         The function to create the file name.
     special_str : str
         A special string to add to the file name if you wish to add a specific identifier.
@@ -428,7 +424,7 @@ def evaluate_videos(
     """
     Evaluation loop helper.
 
-    Parameters:
+    Parameters
     ----------
     data : Any
         The data to evaluate.
@@ -437,7 +433,7 @@ def evaluate_videos(
     prompts : Any | None
         The prompts to evaluate.
 
-    Returns:
+    Returns
     -------
     List[MetricResult]
         The results of the evaluation.
