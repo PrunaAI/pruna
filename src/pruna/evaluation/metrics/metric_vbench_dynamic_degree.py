@@ -23,7 +23,6 @@ from vbench.dynamic_degree import DynamicDegree
 from vbench.third_party.RAFT.core.utils_core.utils import InputPadder
 from vbench.utils import init_submodules
 
-from pruna.engine.utils import get_device_type, set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -35,7 +34,16 @@ METRIC_VBENCH_DYNAMIC_DEGREE = "dynamic_degree"
 
 
 class PrunaDynamicDegree(DynamicDegree):
-    """Helper class to compute Dynamic Degree score for a given video."""
+    """
+    Helper class to compute Dynamic Degree score for a given video.
+
+    Parameters
+    ----------
+    args : EasyDict
+        The arguments to pass to the RAFT model.
+    device : str | torch.device
+        The device to use for the model.
+    """
 
     def infer(self, frames: torch.Tensor, interval: int) -> bool:
         """
@@ -45,9 +53,9 @@ class PrunaDynamicDegree(DynamicDegree):
 
         Parameters
         ----------
-        frames: torch.Tensor
+        frames : torch.Tensor
             The video frames to compute the Dynamic Degree score for.
-        interval: int
+        interval : int
             The interval to skip frames. It's possible for each consecutive frame to not have extreme motion,
             even though the video itself contains large dynamic changes.
             Therefore it's important to set the inteval to skip frames correctly.
@@ -88,9 +96,6 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
     ----------
     *args : Any
         The arguments to be passed to the DynamicDegree class.
-    device : str | None, optional
-        The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
-        If None, the best available device will be used.
     call_type : str, default="y"
         The call type to be used, e.g., 'y' or 'y_gt'. Default is "y".
     interval : int, default=3
@@ -117,16 +122,11 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
     def __init__(
         self,
         *args: Any,
-        device: str | None = None,
         call_type: str = SINGLE,
         interval: int = 3,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, **kwargs)
-
-        if device is not None and get_device_type(device) not in self.runs_on:
-            pruna_logger.error(f"Unsupported device {get_device_type(device)}; supported: {self.runs_on}")
-            raise ValueError()
+        super().__init__(device=kwargs.pop("device", None))
 
         if call_type == PAIRWISE:
             # VBench itself does not support pairwise.
@@ -138,7 +138,6 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
         submodules_dict = init_submodules([METRIC_VBENCH_DYNAMIC_DEGREE])
         model_path = submodules_dict[METRIC_VBENCH_DYNAMIC_DEGREE]["model"]
 
-        self.device = set_to_best_available_device(device)
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         #  RAFT models expect arguments to be passed as an object with attributes.
         #  So we need to convert the arguments to an EasyDict.
@@ -185,6 +184,9 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
         MetricResult
             The dynamic degree score.
         """
+        if len(self.scores) == 0:
+            pruna_logger.warning("No scores have been computed. Returning 0.0.")
+            return MetricResult(name=self.metric_name, params=self.__dict__, result=0.0)
         final_score = np.mean(self.scores)
         return MetricResult(name=self.metric_name, params=self.__dict__, result=final_score)
 
