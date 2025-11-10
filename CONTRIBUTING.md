@@ -68,7 +68,7 @@ pip install -e '.[dev]'
 You can then also install the pre-commit hooks with:
 
 ```bash
-pre-commit install
+prek install
 ```
 
 **Note:** The pre-commit hooks include TruffleHog for secret detection. TruffleHog must be installed separately as a binary tool. See the [TruffleHog installation instructions](https://github.com/trufflesecurity/trufflehog) for your platform.

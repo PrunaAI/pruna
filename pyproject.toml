@@ -168,7 +168,6 @@ dev = [
     "jsonschema",
     "blobfile",
     "pillow>=9.5.0",
-    "pre-commit",
     "twine",
     "pyc-wheel",
     "ruff",
@@ -178,10 +177,11 @@ dev = [
     "pytest-rerunfailures",
     "coverage",
     "docutils",
-  "ty",
+    "ty",
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "prek>=0.2.12",
 ]
 cpu = []
 
