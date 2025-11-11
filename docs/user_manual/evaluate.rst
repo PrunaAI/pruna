@@ -275,7 +275,7 @@ This is what's happening under the hood when you pass ``call_type="single"`` or 
 
    * - ``y_gt``
      - Model's output first, then ground truth
-     - ``fid``, ``kid``, ``cmmd``, ``accuracy``, ``recall``, ``precision```
+     - ``fid``, ``kid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
 
    * - ``gt_y``
      - Ground truth first, then model's output
