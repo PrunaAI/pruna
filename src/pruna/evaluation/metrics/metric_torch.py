@@ -362,7 +362,7 @@ class TorchMetricWrapper(StatefulMetric):
 
         # Handle KID which returns a tuple (mean, std)
         if self.metric_name == "kid" and isinstance(result, tuple) and len(result) == 2:
-        # Extract mean from tuple (KID returns (mean, std))
+            # Extract mean from tuple (KID returns (mean, std))
             result = result[0]
 
         # Normally we have a single score for each metric for the entire dataset.
