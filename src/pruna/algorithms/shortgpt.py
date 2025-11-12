@@ -13,11 +13,14 @@
 # limitations under the License.
 
 from __future__ import annotations
-import torch
-import torch.nn.functional as F
+
+from typing import Any
+
 import numpy as np
+import torch
+import torch.nn.functional as f
+from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter
 from tqdm import tqdm
-from typing import Any, Dict, List
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -26,11 +29,12 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
+
 class ShortGPT(PrunaAlgorithmBase):
     """
     ShortGPT algorithm for pruning transformer layers using a block influence metric.
 
-    ShortGPT identifies and prunes less important blocks in transformer models based on their 
+    ShortGPT identifies and prunes less important blocks in transformer models based on their
     BI scores, which uses the similarity between a layers input and output to measure its importance.
     """
 
@@ -46,54 +50,82 @@ class ShortGPT(PrunaAlgorithmBase):
     runs_on: list[str] = ["cuda", "cpu"]
 
     def get_hyperparameters(self) -> list:
-        from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter, UniformIntegerHyperparameter
+        """
+        Configure all algorithm-specific hyperparameters with ConfigSpace.
+
+        Returns
+        -------
+        list
+            The hyperparameters.
+        """
         return [
             CategoricalHyperparameter(
-                "metric_type", ["BI"], default_value="BI",
-                meta=dict(desc="Metric type for layer importance: Block Influence")
+                "metric_type",
+                ["BI"],
+                default_value="BI",
+                meta=dict(desc="Metric type for layer importance: Block Influence"),
             ),
             UniformFloatHyperparameter(
-                "prune_ratio", lower=0.0, upper=0.8, default_value=0.25,
-                meta=dict(desc="Fraction of layers to prune")
+                "prune_ratio",
+                lower=0.0,
+                upper=0.8,
+                default_value=0.25,
+                meta=dict(desc="Fraction of layers to prune"),
             ),
             Boolean("angular", meta=dict(desc="Use angular distance for BI computation")),
-            UniformIntegerHyperparameter(
-                "calibration_samples", lower=8, upper=512, default_value=64,
-                meta=dict(desc="Number of calibration samples to compute metrics")
-            ),
         ]
-    
 
     @staticmethod
     @torch.inference_mode()
-    def compute_block_influence(model, tokenizer, texts, angular=False, device="cuda", max_samples=64):
+    def compute_block_influence(model, tokenizer, dataloader, angular=False, device="cuda"):
+        """
+        Compute the block influence scores for each transformer layer in the model.
+
+        The block influence score for a layer is given as 1 - the cosine similarity
+        between the layer's input and output activations, averaged over the dataset.
+        """
         model.eval().to(device)
         num_layers = len(model.model.layers)
         bis = torch.zeros(num_layers + 1, device=device)
         counts = 0
 
-        for text in tqdm(texts[:max_samples], desc="Computing Block Influence"):
-            inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512).to(device)
+        for batch_idx, batch in enumerate(tqdm(dataloader, desc="Computing Block Influence")):
+            if isinstance(batch, dict) and "text" in batch:
+                texts = batch["text"]
+            elif isinstance(batch, list):
+                texts = batch
+            else:
+                raise ValueError(f"Unsupported batch type: {type(batch)}")
+
+            inputs = tokenizer(
+                texts,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True,
+            ).to(device)
             input_ids = inputs["input_ids"]
             hiddens = []
 
             def hook_fn(_, __, out):
-                if isinstance(out, tuple): out = out[0]
+                if isinstance(out, tuple):
+                    out = out[0]
                 hiddens.append(out)
 
             handles = [layer.register_forward_hook(hook_fn) for layer in model.model.layers]
             _ = model(input_ids=input_ids)
-            for h in handles: h.remove()
+            for h in handles:
+                h.remove()
 
             hiddens.insert(0, model.model.embed_tokens(input_ids))
             hiddens.append(model.model.norm(hiddens[-1]))
 
             for i in range(len(hiddens) - 1):
                 in_h, out_h = hiddens[i].float(), hiddens[i + 1].float()
-                cos = F.cosine_similarity(
+                cos = f.cosine_similarity(
                     in_h.view(-1, in_h.shape[-1]),
                     out_h.view(-1, out_h.shape[-1]),
-                    dim=-1
+                    dim=-1,
                 )
                 if angular:
                     cos = cos.clamp(-1 + 1e-7, 1 - 1e-7)
@@ -105,7 +137,7 @@ class ShortGPT(PrunaAlgorithmBase):
 
         bis /= counts
         return bis.tolist()
-    
+
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         device = smash_config["device"]
         model = model.to(device)
@@ -115,35 +147,50 @@ class ShortGPT(PrunaAlgorithmBase):
         pruna_logger.info(f"[ShortGPT] Model depth: {len(model.model.layers)}")
         pruna_logger.info(f"[ShortGPT] Model parameters: {sum(p.numel() for p in model.parameters()) / 1_000_000:.2f}M")
         tokenizer = smash_config["tokenizer"]
-        
-        texts = smash_config["texts"]
 
-        metric_type = smash_config["metric_type"]
+        dataloader = smash_config["train_dataloader"]
         prune_ratio = smash_config["prune_ratio"]
         angular = smash_config["angular"]
 
-        pruna_logger.info(f"[ShortGPT] Running {metric_type}-based layer pruning (ratio={prune_ratio:.2f})")
+        pruna_logger.info(f"[ShortGPT] Running layer pruning (ratio={prune_ratio:.2f})")
 
-        scores = self.compute_block_influence(model, tokenizer, texts, angular=angular, device=device)
+        scores = self.compute_block_influence(model, tokenizer, dataloader, angular=angular, device=device)
 
         num_layers = len(model.model.layers)
         n_prune = int(prune_ratio * num_layers)
-        layer_scores = np.array(scores[1:num_layers+1])  # skip embedding span
+
+        # not using the final norm layer score, because paper only mentions only transformer layers # noqa
+        # TODO: Should we even compute the norm layer score? # noqa
+        layer_scores = np.array(scores[:num_layers])
 
         prune_indices = np.argsort(layer_scores)[:n_prune].tolist()
         keep_indices = [i for i in range(num_layers) if i not in prune_indices]
 
         pruna_logger.info(f"[ShortGPT] Pruning {n_prune}/{num_layers} layers: {prune_indices}")
+        pruna_logger.info(f"[ShortGPT] Removing layers: {prune_indices}")
 
         kept_layers = torch.nn.ModuleList([layer for i, layer in enumerate(model.model.layers) if i in keep_indices])
         model.model.layers = kept_layers
 
         pruna_logger.info(f"[ShortGPT] Pruned model depth: {len(model.model.layers)}")
-        pruna_logger.info(f"[ShortGPT] Pruned model parameters: {sum(p.numel() for p in model.parameters()) / 1_000_000:.2f}M")
+        pruna_logger.info(
+            f"[ShortGPT] Pruned model parameters: {sum(p.numel() for p in model.parameters()) / 1_000_000:.2f}M"
+        )
 
         return model
 
-
     def model_check_fn(self, model):
+        """
+        Check if the model is a torch.nn.Module.
+
+        Parameters
+        ----------
+        model : Any
+            The model to check.
+
+        Returns
+        -------
+        bool
+            True if the model is a torch.nn.Module, False otherwise.
+        """
         return isinstance(model, torch.nn.Module)
-    
