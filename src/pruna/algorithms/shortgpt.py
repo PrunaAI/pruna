@@ -89,6 +89,8 @@ class ShortGPT(PrunaAlgorithmBase):
         bis = torch.zeros(num_layers + 1, device=device)
         counts = 0
 
+        # TODO: Discuss if we should keep clearing device cache in case of gpu,
+        # because model and data keep moving to device
         for batch_idx, batch in enumerate(tqdm(dataloader, desc="Computing Block Influence")):
             if isinstance(batch, dict) and "text" in batch:
                 texts = batch["text"]
