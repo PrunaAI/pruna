@@ -103,6 +103,28 @@ def kid_update(metric: KernelInceptionDistance, reals: Any, fakes: Any) -> None:
     metric.update(fakes, real=False)
 
 
+def kid_compute(metric: KernelInceptionDistance) -> Any:
+    """
+    Compute handler for KID metric.
+
+    KID returns (mean, std) but we only need the mean value.
+
+    Parameters
+    ----------
+    metric : KernelInceptionDistance
+        The KID metric instance.
+
+    Returns
+    -------
+    Any
+        The computed metric value (mean from tuple).
+    """
+    result = metric.compute()
+    if isinstance(result, tuple) and len(result) == 2:
+        return result[0]  # Extract mean from tuple (KID returns (mean, std))
+    return result
+
+
 def lpips_update(metric: LearnedPerceptualImagePatchSimilarity, preds: Any, target: Any) -> None:
     """
     Update handler for LPIPS metric.
@@ -170,7 +192,8 @@ class TorchMetrics(Enum):
     """
     Enum for available torchmetrics.
 
-    The enum contains triplets of the metric class, the update function and the call type.
+    The enum contains tuples of (metric class, update function, call type) with an optional
+    compute function as a 4th element for metrics that need special compute handling.
 
     Parameters
     ----------
@@ -189,7 +212,7 @@ class TorchMetrics(Enum):
     """
 
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
-    kid = (partial(KernelInceptionDistance), kid_update, "gt_y")
+    kid = (partial(KernelInceptionDistance), kid_update, "gt_y", kid_compute)
     accuracy = (partial(Accuracy), None, "y_gt")
     perplexity = (partial(Perplexity), None, "y_gt")
     clip_score = (partial(CLIPScore), None, "y_x")
@@ -206,6 +229,7 @@ class TorchMetrics(Enum):
         self.tm = self.value[0]
         self.update_fn = self.value[1] or default_update
         self.call_type = self.value[2]
+        self.compute_fn = self.value[3] if len(self.value) > 3 else None
 
     def __call__(self, **kwargs) -> Metric:
         """
@@ -279,6 +303,8 @@ class TorchMetricWrapper(StatefulMetric):
 
             # Get the specific update function for the metric, or use the default if not found.
             self.update_fn = TorchMetrics[metric_name].update_fn
+            # Get the compute function if available (e.g., for KID), otherwise None
+            self.compute_fn = TorchMetrics[metric_name].compute_fn
         except KeyError:
             raise ValueError(f"Metric {metric_name} is not supported.")
 
@@ -358,12 +384,11 @@ class TorchMetricWrapper(StatefulMetric):
         Any
             The computed metric value.
         """
-        result = self.metric.compute()
-
-        # Handle KID which returns a tuple (mean, std)
-        if self.metric_name == "kid" and isinstance(result, tuple) and len(result) == 2:
-            # Extract mean from tuple (KID returns (mean, std))
-            result = result[0]
+        # Use metric-specific compute function if available (e.g., KID), otherwise use default
+        if self.compute_fn is not None:
+            result = self.compute_fn(self.metric)
+        else:
+            result = self.metric.compute()
 
         # Normally we have a single score for each metric for the entire dataset.
         # For IQA metrics we have a single score per image, so we need to convert the tensor to a list.
