@@ -15,11 +15,19 @@
 from collections.abc import Iterable
 from typing import Any, Dict
 
+import torch
 from ConfigSpace import CategoricalHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.target_modules import (
+    TARGET_MODULES_TYPE,
+    TargetModules,
+    get_skipped_submodules,
+    is_leaf_module,
+    map_targeted_nn_roots,
+)
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 
 
@@ -60,6 +68,15 @@ class LLMCompressor(PrunaAlgorithmBase):
                 default_value="W4A16",
                 meta=dict(desc="Quantization scheme to use. Use symmetric quantization to avoid decompression issues."),
             ),
+            TargetModules(
+                "target_modules",
+                default_value=None,
+                meta=dict(
+                    desc="Precise choices of which modules to quantize, "
+                    "e.g. {include: ['model.*']} to quantize only the language model in a pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -78,6 +95,29 @@ class LLMCompressor(PrunaAlgorithmBase):
         """
         return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
+    def get_model_dependent_hyperparameter_defaults(
+        self, model: Any, smash_config: SmashConfigPrefixWrapper
+    ) -> TARGET_MODULES_TYPE:
+        """
+        Get the default hyperparameters for the model.
+
+        Parameters
+        ----------
+        model : Any
+            The model to get the default hyperparameters from.
+        smash_config : SmashConfigPrefixWrapper
+            The configuration for the quantization.
+
+        Returns
+        -------
+        TARGET_MODULES_TYPE
+            The default hyperparameters for the model.
+        """
+        if is_transformers_pipeline_with_causal_lm(model):
+            return {"target_modules": {"include": ["model.*"], "exclude": ["model.lm_head"]}}
+        else:
+            return {"target_modules": {"include": ["*"], "exclude": ["lm_head"]}}
+
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
         Quantize the model.
@@ -94,23 +134,48 @@ class LLMCompressor(PrunaAlgorithmBase):
         Any
             The quantized model.
         """
-        if is_transformers_pipeline_with_causal_lm(model):
-            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
-
         imported = self.import_algorithm_packages()
-        recipe = [
-            imported["AWQModifier"](
-                ignore=["lm_head"],
-                scheme=smash_config["quant_scheme"],
-                targets=["Linear"],
-            )
-        ]
-
         dataset = smash_config.data.val_dataset
 
         # For text generation models, provide the tokenizer as processor to avoid AutoProcessor errors
         processor = smash_config.tokenizer if smash_config.tokenizer is not None else "bert-base-uncased"
-        imported["oneshot"](model=model, recipe=recipe, dataset=dataset, processor=processor)
+
+        if smash_config["target_modules"] is None:
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+        else:
+            target_modules = smash_config["target_modules"]
+
+        def quantize_language_model(
+            attr_name: str | None, language_model: torch.nn.Module, subpaths: list[str]
+        ) -> torch.nn.Module:
+            """
+            Quantize the language model.
+
+            Parameters
+            ----------
+            attr_name : str | None
+                The name of the attribute in the model pointing to the language model to quantize.
+            language_model : torch.nn.Module
+                The language model to quantize.
+            subpaths : list[str]
+                The subpaths of the language model to quantize.
+
+            Returns
+            -------
+            torch.nn.Module
+                The quantized language model.
+            """
+            ignore_modules = get_skipped_submodules(language_model, subpaths, filter_fn=is_leaf_module)
+            recipe = [
+                imported["AWQModifier"](
+                    ignore=ignore_modules,
+                    scheme=smash_config["quant_scheme"],
+                    targets=["Linear"],
+                )
+            ]
+            return imported["oneshot"](model=language_model, recipe=recipe, dataset=dataset, processor=processor)
+
+        model = map_targeted_nn_roots(quantize_language_model, model, target_modules)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
