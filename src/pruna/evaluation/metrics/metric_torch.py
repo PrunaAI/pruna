@@ -119,7 +119,7 @@ def kid_compute(metric: KernelInceptionDistance) -> Any:
     Any
         The computed metric value (mean from tuple).
     """
-    result = metric.compute()
+    result = metric.compute()  # type: ignore
     if isinstance(result, tuple) and len(result) == 2:
         return result[0]  # Extract mean from tuple (KID returns (mean, std))
     return result
