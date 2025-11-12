@@ -105,20 +105,9 @@ class ShortGPT(PrunaAlgorithmBase):
                 padding=True,
             ).to(device)
             input_ids = inputs["input_ids"]
-            hiddens = []
 
-            def hook_fn(_, __, out):
-                if isinstance(out, tuple):
-                    out = out[0]
-                hiddens.append(out)
-
-            handles = [layer.register_forward_hook(hook_fn) for layer in model.model.layers]
-            _ = model(input_ids=input_ids)
-            for h in handles:
-                h.remove()
-
-            hiddens.insert(0, model.model.embed_tokens(input_ids))
-            hiddens.append(model.model.norm(hiddens[-1]))
+            outputs = model(input_ids=input_ids, output_hidden_states=True)
+            hiddens = list(outputs.hidden_states)
 
             for i in range(len(hiddens) - 1):
                 in_h, out_h = hiddens[i].float(), hiddens[i + 1].float()
