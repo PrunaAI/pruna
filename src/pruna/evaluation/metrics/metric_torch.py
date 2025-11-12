@@ -385,10 +385,7 @@ class TorchMetricWrapper(StatefulMetric):
             The computed metric value.
         """
         # Use metric-specific compute function if available (e.g., KID), otherwise use default
-        if self.compute_fn is not None:
-            result = self.compute_fn(self.metric)
-        else:
-            result = self.metric.compute()
+        result = self.compute_fn(self.metric) if self.compute_fn is not None else self.metric.compute()
 
         # Normally we have a single score for each metric for the entire dataset.
         # For IQA metrics we have a single score per image, so we need to convert the tensor to a list.
