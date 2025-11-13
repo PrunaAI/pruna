@@ -77,7 +77,9 @@ class LMEvalMetric(StatefulMetric):
         if len(preds) != len(refs):
             raise ValueError(f"Preds and refs length mismatch: {len(preds)} vs {len(refs)}")
 
-        self.pairs.extend(zip(refs, preds))
+        for ref, pred in zip(refs, preds):
+            raw_item = self.metric_fn((ref, pred))
+            self.pairs.append(raw_item)
 
     def compute(self) -> MetricResult:
         """
@@ -101,14 +103,10 @@ class LMEvalMetric(StatefulMetric):
             )
 
         try:
-            # lm-eval metrics expect a list of (reference, prediction) tuples
-            raw_items = self.metric_fn(self.pairs)
-            score = self.agg_fn(raw_items)
+            score = self.agg_fn(self.pairs)
         except Exception as e:
             pruna_logger.error(f"Failed computing lm-eval metric {self.metric_name}: {e}")
             raise
-
-        score_value = float(np.mean(list(score.values()))) if isinstance(score, dict) else float(score)
 
         return MetricResult(
             name=self.metric_name,
@@ -117,5 +115,5 @@ class LMEvalMetric(StatefulMetric):
                 "higher_is_better": self.higher_is_better,
                 "metric_units": self.metric_units,
             },
-            result=score_value,
+            result=score,
         )
