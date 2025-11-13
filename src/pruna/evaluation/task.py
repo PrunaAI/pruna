@@ -279,7 +279,7 @@ def _process_single_request(
     elif request.startswith("lm_eval:"):
         task_name = request.split(":", 1)[1]
         metrics = _get_lm_eval_task_metrics(task_name)
-        return [LMEvalMetric(metric_name=metric) for metric in metrics]
+        return [LMEvalMetric(metric_name=metric["metric"]) for metric in metrics]
     else:
         msg = f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
         pruna_logger.error(msg)
