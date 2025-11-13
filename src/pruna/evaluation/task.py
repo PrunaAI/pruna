@@ -17,11 +17,13 @@ from __future__ import annotations
 from typing import Any, List, cast
 
 import torch
+from lm_eval.tasks import get_task_dict
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
+from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -245,6 +247,12 @@ def _process_metric_names(
     )
 
 
+def _get_lm_eval_task_metrics(task_name: str):
+    task_dict = get_task_dict(task_name)
+    task = task_dict[task_name]
+    return task.config.metric_list
+
+
 def _process_single_request(
     request: str, stateful_metric_device: str, inference_device: str
 ) -> List[BaseMetric | StatefulMetric]:
@@ -255,6 +263,11 @@ def _process_single_request(
             TorchMetricWrapper("clip_score", call_type="pairwise", device=stateful_metric_device),
             CMMD(device=stateful_metric_device),
         ]
+
+    elif request.startswith("lm_eval:"):
+        task_name = request.split(":", 1)[1]
+        metrics = _get_lm_eval_task_metrics(task_name)
+        return [LMEvalMetric(metric_name=metric["metric"]) for metric in metrics]
     else:
         pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
         raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
