@@ -1,36 +1,68 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
+        files: \.(py|md)$
       - id: check-case-conflict
+        files: \.(py|md)$
       - id: check-merge-conflict
+        files: \.(py|md)$
       - id: check-symlinks
+        files: \.(py|md)$
       - id: check-toml
+        files: \.(py|md)$
       - id: check-yaml
+        files: \.(py|md)$
       - id: end-of-file-fixer
+        files: \.(py|md)$
       - id: mixed-line-ending
+        files: \.(py|md)$
       - id: trailing-whitespace
-        exclude: \.md$
+        files: \.(py|md)$
       - id: no-commit-to-branch
+        files: \.(py|md)$
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
+    rev: v0.14.4
     hooks:
       - id: ruff-check
         args: [--fix]
+        files: \.py$
       - id: ruff-format
+        files: \.py$
+
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.91.0
+    hooks:
+      - id: trufflehog
+        name: TruffleHog Secrets Scanner
+        entry: trufflehog
+        language: golang
+        types_or: [python, yaml, json, text]
+        args:
+          [
+            "filesystem",
+            "src",
+            "tests",
+            ".github/workflows",
+            "--results=verified,unknown",
+            "--exclude-paths=.venv",
+            "--fail"
+          ]
+        stages: ["pre-commit", "pre-push"]
+        files: \.(py|md)$
 
   - repo: local
     hooks:
       - id: ty
-        name: ty check
+        name: type checking using ty
         entry: uvx ty check .
         language: system
         types: [python]
         pass_filenames: false
+        files: \.py$
 
-  - repo: local
-    hooks:
       - id: check-pruna-pro
         name: Check for pruna_pro
         entry: >
@@ -39,19 +71,13 @@ repos:
           grep -v "^D" |
           cut -f2- |
           while IFS= read -r file; do
-              if [ -f "$file" ] && ["$file" != ".pre-commit-config.yaml"] && grep -q "pruna_pro" "$file"; then
-                  echo "Error: pruna_pro found in staged file $file"
-                  exit 1
-              fi
+            if [ -f "$file" ] && [ "$file" != ".pre-commit-config.yaml" ] && grep -q "pruna_pro" "$file"; then
+              echo "Error: pruna_pro found in staged file $file"
+              exit 1
+            fi
           done
           '
         language: system
         stages: [pre-commit]
         types: [python]
-        exclude: "^docs/"
-      - id: trufflehog
-        name: TruffleHog
-        description: Detect secrets in your data.
-        entry: bash -c 'git diff --cached --name-only | xargs -I {} trufflehog filesystem {} --fail --no-update'
-        language: system
-        stages: ["pre-commit", "pre-push"]
+        files: \.py$
