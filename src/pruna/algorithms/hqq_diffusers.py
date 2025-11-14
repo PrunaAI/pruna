@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections.abc import Iterable
 from typing import Any, Dict, Type
 
@@ -23,6 +25,13 @@ from ConfigSpace import OrdinalHyperparameter
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.target_modules import (
+    TARGET_MODULES_TYPE,
+    TargetModules,
+    get_skipped_submodules,
+    is_leaf_module,
+    map_targeted_nn_roots,
+)
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
@@ -84,6 +93,15 @@ class HQQDiffusers(PrunaAlgorithmBase):
                 default_value="torchao_int4",
                 meta=dict(desc="Backend to use for quantization."),
             ),
+            TargetModules(
+                "target_modules",
+                default_value=None,
+                meta=dict(
+                    desc="Precise choices of which modules to quantize, "
+                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -102,13 +120,38 @@ class HQQDiffusers(PrunaAlgorithmBase):
         """
         transformer_and_unet_models = get_diffusers_transformer_models() + get_diffusers_unet_models()
 
-        if isinstance(model, tuple(transformer_and_unet_models)):
+        if isinstance(model, tuple[Any, ...](transformer_and_unet_models)):
             return True
 
-        if hasattr(model, "transformer") and isinstance(model.transformer, tuple(transformer_and_unet_models)):
-            return True
+        return any(isinstance(attr_value, tuple(transformer_and_unet_models)) for attr_value in model.__dict__.values())
 
-        return hasattr(model, "unet") and isinstance(model.unet, tuple(transformer_and_unet_models))
+    def get_model_dependent_hyperparameter_defaults(
+        self, model: Any, smash_config: SmashConfigPrefixWrapper
+    ) -> TARGET_MODULES_TYPE:
+        """
+        Get default values for the target_modules based on the model and configuration.
+
+        Parameters
+        ----------
+        model : Any
+            The model to get the default hyperparameters from.
+        smash_config : SmashConfig
+            The SmashConfig object.
+
+        Returns
+        -------
+        TARGET_MODULES_TYPE
+            The default target_modules for the algorithm.
+        """
+        include: list[str] = []
+        exclude: list[str] = []
+        transformer_and_unet_models = get_diffusers_transformer_models() + get_diffusers_unet_models()
+        for attr_name, attr_value in model.__dict__.items():
+            if isinstance(attr_value, tuple(transformer_and_unet_models)):
+                include.append(f"{attr_name}.*")
+        if not include:
+            include = ["*"]
+        return {"include": include, "exclude": exclude}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -133,69 +176,91 @@ class HQQDiffusers(PrunaAlgorithmBase):
         )
         imported_modules = self.import_algorithm_packages()
 
-        if hasattr(model, "transformer"):
-            # Collect all linear layers recursively
-            linear_layers = find_module_layers_type(model.transformer, nn.Linear)
-            # put them in the transformer.layers for HQQ
-            model.transformer.layers = linear_layers
-            working_model = model.transformer
-        elif hasattr(model, "unet"):
-            linear_layers = find_module_layers_type(model.unet, nn.Linear)
-            model.unet.layers = linear_layers
-            working_model = model.unet
+        if smash_config["target_modules"] is None:
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
         else:
-            linear_layers = find_module_layers_type(model, nn.Linear)
-            model.layers = linear_layers
-            working_model = model
-
-        if working_model._class_name == "SD3Transformer2DModel":
-            pruna_logger.info(
-                "Your are using SD3Transformer2DModel, please be aware that this transformer is not savable for now."
-            )
+            target_modules = smash_config["target_modules"]
 
         config = imported_modules["HqqConfig"](nbits=smash_config["weight_bits"], group_size=smash_config["group_size"])
 
-        auto_hqq_hf_diffusers_model = construct_base_class(imported_modules)
+        def quantize_component(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> torch.nn.Module:
+            """
+            Quantize the model if it itself is a transformer or unet, or its components.
 
-        auto_hqq_hf_diffusers_model.quantize_model(
-            working_model,
-            quant_config=config,
-            compute_dtype=next(iter(working_model.parameters())).dtype,
-            device=smash_config["device"],
-        )
+            Parameters
+            ----------
+            attr_name : str | None
+                The name of the attribute in the model pointing to the component to quantize.
+            module : torch.nn.Module
+                The component to quantize.
+            subpaths : list[str]
+                The subpaths of the component to quantize.
 
-        # Prepare the model for fast inference based on the backend, we use the conditions from the hqq documentation
-        if (
-            smash_config["backend"] == "torchao_int4"
-            and smash_config["weight_bits"] == 4
-            and next(iter(working_model.parameters())).dtype == torch.bfloat16
-        ):
-            imported_modules["prepare_for_inference"](working_model, backend="torchao_int4")
-        elif (
-            smash_config["backend"] == "gemlite"
-            and smash_config["weight_bits"] in [4, 2, 1]
-            and next(iter(working_model.parameters())).dtype == torch.float16
-        ):
-            imported_modules["prepare_for_inference"](working_model, backend="gemlite")
-        elif (
-            smash_config["backend"] == "bitblas"
-            and smash_config["weight_bits"] in [4, 2]
-            and next(iter(working_model.parameters())).dtype == torch.float16
-        ):
-            imported_modules["prepare_for_inference"](working_model, backend="bitblas")
-        else:
-            # We default to the torch backend if the input backend is not applicable
-            imported_modules["prepare_for_inference"](working_model)
+            Returns
+            -------
+            torch.nn.Module
+                The quantized component.
+            """
+            module.layers = find_module_layers_type(module, nn.Linear)
 
-        if hasattr(model, "transformer"):
-            model.transformer = working_model
-        elif hasattr(model, "unet"):
-            model.unet = working_model
-            for layer in model.unet.up_blocks:
-                if layer.upsamplers is not None:
-                    layer.upsamplers[0].name = "conv"
-        else:
-            model = working_model
+            if module._class_name == "SD3Transformer2DModel":
+                pruna_logger.info(
+                    "Your are using SD3Transformer2DModel, please be aware that this transformer is not savable for now."
+                )
+
+            ignored_leaf_modules = get_skipped_submodules(module, subpaths, filter_fn=is_leaf_module)
+            auto_hqq_hf_diffusers_model = construct_base_class(
+                imported_modules, extra_ignore_modules=ignored_leaf_modules
+            )
+
+            compute_dtype = next(iter(module.parameters())).dtype
+            auto_hqq_hf_diffusers_model.quantize_model(
+                module,
+                quant_config=config,
+                compute_dtype=compute_dtype,
+                device=smash_config["device"],
+            )
+
+            # skipped layers are not casted to device and compute dtype so we need to do it manually
+            for name, submodule in module.named_modules():
+                if name in ignored_leaf_modules:
+                    submodule.to(smash_config["device"])
+                    submodule.to(compute_dtype)
+
+            # Prepare the module for fast inference based on the backend
+            # we use the conditions from the hqq documentation
+            param_dtype = next(iter(module.parameters())).dtype
+            if (
+                smash_config["backend"] == "torchao_int4"
+                and smash_config["weight_bits"] == 4
+                and param_dtype == torch.bfloat16
+            ):
+                imported_modules["prepare_for_inference"](module, backend="torchao_int4")
+            elif (
+                smash_config["backend"] == "gemlite"
+                and smash_config["weight_bits"] in [4, 2, 1]
+                and param_dtype == torch.float16
+            ):
+                imported_modules["prepare_for_inference"](module, backend="gemlite")
+            elif (
+                smash_config["backend"] == "bitblas"
+                and smash_config["weight_bits"] in [4, 2]
+                and param_dtype == torch.float16
+            ):
+                imported_modules["prepare_for_inference"](module, backend="bitblas")
+            else:
+                # We default to the torch backend if the input backend is not applicable
+                imported_modules["prepare_for_inference"](module)
+
+            unet_types = get_diffusers_unet_models()
+            if isinstance(module, tuple(unet_types)):
+                for layer in module.up_blocks:
+                    if layer.upsamplers is not None:
+                        layer.upsamplers[0].name = "conv"
+
+            return module
+
+        model = map_targeted_nn_roots(quantize_component, model, target_modules)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -223,7 +288,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
         )
 
 
-def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
+def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules: list[str]) -> Type[Any]:
     """
     Construct and return the AutoHQQHFDiffusersModel base class.
 
@@ -231,6 +296,8 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
     ----------
     imported_modules : Dict[str, Any]
         Dictionary containing imported modules needed for the base class construction.
+    extra_ignore_modules : None | list[str], optional
+        The names of modules to ignore for quantization in addition to the ones already ignored by BaseHQQModel.
 
     Returns
     -------
@@ -282,6 +349,24 @@ def construct_base_class(imported_modules: Dict[str, Any]) -> Type[Any]:
                 model = model_class.from_config(save_dir, **model_kwargs)
 
             return model
+
+        @classmethod
+        def get_ignore_layers(cls, model) -> list[str]:
+            """
+            Get the layers which should be ignored for quantization.
+
+            Parameters
+            ----------
+            model : Any
+                The model to get the ignore layers from.
+
+            Returns
+            -------
+            list
+                The layers which should be ignored for quantization.
+            """
+            ignore_layers = super().get_ignore_layers(model)
+            return list(set(ignore_layers + extra_ignore_modules))
 
     return AutoHQQHFDiffusersModel
 
