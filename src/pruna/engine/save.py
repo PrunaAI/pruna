@@ -27,6 +27,7 @@ import transformers
 from huggingface_hub import ModelCard, ModelCardData, login, repo_exists, upload_large_folder
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
+from pruna.config.target_modules import map_targeted_nn_roots
 from pruna.engine.load import (
     LOAD_FUNCTIONS,
     PICKLED_FILE_NAME,
@@ -404,37 +405,61 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         construct_base_class,
     )
 
+    hf_quantizer = HQQDiffusers()
     pruna_logger.warning(
-        "Currently HQQ can only save linear layers. So model (e.g. Sana) with separate torch.nn.Parameters or "
-        "buffers will be partially saved."
+        "Currently HQQ can only save linear layers, models (e.g. Sana) with separate torch.nn.Parameters or "
+        "buffers will only be partially saved."
     )
 
     model_path = Path(model_path)
-
-    hf_quantizer = HQQDiffusers()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
-
     with (model_path / "dtype_info.json").open("w") as f:
         json.dump({"dtype": str(model.dtype).split(".")[-1]}, f)
 
-    if hasattr(model, "transformer"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, model_path / "backbone_quantized")
-        transformer_backup = model.transformer
-        model.transformer = None
-        # save the rest of the pipeline
-        model.save_pretrained(model_path)
-        model.transformer = transformer_backup
-    elif hasattr(model, "unet"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, model_path / "backbone_quantized")
-        unet_backup = model.unet
-        model.unet = None
-        # save the rest of the pipeline
-        model.save_pretrained(model_path)
-        model.unet = unet_backup
+    # backups for the quantized components to save the rest of the pipeline
+    backup_components: dict[str, torch.nn.Module] = {}
+
+    def save_component(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> torch.nn.Module:
+        """
+        Save the module if it is a transformer or unet, or its components.
+
+        Parameters
+        ----------
+        attr_name : str | None
+            The name of the attribute in the model pointing to the component to save.
+        module : torch.nn.Module
+            The component to save.
+        subpaths : list[str]
+            The subpaths of the component to save.
+
+        Returns
+        -------
+        torch.nn.Module
+            The saved component.
+        """
+        # handle both cases: None we can save the whole model, otherwise we must save its component separately
+        save_path = model_path / f"{attr_name}_quantized" if attr_name is not None else model_path
+
+        # empty subpaths to save all modules: those targeted as HHQLinear and those not as Linear parameters
+        auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages(), [])
+        auto_hqq_hf_diffusers_model.save_quantized(module, save_path)
+        backup_components[attr_name] = module
+        return module
+
+    # save the quantized components
+    if smash_config["hqq_diffusers_target_modules"] is None:
+        target_modules = hf_quantizer.get_model_dependent_hyperparameter_defaults(model, smash_config)
     else:
-        auto_hqq_hf_diffusers_model.save_quantized(model, model_path)
+        target_modules = smash_config["hqq_diffusers_target_modules"]
+    model = map_targeted_nn_roots(save_component, model, target_modules)
+
+    # save the rest of the pipeline
+    if None not in backup_components:  # a None key means the model itself was quantized
+        for attr_name in backup_components:
+            setattr(model, attr_name, None)
+        model.save_pretrained(model_path)
+        for attr_name, module_backup in backup_components.items():
+            setattr(model, attr_name, module_backup)
+
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
