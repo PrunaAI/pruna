@@ -480,7 +480,8 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     )
 
     hf_quantizer = HQQDiffusers()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
+    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages(), [])
+    quantized_load_kwargs = filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs)
 
     path = Path(path)
     if "compute_dtype" not in kwargs and (path / "dtype_info.json").exists():
@@ -488,39 +489,48 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         kwargs["compute_dtype"] = dtype
         kwargs.setdefault("torch_dtype", dtype)
 
-    backbone_path = path / "backbone_quantized"
-
-    # If a pipeline was saved, load the backbone and the rest of the pipeline separately
-    if backbone_path.exists():
-        # load the backbone
-        loaded_backbone = auto_hqq_hf_diffusers_model.from_quantized(
-            str(backbone_path),
-            **filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs),
-        )
-        # The from_quantized method does not set the dtype of the model, even if it is specified in the kwargs.
-        # So we set it manually here.
-        if "torch_dtype" in kwargs:
-            loaded_backbone.to(kwargs["torch_dtype"])
-        # Get the pipeline class name
-        model_index = load_json_config(path, "model_index.json")
-        cls = getattr(diffusers, model_index["_class_name"])
-        # If the pipeline has a transformer, load the transformer
-        if "transformer" in model_index:
-            model = cls.from_pretrained(path, transformer=loaded_backbone, **kwargs)
-        # If the pipeline has a unet, load the unet
-        elif "unet" in model_index:
-            model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
-            # If the unet has up_blocks, we need to change the upsampler name to conv
-            for layer in model.unet.up_blocks:
-                if layer.upsamplers is not None:
-                    layer.upsamplers[0].name = "conv"
-    else:
-        # load the whole model if a pipeline wasn't saved
+    qmodel_path = path / "qmodel.pt"
+    if qmodel_path.exists():  # the whole model was quantized, not a pipeline, load it directly
         model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
-        # The from_quantized method does not set the dtype of the model, even if it is specified in the kwargs.
-        # So we set it manually here.
+        # force dtype if specified, from_quantized does not set it properly
         if "torch_dtype" in kwargs:
             model.to(kwargs["torch_dtype"])
+    else:  # save directory is for a pipeline, of which some components were quantized
+        model_index = load_json_config(path, "model_index.json")
+
+        # first we load each quantized component separately
+        quantized_components: dict[str, Any] = {}
+        for quantized_path in [qpath for qpath in path.iterdir() if qpath.name.endswith("_quantized")]:
+            attr_name = quantized_path.name.replace("_quantized", "")
+
+            # legacy behavior: backbone_quantized -> target the transformer or unet attribute
+            if attr_name == "backbone":
+                if "transformer" in model_index:
+                    attr_name = "transformer"
+                elif "unet" in model_index:
+                    attr_name = "unet"
+
+            quantized_component = auto_hqq_hf_diffusers_model.from_quantized(
+                str(quantized_path), **quantized_load_kwargs
+            )
+            # force dtype if specified, from_quantized does not set it properly
+            if "torch_dtype" in kwargs:
+                quantized_component.to(kwargs["torch_dtype"])
+            quantized_components[attr_name] = quantized_component
+
+        # then we load the rest of the pipeline
+        cls = getattr(diffusers, model_index["_class_name"])
+        # from_pretrained accepts arbitrary kwargs, no need for filtering
+        model = cls.from_pretrained(path, **quantized_components, **kwargs)
+        # check if the components were correctly loaded or if some kwargs were ignored
+        for attr_name, quantized_component in quantized_components.items():
+            if getattr(model, attr_name) != quantized_component:
+                # fallback: manually replace the loaded component with the quantized one
+                pruna_logger.warning(
+                    f"Loading pipeline with component {attr_name} failed, attaching the model by hand which may lead to"
+                    "memory overhead, consider using pruna.engine.utils.safe_memory_cleanup() to free memory."
+                )
+                setattr(model, attr_name, quantized_component)
     # HQQ does not support direct loading on the correct device, so we move it afterwards
     move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
