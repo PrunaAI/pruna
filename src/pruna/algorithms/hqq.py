@@ -33,6 +33,7 @@ from pruna.config.target_modules import (
     get_skipped_submodules,
     is_leaf_module,
     map_targeted_nn_roots,
+    target_backbone,
 )
 from pruna.engine.model_checks import is_causal_lm, is_janus_llamagen_ar, is_transformers_pipeline_with_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -147,12 +148,7 @@ class HQQ(PrunaAlgorithmBase):
         TARGET_MODULES_TYPE
             The default target_modules for the algorithm.
         """
-        if is_causal_lm(model):
-            return {"include": ["*"], "exclude": ["lm_head"]}
-        elif is_transformers_pipeline_with_causal_lm(model) or is_janus_llamagen_ar(model):
-            return {"include": ["model.*"], "exclude": ["model.lm_head"]}
-        else:
-            return {"include": ["*"], "exclude": []}
+        return target_backbone(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
