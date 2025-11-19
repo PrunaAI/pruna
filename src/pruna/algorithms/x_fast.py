@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from ConfigSpace import Constant
+
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.hyperparameters import Boolean
