@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import re
 from pathlib import Path
 from typing import Any, Dict
 
 import torch
 from ConfigSpace import OrdinalHyperparameter
+
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.smash_config import SmashConfigPrefixWrapper
