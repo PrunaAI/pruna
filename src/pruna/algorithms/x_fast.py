@@ -26,6 +26,7 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
+
 class XFast(PrunaAlgorithmBase):
     """
     Implement X-Fast compilation using the sfast library.

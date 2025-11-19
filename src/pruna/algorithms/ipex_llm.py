@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict
 
 import torch
@@ -22,6 +23,7 @@ from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
+
 
 class IPEXLLM(PrunaAlgorithmBase):
     """
@@ -81,12 +83,12 @@ class IPEXLLM(PrunaAlgorithmBase):
         """
         imported_modules = self.import_algorithm_packages()
         # Find the installation path of ipex
-        ipex_path = os.path.dirname(imported_modules["ipex"].__file__)
+        ipex_path = Path(imported_modules["ipex"].__file__).parent
         # Try to find the models.py file
-        transformers_path = os.path.join(ipex_path, "transformers")
+        transformers_path = ipex_path / "transformers"
         # Find the full path of models.py if it exists
-        models_path = os.path.join(transformers_path, "models", "reference", "models.py")
-        if os.path.exists(models_path):
+        models_path = transformers_path / "models" / "reference" / "models.py"
+        if models_path.exists():
             # Read the function names from the file
             with open(models_path, "r") as f:
                 content = f.read()
