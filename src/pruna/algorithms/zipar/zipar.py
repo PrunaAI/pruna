@@ -15,12 +15,12 @@
 from typing import Any, Dict
 
 from ConfigSpace import UniformIntegerHyperparameter
+
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
+from pruna.algorithms.zipar.utils import JanusZipARGenerator
 from pruna.engine.model_checks import is_janus_llamagen_ar
 from pruna.engine.save import SAVE_FUNCTIONS
-
-from pruna.algorithms.zipar.utils import JanusZipARGenerator
 
 
 class ZipAR(PrunaAlgorithmBase):

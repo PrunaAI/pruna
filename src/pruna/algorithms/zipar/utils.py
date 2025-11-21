@@ -19,11 +19,11 @@ from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from pruna.logging.logger import pruna_logger
 from transformers.generation.configuration_utils import GenerationMode
 from transformers.generation.logits_process import ClassifierFreeGuidanceLogitsProcessor, LogitsProcessorList
 from transformers.generation.utils import GenerateDecoderOnlyOutput
 
+from pruna.logging.logger import pruna_logger
 
 class ZipARGenerationGrid:
     """
