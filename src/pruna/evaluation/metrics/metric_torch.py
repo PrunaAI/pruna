@@ -42,8 +42,11 @@ from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
     CALL_TYPES,
+    IMAGE,
+    MODALITIES,
     PAIRWISE,
     SINGLE,
+    TEXT,
     get_pairwise_pairing,
     get_single_pairing,
     metric_data_processor,
@@ -124,9 +127,7 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
 
 
 def ssim_update(
-        metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure,
-        preds: Any,
-        target: Any
+    metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure, preds: Any, target: Any
 ) -> None:
     """
     Update handler for SSIM or MS-SSIM metric.
@@ -170,23 +171,24 @@ class TorchMetrics(Enum):
         The starting value for the enum.
     """
 
-    fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
-    accuracy = (partial(Accuracy), None, "y_gt")
-    perplexity = (partial(Perplexity), None, "y_gt")
-    clip_score = (partial(CLIPScore), None, "y_x")
-    precision = (partial(Precision), None, "y_gt")
-    recall = (partial(Recall), None, "y_gt")
-    psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
-    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
-    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
-    lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
-    arniqa = (partial(ARNIQA), arniqa_update, "y")
-    clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
+    fid = (partial(FrechetInceptionDistance), fid_update, "gt_y", {IMAGE})
+    accuracy = (partial(Accuracy), None, "y_gt", MODALITIES)
+    perplexity = (partial(Perplexity), None, "y_gt", {TEXT})
+    clip_score = (partial(CLIPScore), None, "y_x", {IMAGE})
+    precision = (partial(Precision), None, "y_gt", MODALITIES)
+    recall = (partial(Recall), None, "y_gt", MODALITIES)
+    psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt", {IMAGE})
+    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", {IMAGE})
+    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", {IMAGE})
+    lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt", {IMAGE})
+    arniqa = (partial(ARNIQA), arniqa_update, "y", {IMAGE})
+    clipiqa = (partial(CLIPImageQualityAssessment), None, "y", {IMAGE})
 
     def __init__(self, *args, **kwargs) -> None:
         self.tm = self.value[0]
         self.update_fn = self.value[1] or default_update
         self.call_type = self.value[2]
+        self.modality = self.value[3]
 
     def __call__(self, **kwargs) -> Metric:
         """
@@ -260,6 +262,7 @@ class TorchMetricWrapper(StatefulMetric):
 
             # Get the specific update function for the metric, or use the default if not found.
             self.update_fn = TorchMetrics[metric_name].update_fn
+            self.modality = TorchMetrics[metric_name].modality
         except KeyError:
             raise ValueError(f"Metric {metric_name} is not supported.")
 
