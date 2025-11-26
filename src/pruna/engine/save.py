@@ -352,11 +352,10 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
     algorithm_packages = HQQ().import_algorithm_packages()
 
-    # we need to create a separate path for the quantized model
+    quantized_path = Path(model_path)
     if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        quantized_path = Path(model_path) / "hqq_language_model"
-    else:
-        quantized_path = Path(model_path)
+        # janus case: we need to create a separate path for the quantized model
+        quantized_path = quantized_path / "hqq_language_model"
 
     # save the quantized model only.
     with ModelContext(model, read_only=True) as (_, working_model):
