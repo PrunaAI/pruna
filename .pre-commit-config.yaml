@@ -15,7 +15,7 @@ repos:
       - id: no-commit-to-branch
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.4
+    rev: v0.14.6
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -24,7 +24,7 @@ repos:
         files: \.py$
 
   - repo: https://github.com/trufflesecurity/trufflehog
-    rev: v3.91.0
+    rev: v3.91.1
     hooks:
       - id: trufflehog
         name: TruffleHog Secrets Scanner
