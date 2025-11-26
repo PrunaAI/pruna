@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any, Dict, Type
 
 import torch
@@ -203,17 +204,15 @@ class HQQDiffusers(PrunaAlgorithmBase):
             """
             module.layers = find_module_layers_type(module, nn.Linear)
 
-            if module._class_name == "SD3Transformer2DModel":
-                pruna_logger.info(
-                    "Your are using SD3Transformer2DModel, please be aware that this transformer is not savable for now."
-                )
+            warn_model_specific_errors(module, subpaths)
 
             ignored_leaf_modules = get_skipped_submodules(module, subpaths, filter_fn=is_leaf_module)
             auto_hqq_hf_diffusers_model = construct_base_class(
                 imported_modules, extra_ignore_modules=ignored_leaf_modules
             )
 
-            compute_dtype = next(iter(module.parameters())).dtype
+            compute_dtype = module.dtype
+
             auto_hqq_hf_diffusers_model.quantize_model(
                 module,
                 quant_config=config,
@@ -286,6 +285,39 @@ class HQQDiffusers(PrunaAlgorithmBase):
             BasePatch=BasePatch,
             diffusers=diffusers,
         )
+
+
+def warn_model_specific_errors(module: nn.Module, targeted_paths: list[str]) -> None:
+    """
+    Warn about known model-specific errors and remove targeted paths that may be problematic.
+
+    Parameters
+    ----------
+    module : nn.Module
+        The module to check for known errors.
+    targeted_paths : list[str]
+        The paths to the targeted modules.
+
+    Returns
+    -------
+    None
+    """
+    if module._class_name == "SD3Transformer2DModel":
+        pruna_logger.info(
+            "Your are using SD3Transformer2DModel, please be aware that this transformer is not savable for now."
+        )
+    elif module._class_name == "WanTransformer3DModel" and any(
+        path.startswith("condition_embedder.time_embedder") for path in targeted_paths
+    ):
+        # WanTransformer3DModel.condition_embedder (diffusers v0.35.2) casts the input to time_embedder with
+        # next(iter(time_embedder.parameters())).dtype, which is uint8 after HQQ quantization instead of the
+        # compute dtype (e.g. bfloat16). This leads to dtype errors at inference time.
+        pruna_logger.info(
+            "Skipping quantization of WanTransformer3DModel's time_embedder, which can lead to dtype errors. "
+        )
+        remove_paths = [path for path in targeted_paths if path.startswith("condition_embedder.time_embedder")]
+        for path in remove_paths:
+            targeted_paths.remove(path)
 
 
 def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules: list[str]) -> Type[Any]:
@@ -367,6 +399,41 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
             """
             ignore_layers = super().get_ignore_layers(model)
             return list(set(ignore_layers + extra_ignore_modules))
+
+        @classmethod
+        def save_quantized(cls, model, save_dir: str, verbose: bool = False):
+            super().save_quantized(model, save_dir, verbose)
+            missed_parameters_save_path = Path(save_dir) / "hqq_missed_parameters.pt"
+
+            weights = super().serialize_weights(model, verbose)
+            missed_parameters = {
+                name
+                for name, _ in model.named_parameters()
+                if not any(name.startswith(module_name) for module_name in weights)
+            }
+            full_state_dict = model.state_dict()
+            hqq_missed_parameters = {name: full_state_dict[name] for name in missed_parameters}
+            torch.save(hqq_missed_parameters, missed_parameters_save_path)
+
+        @classmethod
+        def load_hqq_missed_parameters(cls, model: Any, save_dir: str):
+            missed_parameters_save_path = Path(model.save_dir) / "hqq_missed_parameters.pt"
+            if missed_parameters_save_path.exists():
+                hqq_missed_parameters = torch.load(missed_parameters_save_path, weights_only=True)
+                for name, param in hqq_missed_parameters.items():
+                    parent_name = ".".join(name.split(".")[:-1])
+                    parent_module = model.get_submodule(parent_name) if parent_name else model
+                    attr_name = name.split(".")[-1]
+                    setattr(parent_module, attr_name, nn.Parameter(param, requires_grad=False))
+
+        @classmethod
+        def setup_model(cls, model):
+            super().setup_model(model)
+
+            # if loading the model, parameters missed by HQQ saving/loading need to be loaded manually here
+            # before the attempt move them from meta device to cpu/gpu
+            if hasattr(model, "save_dir"):
+                cls.load_hqq_missed_parameters(model, model.save_dir)
 
     return AutoHQQHFDiffusersModel
 
