@@ -3,23 +3,15 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-
       - id: check-case-conflict
-
       - id: check-merge-conflict
-
       - id: check-symlinks
-
       - id: check-toml
-  
       - id: check-yaml
- 
       - id: end-of-file-fixer
-
       - id: mixed-line-ending
-
       - id: trailing-whitespace
-
+        exclude: \.md$
       - id: no-commit-to-branch
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -61,6 +53,8 @@ repos:
         pass_filenames: false
         files: \.py$
 
+  - repo: local
+    hooks:
       - id: check-pruna-pro
         name: Check for pruna_pro
         entry: >
