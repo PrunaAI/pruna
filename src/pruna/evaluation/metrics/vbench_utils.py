@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any, Callable, Iterable, List
+import hashlib
 
 import numpy as np
 import torch
@@ -82,6 +83,19 @@ class VBenchMixin:
             raise ValueError(f"Batch must be 4 or 5 dimensional video tensor with B,T,C,H,W, got {batch.ndim}")
         return batch
 
+def get_sample_seed(experiment_name: str, prompt: str, index: int) -> int:
+    """
+    Get a sample seed for a given experiment name, prompt, and index.
+    """
+    key = f"{experiment_name}_{prompt}_{index}".encode('utf-8')
+
+    return int(hashlib.sha256(key).hexdigest(), 16) % (2**32)
+
+def is_file_exists(path: str | Path, filename: str) -> bool:
+    folder = Path(path)
+    full_path = folder / filename
+    
+    return full_path.is_file()
 
 def load_video(path: str | Path, return_type: str = "pt") -> List[Image] | np.ndarray | torch.Tensor:
     """
@@ -205,7 +219,7 @@ def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
 
 
 def _normalize_prompts(
-    prompts: str | List[str] | PrunaDataModule, split: str = "test", batch_size: int = 1, num_samples: int | None = None, fraction: float = 1.0
+    prompts: str | List[str] | PrunaDataModule, split: str = "test", batch_size: int = 1, num_samples: int | None = None, fraction: float = 1.0, data_partition_strategy: str = "indexed", partition_index: int = 0, seed: int = 42
 ) -> Iterable[str]:
     """
     Normalize prompts to an iterable format to be used in the generate_videos function.
@@ -216,7 +230,18 @@ def _normalize_prompts(
         The prompts to normalize.
     split : str
         The dataset split to sample from.
-
+    batch_size : int
+        The batch size to sample from.
+    num_samples : int | None
+        The number of samples to sample from.
+    fraction : float
+        The fraction of the dataset to sample from.
+    data_partition_strategy : str
+        The strategy to use for partitioning the dataset. Can be "indexed" or "random".
+    partition_index : int
+        The index to use for partitioning the dataset.
+    seed : int
+        The seed to use for partitioning the dataset.
     Returns
     -------
     Iterable[str]
@@ -227,7 +252,7 @@ def _normalize_prompts(
     elif isinstance(prompts, PrunaDataModule):
         target_dataset = getattr(prompts, f"{split}_dataset")
         sample_size = define_sample_size_for_dataset(target_dataset, fraction, num_samples)
-        setattr(prompts, f"{split}_dataset", stratify_dataset(target_dataset, sample_size))
+        setattr(prompts, f"{split}_dataset", stratify_dataset(target_dataset, sample_size, seed, data_partition_strategy, partition_index))
         return getattr(prompts, f"{split}_dataloader")(batch_size=batch_size)
     else:  # list of prompts, already iterable
         return prompts
@@ -337,8 +362,8 @@ def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., 
         )
 
     # The sampling function may expect the model as "pipeline" so we pass it as an arg and not a kwarg.
-    def sampler(*, prompt: str, seeder: Any, device: str | torch.device, **kwargs: Any) -> Any:
-        return sampling_fn(model, prompt=prompt, seeder=seeder, device=device, **kwargs)
+    def sampler(*, prompt: str, seeder: Any, **kwargs: Any) -> Any:
+        return sampling_fn(model, prompt=prompt, seeder=seeder, **kwargs)
 
     return sampler
 
@@ -348,6 +373,8 @@ def generate_videos(
     prompts: str | List[str] | PrunaDataModule,
     num_samples: int | None = None,
     samples_fraction: float = 1.0,
+    data_partition_strategy: str = "indexed",
+    partition_index: int = 0,
     split: str = "test",
     unique_sample_per_video_count: int = 1,
     global_seed: int = 42,
@@ -358,6 +385,8 @@ def generate_videos(
     filename_fn: Callable = create_vbench_file_name,
     special_str: str = "",
     device: str | torch.device = None,
+    experiment_name: str = "",
+    sampling_seed_fn: Callable[..., Any] = get_sample_seed,
     **model_kwargs,
 ) -> None:
     """
@@ -402,15 +431,16 @@ def generate_videos(
 
     device = set_to_best_available_device(device)
 
-    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples, fraction=samples_fraction)
+    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples, fraction=samples_fraction, data_partition_strategy=data_partition_strategy, partition_index=partition_index)
 
 
     save_dir = Path(save_dir)
     _ensure_dir(save_dir)
 
     # set a run-level seed (VBench suggests this) (important for reproducibility)
-    seed_rng = torch.Generator().manual_seed(global_seed)
+    seed_rng = lambda x: torch.Generator("cpu").manual_seed(x)
     sampler = _wrap_sampler(model=model, sampling_fn=sampling_fn)
+    
 
     for batch in prompt_iterable:
         prompt = prepare_batch(batch)
@@ -418,11 +448,15 @@ def generate_videos(
             file_name = filename_fn(sanitize_prompt(prompt), idx, special_str, file_extension)
             out_path = save_dir / file_name
 
-            vid = sampler(prompt=prompt, seeder=seed_rng, device=device, **model_kwargs)
-            save_fn(vid, out_path, fps=fps)
+            if is_file_exists(save_dir, file_name):
+                continue
+            else:
+                seed = sampling_seed_fn(experiment_name, prompt, idx)
+                vid = sampler(prompt=prompt, seeder=seed_rng(seed), **model_kwargs)
+                save_fn(vid, out_path, fps=fps)
 
-            del vid
-            safe_memory_cleanup()
+                del vid
+                safe_memory_cleanup()
 
 
 def evaluate_videos(
