@@ -26,6 +26,7 @@ from PIL.Image import Image
 from torchvision.transforms import ToTensor
 
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.data.utils import define_sample_size_for_dataset, stratify_dataset
 from pruna.engine.utils import safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
@@ -204,7 +205,7 @@ def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
 
 
 def _normalize_prompts(
-    prompts: str | List[str] | PrunaDataModule, split: str = "test", batch_size: int = 1
+    prompts: str | List[str] | PrunaDataModule, split: str = "test", batch_size: int = 1, num_samples: int | None = None, fraction: float = 1.0
 ) -> Iterable[str]:
     """
     Normalize prompts to an iterable format to be used in the generate_videos function.
@@ -224,6 +225,9 @@ def _normalize_prompts(
     if isinstance(prompts, str):
         return [prompts]
     elif isinstance(prompts, PrunaDataModule):
+        target_dataset = getattr(prompts, f"{split}_dataset")
+        sample_size = define_sample_size_for_dataset(target_dataset, fraction, num_samples)
+        setattr(prompts, f"{split}_dataset", stratify_dataset(target_dataset, sample_size))
         return getattr(prompts, f"{split}_dataloader")(batch_size=batch_size)
     else:  # list of prompts, already iterable
         return prompts
@@ -342,6 +346,8 @@ def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., 
 def generate_videos(
     model: Any,
     prompts: str | List[str] | PrunaDataModule,
+    num_samples: int | None = None,
+    samples_fraction: float = 1.0,
     split: str = "test",
     unique_sample_per_video_count: int = 1,
     global_seed: int = 42,
@@ -396,7 +402,8 @@ def generate_videos(
 
     device = set_to_best_available_device(device)
 
-    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1)
+    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples, fraction=samples_fraction)
+
 
     save_dir = Path(save_dir)
     _ensure_dir(save_dir)
