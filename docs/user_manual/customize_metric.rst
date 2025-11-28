@@ -187,13 +187,13 @@ For example, if you are implementing a metric that compares two models, you shou
 
 If you are implementing an alignment metric comparing model's output with the input, you should use the ``x_gt`` or ``gt_x`` call type. Examples from |pruna| include ``clip_score``.
 
-If you are implementing a metric that compares the model's output with the ground truth, you should use the ``y_gt`` or ``gt_y`` call type. Examples from |pruna| include ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``.
+If you are implementing a metric that compares the model's output with the ground truth, you should use the ``y_gt`` or ``gt_y`` call type. Examples from |pruna| include ``fid``, ``kid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``.
 
 If you are wrapping an Image Quality Assessment (IQA) metric, that has an internal dataset, you should use the ``y`` call type. Examples from |pruna| include ``arniqa``.
 
-You may want to switch the mode of the metric despite your default ``call_type``. For instance you may want to use ``fid`` in pairwise mode to get a single comparison score for two models.
+You may want to switch the mode of the metric despite your default ``call_type``. For instance you may want to use ``fid`` or ``kid`` in pairwise mode to get a single comparison score for two models.
 
-In this case, you can pass ``pairwise`` to the ``call_type`` parameter of the ``StatefulMetric`` constructor.
+In this case, you can pass ``pairwise`` to the ``call_type`` parameter of the ``StatefulMetric`` constructor`
 
 .. container:: hidden_code
 
