@@ -167,6 +167,31 @@ def get_autoregressive_text_to_image_model(model_id: str) -> tuple[Any, SmashCon
     return model, smash_config
 
 
+def get_pre_quantized_model(model_id: str) -> tuple[Any, SmashConfig]:
+    """
+    Create a SmashConfig with a new attribute for the path to the (already) quantized model.
+
+    The fixture emits a dummy model (for dtype and device checking) and a SmashConfig
+    carrying path to quantized model on the hub.
+    """
+
+    class DummyModel(torch.nn.Linear):
+        """A nn.Module used exclusively for device and dtype checking."""
+
+        def __init__(self):
+            super().__init__(1, 1)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            raise NotImplementedError(
+                "This model is used exclusively for device and dtype checking and should not be called."
+            )
+
+    dummy_model = DummyModel()
+    smash_config = SmashConfig()
+    setattr(smash_config, "quantized_model_repo", model_id)
+    return dummy_model, smash_config
+
+
 MODEL_FACTORY: dict[str, Callable] = {
     # whisper models
     "whisper_tiny_random": whisper_tiny_random_model,
@@ -197,4 +222,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
+    "tiny_llama_hqq_4bits_smashed": partial(get_pre_quantized_model, "loulou2/tiny_llama_hqq"),
+    "tiny_llama_higgs_4bits_smashed": partial(get_pre_quantized_model, "loulou2/tiny_llama_higgs"),
 }
