@@ -21,13 +21,14 @@ from pathlib import Path
 from typing import Any
 
 from ConfigSpace import UniformIntegerHyperparameter
-import diffusers
+from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.target_modules import TargetModules
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
-from pruna.engine.utils import load_json_config, move_to_device, safe_memory_cleanup
+from pruna.engine.utils import get_device_map, move_to_device, safe_memory_cleanup
 
 
 class RedNOE(PrunaAlgorithmBase):
@@ -63,7 +64,15 @@ class RedNOE(PrunaAlgorithmBase):
                 upper=256,
                 default_value=2,
                 meta=dict(desc="Number of experts triggered per token."),
-            )
+            ),
+            TargetModules(
+                name="target_name",
+                default_value="num_experts_per_tok",
+                meta=dict(
+                    desc="Name of of the parameter in the config.json file to be modified, "
+                    "e.g. 'num_experts_per_tok' for mixtral models. "
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -78,9 +87,13 @@ class RedNOE(PrunaAlgorithmBase):
         Returns
         -------
         bool
-            True if the model is a causal language model or a diffusers pipeline with a MoE block, False otherwise.
+            True if the model is a MoE LM or a transformers pipeline with a MoE block, False otherwise.
         """
-        return is_moe_lm(model) or is_transformers_pipeline_with_moe_lm(model)
+        # Hunyuan3-image is a MoE model, but not depending on mixtral
+        if model.__class__.__name__ == "HunyuanImage3ForCausalMM":
+            return True
+        else:
+            return is_moe_lm(model) or is_transformers_pipeline_with_moe_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -105,15 +118,14 @@ class RedNOE(PrunaAlgorithmBase):
         else:
             with config_path.open("r", encoding="utf-8") as f:
                 config_json = json.load(f)
-            config_json["num_experts_per_tok"] = smash_config["num_experts_per_token"]
+            config_json[smash_config["target_name"]] = smash_config["num_experts_per_token"]
             with config_path.open("w", encoding="utf-8") as f:
                 json.dump(config_json, f, indent=2)
+            device_map = get_device_map(model)
+            # we need to save and reload with the new config, because immutable object.
             with tempfile.TemporaryDirectory() as temp_dir:
                 move_to_device(model, "cpu")
                 model.save_pretrained(temp_dir)
-                # Get the pipeline class name
-                model_index = load_json_config(temp_dir, "model_index.json")
-                cls = getattr(diffusers, model_index["_class_name"])
                 safe_memory_cleanup()
-                model = cls.from_pretrained(temp_dir)
+                model = AutoModelForCausalLM.from_pretrained(temp_dir, device_map=device_map)
         return model
