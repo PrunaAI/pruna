@@ -72,16 +72,14 @@ class MSEMetric(StatefulMetric):
             The model predictions/outputs.
         """
         # Process inputs based on call_type (returns tuple of tensors)
-        inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        # Pass device from ground truth to ensure consistent device handling
+        inputs = metric_data_processor(x, gt, outputs, self.call_type, device=gt.device if torch.is_tensor(gt) else None)
         gt_tensor = inputs[0]
         output_tensor = inputs[1]
 
         if gt_tensor is None or output_tensor is None:
             pruna_logger.debug("MSE.update received None for gt or outputs; skipping.")
             return
-
-        # Ensure tensors are on the same device
-        output_tensor = output_tensor.to(gt_tensor.device)
 
         # Flatten tensors for easier computation
         try:

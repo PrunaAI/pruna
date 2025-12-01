@@ -1,14 +1,14 @@
 # MSE Metric Implementation Summary
 
-## ✅ Completion Status
+## Completion Status
 
 All tasks have been successfully completed for the MSE (Mean Squared Error) metric implementation in Pruna AI.
 
 ---
 
-## 📋 What Was Done
+## What Was Done
 
-### 1. ✅ Metric Implementation (`src/pruna/evaluation/metrics/metric_mse.py`)
+### 1. Metric Implementation (`src/pruna/evaluation/metrics/metric_mse.py`)
 
 **Features:**
 - Inherits from `StatefulMetric` for proper batch accumulation
@@ -31,7 +31,7 @@ class MSEMetric(StatefulMetric):
 
 ---
 
-### 2. ✅ Registry Integration
+### 2. Registry Integration
 
 **File:** `src/pruna/evaluation/metrics/__init__.py`
 
@@ -46,7 +46,7 @@ task = Task(metrics=["mse"])
 
 ---
 
-### 3. ✅ Comprehensive Tests (`tests/evaluation/test_mse.py`)
+### 3. Comprehensive Tests (`tests/evaluation/test_mse.py`)
 
 **15 Tests Created:**
 1. `test_mse_perfect_match` - Zero MSE for identical tensors
@@ -73,18 +73,18 @@ Coverage: 89% for metric_mse.py
 
 ---
 
-### 4. ✅ Style Compliance
+### 4. Style Compliance
 
 **Checks Passed:**
-- ✅ `ty check` - No type errors
-- ✅ `ruff check` - All linting checks passed
-- ✅ Follows project code style (NumPy docstrings, PascalCase class names)
-- ✅ Proper type hints throughout
-- ✅ No unused imports
+- `ty check` - No type errors
+- `ruff check` - All linting checks passed
+- Follows project code style (NumPy docstrings, PascalCase class names)
+- Proper type hints throughout
+- No unused imports
 
 ---
 
-### 5. ✅ Documentation (`docs/user_manual/metrics/mse.md`)
+### 5. Documentation (`docs/user_manual/metrics/mse.md`)
 
 **Documentation Includes:**
 - **Overview** - What MSE is and when to use it
@@ -94,7 +94,7 @@ Coverage: 89% for metric_mse.py
   - Basic standalone usage
   - Integration with Pruna's evaluation framework
   - Model comparison example
-- **Use Cases** - When MSE is appropriate (✅) and considerations (⚠️)
+- **Use Cases** - When MSE is appropriate and considerations
 - **Example Results** - Concrete examples with expected outputs
 - **Technical Details** - State accumulation, device handling, shape flexibility
 - **Related Metrics** - RMSE, MAE, PSNR, SSIM
@@ -102,99 +102,18 @@ Coverage: 89% for metric_mse.py
 
 ---
 
-## 🎯 Acceptance Criteria Met
+## Acceptance Criteria Met
 
-### ✅ Style Guidelines
-- Follows Pruna's coding conventions
-- NumPy-style docstrings
-- Proper type hints
-- Clean, maintainable code
-
-### ✅ Documentation
-- Comprehensive user documentation
-- Code comments explaining key decisions
-- Usage examples provided
-
-### ✅ Tests
-- 15 tests covering various scenarios
-- All tests pass successfully
-- Edge cases handled
-
-### ✅ Integration
-- Registered with `MetricRegistry`
-- Exported from `__init__.py`
-- Works with Pruna's evaluation framework
-- Compatible with `Task` and `smash()` functions
-
----
-
-## 📁 Files Created/Modified
-
-### Created:
-1. `src/pruna/evaluation/metrics/metric_mse.py` (122 lines)
-2. `tests/evaluation/test_mse.py` (247 lines)
-3. `docs/user_manual/metrics/mse.md` (full documentation)
-
-### Modified:
-1. `src/pruna/evaluation/metrics/__init__.py` (added MSEMetric import and export)
-
----
-
-## 🚀 How to Use
-
-### Basic Usage:
-```python
 from pruna.evaluation.metrics.metric_mse import MSEMetric
 
+# Initialize the metric
 metric = MSEMetric()
+
 # During evaluation loop:
-metric.update(x, ground_truth, predictions)
+for x, y in dataloader:
+    preds = model(x)
+    metric.update(x, y, preds)
+
+# Get final result
 result = metric.compute()
 print(f"MSE: {result.result}")
-```
-
-### With Pruna Framework:
-```python
-from pruna import smash
-from pruna.evaluation.task import Task
-
-task = Task(metrics=["mse"])
-smashed_model = smash(model=your_model, eval_task=task)
-```
-
----
-
-## 🧪 Test Command
-
-```bash
-pytest tests/evaluation/test_mse.py -v
-```
-
-**Expected Output:**
-```
-14 passed, 1 skipped in 1.00s
-```
-
----
-
-## 📊 Code Quality Metrics
-
-- **Test Coverage:** 89% (src/pruna/evaluation/metrics/metric_mse.py)
-- **Lines of Code:** 122 (implementation) + 247 (tests)
-- **Tests:** 15 comprehensive tests
-- **Documentation:** Complete user guide with examples
-
----
-
-## ✨ Summary
-
-The MSE metric implementation is **production-ready** and follows all Pruna AI guidelines:
-
-✅ Correct implementation using `StatefulMetric`  
-✅ Properly registered and exported  
-✅ Comprehensive tests (all passing)  
-✅ Style-compliant code  
-✅ Full documentation with examples  
-✅ Ready for integration into Pruna's evaluation framework  
-
-The metric can now be used by simply including `"mse"` in the metrics list when creating an evaluation task.
