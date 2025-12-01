@@ -5,6 +5,11 @@
 All tasks have been successfully completed for the MSE (Mean Squared Error) metric implementation in Pruna AI.
 
 ---
+## Is this for merging it to Pruna or is it more for giving information?
+
+I hope this gets merged to Pruna AI. But if it doesn't, I will still use it for my own purposes and this was a good learning experience.
+Even if evaluation metrics is not merged, do use the screenshot in the CONTRIBUTING.md file (at the end of the file), I hope it helps others in their work.
+---
 
 ## What Was Done
 
