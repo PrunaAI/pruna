@@ -27,7 +27,7 @@ import torch
 import transformers
 from huggingface_hub import constants, snapshot_download
 from tqdm.auto import tqdm as base_tqdm
-from transformers import AutoTokenizer, pipeline
+from transformers import pipeline
 
 from pruna import SmashConfig
 from pruna.engine.utils import load_json_config, move_to_device, set_to_best_available_device
@@ -367,29 +367,10 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     Any
         The loaded model.
     """
-    if isinstance(model_path, str):
-        model_path = Path(model_path)
-    pipeline_info_path = model_path / PIPELINE_INFO_FILE_NAME
-
     from pruna.algorithms.hqq import HQQ
 
     algorithm_packages = HQQ().import_algorithm_packages()
     model_path = Path(model_path)
-    hqq_model_dir = model_path / "hqq_language_model"
-
-    # if the model is a janus like model, we need to load the quantized model from the hqq_language_model directory
-    if hqq_model_dir.exists():
-        quantized_model_path = hqq_model_dir / "qmodel.pt"
-        quantized_path = str(hqq_model_dir)
-        # load the weight on cpu to rename attr -> model.attr,
-        # and also artifically add a random lm_head to the weights.
-        weights = torch.load(quantized_model_path, map_location="cpu", weights_only=True)
-        weights = {f"model.{k}" if not k.startswith("model.") else k: v for k, v in weights.items()}
-        weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
-        # hqq expects the qmodel.pt file to be in the quantized_path directory.
-        torch.save(weights, quantized_model_path)
-    else:
-        quantized_path = str(model_path)
 
     if "compute_dtype" in kwargs:
         compute_dtype = kwargs.pop("compute_dtype")
@@ -398,40 +379,60 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         saved_smash_config.load_from_json(model_path)
         compute_dtype = torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
 
-    try:  # Try to use pipeline for HF specific HQQ quantization
-        quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
-            quantized_path,
-            device=smash_config.device,
-            **filter_load_kwargs(
-                algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs | {"compute_dtype": compute_dtype}
-            ),
-        )
-    except Exception:  # Default to generic HQQ pipeline if it fails
-        pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
-        quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
-            quantized_path,
-            device=smash_config.device,
-            compute_dtype=compute_dtype,
-            **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
-        )
+    has_config = (model_path / "config.json").exists()
+    is_janus_model = (
+        has_config and load_json_config(model_path, "config.json")["architectures"][0] == "JanusForConditionalGeneration"
+    )
 
-    original_config = load_json_config(model_path, "config.json")
-    if original_config["architectures"][0] == "JanusForConditionalGeneration":
+    def load_quantized_model(quantized_path: str) -> Any:
+        try:  # Try to use pipeline for HF specific HQQ quantization
+            quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
+                quantized_path,
+                device=smash_config.device,
+                **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
+            )
+        except Exception:  # Default to generic HQQ pipeline if it fails
+            pruna_logger.info("Could not load HQQ model using HQQModelForCausalLM, trying generic AutoHQQHFModel...")
+            quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
+                quantized_path,
+                device=smash_config.device,
+                compute_dtype=compute_dtype,
+                **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
+            )
+        return quantized_model
+
+    if (model_path / "qmodel.pt").exists():  # the model itself was quantized
+        return load_quantized_model(model_path)
+    elif (model_path / PIPELINE_INFO_FILE_NAME).exists():  # pipeline
+        # load the pipeline with a fake model on meta device
+        with (model_path / PIPELINE_INFO_FILE_NAME).open("r") as f:
+            task = json.load(f)["task"]
+        pipe = pipeline(task=task, model=model_path, model_kwargs={"device_map": "meta"})
+        # load the quantized model
+        pipe.model = load_quantized_model(model_path / "model_quantized")
+        move_to_device(pipe, smash_config.device)
+        return pipe
+    elif is_janus_model:
         cls = getattr(transformers, "JanusForConditionalGeneration")
         model = cls.from_pretrained(model_path, torch_dtype=compute_dtype, **kwargs)
-        model.model.language_model = quantized_model.model
+        hqq_model_dir = model_path / "hqq_language_model"
+
+        # Janus language model must be patched to match HQQ's causal LM assumption
+        quantized_path = str(hqq_model_dir / "qmodel.pt")
+        weights = torch.load(quantized_path, map_location="cpu", weights_only=True)
+        is_already_patched = all(k == "lm_head" or k.startswith("model.") for k in weights)
+        if not is_already_patched:
+            # load the weight on cpu to rename attr -> model.attr,
+            weights = {f"model.{k}": v for k, v in weights.items()}
+            # artifically add a random lm_head to the weights.
+            weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
+            torch.save(weights, quantized_path)  # patch weights
+
+        quantized_causal_lm = load_quantized_model(hqq_model_dir)
+        model.model.language_model = quantized_causal_lm.model  # drop the lm_head and causal_lm wrapper
         # some weights of the language_model are not on the correct device, so we move it afterwards.
         move_to_device(model, smash_config.device)
         return model
-    else:
-        # make sure to load
-        if pipeline_info_path.exists():
-            with pipeline_info_path.open("r") as f:
-                pipeline_info = json.load(f)
-            tokenizer = AutoTokenizer.from_pretrained(model_path)
-            pipe = pipeline(pipeline_info["task"], model=quantized_model, tokenizer=tokenizer, **kwargs)
-            return pipe
-        return quantized_model
 
 
 def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:

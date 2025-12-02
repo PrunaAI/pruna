@@ -21,7 +21,7 @@ from typing import Any, Dict, Type
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, Pipeline
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -30,6 +30,7 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
     TARGET_MODULES_TYPE,
     TargetModules,
+    expand_list_of_targeted_paths,
     get_skipped_submodules,
     is_leaf_module,
     map_targeted_nn_roots,
@@ -166,9 +167,6 @@ class HQQ(PrunaAlgorithmBase):
         Any
             The quantized model.
         """
-        if is_transformers_pipeline_with_causal_lm(model):
-            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
-
         imported_modules = self.import_algorithm_packages()
 
         weight_quantization_bits = smash_config["weight_bits"]
@@ -183,10 +181,11 @@ class HQQ(PrunaAlgorithmBase):
             target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
         else:
             target_modules = smash_config["target_modules"]
+        self.verify_target_modules(model, target_modules)
 
         def quantize_component(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> torch.nn.Module:
             """
-            Quantize the model itself if it's a transformer, or its language model if it's a pipeline.
+            Quantize the model itself if it's a transformer, or its language model if it's a pipeline or Janus model.
 
             Parameters
             ----------
@@ -202,6 +201,29 @@ class HQQ(PrunaAlgorithmBase):
             torch.nn.Module
                 The quantized component.
             """
+            if is_janus_llamagen_ar(module):
+                # dispatch to the language model because HQQ expects a LLM as input
+                lm_path = "model.language_model"
+                supported_targets = [
+                    path
+                    for path in subpaths
+                    # make sure we're recognizing the full module name
+                    if (path == lm_path or path.startswith(f"{lm_path}."))
+                ]
+                if len(supported_targets) != len(subpaths):
+                    pruna_logger.warning(
+                        f"HQQ on Janus is only supported for the language model `{lm_path}`, skipping other submodules."
+                    )
+
+                # relative path from the language model: remove lm_path and the dot
+                lm_subpaths = {path[len(lm_path) + 1 :] for path in supported_targets}
+                submodule = module.get_submodule(lm_path)
+                lm_attr_name = lm_path if attr_name is None else f"{attr_name}.{lm_path}"
+                submodule = quantize_component(lm_attr_name, submodule, lm_subpaths)
+
+                module.set_submodule(lm_path, submodule)
+                return module
+
             skipped_leaf_modules = get_skipped_submodules(module, subpaths, filter_fn=is_leaf_module)
 
             try:  # Try to quantize the model using HQQ
@@ -225,12 +247,15 @@ class HQQ(PrunaAlgorithmBase):
                     if name in skipped_leaf_modules:
                         submodule.to(smash_config["device"])
                         submodule.to(compute_dtype)
-            except Exception:  # Default to generic HF quantization if it fails or if default_to_hf is True
+            except Exception as e:  # Default to generic HF quantization if it fails or if default_to_hf is True
                 if not smash_config["force_hf_implementation"]:
+                    pruna_logger.debug(f"HQQ pipeline error: {e}")
                     pruna_logger.info(
-                        "Could not quantize model using specialized HQQ pipeline, "
-                        "trying implementation from transformers library..."
+                        f"Could not quantize model{'' if attr_name is None else f'.{attr_name}'} "
+                        "using specialized HQQ pipeline, trying implementation from transformers library... "
+                        "See debug logs for more details."
                     )
+                    raise
 
                 # define config with skipped layers
                 quant_config_hf = imported_modules["HqqConfig"](
@@ -298,6 +323,33 @@ class HQQ(PrunaAlgorithmBase):
             HqqConfig=HqqConfig,
             HQQModelForCausalLM=HQQModelForCausalLM,
         )
+
+    def verify_target_modules(self, model: Any, target_modules: TARGET_MODULES_TYPE) -> None:
+        """
+        Warn the user if non-saveable modules are targeted.
+
+        Parameters
+        ----------
+        model : Any
+            The model to verify the target modules of.
+        target_modules : TARGET_MODULES_TYPE
+            The target modules to verify.
+        """
+        if isinstance(model, Pipeline):
+            saveable = "model"
+        elif is_janus_llamagen_ar(model):
+            saveable = "model.language_model"
+        else:
+            return
+
+        targeted_paths = expand_list_of_targeted_paths(target_modules, model)
+        non_saveable_attributes = [
+            path.split(".")[0] for path in targeted_paths if not (path == saveable or path.startswith(f"{saveable}."))
+        ]
+        if non_saveable_attributes:
+            pruna_logger.warning(
+                f"HQQ saving/loading is not implemented for the following attributes: {non_saveable_attributes}"
+            )
 
 
 def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules: list[str]) -> Type[Any]:

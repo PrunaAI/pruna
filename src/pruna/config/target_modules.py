@@ -126,6 +126,8 @@ def target_backbone(model: Any) -> TARGET_MODULES_TYPE:
             f"{attr_name}.*" for attr_name, component in model.components.items() if isinstance(component, denoiser_cls)
         ]
         return {"include": include, "exclude": []}
+    elif is_janus_llamagen_ar(model):
+        return {"include": ["model.language_model.*"], "exclude": []}
     else:  # includes the unet/transformers cases and the case where the model is an undefined torch.nn.Module
         return {"include": ["*"], "exclude": []}
 
