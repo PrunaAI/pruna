@@ -183,23 +183,21 @@ class Torchao(PrunaAlgorithmBase):
             The default target_modules for the algorithm.
         """
         if hasattr(model, "transformer"):
-            target_modules = {"target_modules": {"include": ["transformer.*"], "exclude": []}}
+            target_modules = {"include": ["transformer.*"], "exclude": []}
         elif hasattr(model, "unet"):
-            target_modules = {"target_modules": {"include": ["unet.*"], "exclude": []}}
+            target_modules = {"include": ["unet.*"], "exclude": []}
         elif is_transformers_pipeline_with_causal_lm(model):
-            target_modules = {"target_modules": {"include": ["model.*"], "exclude": ["model.lm_head"]}}
+            target_modules = {"include": ["model.*"], "exclude": ["model.lm_head"]}
         else:
-            target_modules = {"target_modules": {"include": ["*"], "exclude": ["lm_head"]}}
+            target_modules = {"include": ["*"], "exclude": ["lm_head"]}
 
         # exclude norm and embedding modules based on the excluded modules hyperparameter
         if "norm" in smash_config["excluded_modules"]:
             for norm_module in NORM_MODULES:
-                target_modules["target_modules"]["exclude"].extend(_get_patterns_for_exact_attribute_match(norm_module))
+                target_modules["exclude"].extend(_get_patterns_for_exact_attribute_match(norm_module))
         if "embedding" in smash_config["excluded_modules"]:
             for embedding_module in EMBEDDING_MODULES:
-                target_modules["target_modules"]["exclude"].extend(
-                    _get_patterns_for_exact_attribute_match(embedding_module)
-                )
+                target_modules["exclude"].extend(_get_patterns_for_exact_attribute_match(embedding_module))
         return target_modules
 
     def _validate_config(self, smash_config: SmashConfigPrefixWrapper) -> None:
@@ -283,27 +281,27 @@ class Torchao(PrunaAlgorithmBase):
                     The quantized nn.Module.
                 """
 
-                def filter_fn(submodule: torch.nn.Module, subpath: str, prefix: str = None) -> bool:
+                def filter_linear_and_targeted_fn(submodule: torch.nn.Module, subpath: str, prefix: str = None) -> bool:
                     true_subpath = subpath if prefix is None else f"{prefix}.{subpath}"
                     is_lin = is_linear(submodule, subpath)
                     return is_lin and true_subpath in subpaths
 
                 # Only apply quantization on module list level if torch compile is also applied at that level
                 if smash_config["torch_compile"] and smash_config._base_config["torch_compile_target"] == "module_list":
-                    # Apply quantization to the entire model
-                    imported_modules["quantize"](
-                        module, imported_modules[smash_config["quant_type"]], filter_fn=filter_fn
-                    )
-                else:
                     # Apply quantization to individual submodules in ModuleLists
-                    for module_list_name, module_list in module.modules():
-                        if not isinstance(module_list, torch.nn.ModuleList):
+                    for module_list_name, module_list in module.named_modules():
+                        if isinstance(module_list, torch.nn.ModuleList):
                             for i, submodule in enumerate(module_list):
                                 imported_modules["quantize"](
                                     submodule,
                                     imported_modules[smash_config["quant_type"]],
-                                    filter_fn=partial(filter_fn, prefix=f"{module_list_name}.{i}"),
+                                    filter_fn=partial(filter_linear_and_targeted_fn, prefix=f"{module_list_name}.{i}"),
                                 )
+                else:
+                    # Apply quantization to the entire model
+                    imported_modules["quantize"](
+                        module, imported_modules[smash_config["quant_type"]], filter_fn=filter_linear_and_targeted_fn
+                    )
                 return module
 
             model = map_targeted_nn_roots(quantize_nn_module, model, target_modules)
