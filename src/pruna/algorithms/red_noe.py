@@ -67,7 +67,7 @@ class RedNOE(PrunaAlgorithmBase):
             ),
             TargetModules(
                 name="target_name",
-                default_value="num_experts_per_tok",
+                default_value={"include": ["num_experts_per_tok"], "exclude": []},
                 meta=dict(
                     desc="Name of of the parameter in the config.json file to be modified, "
                     "e.g. 'num_experts_per_tok' for mixtral models. "
@@ -111,21 +111,20 @@ class RedNOE(PrunaAlgorithmBase):
         Any
             The model with the reduced number of experts per token.
         """
-        model_name_or_path = getattr(model, "name_or_path", None)
-        config_path = Path(model_name_or_path) / "config.json"
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found at {config_path}")
-        else:
-            with config_path.open("r", encoding="utf-8") as f:
-                config_json = json.load(f)
-            config_json[smash_config["target_name"]] = smash_config["num_experts_per_token"]
-            with config_path.open("w", encoding="utf-8") as f:
-                json.dump(config_json, f, indent=2)
-            device_map = get_device_map(model)
-            # we need to save and reload with the new config, because immutable object.
-            with tempfile.TemporaryDirectory() as temp_dir:
-                move_to_device(model, "cpu")
-                model.save_pretrained(temp_dir)
+        device_map = get_device_map(model)
+        # we need to save and reload with the new config, because immutable object.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            move_to_device(model, "cpu")
+            model.save_pretrained(temp_dir)
+            config_path = Path(temp_dir) / "config.json"
+            if not config_path.exists():
+                raise FileNotFoundError(f"Config file not found at {config_path}")
+            else:
+                with config_path.open("r", encoding="utf-8") as f:
+                    config_json = json.load(f)
+                config_json[smash_config["target_name"]["include"][0]] = smash_config["num_experts_per_token"]
+                with config_path.open("w", encoding="utf-8") as f:
+                    json.dump(config_json, f, indent=2)
                 safe_memory_cleanup()
                 model = AutoModelForCausalLM.from_pretrained(temp_dir, device_map=device_map)
         return model
