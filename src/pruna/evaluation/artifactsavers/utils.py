@@ -17,9 +17,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from pruna.evaluation.artifactsavers.artifactsaver import ArtifactSaver
-from pruna.evaluation.artifactsavers.video_artifactsaver import VideoArtifactSaver
-
 from pruna.evaluation.artifactsavers.image_artifactsaver import ImageArtifactSaver
+from pruna.evaluation.artifactsavers.video_artifactsaver import VideoArtifactSaver
 
 
 def assign_artifact_saver(
