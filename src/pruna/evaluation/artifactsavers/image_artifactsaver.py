@@ -22,9 +22,9 @@ from typing import Any
 import numpy as np
 import torch
 from PIL import Image
-
 from pruna.evaluation.artifactsavers.artifactsaver import ArtifactSaver
-    
+
+
 class ImageArtifactSaver(ArtifactSaver):
     """
     Save image artifacts.
@@ -81,4 +81,3 @@ class ImageArtifactSaver(ArtifactSaver):
         data.save(canonical_path, **saving_kwargs.copy())
 
         return canonical_path
-

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from pruna.evaluation.artifactsavers.artifactsaver import ArtifactSaver
 from pruna.evaluation.artifactsavers.video_artifactsaver import VideoArtifactSaver
+
 from pruna.evaluation.artifactsavers.image_artifactsaver import ImageArtifactSaver
 
 
