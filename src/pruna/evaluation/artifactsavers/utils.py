@@ -17,6 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pruna.evaluation.artifactsavers.artifactsaver import ArtifactSaver
+from pruna.evaluation.artifactsavers.image_artifactsaver import ImageArtifactSaver
 from pruna.evaluation.artifactsavers.video_artifactsaver import VideoArtifactSaver
 
 
@@ -42,5 +43,7 @@ def assign_artifact_saver(
     """
     if modality == "video":
         return VideoArtifactSaver(root=root, export_format=export_format)
+    if modality == "image":
+        return ImageArtifactSaver(root=root, export_format=export_format)
     else:
         raise ValueError(f"Modality {modality} is not supported")
