@@ -83,6 +83,7 @@ class VBenchMixin:
             raise ValueError(f"Batch must be 4 or 5 dimensional video tensor with B,T,C,H,W, got {batch.ndim}")
         return batch
 
+
 def get_sample_seed(experiment_name: str, prompt: str, index: int) -> int:
     """
     Get a sample seed for a given experiment name, prompt, and index.
@@ -91,11 +92,13 @@ def get_sample_seed(experiment_name: str, prompt: str, index: int) -> int:
 
     return int(hashlib.sha256(key).hexdigest(), 16) % (2**32)
 
+
 def is_file_exists(path: str | Path, filename: str) -> bool:
     folder = Path(path)
     full_path = folder / filename
-    
+
     return full_path.is_file()
+
 
 def load_video(path: str | Path, return_type: str = "pt") -> List[Image] | np.ndarray | torch.Tensor:
     """
@@ -242,6 +245,7 @@ def _normalize_prompts(
         The index to use for partitioning the dataset.
     seed : int
         The seed to use for partitioning the dataset.
+
     Returns
     -------
     Iterable[str]
@@ -433,14 +437,12 @@ def generate_videos(
 
     prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples, fraction=samples_fraction, data_partition_strategy=data_partition_strategy, partition_index=partition_index)
 
-
     save_dir = Path(save_dir)
     _ensure_dir(save_dir)
 
     # set a run-level seed (VBench suggests this) (important for reproducibility)
     seed_rng = lambda x: torch.Generator("cpu").manual_seed(x)
     sampler = _wrap_sampler(model=model, sampling_fn=sampling_fn)
-    
 
     for batch in prompt_iterable:
         prompt = prepare_batch(batch)
