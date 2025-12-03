@@ -106,6 +106,7 @@ dependencies = [
     "huggingface-hub[hf-xet]>=0.30.0",
     "datasets>=0.34",
     "numpy>=1.24.4",
+    "numpydoc>=1.6.0",
     "diffusers>=0.21.4",
     "torch_pruning",
     "ConfigSpace>=1.2.1",
