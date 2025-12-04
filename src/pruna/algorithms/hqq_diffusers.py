@@ -301,8 +301,8 @@ def warn_model_specific_errors(module: nn.Module, targeted_paths: list[str]) -> 
     Returns
     -------
     None
-    Logs a warning if some targeted modules are listed as not problematic, and also remove them in place from
-    targeted_paths if they are known to break the quantized model behavior.
+        Log a warning if some targeted modules are listed as problematic, and also remove them in place from
+        targeted_paths if they are known to break the quantized model's behavior.
     """
     if module._class_name == "SD3Transformer2DModel":
         pruna_logger.info(
