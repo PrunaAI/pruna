@@ -25,7 +25,7 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
+from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots, target_backbone
 from pruna.data.utils import wrap_batch_for_model_call
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import get_nn_modules
@@ -121,14 +121,7 @@ class Quanto(PrunaAlgorithmBase):
         TARGET_MODULES_TYPE
             The default target_modules for the algorithm.
         """
-        include: list[str]
-        if hasattr(model, "unet"):
-            include = ["unet*"]
-        elif hasattr(model, "transformer"):
-            include = ["transformer*"]
-        else:
-            include = ["*"]
-        return {"include": include, "exclude": []}
+        return target_backbone(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

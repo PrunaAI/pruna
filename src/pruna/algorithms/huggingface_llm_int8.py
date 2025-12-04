@@ -33,6 +33,7 @@ from pruna.config.target_modules import (
     get_skipped_submodules,
     is_leaf_module,
     map_targeted_nn_roots,
+    target_backbone,
 )
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.utils import get_device_map, move_to_device
@@ -130,8 +131,7 @@ class LLMInt8(PrunaAlgorithmBase):
         TARGET_MODULES_TYPE
             The default target_modules for the algorithm.
         """
-        prefix = "model." if is_transformers_pipeline_with_causal_lm(model) else ""
-        return {"include": [prefix + "*"], "exclude": [prefix + "lm_head"]}
+        return target_backbone(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
