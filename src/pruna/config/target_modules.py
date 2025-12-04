@@ -118,7 +118,7 @@ def target_backbone(model: Any) -> TARGET_MODULES_TYPE:
     """
     if is_causal_lm(model):
         return {"include": ["*"], "exclude": ["lm_head"]}
-    elif is_transformers_pipeline_with_causal_lm(model) or is_janus_llamagen_ar(model):
+    elif is_transformers_pipeline_with_causal_lm(model):
         return {"include": ["model.*"], "exclude": ["model.lm_head"]}
     elif isinstance(model, DiffusionPipeline):
         denoiser_cls = tuple(get_diffusers_unet_models() + get_diffusers_transformer_models())
