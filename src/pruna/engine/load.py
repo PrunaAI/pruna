@@ -433,6 +433,10 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         # some weights of the language_model are not on the correct device, so we move it afterwards.
         move_to_device(model, smash_config.device)
         return model
+    else:
+        raise ValueError(
+            f"Could not load HQQ model from {model_path}, only quantized models or pipelines are supported."
+        )
 
 
 def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
