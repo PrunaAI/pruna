@@ -129,7 +129,7 @@ def target_backbone(model: Any) -> TARGET_MODULES_TYPE:
     elif is_janus_llamagen_ar(model):
         return {"include": ["model.language_model.*"], "exclude": []}
     else:  # includes the unet/transformers cases and the case where the model is an undefined torch.nn.Module
-        return {"include": ["*"], "exclude": []}
+        return {"include": ["*"], "exclude": ["lm_head"]}
 
 
 def is_targeted(path: str, target_modules: TARGET_MODULES_TYPE) -> bool:

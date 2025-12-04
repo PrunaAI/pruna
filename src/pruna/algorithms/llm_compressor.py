@@ -28,6 +28,7 @@ from pruna.config.target_modules import (
     get_skipped_submodules,
     is_leaf_module,
     map_targeted_nn_roots,
+    target_backbone,
 )
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 
@@ -114,10 +115,7 @@ class LLMCompressor(PrunaAlgorithmBase):
         TARGET_MODULES_TYPE
             The default hyperparameters for the model.
         """
-        if is_transformers_pipeline_with_causal_lm(model):
-            return {"target_modules": {"include": ["model.*"], "exclude": ["model.lm_head"]}}
-        else:
-            return {"target_modules": {"include": ["*"], "exclude": ["lm_head"]}}
+        return target_backbone(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

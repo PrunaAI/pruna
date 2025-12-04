@@ -25,7 +25,7 @@ from ConfigSpace import CategoricalHyperparameter
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
+from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots, target_backbone
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
     get_diffusers_unet_models,
@@ -182,14 +182,7 @@ class Torchao(PrunaAlgorithmBase):
         TARGET_MODULES_TYPE
             The default target_modules for the algorithm.
         """
-        if hasattr(model, "transformer"):
-            target_modules = {"include": ["transformer.*"], "exclude": []}
-        elif hasattr(model, "unet"):
-            target_modules = {"include": ["unet.*"], "exclude": []}
-        elif is_transformers_pipeline_with_causal_lm(model):
-            target_modules = {"include": ["model.*"], "exclude": ["model.lm_head"]}
-        else:
-            target_modules = {"include": ["*"], "exclude": ["lm_head"]}
+        target_modules = target_backbone(model)
 
         # exclude norm and embedding modules based on the excluded modules hyperparameter
         if "norm" in smash_config["excluded_modules"]:
