@@ -255,7 +255,6 @@ class HQQ(PrunaAlgorithmBase):
                         "using specialized HQQ pipeline, trying implementation from transformers library... "
                         "See debug logs for more details."
                     )
-                    raise
 
                 # define config with skipped layers
                 quant_config_hf = imported_modules["HqqConfig"](
