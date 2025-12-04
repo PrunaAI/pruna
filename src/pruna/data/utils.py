@@ -184,7 +184,8 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
     return texts
 
 
-def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42, partition_strategy: str = "random", partition_index: int = 0) -> Dataset:
+def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42,
+                     partition_strategy: str = "random", partition_index: int = 0,) -> Dataset:
     """
     Stratify the dataset into a specific size.
 
@@ -216,7 +217,7 @@ def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42, partiti
 
     indices = list(range(dataset_length))
     if partition_strategy == "indexed":
-        selected_indices = indices[sample_size*partition_index:sample_size*(partition_index+1)]
+        selected_indices = indices[sample_size * partition_index:sample_size * (partition_index + 1)]
     elif partition_strategy == "random":
         random.Random(seed).shuffle(indices)
         selected_indices = indices[:sample_size]
