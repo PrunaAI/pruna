@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any, Callable, Iterable, List
-import hashlib
 
 import numpy as np
 import torch
@@ -83,19 +83,51 @@ class VBenchMixin:
             raise ValueError(f"Batch must be 4 or 5 dimensional video tensor with B,T,C,H,W, got {batch.ndim}")
         return batch
 
+
 def get_sample_seed(experiment_name: str, prompt: str, index: int) -> int:
     """
     Get a sample seed for a given experiment name, prompt, and index.
+
+    Parameters
+    ----------
+    experiment_name : str
+        The name of the experiment. To replicate the same experiment, use the same experiment name.
+    prompt : str
+        The prompt to sample from.
+    index : int
+        The index of the sample. To get different samples from the same prompt, use different indices.
+
+    Returns
+    -------
+    int
+        The seed.
     """
     key = f"{experiment_name}_{prompt}_{index}".encode('utf-8')
 
     return int(hashlib.sha256(key).hexdigest(), 16) % (2**32)
 
+
 def is_file_exists(path: str | Path, filename: str) -> bool:
+    """
+    Check if a file with the given filename exists in the given path.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the folder.
+    filename : str
+        The name of the file.
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+    """
     folder = Path(path)
     full_path = folder / filename
-    
+
     return full_path.is_file()
+
 
 def load_video(path: str | Path, return_type: str = "pt") -> List[Image] | np.ndarray | torch.Tensor:
     """
@@ -219,7 +251,9 @@ def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
 
 
 def _normalize_prompts(
-    prompts: str | List[str] | PrunaDataModule, split: str = "test", batch_size: int = 1, num_samples: int | None = None, fraction: float = 1.0, data_partition_strategy: str = "indexed", partition_index: int = 0, seed: int = 42
+    prompts: str | List[str] | PrunaDataModule, split: str = "test",
+    batch_size: int = 1, num_samples: int | None = None, fraction: float = 1.0,
+    data_partition_strategy: str = "indexed", partition_index: int = 0, seed: int = 42,
 ) -> Iterable[str]:
     """
     Normalize prompts to an iterable format to be used in the generate_videos function.
@@ -242,6 +276,7 @@ def _normalize_prompts(
         The index to use for partitioning the dataset.
     seed : int
         The seed to use for partitioning the dataset.
+
     Returns
     -------
     Iterable[str]
@@ -252,7 +287,8 @@ def _normalize_prompts(
     elif isinstance(prompts, PrunaDataModule):
         target_dataset = getattr(prompts, f"{split}_dataset")
         sample_size = define_sample_size_for_dataset(target_dataset, fraction, num_samples)
-        setattr(prompts, f"{split}_dataset", stratify_dataset(target_dataset, sample_size, seed, data_partition_strategy, partition_index))
+        setattr(prompts, f"{split}_dataset", stratify_dataset(target_dataset,
+        sample_size, seed, data_partition_strategy, partition_index))
         return getattr(prompts, f"{split}_dataloader")(batch_size=batch_size)
     else:  # list of prompts, already iterable
         return prompts
@@ -431,16 +467,17 @@ def generate_videos(
 
     device = set_to_best_available_device(device)
 
-    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples, fraction=samples_fraction, data_partition_strategy=data_partition_strategy, partition_index=partition_index)
-
+    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples,
+    fraction=samples_fraction, data_partition_strategy=data_partition_strategy,
+    partition_index=partition_index)
 
     save_dir = Path(save_dir)
     _ensure_dir(save_dir)
 
     # set a run-level seed (VBench suggests this) (important for reproducibility)
-    seed_rng = lambda x: torch.Generator("cpu").manual_seed(x)
+    def seed_rng(x: int) -> torch.Generator:
+        return torch.Generator("cpu").manual_seed(x)
     sampler = _wrap_sampler(model=model, sampling_fn=sampling_fn)
-    
 
     for batch in prompt_iterable:
         prompt = prepare_batch(batch)
