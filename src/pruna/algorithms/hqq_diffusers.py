@@ -121,7 +121,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
         """
         transformer_and_unet_models = get_diffusers_transformer_models() + get_diffusers_unet_models()
 
-        if isinstance(model, tuple[Any, ...](transformer_and_unet_models)):
+        if isinstance(model, tuple(transformer_and_unet_models)):
             return True
 
         return any(isinstance(attr_value, tuple(transformer_and_unet_models)) for attr_value in model.__dict__.values())
@@ -419,7 +419,7 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
 
         @classmethod
         def load_hqq_missed_parameters(cls, model: Any, save_dir: str):
-            missed_parameters_save_path = Path(model.save_dir) / "hqq_missed_parameters.pt"
+            missed_parameters_save_path = Path(save_dir) / "hqq_missed_parameters.pt"
             if missed_parameters_save_path.exists():
                 hqq_missed_parameters = torch.load(missed_parameters_save_path, weights_only=True)
                 for name, param in hqq_missed_parameters.items():
@@ -433,7 +433,7 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
             super().setup_model(model)
 
             # if loading the model, parameters missed by HQQ saving/loading need to be loaded manually here
-            # before the attempt move them from meta device to cpu/gpu
+            # before the HQQ attempt to move them from meta device to cpu/gpu
             if hasattr(model, "save_dir"):
                 cls.load_hqq_missed_parameters(model, model.save_dir)
 
