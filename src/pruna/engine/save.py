@@ -36,7 +36,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers, is_janus_llamagen_ar
-from pruna.engine.utils import determine_dtype
+from pruna.engine.utils import determine_dtype, monkeypatch
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -353,11 +353,11 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         with monkeypatch(model.model, "save_pretrained", lambda *args, **kwargs: None):
             model.save_pretrained(str(model_path))
         # save pipeline info so we can call transformers.pipeline at load time
-        save_pipeline_info(model, model_path)
+        save_pipeline_info(model, str(model_path))
         # pipeline loading requires a safetensor file so we save a fake, lightweight one
         save_model(torch.nn.Linear(1, 1), model_path / "model.safetensors", metadata={"format": "pt"})
 
-        save_model_hqq(model.model, model_path / "model_quantized", smash_config)
+        save_model_hqq(model.model, model_path, smash_config)
     elif is_janus_llamagen_ar(model):
         # save everything except the language model
         transformer_backup = model.model.language_model
@@ -381,7 +381,7 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
 
         quantized_path = Path(model_path)
         if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
-            model.save_quantized(quantized_path)
+            model.save_quantized(str(quantized_path))
         else:
             algorithm_packages["AutoHQQHFModel"].save_quantized(model, str(quantized_path))
 

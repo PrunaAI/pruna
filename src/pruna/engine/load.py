@@ -384,37 +384,38 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         has_config and load_json_config(model_path, "config.json")["architectures"][0] == "JanusForConditionalGeneration"
     )
 
-    def load_quantized_model(quantized_path: str) -> Any:
+    def load_quantized_model(quantized_path: str | Path) -> Any:
         try:  # Try to use pipeline for HF specific HQQ quantization
             quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
-                quantized_path,
+                str(quantized_path),
                 device=smash_config.device,
                 **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
             )
         except Exception:  # Default to generic HQQ pipeline if it fails
             pruna_logger.info("Could not load HQQ model using HQQModelForCausalLM, trying generic AutoHQQHFModel...")
             quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
-                quantized_path,
+                str(quantized_path),
                 device=smash_config.device,
                 compute_dtype=compute_dtype,
                 **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
             )
         return quantized_model
 
-    if (model_path / "qmodel.pt").exists():  # the model itself was quantized
-        return load_quantized_model(model_path)
-    elif (model_path / PIPELINE_INFO_FILE_NAME).exists():  # pipeline
+    if (model_path / PIPELINE_INFO_FILE_NAME).exists():  # pipeline
         # load the pipeline with a fake model on meta device
         with (model_path / PIPELINE_INFO_FILE_NAME).open("r") as f:
             task = json.load(f)["task"]
         pipe = pipeline(task=task, model=model_path, model_kwargs={"device_map": "meta"})
         # load the quantized model
-        pipe.model = load_quantized_model(model_path / "model_quantized")
+        pipe.model = load_quantized_model(model_path)
         move_to_device(pipe, smash_config.device)
         return pipe
+    elif (model_path / "qmodel.pt").exists():  # the model itself was quantized
+        return load_quantized_model(model_path)
     elif is_janus_model:
-        cls = getattr(transformers, "JanusForConditionalGeneration")
-        model = cls.from_pretrained(model_path, torch_dtype=compute_dtype, **kwargs)
+        model = transformers.JanusForConditionalGeneration.from_pretrained(
+            model_path, torch_dtype=compute_dtype, **kwargs
+        )
         hqq_model_dir = model_path / "hqq_language_model"
 
         # Janus language model must be patched to match HQQ's causal LM assumption
