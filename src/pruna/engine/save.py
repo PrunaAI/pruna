@@ -25,16 +25,18 @@ from typing import TYPE_CHECKING, Any, List
 import torch
 import transformers
 from huggingface_hub import ModelCard, ModelCardData, login, repo_exists, upload_large_folder
+from safetensors.torch import save_model
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
+from pruna.config.target_modules import map_targeted_nn_roots
 from pruna.engine.load import (
     LOAD_FUNCTIONS,
     PICKLED_FILE_NAME,
     PIPELINE_INFO_FILE_NAME,
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
-from pruna.engine.model_checks import get_helpers
-from pruna.engine.utils import ModelContext, determine_dtype
+from pruna.engine.model_checks import get_helpers, is_janus_llamagen_ar
+from pruna.engine.utils import determine_dtype, monkeypatch
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -340,50 +342,46 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-    # make sure to save the pipeline along with the tokenizer
+    model_path = Path(model_path)
+
     if isinstance(model, transformers.Pipeline):
-        if model.tokenizer is not None:
-            model.tokenizer.save_pretrained(model_path)
+        # pipeline calls self.model.save_pretrained, so we monkey patch it to skip the saving for now
+        with monkeypatch(model.model, "save_pretrained", lambda *args, **kwargs: None):
+            model.save_pretrained(str(model_path))
+        # save pipeline info so we can call transformers.pipeline at load time
+        save_pipeline_info(model, str(model_path))
+        # pipeline loading requires a safetensor file so we save a fake, lightweight one
+        save_model(torch.nn.Linear(1, 1), model_path / "model.safetensors", metadata={"format": "pt"})
+
         save_model_hqq(model.model, model_path, smash_config)
-        return
-
-    from pruna.algorithms.hqq import HQQ
-
-    algorithm_packages = HQQ().import_algorithm_packages()
-
-    # we need to create a separate path for the quantized model
-    if hasattr(model, "model") and hasattr(model.model, "language_model"):
-        quantized_path = Path(model_path) / "hqq_language_model"
-    else:
-        quantized_path = Path(model_path)
-
-    # save the quantized model only.
-    with ModelContext(model, read_only=True) as (_, working_model):
-        if isinstance(working_model, algorithm_packages["HQQModelForCausalLM"]):
-            working_model.save_quantized(quantized_path)
-        else:
-            algorithm_packages["AutoHQQHFModel"].save_quantized(working_model, str(quantized_path))
-
-    # save the rest of the model, if it is a janus like model,
-    # and add a config file to the quantized model path.
-    if hasattr(model, "model") and hasattr(model.model, "language_model"):
+    elif is_janus_llamagen_ar(model):
+        # save everything except the language model
         transformer_backup = model.model.language_model
         model.model.language_model = None
         model.save_pretrained(model_path)
-        # Create a copy to avoid modifying the original config
-        hqq_config = copy.deepcopy(model.config.text_config)
-        # for re-loading the model, hqq expects the architecture to be LlamaForCausalLM
-        hqq_config.architectures = ["LlamaForCausalLM"]
-
-        quantized_path.mkdir(parents=True, exist_ok=True)
-
-        config_path = quantized_path / "config.json"
-        with config_path.open("w") as f:
-            json.dump(hqq_config.to_dict(), f, indent=2)
-
         model.model.language_model = transformer_backup
 
-    smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
+        language_model_path = model_path / "hqq_language_model"
+        save_model_hqq(model.model.language_model, language_model_path, smash_config)
+
+        # add additional config information to know how to load the language model
+        hqq_config = copy.deepcopy(model.config.text_config)  # copy to avoid modifying the original config
+        hqq_config.architectures = ["LlamaForCausalLM"]  # hqq load expects the architecture to be LlamaForCausalLM
+        config_path = language_model_path / "config.json"
+        with config_path.open("w") as f:
+            json.dump(hqq_config.to_dict(), f, indent=2)
+    else:
+        from pruna.algorithms.hqq import HQQ
+
+        algorithm_packages = HQQ().import_algorithm_packages()
+
+        quantized_path = Path(model_path)
+        if isinstance(model, algorithm_packages["HQQModelForCausalLM"]):
+            model.save_quantized(str(quantized_path))
+        else:
+            algorithm_packages["AutoHQQHFModel"].save_quantized(model, str(quantized_path))
+
+        smash_config.load_fns.append(LOAD_FUNCTIONS.hqq.name)
 
 
 def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -404,37 +402,61 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         construct_base_class,
     )
 
+    hf_quantizer = HQQDiffusers()
     pruna_logger.warning(
-        "Currently HQQ can only save linear layers. So model (e.g. Sana) with separate torch.nn.Parameters or "
-        "buffers will be partially saved."
+        "Currently HQQ can only save linear layers, models (e.g. Sana) with separate torch.nn.Parameters or "
+        "buffers will only be partially saved."
     )
 
     model_path = Path(model_path)
-
-    hf_quantizer = HQQDiffusers()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
-
     with (model_path / "dtype_info.json").open("w") as f:
         json.dump({"dtype": str(model.dtype).split(".")[-1]}, f)
 
-    if hasattr(model, "transformer"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.transformer, model_path / "backbone_quantized")
-        transformer_backup = model.transformer
-        model.transformer = None
-        # save the rest of the pipeline
-        model.save_pretrained(model_path)
-        model.transformer = transformer_backup
-    elif hasattr(model, "unet"):
-        # save the backbone
-        auto_hqq_hf_diffusers_model.save_quantized(model.unet, model_path / "backbone_quantized")
-        unet_backup = model.unet
-        model.unet = None
-        # save the rest of the pipeline
-        model.save_pretrained(model_path)
-        model.unet = unet_backup
+    # backups for the quantized components to save the rest of the pipeline
+    backup_components: dict[str, torch.nn.Module] = {}
+
+    def save_component(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> torch.nn.Module:
+        """
+        Save the module if it is a transformer or unet, or its components.
+
+        Parameters
+        ----------
+        attr_name : str | None
+            The name of the attribute in the model pointing to the component to save.
+        module : torch.nn.Module
+            The component to save.
+        subpaths : list[str]
+            The subpaths of the component to save.
+
+        Returns
+        -------
+        torch.nn.Module
+            The saved component.
+        """
+        # handle both cases: None we can save the whole model, otherwise we must save its component separately
+        save_path = model_path / f"{attr_name}_quantized" if attr_name is not None else model_path
+
+        # empty subpaths to save all modules: those targeted as HHQLinear and those not as Linear parameters
+        auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages(), [])
+        auto_hqq_hf_diffusers_model.save_quantized(module, save_path)
+        backup_components[attr_name] = module
+        return module
+
+    # save the quantized components
+    if smash_config["hqq_diffusers_target_modules"] is None:
+        target_modules = hf_quantizer.get_model_dependent_hyperparameter_defaults(model, smash_config)
     else:
-        auto_hqq_hf_diffusers_model.save_quantized(model, model_path)
+        target_modules = smash_config["hqq_diffusers_target_modules"]
+    model = map_targeted_nn_roots(save_component, model, target_modules)
+
+    # save the rest of the pipeline
+    if None not in backup_components:  # a None key means the model itself was quantized
+        for attr_name in backup_components:
+            setattr(model, attr_name, None)
+        model.save_pretrained(model_path)
+        for attr_name, module_backup in backup_components.items():
+            setattr(model, attr_name, module_backup)
+
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
