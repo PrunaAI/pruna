@@ -503,7 +503,9 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     else:  # save directory is for a pipeline, of which some components were quantized
         model_index = load_json_config(path, "model_index.json")
 
-        # first we load each quantized component separately
+        # first we load each quantized component separately, models like wan-i2v can have multiple components
+        # that can be quantized and saved separately.
+        # by convention, each component has been saved in a directory f"{attr_name}_quantized".
         quantized_components: dict[str, Any] = {}
         for quantized_path in [qpath for qpath in path.iterdir() if qpath.name.endswith("_quantized")]:
             attr_name = quantized_path.name.replace("_quantized", "")

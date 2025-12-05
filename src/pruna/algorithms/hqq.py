@@ -355,12 +355,14 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
     """
     Construct and return the AutoTargetedHQQHFModel class.
 
+    AutoTargetedHQQHFModel is a subclass of AutoHQQHFModel that extends the set of layers ignored by HQQ quantization.
+
     Parameters
     ----------
     imported_modules : Dict[str, Any]
         Dictionary containing imported modules needed for the base class construction.
     extra_ignore_modules : None | list[str], optional
-        The names of modules to ignore for quantization in addition to the ones already ignored by BaseHQQModel.
+        The paths to the modules to ignore for quantization in addition to the ones already ignored by BaseHQQModel.
 
     Returns
     -------
@@ -376,6 +378,9 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
             """
             Get the layers which should be ignored for quantization.
 
+            This method extends the set of layers ignored by AutoHQQHFModel by adding the layers
+            specified in extra_ignore_modules.
+
             Parameters
             ----------
             model : Any
@@ -386,7 +391,7 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
             list
                 The layers which should be ignored for quantization.
             """
-            ignore_layers = super().get_ignore_layers(model)
-            return list(set(ignore_layers + extra_ignore_modules))
+            ignore_layers = super().get_ignore_layers(model)  # we only add new layers to ignore
+            return list(set(ignore_layers + extra_ignore_modules))  # avoid duplicates
 
     return AutoTargetedHQQHFModel
