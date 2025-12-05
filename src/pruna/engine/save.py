@@ -349,14 +349,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         if model.tokenizer is not None:
             model.tokenizer.save_pretrained(model_path)
 
-        # pipeline calls model.save_pretrained, so we monkey patch it to skip the saving
-        original_save_pretrained = model.model.save_pretrained if hasattr(model.model, "save_pretrained") else None
-        model.model.save_pretrained = lambda *args, **kwargs: None
-        model.save_pretrained(model_path)
-        if original_save_pretrained is None:
-            delattr(model.model, "save_pretrained")
-        else:
-            model.model.save_pretrained = original_save_pretrained
+        # pipeline calls self.model.save_pretrained, so we monkey patch it to skip the saving for now
+        with monkeypatch(model.model, "save_pretrained", lambda *args, **kwargs: None):
+            model.save_pretrained(str(model_path))
         # save pipeline info so we can call transformers.pipeline at load time
         save_pipeline_info(model, model_path)
         # pipeline loading requires a safetensor file so we save a fake, lightweight one
