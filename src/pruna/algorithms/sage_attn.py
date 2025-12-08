@@ -22,12 +22,11 @@ from diffusers import DiffusionPipeline
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.engine.save import SAVE_FUNCTIONS
 
 
 class SageAttn(PrunaAlgorithmBase):
-
     """
     Replace torch.nn.functional.scaled_dot_product_attention with sage_attn.
 
@@ -87,7 +86,6 @@ class SageAttn(PrunaAlgorithmBase):
         Any
             The wrapped model.
         """
-
         # We simply apply the sage attention backend from diffusers
         # Furthermore, we use the sage attention kernel from the hub as the default sageattn function
         # is broken (at least at the moment)
