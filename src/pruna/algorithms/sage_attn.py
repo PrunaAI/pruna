@@ -46,8 +46,8 @@ class SageAttn(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["torchao"]
-    compatible_after: Iterable[str] = ["fora", "torch_compile"]
+    compatible_before: Iterable[str] = []
+    compatible_after: Iterable[str] = ["torch_compile"]
 
     def model_check_fn(self, model: Any) -> bool:
         """
