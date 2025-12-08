@@ -13,19 +13,15 @@
 # limitations under the License.
 from __future__ import annotations
 
-import functools
 from collections.abc import Iterable
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 
-import torch
-import ray
 import ray.experimental.tqdm_ray as tqdm_ray
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
-from pruna.logging.logger import pruna_logger
 
 
 class MoeKernelTuner(PrunaAlgorithmBase):
@@ -37,7 +33,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
 
     algorithm_name: str = "moe_kernel_tuner"
     group_tags: list[str] = [tags.KERNEL]
-    save_fn :None = None
+    save_fn: None = None
     references: dict[str, str] = {
         "GitHub": "https://github.com/vllm-project/vllm/blob/main/benchmarks/kernels/benchmark_moe.py",
     }
@@ -45,8 +41,24 @@ class MoeKernelTuner(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = [tags.KERNEL, tags.QUANTIZER, tags.PRUNER, tags.CACHER, tags.FACTORIZER, tags.BATCHER, tags.COMPILER]
-    compatible_after: Iterable[str] = [tags.KERNEL, tags.QUANTIZER, tags.PRUNER, tags.CACHER, tags.FACTORIZER, tags.BATCHER, tags.COMPILER]
+    compatible_before: Iterable[str] = [
+        tags.KERNEL,
+        tags.QUANTIZER,
+        tags.PRUNER,
+        tags.CACHER,
+        tags.FACTORIZER,
+        tags.BATCHER,
+        tags.COMPILER,
+    ]
+    compatible_after: Iterable[str] = [
+        tags.KERNEL,
+        tags.QUANTIZER,
+        tags.PRUNER,
+        tags.CACHER,
+        tags.FACTORIZER,
+        tags.BATCHER,
+        tags.COMPILER,
+    ]
     required_install = "``uv pip install vllm``"
 
     def model_check_fn(self, model: Any) -> bool:
@@ -87,7 +99,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         """
         imported_packages = self.import_algorithm_packages()
 
-        #TODO: Implement the MoE kernel tuning.
+        # TODO: Implement the MoE kernel tuning.
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -99,16 +111,17 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         Dict[str, Any]
             The algorithm packages.
         """
+        import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
+        import vllm.platforms as vllm_platforms
         from vllm.model_executor.layers.fused_moe.config import (
             FusedMoEQuantConfig,
             _get_config_dtype_str,
         )
-        import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
-        import vllm.platforms as vllm_platforms
         from vllm.transformers_utils.config import get_config
         from vllm.triton_utils import triton
         from vllm.utils.argparse_utils import FlexibleArgumentParser
-        return dict(    
+
+        return dict(
             FusedMoEQuantConfig=FusedMoEQuantConfig,
             _get_config_dtype_str=_get_config_dtype_str,
             FusedMoE=fused_moe,
