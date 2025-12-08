@@ -691,6 +691,12 @@ def monkeypatch(obj, attr_name, value):
     value : Any
         The temporary value to set for the attribute.
 
+    Yields
+    ------
+    None
+        This context manager does not yield a value and is intended to be
+        used for its side effects only (temporary attribute patching).
+
     Examples
     --------
     with monkeypatch(some_object, "attribute_name", new_value):
