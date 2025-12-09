@@ -97,15 +97,6 @@ jobs:
           restore-keys: |
             hf-cache-${{ runner.os }}-${{ matrix.python-version }}-
             hf-cache-${{ runner.os }}-
-      
-      - name: Debug cache keys
-        run: |
-          echo "Primary cache key:"
-          echo "hf-cache-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}"
-          echo "Restore key 1:"
-          echo "hf-cache-${{ runner.os }}-${{ matrix.python-version }}-"
-          echo "Restore key 2:"
-          echo "hf-cache-${{ runner.os }}-"
 
       - name: Export HF token for subprocesses
         run: |
