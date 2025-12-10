@@ -18,7 +18,7 @@ import contextlib
 import gc
 import inspect
 import json
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -132,6 +132,8 @@ def move_to_device(
     """
     if safe_is_instance(model, Pipeline):
         move_to_device(model.model, device, raise_error, device_map)
+        if device != "accelerate":
+            model.device = torch.device(device)
         # this is a workaround for a flaw in the transformers pipeline handling
         # specifically for a pipeline, the model is not expected to have a hf_device_map attribute
         if device != "accelerate" and hasattr(model.model, "hf_device_map"):
@@ -669,6 +671,53 @@ def split_device(device: str, strict: bool = True) -> tuple[str, int | None]:
     if strict:
         raise ValueError(f"Unsupported device: '{device}'.")
     return device, None
+
+
+@contextmanager
+def monkeypatch(obj, attr_name, value):
+    """
+    Temporarily override an attribute on an object.
+
+    This context manager sets the given attribute on entry and restores
+    the original value (or deletes the attribute if it did not exist)
+    on exit, even if an exception is raised.
+
+    Parameters
+    ----------
+    obj : Any
+        The object whose attribute will be patched.
+    attr_name : str
+        The name of the attribute to patch.
+    value : Any
+        The temporary value to set for the attribute.
+
+    Yields
+    ------
+    None
+        This context manager does not yield a value and is intended to be
+        used for its side effects only (temporary attribute patching).
+
+    Examples
+    --------
+    with monkeypatch(some_object, "attribute_name", new_value):
+        # `some_object.attribute_name` is patched inside this block
+        ...
+    """
+    # save the original value of the attribute
+    has_original = hasattr(obj, attr_name)
+    if has_original:
+        original = getattr(obj, attr_name)
+
+    try:
+        # set the temporary value for the attribute
+        setattr(obj, attr_name, value)
+        yield
+    finally:
+        # restore the original value of the attribute
+        if has_original:
+            setattr(obj, attr_name, original)
+        else:
+            delattr(obj, attr_name)
 
 
 class ModelContext(AbstractContextManager):
