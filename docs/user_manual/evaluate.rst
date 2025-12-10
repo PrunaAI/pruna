@@ -10,7 +10,7 @@ Evaluation helps you understand how compression affects your models across diffe
 This knowledge is essential for making informed decisions about which compression techniques work best for your specific needs using two types of metrics:
 
 - **Efficiency Metrics:** Measure speed (total time, latency, throughput), memory (disk, inference, training), and energy usage (consumption, CO2 emissions).
-- **Quality Metrics:** Assess fidelity (FID, CMMD), alignment (Clip Score), diversity (PSNR, SSIM), accuracy (accuracy, precision, perplexity), and more. Custom metrics are supported.
+- **Quality Metrics:** Assess fidelity (FID, KID, CMMD), alignment (Clip Score), diversity (PSNR, SSIM), accuracy (accuracy, precision, perplexity), and more. Custom metrics are supported.
 
 .. image:: /_static/assets/images/evaluation_agent.png
     :alt: Evaluation Agent
@@ -275,11 +275,11 @@ This is what's happening under the hood when you pass ``call_type="single"`` or 
 
    * - ``y_gt``
      - Model's output first, then ground truth
-     - ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
+     - ``fid``, ``kid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
 
    * - ``gt_y``
      - Ground truth first, then model's output
-     - ``fid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
+     - ``fid``, ``kid``, ``cmmd``, ``accuracy``, ``recall``, ``precision``
 
    * - ``x_gt``
      - Input data first, then ground truth
