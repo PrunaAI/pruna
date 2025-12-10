@@ -14,6 +14,9 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -55,7 +58,7 @@ class ArtifactSaver(ABC):
         """
         pass
 
-    def create_alias(self, source_path: Path | str, filename: str) -> Path:
+    def create_alias(self, source_path: Path | str, filename: str, sanitize: bool = True) -> Path:
         """
         Create an alias for the artifact.
 
@@ -82,6 +85,8 @@ class ArtifactSaver(ABC):
         Path
             The full path to the alias.
         """
+        if sanitize:
+            filename = sanitize_filename(filename)
         alias = Path(str(self.root)) / f"{filename}.{self.export_format}"
         alias.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -96,3 +101,39 @@ class ArtifactSaver(ABC):
             except Exception as e:
                 raise e
         return alias
+
+
+def sanitize_filename(name: str, max_length: int = 128) -> str:
+
+    """ Sanitize a filename to make it safe for the filesystem. Works for every OS.
+    
+    Parameters
+    ----------
+    name: str
+        The name to sanitize.
+    max_length: int
+        The maximum length of the sanitized name. If it is exceeded, the name is truncated to max_length.
+    Returns
+    -------
+    str
+        The sanitized name. If the name is empty, "untitled" is returned.
+
+    """
+    name = str(name)
+    name = unicodedata.normalize('NFKD', name)
+    # Forbidden characters
+    name = re.sub(r'[<>:"/\\|?*]', '_', name)
+    # Whitespace -> underscore
+    name = re.sub(r'\s+', '_', name)
+    # Control chars weg
+    name = re.sub(r'[\x00-\x1f\x7f]', "", name)
+    # Collapse multiple underscores into one
+    name = re.sub(r'_+', '_', name)
+    # remove leading/trailing dots/spaces/underscores
+    name = name.strip(" ._")
+    # limit length
+    if len(name) > max_length:
+        name = name[:max_length].rstrip("._ ")
+    if name == "":
+        name = "untitled"
+    return name
