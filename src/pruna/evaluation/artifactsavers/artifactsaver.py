@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import re
 import unicodedata
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -104,15 +103,15 @@ class ArtifactSaver(ABC):
 
 
 def sanitize_filename(name: str, max_length: int = 128) -> str:
+    """Sanitize a filename to make it safe for the filesystem. Works for every OS.
 
-    """ Sanitize a filename to make it safe for the filesystem. Works for every OS.
-    
     Parameters
     ----------
     name: str
         The name to sanitize.
     max_length: int
         The maximum length of the sanitized name. If it is exceeded, the name is truncated to max_length.
+
     Returns
     -------
     str
