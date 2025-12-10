@@ -256,6 +256,9 @@ class EvaluationAgent:
                     for processed_output in processed_outputs:
                         canonical_path = self.artifact_saver.save_artifact(processed_output)
                         canonical_paths.append(canonical_path)
+                    # Create aliases for the prompts if the user wants to save the artifacts with the prompt name.
+                    # For doing that, the user needs to set the saving_kwargs["save_as_prompt_name"] to True.
+                    self._maybe_create_prompt_aliases(batch, canonical_paths, sample_idx)
 
                 batch = move_batch_to_device(batch, self.device)
                 processed_outputs = move_batch_to_device(processed_outputs, self.device)
@@ -344,3 +347,12 @@ class EvaluationAgent:
         for metric in children_of_base:
             results.append(metric.compute(model, self.task.dataloader))
         return results
+
+    def _maybe_create_prompt_aliases(self, batch, canonical_paths, sample_idx):
+        if not self.saving_kwargs.get("save_as_prompt_name", False):
+            return
+
+        (x, _) = batch
+        for prompt_idx, prompt in enumerate(x):
+            alias_name = f"{prompt}-{sample_idx}"
+            self.artifact_saver.create_alias(canonical_paths[prompt_idx], alias_name)
