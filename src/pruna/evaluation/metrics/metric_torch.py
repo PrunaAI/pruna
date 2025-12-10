@@ -107,7 +107,8 @@ def kid_compute(metric: KernelInceptionDistance) -> Any:
     """
     Compute handler for KID metric.
 
-    KID returns (mean, std) but we only need the mean value.
+    KID normally returns (mean, std) but we only need the mean value.
+    The defensive check handles edge cases (e.g., insufficient data, version differences).
 
     Parameters
     ----------
@@ -117,11 +118,11 @@ def kid_compute(metric: KernelInceptionDistance) -> Any:
     Returns
     -------
     Any
-        The computed metric value (mean from tuple).
+        The computed metric value (mean from tuple, or result as-is if not a tuple).
     """
     result = metric.compute()  # type: ignore
     if isinstance(result, tuple) and len(result) == 2:
-        return result[0]  # Extract mean from tuple (KID returns (mean, std))
+        return result[0]  # Extract mean from tuple (KID returns normally (mean, std))
     return result
 
 

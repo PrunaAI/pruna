@@ -149,6 +149,7 @@ def test_torch_metrics(datamodule_fixture: PrunaDataModule, device: str, metric:
     metric.update(gt, gt, gt)
     assert metric.compute().result == 1.0
 
+
 @pytest.mark.cpu
 @pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
 def test_arniqa(datamodule_fixture: PrunaDataModule) -> None:
@@ -158,6 +159,7 @@ def test_arniqa(datamodule_fixture: PrunaDataModule) -> None:
     dataloader_iter = iter(dataloader)
     x, gt = next(dataloader_iter)
     metric.update(x, gt, gt)
+
 
 @pytest.mark.cpu
 @pytest.mark.parametrize("metric", TorchMetrics.__members__.keys())
@@ -179,6 +181,7 @@ def test_check_call_type(metric: str, call_type: str):
     else:
         assert not metric.call_type.startswith("pairwise")
 
+
 @pytest.mark.cpu
 @pytest.mark.parametrize(
     'metric_name,metric_type',
@@ -190,6 +193,7 @@ def test_check_call_type(metric: str, call_type: str):
 def test_ssim_generalization_metric_type(metric_name, metric_type):
     wrapper = TorchMetricWrapper(metric_name=metric_name)
     assert isinstance(wrapper.metric, metric_type)
+
 
 @pytest.mark.cpu
 @pytest.mark.parametrize(
