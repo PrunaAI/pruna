@@ -176,9 +176,11 @@ class StatefulMetric(ABC):
 
         Parameters
         ----------
-        filename: str
+        filename : str
             The name of the file.
-        file_extension: str
+        idx : int
+            The sample index.
+        file_extension : str
             The extension of the file.
 
         Returns

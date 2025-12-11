@@ -28,11 +28,11 @@ def assign_artifact_saver(
 
     Parameters
     ----------
-    modality: str
+    modality : str
         The modality of the data.
-    root: str
+    root : str
         The root directory to save the artifacts.
-    export_format: str
+    export_format : str
         The format to save the artifacts.
 
     Returns

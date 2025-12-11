@@ -214,7 +214,7 @@ class TorchMetrics(Enum):
     """
 
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y", {IMAGE})
-    kid = (partial(KernelInceptionDistance), kid_update, "gt_y", {IMAGE},kid_compute)
+    kid = (partial(KernelInceptionDistance), kid_update, "gt_y", {IMAGE}, kid_compute)
     accuracy = (partial(Accuracy), None, "y_gt", MODALITIES)
     perplexity = (partial(Perplexity), None, "y_gt", {TEXT})
     clip_score = (partial(CLIPScore), None, "y_x", {IMAGE})

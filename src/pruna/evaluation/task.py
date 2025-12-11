@@ -141,20 +141,6 @@ class Task:
         else:
             return self.device  # for when we pass a specific cuda device, or cpu or mps.
 
-
-def _safe_build_metrics(
-    request: str | List[str | BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
-):
-    try:
-        return get_metrics(request, inference_device, stateful_metric_device)
-    except torch.cuda.OutOfMemoryError as e:
-        if stateful_metric_device == "cuda":
-            pruna_logger.error(
-                "Not enough GPU memory for metrics on %s. Please try initializing task with `low_memory=True`.",
-                stateful_metric_device,
-            )
-        raise e
-
     def validate_and_get_task_modality(self) -> str:
         """
         Check if the task has a single modality of metrics.
@@ -179,6 +165,20 @@ def _safe_build_metrics(
             raise ValueError("The task should have a single modality across all quality metrics.")
         else:  # More than one modality, fine for evaluation, can't save artifacts (for now).
             return "general"
+
+
+def _safe_build_metrics(
+    request: str | List[str | BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
+):
+    try:
+        return get_metrics(request, inference_device, stateful_metric_device)
+    except torch.cuda.OutOfMemoryError as e:
+        if stateful_metric_device == "cuda":
+            pruna_logger.error(
+                "Not enough GPU memory for metrics on %s. Please try initializing task with `low_memory=True`.",
+                stateful_metric_device,
+            )
+        raise e
 
 
 def get_metrics(

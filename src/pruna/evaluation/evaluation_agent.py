@@ -64,6 +64,8 @@ class EvaluationAgent:
         The seed strategy to use. Default is "no_seed".
     global_seed : int | None, optional
         The global seed to use. Default is None.
+    artifact_saver_export_format : str | None, optional
+        The export format to use for the artifact saver.
     saving_kwargs : dict, optional
         The kwargs to pass to the artifact saver. Default is an empty dict.
     """

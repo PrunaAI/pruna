@@ -29,9 +29,9 @@ class ArtifactSaver(ABC):
 
     Parameters
     ----------
-    export_format: str | None
+    export_format : str | None
         The format to export the artifacts in.
-    root: Path | str | None
+    root : Path | str | None
         The root directory to save the artifacts in.
     """
 
@@ -45,7 +45,7 @@ class ArtifactSaver(ABC):
 
         Parameters
         ----------
-        data: Any
+        data : Any
             The data to save.
 
         Returns
