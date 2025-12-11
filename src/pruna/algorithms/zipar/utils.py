@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 import copy
@@ -20,10 +19,14 @@ from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 import torch
 from transformers.generation.configuration_utils import GenerationMode
-from transformers.generation.logits_process import ClassifierFreeGuidanceLogitsProcessor, LogitsProcessorList
+from transformers.generation.logits_process import (
+    ClassifierFreeGuidanceLogitsProcessor,
+    LogitsProcessorList,
+)
 from transformers.generation.utils import GenerateDecoderOnlyOutput
 
 from pruna.logging.logger import pruna_logger
+
 
 class ZipARGenerationGrid:
     """
