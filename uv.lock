@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.9, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12' and platform_machine != 'arm64' and sys_platform == 'darwin'",
@@ -1800,6 +1800,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793, upload-time = "2025-03-19T20:09:59.721Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
+]
+
+[[package]]
+name = "intel-extension-for-pytorch"
+version = "2.7.0+cpu"
+source = { registry = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/" }
+dependencies = [
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "psutil" },
+]
+wheels = [
+    { url = "https://intel-optimized-pytorch.s3.cn-north-1.amazonaws.com.cn/ipex_stable/cpu/./intel_extension_for_pytorch-2.7.0%2Bcpu-cp310-cp310-linux_x86_64.whl" },
+    { url = "https://intel-optimized-pytorch.s3.cn-north-1.amazonaws.com.cn/ipex_stable/cpu/./intel_extension_for_pytorch-2.7.0%2Bcpu-cp311-cp311-linux_x86_64.whl" },
+    { url = "https://intel-optimized-pytorch.s3.cn-north-1.amazonaws.com.cn/ipex_stable/cpu/./intel_extension_for_pytorch-2.7.0%2Bcpu-cp312-cp312-linux_x86_64.whl" },
+    { url = "https://intel-optimized-pytorch.s3.cn-north-1.amazonaws.com.cn/ipex_stable/cpu/./intel_extension_for_pytorch-2.7.0%2Bcpu-cp39-cp39-linux_x86_64.whl" },
 ]
 
 [[package]]
@@ -4370,6 +4386,9 @@ gptq = [
     { name = "threadpoolctl" },
     { name = "tokenicer" },
 ]
+intel = [
+    { name = "intel-extension-for-pytorch" },
+]
 stable-fast = [
     { name = "stable-fast-pruna" },
     { name = "xformers" },
@@ -4396,6 +4415,7 @@ requires-dist = [
     { name = "hqq", specifier = "==0.2.7.post1" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.30.0" },
     { name = "imageio-ffmpeg" },
+    { name = "intel-extension-for-pytorch", marker = "extra == 'intel'", specifier = "==2.7.0" },
     { name = "ipykernel", marker = "extra == 'dev'" },
     { name = "jaxtyping" },
     { name = "jsonschema", marker = "extra == 'dev'" },
@@ -4452,7 +4472,7 @@ requires-dist = [
     { name = "xformers", marker = "extra == 'full'", specifier = "==0.0.30" },
     { name = "xformers", marker = "extra == 'stable-fast'", specifier = "==0.0.30" },
 ]
-provides-extras = ["stable-fast", "gptq", "full", "dev", "cpu"]
+provides-extras = ["stable-fast", "gptq", "full", "dev", "cpu", "intel"]
 
 [[package]]
 name = "psutil"
