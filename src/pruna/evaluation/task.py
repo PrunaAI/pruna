@@ -70,6 +70,7 @@ class Task:
         self.stateful_metric_device = self._get_stateful_metric_device_from_task_device()
         self.metrics = _safe_build_metrics(request, self.device, self.stateful_metric_device)
 
+        self.modality = self.validate_and_get_task_modality()
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
 
@@ -139,6 +140,31 @@ class Task:
             return set_to_best_available_device("cuda", bytes_free_per_gpu)
         else:
             return self.device  # for when we pass a specific cuda device, or cpu or mps.
+
+    def validate_and_get_task_modality(self) -> str:
+        """
+        Check if the task has a single modality of metrics.
+
+        Inference handling is different for different modalities.
+        The task should have one consistent modality across metrics.
+        Stateless metrics and stateful metrics with general modalities are allowed.
+
+        Returns
+        -------
+        str
+            The modality of the task.
+        """
+        if not self.get_single_stateful_metrics() and not self.get_pairwise_stateful_metrics():
+            return "general"
+        modality_intersection = set.intersection(
+            *[metric.modality for metric in self.metrics if isinstance(metric, StatefulMetric)]
+        )
+        if len(modality_intersection) == 1:
+            return modality_intersection.pop()
+        elif len(modality_intersection) == 0:
+            raise ValueError("The task should have a single modality across all quality metrics.")
+        else:  # More than one modality, fine for evaluation, can't save artifacts (for now).
+            return "general"
 
 
 def _safe_build_metrics(

@@ -31,10 +31,13 @@ unsupported-operator = "ignore" # mypy supports | syntax with from __future__ im
 invalid-argument-type = "ignore" # mypy is more permissive with argument types
 invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
+possibly-missing-attribute = "ignore" # mypy is more permissive with attribute access
+possibly-unbound-attribute = "ignore"
+possibly-missing-import = "ignore" # mypy is more permissive with imports
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
-possibly-unbound-import = "ignore"
 missing-argument = "ignore"
+possibly-unbound-import = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -75,6 +78,7 @@ gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
+clip = {git = "https://github.com/openai/CLIP.git", rev = "dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1"}
 
 [project]
 name = "pruna"

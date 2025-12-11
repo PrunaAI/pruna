@@ -184,7 +184,8 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
     return texts
 
 
-def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42) -> Dataset:
+def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42,
+                     partition_strategy: str = "random", partition_index: int = 0,) -> Dataset:
     """
     Stratify the dataset into a specific size.
 
@@ -196,6 +197,10 @@ def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42) -> Data
         The size to stratify.
     seed : int
         The seed to use for sampling the dataset.
+    partition_strategy : str
+        The strategy to use for partitioning the dataset. Can be "indexed" or "random".
+    partition_index : int
+        The index to use for partitioning the dataset.
 
     Returns
     -------
@@ -209,12 +214,19 @@ def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42) -> Data
             f"Using the entire dataset. ({dataset_length} < {sample_size})"
         )
         return dataset
-
-    indices = list(range(dataset_length))
-    random.Random(seed).shuffle(indices)
-    selected_indices = indices[:sample_size]
-    dataset = dataset.select(selected_indices)
-    return dataset
+    elif dataset_length == sample_size:
+        return dataset
+    else:
+        indices = list(range(dataset_length))
+        if partition_strategy == "indexed":
+            selected_indices = indices[sample_size * partition_index:sample_size * (partition_index + 1)]
+        elif partition_strategy == "random":
+            random.Random(seed).shuffle(indices)
+            selected_indices = indices[:sample_size]
+        else:
+            raise ValueError(f"Invalid partition strategy: {partition_strategy}")
+        dataset = dataset.select(selected_indices)
+        return dataset
 
 
 def define_sample_size_for_dataset(dataset: Dataset, fraction: float, sample_size: int | None = None) -> int:
