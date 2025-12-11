@@ -70,6 +70,13 @@ name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"  # Pruna Pythonanywhere
 default = true # default = True makes this index the lowest prio
 
+[[tool.uv.index]]
+name = "intel-pytorch-extension"
+url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
 [tool.uv.sources]
 gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
@@ -181,12 +188,15 @@ dev = [
     "pytest-rerunfailures",
     "coverage",
     "docutils",
-    "ty==0.0.1a21",
+    "ty",
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
 ]
 cpu = []
+intel = [
+    "intel-extension-for-pytorch==2.7.0",
+]
 
 [build-system]
 requires = ["hatchling"]
