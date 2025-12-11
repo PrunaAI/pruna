@@ -214,17 +214,19 @@ def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42,
             f"Using the entire dataset. ({dataset_length} < {sample_size})"
         )
         return dataset
-
-    indices = list(range(dataset_length))
-    if partition_strategy == "indexed":
-        selected_indices = indices[sample_size * partition_index:sample_size * (partition_index + 1)]
-    elif partition_strategy == "random":
-        random.Random(seed).shuffle(indices)
-        selected_indices = indices[:sample_size]
+    elif dataset_length == sample_size:
+        return dataset
     else:
-        raise ValueError(f"Invalid partition strategy: {partition_strategy}")
-    dataset = dataset.select(selected_indices)
-    return dataset
+        indices = list(range(dataset_length))
+        if partition_strategy == "indexed":
+            selected_indices = indices[sample_size * partition_index:sample_size * (partition_index + 1)]
+        elif partition_strategy == "random":
+            random.Random(seed).shuffle(indices)
+            selected_indices = indices[:sample_size]
+        else:
+            raise ValueError(f"Invalid partition strategy: {partition_strategy}")
+        dataset = dataset.select(selected_indices)
+        return dataset
 
 
 def define_sample_size_for_dataset(dataset: Dataset, fraction: float, sample_size: int | None = None) -> int:

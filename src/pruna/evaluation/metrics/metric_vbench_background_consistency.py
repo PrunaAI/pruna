@@ -25,7 +25,13 @@ from vbench.utils import clip_transform, init_submodules
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import PAIRWISE, SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    PAIRWISE,
+    SINGLE,
+    VIDEO,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.evaluation.metrics.vbench_utils import VBenchMixin
 from pruna.logging.logger import pruna_logger
 
@@ -51,7 +57,7 @@ class VBenchBackgroundConsistency(StatefulMetric, VBenchMixin):
     default_call_type: str = "y"  # We just need the outputs
     higher_is_better: bool = True
     runs_on: List[str] = ["cuda", "cpu"]
-    modality: List[str] = ["video"]
+    modality: List[str] = {VIDEO}
     # state
     similarity_scores: torch.Tensor
     n_samples: torch.Tensor

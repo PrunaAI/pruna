@@ -26,7 +26,13 @@ from vbench.utils import init_submodules
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import PAIRWISE, SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    PAIRWISE,
+    SINGLE,
+    VIDEO,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.evaluation.metrics.vbench_utils import VBenchMixin
 from pruna.logging.logger import pruna_logger
 
@@ -115,7 +121,7 @@ class VBenchDynamicDegree(StatefulMetric, VBenchMixin):
     # https://github.com/Vchitect/VBench/blob/dc62783c0fb4fd333249c0b669027fe102696682/evaluate.py#L111
     # explicitly sets the device to cuda. We respect this here.
     runs_on: List[str] = ["cuda"]
-    modality: List[str] = ["video"]
+    modality: List[str] = {VIDEO}
     # state
     scores: List[bool]
 

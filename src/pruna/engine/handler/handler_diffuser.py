@@ -33,6 +33,10 @@ class DiffuserHandler(InferenceHandler):
         The signature of the call to the model.
     model_args : Dict[str, Any]
         The arguments to pass to the model.
+    seed_strategy : Literal ["per_sample", "no_seed"]
+        The strategy to use for the seed.
+    global_seed : int | None
+        The global seed to use for the model.
     """
 
     def __init__(

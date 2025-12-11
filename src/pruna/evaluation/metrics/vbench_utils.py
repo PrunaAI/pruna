@@ -21,7 +21,7 @@ from typing import Any, Callable, Iterable, List
 
 import numpy as np
 import torch
-from diffusers.utils import export_to_gif, export_to_video
+from diffusers.utils import export_to_gif, export_to_video, load_image
 from diffusers.utils import load_video as diffusers_load_video
 from PIL.Image import Image
 from torchvision.transforms import ToTensor
@@ -198,7 +198,35 @@ def sanitize_prompt(prompt: str) -> str:
     return prompt
 
 
-def prepare_batch(batch: str | tuple[str | List[str], Any]) -> str:
+def resize_to_max_area(image: Image, target_height: int, target_width: int, mod_value: int) -> Image:
+    """
+    Resize the image to the maximum area.
+
+    Parameters
+    ----------
+    image : Image
+        The image to resize.
+    target_height : int
+        The target height of the image.
+    target_width : int
+        The target width of the image.
+    mod_value : int
+        The modulo value to use for the resizing.
+
+    Returns
+    -------
+    Image
+        The resized image.
+    """
+    aspect_ratio = image.height / image.width
+    target_area = target_height * target_width
+    height = round(np.sqrt(target_area * aspect_ratio)) // mod_value * mod_value
+    width = round(np.sqrt(target_area / aspect_ratio)) // mod_value * mod_value
+    return image.resize((width, height))
+
+
+def prepare_batch(batch: str | tuple[str | List[str], Any], task: str = "t2v", target_height: int = 720,
+ target_width: int = 1280, mod_value: int = 4) -> tuple(str, Image):
     """
     Prepare the batch to be used in the generate_videos function.
 
@@ -214,18 +242,27 @@ def prepare_batch(batch: str | tuple[str | List[str], Any]) -> str:
     -------
     str
         The prompt string.
+    Image
+        The resized image.
     """
     if isinstance(batch, str):
-        return batch
+        return batch, None
     # for pruna datamodule. always returns a tuple where the first element is the input (list of prompts) to the model.
     elif isinstance(batch, tuple):
         if not hasattr(batch[0], "__len__"):
             raise ValueError(f"Batch[0] is not a sequence (got {type(batch[0])})")
         if len(batch[0]) != 1:
             raise ValueError(f"Only batch size 1 is supported; got {len(batch[0])}")
-        return batch[0][0]
     else:
         raise ValueError(f"Invalid batch type: {type(batch)}")
+    if task == "i2v":
+        image = load_image(batch[1])
+        image = resize_to_max_area(image, target_height, target_width, mod_value)
+        return batch[0][0], image
+    elif task == "t2v":
+        return batch[0][0], None
+    else:
+        raise ValueError(f"Invalid task: {task}. Use 'i2v' or 't2v'.")
 
 
 def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
@@ -291,6 +328,8 @@ def _normalize_prompts(
         sample_size, seed, data_partition_strategy, partition_index))
         return getattr(prompts, f"{split}_dataloader")(batch_size=batch_size)
     else:  # list of prompts, already iterable
+        if num_samples is not None:
+            prompts = prompts[:num_samples]
         return prompts
 
 
@@ -406,7 +445,7 @@ def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., 
 
 def generate_videos(
     model: Any,
-    prompts: str | List[str] | PrunaDataModule,
+    inputs: str | List[str] | PrunaDataModule,
     num_samples: int | None = None,
     samples_fraction: float = 1.0,
     data_partition_strategy: str = "indexed",
@@ -423,6 +462,7 @@ def generate_videos(
     device: str | torch.device = None,
     experiment_name: str = "",
     sampling_seed_fn: Callable[..., Any] = get_sample_seed,
+    pipeline_task: str = "t2v",
     **model_kwargs,
 ) -> None:
     """
@@ -437,29 +477,47 @@ def generate_videos(
     ----------
     model : Any
         The model to sample from.
-    prompts : str | List[str] | PrunaDataModule
-        The prompts to sample from.
+    inputs : str | List[str] | List[tuple(str, Any)]| PrunaDataModule
+        The inputs to sample from.
+    num_samples : int | None
+        The number of samples to generate. If unique_sample_per_video_count is greater than 1,
+        the total number of outputs will be num_samples * unique_sample_per_video_count.
+    samples_fraction : float
+        The fraction of the dataset to sample from.
+    data_partition_strategy : str
+        The strategy to use for partitioning the dataset. Can be "indexed" or "random".
+        Indexed means that the dataset will be partitioned and the partition_index will be used to select the partition.
+        Random means that the dataset will be shuffled and the first num_samples or samples_fraction will be used.
+        Indexed is the default strategy.
+    partition_index : int
+        The index to use for partitioning the dataset.
     split : str
         The split to sample from.
         Default is "test" since most benchmarking datamodules in Pruna are configured to use the test split.
     unique_sample_per_video_count : int
-        The number of unique samples per video. Default is 5 by VBench requirements.
+        The number of unique samples per video.
     global_seed : int
         The global seed to sample from.
     sampling_fn : Callable[..., Any]
         The sampling function to use.
     fps : int
-        The frames per second of the video.
+        The frames per second of the exported video.
     save_dir : str | Path
         The directory to save the videos to.
     save_format : str
-        The format to save the videos in. VBench supports mp4 and gif.
+        The format to save the videos in. Pruna supports mp4 and gif.
     filename_fn : Callable
         The function to create the file name.
     special_str : str
         A special string to add to the file name if you wish to add a specific identifier.
     device : str | torch.device | None
         The device to sample on. If None, the best available device will be used.
+    experiment_name : str
+        The name of the experiment. Used to create the seed.
+    sampling_seed_fn : Callable[..., Any]
+        The function to create the seed.
+    pipeline_task: str
+        The task to perform with the pipeline. Can be "i2v" or "t2v".
     **model_kwargs : Any
         Additional keyword arguments to pass to the sampling function.
     """
@@ -467,7 +525,7 @@ def generate_videos(
 
     device = set_to_best_available_device(device)
 
-    prompt_iterable = _normalize_prompts(prompts, split, batch_size=1, num_samples=num_samples,
+    prompt_iterable = _normalize_prompts(inputs, split, batch_size=1, num_samples=num_samples,
     fraction=samples_fraction, data_partition_strategy=data_partition_strategy,
     partition_index=partition_index)
 
@@ -479,8 +537,15 @@ def generate_videos(
         return torch.Generator("cpu").manual_seed(x)
     sampler = _wrap_sampler(model=model, sampling_fn=sampling_fn)
 
+    target_height = model_kwargs.get("target_height", 720)
+    target_width = model_kwargs.get("target_width", 1280)
+    mod_value = 1
+    if pipeline_task == "i2v":
+        mod_value = model.vae_scale_factor_spatial * model.transformer.config.patch_size[1]
+
     for batch in prompt_iterable:
-        prompt = prepare_batch(batch)
+        prompt, image = prepare_batch(batch, task=pipeline_task,
+        target_height=target_height, target_width=target_width, mod_value=mod_value)
         for idx in range(unique_sample_per_video_count):
             file_name = filename_fn(sanitize_prompt(prompt), idx, special_str, file_extension)
             out_path = save_dir / file_name
@@ -489,7 +554,12 @@ def generate_videos(
                 continue
             else:
                 seed = sampling_seed_fn(experiment_name, prompt, idx)
-                vid = sampler(prompt=prompt, seeder=seed_rng(seed), **model_kwargs)
+                if pipeline_task == "i2v":
+                    vid = sampler(prompt=prompt, image=image, seeder=seed_rng(seed), **model_kwargs)
+                elif pipeline_task == "t2v":
+                    vid = sampler(prompt=prompt, seeder=seed_rng(seed), **model_kwargs)
+                else:
+                    raise ValueError(f"Invalid task: {pipeline_task}. Use 'i2v' or 't2v'.")
                 save_fn(vid, out_path, fps=fps)
 
                 del vid

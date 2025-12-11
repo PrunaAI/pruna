@@ -33,9 +33,9 @@ class VideoArtifactSaver(ArtifactSaver):
 
     Parameters
     ----------
-    root: Path | str | None = None
+    root : Path | str | None = None
         The root directory to save the artifacts.
-    export_format: str | None = "mp4"
+    export_format : str | None = "mp4"
         The format to save the artifacts.
     """
 
@@ -53,9 +53,9 @@ class VideoArtifactSaver(ArtifactSaver):
 
         Parameters
         ----------
-        data: Any
+        data : Any
             The data to save.
-        saving_kwargs: dict
+        saving_kwargs : dict
             The additional kwargs to pass to the saving utility function.
 
         Returns
