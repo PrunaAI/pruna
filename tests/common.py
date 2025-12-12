@@ -10,6 +10,7 @@ import numpydoc_validation
 import pytest
 import torch
 from accelerate.utils import compute_module_sizes, infer_auto_device_map
+from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
 from transformers import Pipeline
 
