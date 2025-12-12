@@ -328,7 +328,7 @@ def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
     def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
         section_code_file = output_dir / f"{section_name}_code.py"
         with open(str(section_code_file), "w") as code_file:
-            for block in node.traverse(literal_block):
+            for block in node.findall(literal_block):
                 # Skip code blocks marked with the 'noextract' class
                 if "noextract" in block.attributes.get("classes", []):
                     continue
@@ -336,7 +336,7 @@ def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
                     code_file.write(block.astext() + "\n")
 
     # Process only first-level sections (sections whose parent is the document)
-    for sec in document.traverse(section):
+    for sec in document.findall(section):
         if sec.parent is not document:
             continue  # Skip subsections
         section_title_node = sec.next_node(title)
