@@ -62,6 +62,7 @@ class RingAttn(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str | AlgorithmTag] = [
         "qkv_diffusers",
+        "padding_pruning",
     ]
     compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile"]
 
