@@ -544,6 +544,7 @@ class JanusZipARGenerator:
             # batch_size should account for both conditional/unconditional input; hence multiplied by 2
             batch_size=batch_size * 2,
             max_cache_len=self.num_image_tokens + seq_len,
+            device=device,
             model_kwargs=model_kwargs,
         )
 
