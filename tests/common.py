@@ -10,7 +10,6 @@ import numpydoc_validation
 import pytest
 import torch
 from accelerate.utils import compute_module_sizes, infer_auto_device_map
-from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
 from transformers import Pipeline
 
@@ -314,34 +313,24 @@ def run_ruff_linting(file_path: str) -> None:
         raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
 
 
-def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
-    """Extract code blocks from first-level sections of an rst file, skipping blocks with the `noextract` class."""
-    # Read the content of the .rst file
-    rst_content = rst_file_path.read_text()
+def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
+    section_code_file = output_dir / f"{section_name}_code.py"
+    with open(str(section_code_file), "w") as code_file:
+        for block in node.findall(literal_block):
+            # Skip code blocks marked with the 'noextract' class
+            if "noextract" in block.attributes.get("classes", []):
+                continue
+            if "python" in block.attributes.get("classes", []):
+                code_file.write(block.astext() + "\n")
 
-    # Parse the content into a document tree
-    document = publish_doctree(rst_content)
 
-    # Create the output directory if it doesn't exist
-    output_dir.mkdir(parents=True, exist_ok=True)
+# Process only first-level sections (sections whose parent is the document)
+for sec in document.findall(section):
+    if sec.parent is not document:
+        continue  # Skip subsections
+    section_title_node = sec.next_node(title)
+    if section_title_node:
+        section_title = section_title_node.astext().replace(" ", "_").lower()
+        extract_code_blocks_from_node(sec, section_title)
 
-    def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
-        section_code_file = output_dir / f"{section_name}_code.py"
-        with open(str(section_code_file), "w") as code_file:
-            for block in node.traverse(literal_block):
-                # Skip code blocks marked with the 'noextract' class
-                if "noextract" in block.attributes.get("classes", []):
-                    continue
-                if "python" in block.attributes.get("classes", []):
-                    code_file.write(block.astext() + "\n")
-
-    # Process only first-level sections (sections whose parent is the document)
-    for sec in document.traverse(section):
-        if sec.parent is not document:
-            continue  # Skip subsections
-        section_title_node = sec.next_node(title)
-        if section_title_node:
-            section_title = section_title_node.astext().replace(" ", "_").lower()
-            extract_code_blocks_from_node(sec, section_title)
-
-    print(f"Code blocks extracted and written to {output_dir}")
+print(f"Code blocks extracted and written to {output_dir}")
