@@ -111,6 +111,9 @@ class RedNOE(PrunaAlgorithmBase):
         Any
             The model with the reduced number of experts per token.
         """
+        if is_transformers_pipeline_with_moe_lm(model):
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
+
         device_map = get_device_map(model)
         # we need to save and reload with the new config, because immutable object.
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -122,7 +125,12 @@ class RedNOE(PrunaAlgorithmBase):
             else:
                 with config_path.open("r", encoding="utf-8") as f:
                     config_json = json.load(f)
-                config_json[smash_config["target_name"]["include"][0]] = smash_config["num_experts_per_token"]
+                target_names = smash_config["target_name"]["include"]
+                if not target_names:
+                    raise ValueError(
+                        "The 'include' list in 'target_name' is empty. Please provide at least one config parameter name to modify."
+                    )
+                config_json[target_names[0]] = smash_config["num_experts_per_token"]
                 with config_path.open("w", encoding="utf-8") as f:
                     json.dump(config_json, f, indent=2)
                 safe_memory_cleanup()
