@@ -159,6 +159,9 @@ full = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
 ]
+zipar = [
+    "transformers==4.54.0",
+]
 dev = [
     "wget",
     "python-dotenv",
