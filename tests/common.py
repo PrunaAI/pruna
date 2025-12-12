@@ -313,6 +313,18 @@ def run_ruff_linting(file_path: str) -> None:
         raise AssertionError(f"Linting errors found:\n{result.stdout}\nRuff error output:\n{result.stderr}")
 
 
+def extract_python_code_blocks(rst_file_path: Path, output_dir: Path) -> None:
+    """Extract code blocks from first-level sections of an rst file, skipping blocks with the `noextract` class."""
+    # Read the content of the .rst file
+    rst_content = rst_file_path.read_text()
+
+    # Parse the content into a document tree
+    document = publish_doctree(rst_content)
+
+    # Create the output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+
 def extract_code_blocks_from_node(node: Any, section_name: str) -> None:
     section_code_file = output_dir / f"{section_name}_code.py"
     with open(str(section_code_file), "w") as code_file:
