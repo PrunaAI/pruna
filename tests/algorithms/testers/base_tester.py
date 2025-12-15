@@ -22,9 +22,10 @@ from pruna.logging.logger import pruna_logger
 class AlgorithmTesterBase:
     """Base class for testing algorithms."""
 
+    hyperparameters: dict[str, Any] = {}
+
     def __init__(self):
         self._saving_path = Path(tempfile.mkdtemp(prefix="pruna_saved_model_"))
-        self.hyperparameters = {}
 
     @property
     @abstractmethod
