@@ -32,6 +32,7 @@ from pruna.config.target_modules import (
     get_skipped_submodules,
     is_leaf_module,
     map_targeted_nn_roots,
+    target_backbone,
 )
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
@@ -142,14 +143,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
         TARGET_MODULES_TYPE
             The default target_modules for the algorithm.
         """
-        prefix: str
-        if hasattr(model, "transformer"):
-            prefix = "transformer."
-        elif hasattr(model, "unet"):
-            prefix = "unet."
-        else:
-            prefix = ""
-        return {"include": [prefix + "*"], "exclude": [prefix + "lm_head"]}
+        return target_backbone(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

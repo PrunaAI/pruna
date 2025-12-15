@@ -27,7 +27,7 @@ import torch
 import transformers
 from huggingface_hub import constants, snapshot_download
 from tqdm.auto import tqdm as base_tqdm
-from transformers import AutoTokenizer, pipeline
+from transformers import pipeline
 
 from pruna import SmashConfig
 from pruna.engine.utils import load_json_config, move_to_device, set_to_best_available_device
@@ -367,29 +367,10 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     Any
         The loaded model.
     """
-    if isinstance(model_path, str):
-        model_path = Path(model_path)
-    pipeline_info_path = model_path / PIPELINE_INFO_FILE_NAME
-
     from pruna.algorithms.hqq import HQQ
 
     algorithm_packages = HQQ().import_algorithm_packages()
     model_path = Path(model_path)
-    hqq_model_dir = model_path / "hqq_language_model"
-
-    # if the model is a janus like model, we need to load the quantized model from the hqq_language_model directory
-    if hqq_model_dir.exists():
-        quantized_model_path = hqq_model_dir / "qmodel.pt"
-        quantized_path = str(hqq_model_dir)
-        # load the weight on cpu to rename attr -> model.attr,
-        # and also artifically add a random lm_head to the weights.
-        weights = torch.load(quantized_model_path, map_location="cpu", weights_only=True)
-        weights = {f"model.{k}" if not k.startswith("model.") else k: v for k, v in weights.items()}
-        weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
-        # hqq expects the qmodel.pt file to be in the quantized_path directory.
-        torch.save(weights, quantized_model_path)
-    else:
-        quantized_path = str(model_path)
 
     if "compute_dtype" in kwargs:
         compute_dtype = kwargs.pop("compute_dtype")
@@ -398,40 +379,65 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         saved_smash_config.load_from_json(model_path)
         compute_dtype = torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
 
-    try:  # Try to use pipeline for HF specific HQQ quantization
-        quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
-            quantized_path,
-            device=smash_config.device,
-            **filter_load_kwargs(
-                algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs | {"compute_dtype": compute_dtype}
-            ),
-        )
-    except Exception:  # Default to generic HQQ pipeline if it fails
-        pruna_logger.info("Could not load HQQ model using pipeline, trying generic HQQ pipeline...")
-        quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
-            quantized_path,
-            device=smash_config.device,
-            compute_dtype=compute_dtype,
-            **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
-        )
+    has_config = (model_path / "config.json").exists()
+    is_janus_model = (
+        has_config and load_json_config(model_path, "config.json")["architectures"][0] == "JanusForConditionalGeneration"
+    )
 
-    original_config = load_json_config(model_path, "config.json")
-    if original_config["architectures"][0] == "JanusForConditionalGeneration":
-        cls = getattr(transformers, "JanusForConditionalGeneration")
-        model = cls.from_pretrained(model_path, torch_dtype=compute_dtype, **kwargs)
-        model.model.language_model = quantized_model.model
+    def load_quantized_model(quantized_path: str | Path) -> Any:
+        try:  # Try to use pipeline for HF specific HQQ quantization
+            quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
+                str(quantized_path),
+                device=smash_config.device,
+                **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
+            )
+        except Exception:  # Default to generic HQQ pipeline if it fails
+            pruna_logger.info("Could not load HQQ model using HQQModelForCausalLM, trying generic AutoHQQHFModel...")
+            quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
+                str(quantized_path),
+                device=smash_config.device,
+                compute_dtype=compute_dtype,
+                **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
+            )
+        return quantized_model
+
+    if (model_path / PIPELINE_INFO_FILE_NAME).exists():  # pipeline
+        # load the pipeline with a fake model on meta device
+        with (model_path / PIPELINE_INFO_FILE_NAME).open("r") as f:
+            task = json.load(f)["task"]
+        pipe = pipeline(task=task, model=model_path, model_kwargs={"device_map": "meta"})
+        # load the quantized model
+        pipe.model = load_quantized_model(model_path)
+        move_to_device(pipe, smash_config.device)
+        return pipe
+    elif (model_path / "qmodel.pt").exists():  # the model itself was quantized
+        return load_quantized_model(model_path)
+    elif is_janus_model:
+        model = transformers.JanusForConditionalGeneration.from_pretrained(
+            model_path, torch_dtype=compute_dtype, **kwargs
+        )
+        hqq_model_dir = model_path / "hqq_language_model"
+
+        # Janus language model must be patched to match HQQ's causal LM assumption
+        quantized_path = str(hqq_model_dir / "qmodel.pt")
+        weights = torch.load(quantized_path, map_location="cpu", weights_only=True)
+        is_already_patched = all(k == "lm_head" or k.startswith("model.") for k in weights)
+        if not is_already_patched:
+            # load the weight on cpu to rename attr -> model.attr,
+            weights = {f"model.{k}": v for k, v in weights.items()}
+            # artifically add a random lm_head to the weights.
+            weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
+            torch.save(weights, quantized_path)  # patch weights
+
+        quantized_causal_lm = load_quantized_model(hqq_model_dir)
+        model.model.language_model = quantized_causal_lm.model  # drop the lm_head and causal_lm wrapper
         # some weights of the language_model are not on the correct device, so we move it afterwards.
         move_to_device(model, smash_config.device)
         return model
     else:
-        # make sure to load
-        if pipeline_info_path.exists():
-            with pipeline_info_path.open("r") as f:
-                pipeline_info = json.load(f)
-            tokenizer = AutoTokenizer.from_pretrained(model_path)
-            pipe = pipeline(pipeline_info["task"], model=quantized_model, tokenizer=tokenizer, **kwargs)
-            return pipe
-        return quantized_model
+        raise ValueError(
+            f"Could not load HQQ model from {model_path}, only quantized models or pipelines are supported."
+        )
 
 
 def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
@@ -480,7 +486,8 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     )
 
     hf_quantizer = HQQDiffusers()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages())
+    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages(), [])
+    quantized_load_kwargs = filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs)
 
     path = Path(path)
     if "compute_dtype" not in kwargs and (path / "dtype_info.json").exists():
@@ -488,39 +495,50 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         kwargs["compute_dtype"] = dtype
         kwargs.setdefault("torch_dtype", dtype)
 
-    backbone_path = path / "backbone_quantized"
-
-    # If a pipeline was saved, load the backbone and the rest of the pipeline separately
-    if backbone_path.exists():
-        # load the backbone
-        loaded_backbone = auto_hqq_hf_diffusers_model.from_quantized(
-            str(backbone_path),
-            **filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs),
-        )
-        # The from_quantized method does not set the dtype of the model, even if it is specified in the kwargs.
-        # So we set it manually here.
-        if "torch_dtype" in kwargs:
-            loaded_backbone.to(kwargs["torch_dtype"])
-        # Get the pipeline class name
-        model_index = load_json_config(path, "model_index.json")
-        cls = getattr(diffusers, model_index["_class_name"])
-        # If the pipeline has a transformer, load the transformer
-        if "transformer" in model_index:
-            model = cls.from_pretrained(path, transformer=loaded_backbone, **kwargs)
-        # If the pipeline has a unet, load the unet
-        elif "unet" in model_index:
-            model = cls.from_pretrained(path, unet=loaded_backbone, **kwargs)
-            # If the unet has up_blocks, we need to change the upsampler name to conv
-            for layer in model.unet.up_blocks:
-                if layer.upsamplers is not None:
-                    layer.upsamplers[0].name = "conv"
-    else:
-        # load the whole model if a pipeline wasn't saved
+    qmodel_path = path / "qmodel.pt"
+    if qmodel_path.exists():  # the whole model was quantized, not a pipeline, load it directly
         model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
-        # The from_quantized method does not set the dtype of the model, even if it is specified in the kwargs.
-        # So we set it manually here.
+        # force dtype if specified, from_quantized does not set it properly
         if "torch_dtype" in kwargs:
             model.to(kwargs["torch_dtype"])
+    else:  # save directory is for a pipeline, of which some components were quantized
+        model_index = load_json_config(path, "model_index.json")
+
+        # first we load each quantized component separately, models like wan-i2v can have multiple components
+        # that can be quantized and saved separately.
+        # by convention, each component has been saved in a directory f"{attr_name}_quantized".
+        quantized_components: dict[str, Any] = {}
+        for quantized_path in [qpath for qpath in path.iterdir() if qpath.name.endswith("_quantized")]:
+            attr_name = quantized_path.name.replace("_quantized", "")
+
+            # legacy behavior: backbone_quantized -> target the transformer or unet attribute
+            if attr_name == "backbone":
+                if "transformer" in model_index:
+                    attr_name = "transformer"
+                elif "unet" in model_index:
+                    attr_name = "unet"
+
+            quantized_component = auto_hqq_hf_diffusers_model.from_quantized(
+                str(quantized_path), **quantized_load_kwargs
+            )
+            # force dtype if specified, from_quantized does not set it properly
+            if "torch_dtype" in kwargs:
+                quantized_component.to(kwargs["torch_dtype"])
+            quantized_components[attr_name] = quantized_component
+
+        # then we load the rest of the pipeline
+        cls = getattr(diffusers, model_index["_class_name"])
+        # from_pretrained accepts arbitrary kwargs, no need for filtering
+        model = cls.from_pretrained(path, **quantized_components, **kwargs)
+        # check if the components were correctly loaded or if some kwargs were ignored
+        for attr_name, quantized_component in quantized_components.items():
+            if getattr(model, attr_name) != quantized_component:
+                # fallback: manually replace the loaded component with the quantized one
+                pruna_logger.warning(
+                    f"Loading pipeline with component {attr_name} failed, attaching the model by hand which may lead to"
+                    "memory overhead, consider using pruna.engine.utils.safe_memory_cleanup() to free memory."
+                )
+                setattr(model, attr_name, quantized_component)
     # HQQ does not support direct loading on the correct device, so we move it afterwards
     move_to_device(model, smash_config.device, device_map=smash_config.device_map)
     return model
