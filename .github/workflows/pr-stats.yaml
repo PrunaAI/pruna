@@ -7,14 +7,14 @@ permissions:
 on:
   schedule:
     # Run every workday (Monday-Friday) at 9am UTC
-    - cron: ${{ vars.PRUNA_WEBHOOK_CRON }}
+    - cron: '0 9 * * 1-5'
 
 jobs:
   stats:
     runs-on: ubuntu-latest
     steps:
       - name: Run pull request stats
-        uses: flowwer-dev/pull-request-stats@main
+        uses: flowwer-dev/pull-request-stats@v3.2.2
         with:
           slackWebhook: ${{ secrets.PRUNA_WEBHOOK_URL }}
           slackChannel: ${{ vars.PRUNA_SLACK_CHANNEL }}
