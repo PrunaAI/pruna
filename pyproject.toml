@@ -136,7 +136,9 @@ dependencies = [
     "aenum",
     "vbench-pruna; sys_platform != 'darwin'",
     "imageio-ffmpeg",
-    "jaxtyping"
+    "jaxtyping",
+    "basicsr>=1.4.2",
+    "realesrgan>=0.3.0",
 ]
 
 [project.optional-dependencies]
