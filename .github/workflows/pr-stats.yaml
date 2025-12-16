@@ -1,0 +1,24 @@
+name: Pull Request Stats
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  schedule:
+    # Run every workday (Monday-Friday) at 9am UTC
+    - cron: ${{ vars.PRUNA_WEBHOOK_CRON }}
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run pull request stats
+        uses: flowwer-dev/pull-request-stats@main
+        with:
+          slackWebhook: ${{ secrets.PRUNA_WEBHOOK_URL }}
+          slackChannel: ${{ vars.PRUNA_SLACK_CHANNEL }}
+          period: ${{ vars.PRUNA_WEBHOOK_PERIOD }}
+          charts: true
+          stats: ${{ vars.PRUNA_WEBHOOK_STATS }}
+          sortBy: ${{ vars.PRUNA_WEBHOOK_SORT_BY }}
