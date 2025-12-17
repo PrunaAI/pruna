@@ -103,7 +103,7 @@ class XFast(PrunaAlgorithmBase):
         model.x_fast_compiler = XFastHelper(imported_modules)
 
         if smash_config["torch_dynamic"]:
-            model = torch.quantization.quantize_dynamic(
+            model = torch.quantization.quantize_dynamic(  # type: ignore[attr-defined]
                 model,  # Input model
                 {torch.nn.Linear},
                 dtype=torch.qint8,
@@ -123,18 +123,18 @@ class XFast(PrunaAlgorithmBase):
         Dict[str, Any]
             The imported modules.
         """
-        import sfast
-        from sfast.compilers.diffusion_pipeline_compiler import (
+        import sfast  # type: ignore[import-untyped]
+        from sfast.compilers.diffusion_pipeline_compiler import (  # type: ignore[import-untyped]
             CompilationConfig,
             _build_lazy_trace,
             _enable_xformers,
         )
-        from sfast.cuda.graphs import (
+        from sfast.cuda.graphs import (  # type: ignore[import-untyped]
             make_dynamic_graphed_callable,  # apply_auto_graph_compiler,
         )
-        from sfast.utils.memory_format import apply_memory_format
+        from sfast.utils.memory_format import apply_memory_format  # type: ignore[import-untyped]
 
-        sfast.cuda.graphs.get_cuda_device_from_tensors = get_cuda_device_from_tensors
+        sfast.cuda.graphs.get_cuda_device_from_tensors = get_cuda_device_from_tensors  # type: ignore[attr-defined]
 
         return dict(
             CompilationConfig=CompilationConfig,
@@ -404,16 +404,16 @@ class XFastHelper:
             The processed function.
         """
         try:
-            import sfast
-            from sfast.compilers.diffusion_pipeline_compiler import (
+            import sfast  # type: ignore[import-untyped]
+            from sfast.compilers.diffusion_pipeline_compiler import (  # type: ignore[import-untyped]
                 CompilationConfig,
                 _build_lazy_trace,
             )
-            from sfast.cuda.graphs import (
+            from sfast.cuda.graphs import (  # type: ignore[import-untyped]
                 make_dynamic_graphed_callable,  # apply_auto_graph_compiler,
             )
 
-            sfast.cuda.graphs.get_cuda_device_from_tensors = get_cuda_device_from_tensors
+            sfast.cuda.graphs.get_cuda_device_from_tensors = get_cuda_device_from_tensors  # type: ignore[attr-defined]
         except ImportError:
             pruna_logger.error(
                 "You are trying to use XFast compiler, but sfast is not installed. "

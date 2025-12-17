@@ -83,7 +83,7 @@ class IPEXLLM(PrunaAlgorithmBase):
         """
         imported_modules = self.import_algorithm_packages()
         # Find the installation path of ipex
-        ipex_path = Path(imported_modules["ipex"].__file__).parent
+        ipex_path = Path(imported_modules["ipex"].__file__).parent  # type: ignore[attr-defined]
         # Try to find the models.py file
         transformers_path = ipex_path / "transformers"
         # Find the full path of models.py if it exists
@@ -122,11 +122,11 @@ class IPEXLLM(PrunaAlgorithmBase):
 
         weight_dtype = woq_weight_dtype.INT8 if smash_config["weight_bits"] == 8 else woq_weight_dtype.INT4
 
-        lowp_mode = ipex.quantization.WoqLowpMode.INT8
+        lowp_mode = ipex.quantization.WoqLowpMode.INT8  # type: ignore[attr-defined]
 
-        qconfig = ipex.quantization.get_weight_only_quant_qconfig_mapping(weight_dtype=weight_dtype, lowp_mode=lowp_mode)
+        qconfig = ipex.quantization.get_weight_only_quant_qconfig_mapping(weight_dtype=weight_dtype, lowp_mode=lowp_mode)  # type: ignore[attr-defined]
 
-        model = ipex.llm.optimize(
+        model = ipex.llm.optimize(  # type: ignore[attr-defined]
             model.eval(),
             dtype=getattr(torch, "float32"),
             quantization_config=qconfig,
@@ -147,8 +147,8 @@ class IPEXLLM(PrunaAlgorithmBase):
             The algorithm packages.
         """
         # Import necessary modules here to avoid unnecessary imports and ensure they're available when needed
-        import intel_extension_for_pytorch as ipex
-        from intel_extension_for_pytorch.quantization import WoqWeightDtype
+        import intel_extension_for_pytorch as ipex  # type: ignore[import-untyped]
+        from intel_extension_for_pytorch.quantization import WoqWeightDtype  # type: ignore[import-untyped]
 
         return dict(
             ipex=ipex,
