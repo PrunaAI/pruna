@@ -14,23 +14,23 @@
 
 from __future__ import annotations
 
+import fnmatch
+import re
+from collections import OrderedDict
 from collections.abc import Iterable
 from typing import Any
-import re
-import fnmatch
-from collections import OrderedDict
 
 import torch
 from diffusers import DiffusionPipeline
 
-from pruna import SmashConfig
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.config.hyperparameters import Boolean
+from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
+
 
 class SageAttn(PrunaAlgorithmBase):
     """
@@ -54,7 +54,6 @@ class SageAttn(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str] = [tags.QUANTIZER]
     compatible_after: Iterable[str] = ["torch_compile", tags.CACHER]
-
 
     def model_check_fn(self, model: Any) -> bool:
         """
@@ -94,14 +93,16 @@ class SageAttn(PrunaAlgorithmBase):
         Any
             The wrapped model.
         """
-        target_modules = smash_config.get("target_modules", None)
-        exclude_first_and_last_transformer_blocks = smash_config.get("exclude_first_and_last_transformer_blocks", False)
-        
-        if exclude_first_and_last_transformer_blocks:
-            extra_excludes = self._get_transformer_sub_excludes(model)
-        
+        target_modules = smash_config["target_modules"]
+        exclude_first_and_last_transformer_blocks = smash_config["exclude_first_and_last_transformer_blocks"]
+
         if target_modules is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = self.get_model_dependent_hyperparameter_defaults(
+                model,
+                smash_config
+            )  # for consistency, not used yet
+
+        extra_excludes = (_get_transformer_sub_excludes(model) if exclude_first_and_last_transformer_blocks else [])
 
         include_patterns = target_modules.get("include", [])
         exclude_patterns = target_modules.get("exclude", [])
@@ -111,22 +112,19 @@ class SageAttn(PrunaAlgorithmBase):
         def has_nested_rules(comp_name: str) -> bool:
             prefix = comp_name + "."
             return any(p.startswith(prefix) for p in (include_patterns + exclude_patterns))
-        
+
         def is_relevant_component_by_include(comp_name: str) -> bool:
-            """If includes are set, only Components to touch, that are either directly
-            included or have any include below them."""
             if not include_patterns:
                 return True
+            if _matches_any(comp_name, include_patterns):   # "*", "transformer", ...
+                return True
             prefix = comp_name + "."
-            return any(p == comp_name or p.startswith(prefix) for p in include_patterns)
+            return any(p.startswith(prefix) for p in include_patterns)  # "transformer.*", "transformer.blocks.*"
 
         def should_apply(name: str) -> bool:
-            """Excludes > Includes; if includes are empty => everything (except excludes)."""
             if exclude_patterns and _matches_any(name, exclude_patterns):
                 return False
-            if include_patterns and not _matches_any(name, include_patterns):
-                return False
-            return True
+            return not include_patterns or _matches_any(name, include_patterns)
 
         for comp_name, component in model.components.items():
 
@@ -140,12 +138,11 @@ class SageAttn(PrunaAlgorithmBase):
             if not is_relevant_component_by_include(comp_name):
                 continue
 
-            # 2) dtype guard, as sage attn is only applicable for bfloat16 and float16
-            if not hasattr(component, "dtype") or component.dtype not in (torch.bfloat16, torch.float16):
-                continue
-
-            # 3) If there are no nested rules for the current component, make a faster global call otherwise go to submodule level
-            if hasattr(component, "set_attention_backend") and not has_nested_rules(comp_name) and should_apply(comp_name):
+            # 3) If there are no nested rules for the current component,
+            # make a faster global call otherwise go to submodule level
+            if (hasattr(component, "set_attention_backend")
+                and not has_nested_rules(comp_name)
+                and should_apply(comp_name)):
                 component.set_attention_backend("sage_hub")
                 continue
 
@@ -165,123 +162,111 @@ class SageAttn(PrunaAlgorithmBase):
                 if not should_apply(full_name):
                     continue
 
-                if hasattr(sub_module, "set_attention_backend") and sub_module.dtype in (torch.bfloat16, torch.float16):
+                if hasattr(sub_module, "set_attention_backend"):
                     sub_module.set_attention_backend("sage_hub")
 
         return model
 
-
     def get_hyperparameters(self) -> list:
+        """Return hyperparameters for this algorithm."""
         return [
             Boolean(
                 "exclude_first_and_last_transformer_blocks",
                 default=False,
-                meta=dict(desc="If True, do NOT apply SageAttention to the first and last transformer blocks for each transformer component."),
+                meta=dict(desc="If True, do NOT apply SageAttention to the first and last"
+                "transformer blocks for each transformer component."),
             ),
             TargetModules(name="target_modules", default_value=None),
         ]
-
-    # def get_model_dependent_hyperparameter_defaults(
-    #     self,
-    #     model: Any,
-    #     smash_config: SmashConfigPrefixWrapper,
-    # ) -> TARGET_MODULES_TYPE:  
-    #     # So far we just exclude, per default everything is included
-    #     # Filtering is done in the _apply method by the set_attention_backend method
-    #     include = ["*"]
-    #     exclude = []
-
-    #     if smash_config["exclude_first_and_last_transformer_blocks"]:
-    #         exclude = self._get_transformer_sub_excludes(model)
-
-    #         if not exclude:
-    #             print(
-    #                 "exclude_first_and_last_transformer_blocks enabled, "
-    #                 "but no transformer blocks were found for exclusion."
-    #             )
-
-    #     return {"include": include, "exclude": exclude}
 
     def get_model_dependent_hyperparameter_defaults(
         self,
         model: Any,
         smash_config: SmashConfigPrefixWrapper,
-    ) -> TARGET_MODULES_TYPE:  
-        # So far, everything is included and nothing 
+    ) -> TARGET_MODULES_TYPE:
+        """Return model-dependent default target_modules."""
+        # So far, everything is included and nothing is excluded
         # Filtering is done in the _apply method by the set_attention_backend method
         include = ["*"]
         exclude = []
 
         return {"include": include, "exclude": exclude}
 
-    def _get_transformer_sub_excludes(
-        self,
-        model: Any,
-    ) -> list[str]:
-        """
-        Returns a flat list of glob patterns, e.g.
-        [
-        "transformer.blocks.0*",
-        "transformer.blocks.39*",
-        "transformer_2.blocks.0*",
-        "transformer_2.blocks.39*",
+
+def _get_transformer_sub_excludes(
+    model: Any,
+) -> list[str]:
+    """
+    Returns a flat list of glob patterns.
+
+    Example:
+    [
+    "transformer.blocks.0*",
+    "transformer.blocks.39*",
+    "transformer_2.blocks.0*",
+    "transformer_2.blocks.39*",
+    ]
+    """
+    excludes: list[str] = []
+
+    roots = _get_transformer_roots(model)
+
+    for root in roots:
+        # get the component
+        comp = model.components.get(root, None)
+        # if the component is None/missing (e.g. the case for transformer_2 in Wan2.2-TI2V-5B-Diffusers), skip it
+        if comp is None:
+            pruna_logger.warning("skip %s for excludes: component is None", root)
+            continue
+        # get the attention names
+        attn_names = [
+            name
+            for name, module in model.components[root].named_modules()
+            if name and hasattr(module, "set_attention_backend")
         ]
-        """
-        excludes: list[str] = []
+        # if there are no attention names, skip it
+        if not attn_names:
+            continue
 
-        roots = self._get_transformer_roots(model)
+        # get the block paths
+        block_paths = _unique_in_order([n.rsplit(".", 1)[0] for n in attn_names])
 
-        for root in roots:
-            # get the component
-            comp = model.components.get(root, None)
-            # if the component is None/missing (e.g. the case for transformer_2 in Wan2.2-TI2V-5B-Diffusers), skip it
-            if comp is None:
-                print(f"skip {root}: component is None/missing")
-                continue
-            # get the attention names
-            attn_names = [
-                name
-                for name, module in model.components[root].named_modules()
-                if name and hasattr(module, "set_attention_backend")
-            ]
-            # if there are no attention names, skip it
-            if not attn_names:
-                continue
+        # if there are less than 3 block paths, skip it
+        if len(block_paths) < 3:
+            pruna_logger.warning(f"Root {root} has less than 3 transformer blocks."
+            "Thus its first and last blocks are not excluded for sage_attn.")
+            continue
 
-            # get the block paths
-            block_paths = _unique_in_order([n.rsplit(".", 1)[0] for n in attn_names])
+        # We just want to exclude the first and last blocks of the transformer components
+        excludes.extend([
+            f"{root}.{block_paths[0]}*",
+            f"{root}.{block_paths[-1]}*",
+        ])
 
-            # if there are less than 3 block paths, skip it
-            if len(block_paths) < 3:
-                pruna_logger.warning(f"Root {root} has less than 3 transformer blocks. Thus its first and last blocks are not excluded for sage_attn.")
-                continue
+    return excludes
 
-            # We just want to exclude the first and last blocks of the transformer components
-            excludes.extend([
-                f"{root}.{block_paths[0]}*",
-                f"{root}.{block_paths[-1]}*",
-            ])
 
-        return excludes
+def _get_transformer_roots(model: Any) -> list[str]:
+    """Get the roots of the transformer components."""
+    roots = []
+    for name, _ in model.components.items():
+        if name == "transformer" or name.startswith("transformer_"):
+            roots.append(name)
 
-    def _get_transformer_roots(self, model: Any) -> list[str]:
-        roots = []
-        for name, _ in model.components.items():
-            if name == "transformer" or name.startswith("transformer_"):
-                roots.append(name)
+    # Sort the roots by the number of the transformer component, just to be sure
+    def key(n: str) -> int:
+        # transformer -> 0, transformer_10 -> 10
+        if n == "transformer":
+            return 0
+        m = re.match(r"transformer_(\d+)$", n)
+        return int(m.group(1)) if m else 10**9  # unknown suffix goes to end
 
-        # Sort the roots by the number of the transformer component, just to be sure
-        def key(n: str) -> int:
-            # transformer -> 0, transformer_10 -> 10
-            if n == "transformer":
-                return 0
-            m = re.match(r"transformer_(\d+)$", n)
-            return int(m.group(1)) if m else 10**9  # unknown suffix goes to end
+    return sorted(roots, key=key)
 
-        return sorted(roots, key=key)
 
 def _unique_in_order(items: list[str]) -> list[str]:
     return list(OrderedDict.fromkeys(items))
+
 
 def _matches_any(name: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(name, pat) for pat in (patterns or []))
