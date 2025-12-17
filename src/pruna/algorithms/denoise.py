@@ -1,3 +1,17 @@
+# Copyright 2025 - Pruna AI GmbH. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -6,6 +20,7 @@ from typing import Any
 import torch
 from ConfigSpace import UniformFloatHyperparameter
 from diffusers import AutoPipelineForImage2Image, DiffusionPipeline
+
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -42,7 +57,7 @@ class Img2ImgDenoise(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "img2img_denoise"
-    group_tags: list[AlgorithmTag] = [] 
+    group_tags: list[AlgorithmTag] = []
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Diffusers": "https://huggingface.co/docs/diffusers/using-diffusers/img2img",
@@ -135,7 +150,6 @@ class Img2ImgDenoise(PrunaAlgorithmBase):
         Any
             The model with its output generation wrapped for refinement.
         """
-
         model_dtype = determine_dtype(model)
 
         refiner = AutoPipelineForImage2Image.from_pretrained(
