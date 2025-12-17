@@ -168,7 +168,15 @@ class SageAttn(PrunaAlgorithmBase):
         return model
 
     def get_hyperparameters(self) -> list:
-        """Return hyperparameters for this algorithm."""
+        """
+        Get the list of configurable hyperparameters for this algorithm.
+
+        Returns
+        -------
+        list
+            A list of hyperparameter objects (e.g., Boolean, TargetModules) used by the
+            configuration system.
+        """
         return [
             Boolean(
                 "exclude_first_and_last_transformer_blocks",
@@ -184,7 +192,23 @@ class SageAttn(PrunaAlgorithmBase):
         model: Any,
         smash_config: SmashConfigPrefixWrapper,
     ) -> TARGET_MODULES_TYPE:
-        """Return model-dependent default target_modules."""
+        """
+        Get model-dependent default hyperparameters for this algorithm.
+
+        Parameters
+        ----------
+        model : Any
+            The model/pipeline instance for which defaults should be computed.
+        smash_config : SmashConfigPrefixWrapper
+            The configuration wrapper passed to the algorithm. It can be used to read other
+            algorithm settings when selecting defaults.
+
+        Returns
+        -------
+        TARGET_MODULES_TYPE
+            A dictionary with keys "include" and "exclude" defining which modules should be
+            targeted by default.
+        """
         # So far, everything is included and nothing is excluded
         # Filtering is done in the _apply method by the set_attention_backend method
         include = ["*"]
@@ -197,15 +221,23 @@ def _get_transformer_sub_excludes(
     model: Any,
 ) -> list[str]:
     """
-    Returns a flat list of glob patterns.
+    Build a list of glob patterns excluding the first and last transformer blocks.
 
-    Example:
-    [
-    "transformer.blocks.0*",
-    "transformer.blocks.39*",
-    "transformer_2.blocks.0*",
-    "transformer_2.blocks.39*",
-    ]
+    This inspects transformer-like components (e.g. "transformer", "transformer_2") and
+    derives glob patterns that exclude the first and last block paths containing modules
+    that support ``set_attention_backend``.
+
+    Parameters
+    ----------
+    model : Any
+        A Diffusers pipeline-like object with a ``components`` mapping containing
+        transformer components.
+
+    Returns
+    -------
+    list[str]
+        A flat list of glob patterns (e.g. "transformer.blocks.0*") to be added to the
+        exclude patterns for targeting.
     """
     excludes: list[str] = []
 
@@ -247,7 +279,23 @@ def _get_transformer_sub_excludes(
 
 
 def _get_transformer_roots(model: Any) -> list[str]:
-    """Get the roots of the transformer components."""
+    """
+    Get transformer component root names from a Diffusers pipeline.
+
+    A "transformer root" is any entry in ``model.components`` named "transformer" or
+    starting with "transformer_". Roots are returned in numeric order such that
+    "transformer" comes first, then "transformer_2", "transformer_10", etc.
+
+    Parameters
+    ----------
+    model : Any
+        A Diffusers pipeline-like object exposing a ``components`` mapping.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of transformer component names found in ``model.components``.
+    """
     roots = []
     for name, _ in model.components.items():
         if name == "transformer" or name.startswith("transformer_"):
@@ -265,8 +313,39 @@ def _get_transformer_roots(model: Any) -> list[str]:
 
 
 def _unique_in_order(items: list[str]) -> list[str]:
+    """
+    Remove duplicates while preserving the original order.
+
+    Parameters
+    ----------
+    items : list[str]
+        Input items.
+
+    Returns
+    -------
+    list[str]
+        A list with the same relative order as the input, with duplicates removed.
+    """
     return list(OrderedDict.fromkeys(items))
 
 
 def _matches_any(name: str, patterns: list[str]) -> bool:
+    """
+    Check whether a name matches any glob pattern in a list.
+
+    Uses Unix shell-style wildcards via ``fnmatch`` (e.g., "*", "transformer.*",
+    "transformer.blocks.0*").
+
+    Parameters
+    ----------
+    name : str
+        The string to test (e.g., "transformer.blocks.0.attn1").
+    patterns : list[str]
+        List of glob patterns to match against.
+
+    Returns
+    -------
+    bool
+        True if ``name`` matches at least one pattern, otherwise False.
+    """
     return any(fnmatch.fnmatch(name, pat) for pat in (patterns or []))
