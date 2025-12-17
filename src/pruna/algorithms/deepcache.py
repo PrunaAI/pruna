@@ -43,7 +43,7 @@ class DeepCache(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_before: Iterable[str] = ["qkv_diffusers", "half", "hqq_diffusers", "diffusers_int8", "quanto"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "half", "hqq_diffusers", "diffusers_int8", "quanto", "sage_attn"]
     compatible_after: Iterable[str] = ["stable_fast", "torch_compile"]
 
     def get_hyperparameters(self) -> list:

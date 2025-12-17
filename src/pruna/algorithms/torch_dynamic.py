@@ -43,7 +43,7 @@ class TorchDynamic(PrunaAlgorithmBase):
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
     compatible_before: Iterable[str] = []
-    compatible_after: Iterable[str] = []
+    compatible_after: Iterable[str] = ["sage_attn"]
 
     def get_hyperparameters(self) -> list:
         """
