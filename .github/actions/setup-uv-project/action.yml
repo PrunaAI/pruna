@@ -6,6 +6,7 @@ runs:
   steps:
     - uses: astral-sh/setup-uv@v6
       with:
+        version: "latest"
         activate-environment: true
         enable-cache: true
         github-token: ${{ github.token }}
