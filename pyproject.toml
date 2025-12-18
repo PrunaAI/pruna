@@ -61,6 +61,9 @@ testpaths = [
     "tests/",
 ]
 
+[tool.uv]
+version = "0.9.18"
+
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"  # regular PyPI

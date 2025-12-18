@@ -8,6 +8,7 @@ runs:
       with:
         activate-environment: true
         enable-cache: true
+        github-token: ${{ github.token }}
 
     - shell: bash
       run: uv sync --extra dev
