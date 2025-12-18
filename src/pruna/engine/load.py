@@ -557,6 +557,39 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     return model
 
 
+def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+    """
+    Load a tuned kernel config inside the hf/vllm cache, then load the model.
+
+    Parameters
+    ----------
+    path: str | Path
+        The path to the model directory.
+    smash_config: SmashConfig
+        The SmashConfig object containing the best configs for the MoE kernel tuner.
+    **kwargs: Any
+        Additional keyword arguments to pass to the model loading function.
+
+    Returns
+    -------
+    Any
+        The loaded model.
+    """
+    from pruna.algorithms.moe_kernel_tuner import MoEKernelTuner, save_configs
+    imported_packages = MoEKernelTuner().import_algorithm_packages()
+    save_configs(smash_config["best_configs_moe_kernel"],
+    smash_config["num_experts"],
+    smash_config["shard_intermediate_size"],
+    smash_config["dtype"],
+    smash_config["use_fp8_w8a8"],
+    smash_config["use_int8_w8a16"],
+    smash_config["block_quant_shape"],
+    smash_config["path_to_huggingface_hub_cache"],
+    smash_config["path_to_vllm_cache"],
+    imported_packages)
+    return load_transformers_model(path, smash_config, **kwargs)
+
+
 class LOAD_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of load functions for different model types.
@@ -593,6 +626,7 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     pickled = partial(load_pickled)
     hqq = partial(load_hqq)
     hqq_diffusers = partial(load_hqq_diffusers)
+    moe_kernel_tuner = partial(load_moe_kernel_tuner)
 
     def __call__(self, *args, **kwargs) -> Any:
         """
