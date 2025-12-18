@@ -96,7 +96,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "torch==2.7.0",
+    "torch==2.9.1",
     "torchvision==0.22.0",
     "torchmetrics[image]==1.7.4",
     "requests>=2.31.0",
