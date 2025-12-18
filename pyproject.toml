@@ -179,7 +179,7 @@ dev = [
     "pytest-rerunfailures",
     "coverage",
     "docutils",
-    "ty==0.0.1a21",
+    "ty==0.0.3",
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
