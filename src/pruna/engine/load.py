@@ -576,17 +576,20 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
         The loaded model.
     """
     from pruna.algorithms.moe_kernel_tuner import MoEKernelTuner, save_configs
+
     imported_packages = MoEKernelTuner().import_algorithm_packages()
-    save_configs(smash_config["best_configs_moe_kernel"],
-    smash_config["num_experts"],
-    smash_config["shard_intermediate_size"],
-    smash_config["dtype"],
-    smash_config["use_fp8_w8a8"],
-    smash_config["use_int8_w8a16"],
-    smash_config["block_quant_shape"],
-    smash_config["path_to_huggingface_hub_cache"],
-    smash_config["path_to_vllm_cache"],
-    imported_packages)
+    save_configs(
+        smash_config["best_configs_moe_kernel"],
+        smash_config["num_experts"],
+        smash_config["shard_intermediate_size"],
+        smash_config["dtype"],
+        smash_config["use_fp8_w8a8"],
+        smash_config["use_int8_w8a16"],
+        smash_config["block_quant_shape"],
+        smash_config["path_to_huggingface_hub_cache"],
+        smash_config["path_to_vllm_cache"],
+        imported_packages,
+    )
     return load_transformers_model(path, smash_config, **kwargs)
 
 
