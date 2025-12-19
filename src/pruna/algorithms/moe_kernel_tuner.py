@@ -40,7 +40,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
     """
     Tune the MoE Triton kernel for the model.
 
-    Uses vLLM to tune the MoE kernel of the model.
+    Uses vLLM to tune the MoE kernel.
     """
 
     algorithm_name: str = "moe_kernel_tuner"
@@ -172,8 +172,8 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             raise ValueError(f"Model {model.__class__.__name__} has no config.")
         E = model_config.num_experts                # number of experts
         topk = model_config.num_experts_per_tok if is_moe_lm(model) else model_config.moe_topk[0] # number of active experts per token
-        intermediate_size = model_config.intermediate_size # 3072 # FFN intermediate size
-        hidden_size = model_config.hidden_size #4096        # model hidden dim
+        intermediate_size = model_config.intermediate_size # FFN intermediate size
+        hidden_size = model_config.hidden_size # model hidden dim
         assert intermediate_size % smash_config["tensor_parallel_size"] == 0, (
             f"intermediate_size {intermediate_size} is not divisible by tp "
             f"{smash_config['tensor_parallel_size']}."
@@ -207,6 +207,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             4096,
         ]
 
+        # use ray to parallelize the tuning
         ray.init()
 
         is_fp16 = not (use_fp8_w8a8 or use_int8_w8a16)
@@ -261,7 +262,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         smash_config["dtype"] = dtype
         smash_config["use_fp8_w8a8"] = use_fp8_w8a8
         smash_config["use_int8_w8a16"] = use_int8_w8a16
-        # attached load function to the smash config for loading
+        # attach load function to the smash config for loading
         smash_config.load_fns.append(LOAD_FUNCTIONS.moe_kernel_tuner.name)
         end = time.time()
         pruna_logger.info(f"Tuning took {end - start:.2f} seconds")
