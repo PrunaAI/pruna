@@ -559,7 +559,7 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
 
 def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
-    Load a tuned kernel config inside the hf/vllm cache, then load the model.
+    Load a tuned kernel config inside the hf/vllm caches, then load the model.
 
     Parameters
     ----------
