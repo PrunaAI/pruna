@@ -59,7 +59,7 @@ class RealESRGAN(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "realesrgan_upscale"
-    group_tags: list[AlgorithmTag] = []
+    group_tags: list[AlgorithmTag] = [AlgorithmTag.ENHANCER]  # type: ignore[attr-defined]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2107.10833",

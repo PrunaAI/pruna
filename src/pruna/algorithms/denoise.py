@@ -57,7 +57,7 @@ class Img2ImgDenoise(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "img2img_denoise"
-    group_tags: list[AlgorithmTag] = []
+    group_tags: list[AlgorithmTag] = [AlgorithmTag.ENHANCER]  # type: ignore[attr-defined]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Diffusers": "https://huggingface.co/docs/diffusers/using-diffusers/img2img",
