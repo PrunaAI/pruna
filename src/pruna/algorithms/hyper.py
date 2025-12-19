@@ -1,3 +1,17 @@
+# Copyright 2025 - Pruna AI GmbH. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import functools
@@ -7,6 +21,7 @@ from typing import Any
 from diffusers import DDIMScheduler, TCDScheduler
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils.tqdm import disable_progress_bars, enable_progress_bars
+
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.hyperparameters import Boolean
@@ -19,7 +34,6 @@ from pruna.engine.model_checks import (
 )
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
-
 
 
 class Hyper(PrunaAlgorithmBase):
