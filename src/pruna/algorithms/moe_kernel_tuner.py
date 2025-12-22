@@ -91,8 +91,8 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             ),
             CategoricalHyperparameter(
                 "weight_dtype",
-                choices=["fp8_w8a8", "int8_w8a16"],
-                default_value="fp8_w8a8",
+                choices=["fp16", "fp8_w8a8", "int8_w8a16"],
+                default_value="fp16",
                 meta=dict(desc="Dtype to use for the weights (and activations)."),
             ),
             OrdinalHyperparameter(
@@ -122,6 +122,24 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 sequence=[1, 20, 50, 100],
                 default_value=20,
                 meta=dict(desc="Number of iterations to average the kernel times on."),
+            ),
+            OrdinalHyperparameter(
+                "block_size_m_max",
+                sequence=[4, 5, 6, 7, 8, 9, 10],
+                default_value=8,
+                meta=dict(desc="Maximum (log) block size for tiling through input dimension."),
+            ),
+            OrdinalHyperparameter(
+                "block_size_n_max",
+                sequence=[5, 6, 7, 8, 9, 10],
+                default_value=8,
+                meta=dict(desc="Maximum (log) block size for tiling through output dimension."),
+            ),
+            OrdinalHyperparameter(
+                "block_size_k_max",
+                sequence=[6, 7, 8, 9, 10],
+                default_value=8,
+                meta=dict(desc="Maximum (log) block size for tiling through intermediate dimension."),
             ),
         ]
 
@@ -182,36 +200,33 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         
         # (ii) Get the compute parameters
         dtype = smash_config["compute_dtype"]
+        if dtype == "bfloat16":
+            dtype = torch.bfloat16
+        else: # default to float16
+            dtype = torch.float16
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
 
         # (iii) Tune the kernel over a range of batch sizes
         batch_sizes = [
             1,
-            2,
-            4,
-            8,
-            16,
-            24,
-            32,
-            48,
-            64,
-            96,
-            128,
-            256,
-            512,
-            1024,
-            1536,
-            2048,
-            3072,
-            4096,
-        ]
+            2,]
+        #    4,
+        #    8,
+        #    16,
+        #    24,
+        #    32,
+        #    48,
+        #    64,
+        #    96,
+        #    128,
+        # ]
 
         # use ray to parallelize the tuning
         ray.init()
 
         is_fp16 = not (use_fp8_w8a8 or use_int8_w8a16)
-        search_space = get_configs_compute_bound(is_fp16)
+        search_space = get_configs_compute_bound(is_fp16, smash_config)
         pruna_logger.info(f"Start tuning over {len(search_space)} configurations...")
 
         start = time.time()
@@ -254,14 +269,18 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             smash_config["path_to_vllm_cache"],
             imported_packages,
         )
-        # attached configs to the smash config
-        smash_config["best_configs_moe_kernel"] = best_configs
-        # attached hyperparameters to the smash config for loading
-        smash_config["num_experts"] = E
-        smash_config["shard_intermediate_size"] = shard_intermediate_size
-        smash_config["dtype"] = dtype
-        smash_config["use_fp8_w8a8"] = use_fp8_w8a8
-        smash_config["use_int8_w8a16"] = use_int8_w8a16
+        # stash results in the SmashConfig for later loading (cannot add new hyperparams to ConfigSpace here)
+        payload = dict(
+            best_configs_moe_kernel=best_configs,
+            num_experts=E,
+            shard_intermediate_size=shard_intermediate_size,
+            dtype=dtype,
+            use_fp8_w8a8=use_fp8_w8a8,
+            use_int8_w8a16=use_int8_w8a16,
+            block_quant_shape=None,
+        )
+        # store artifacts in SmashConfig so they persist across save/load
+        smash_config.artifacts["moe_kernel_tuner"] = payload
         # attach load function to the smash config for loading
         smash_config.load_fns.append(LOAD_FUNCTIONS.moe_kernel_tuner.name)
         end = time.time()
@@ -313,7 +332,6 @@ class BenchmarkConfig(TypedDict):
 # Converts the function into a Ray actor and requests one GPU per actor instance
 @ray.remote(num_gpus=1)
 def tune(
-        self,
         num_tokens: int,
         num_experts: int,
         shard_intermediate_size: int,
@@ -372,7 +390,7 @@ def tune(
     best_config = None
     best_time = float("inf")
 
-    for config in tqdm_ray(search_space):
+    for config in tqdm_ray.tqdm(search_space):
         try:
             kernel_time = benchmark_config(
                 config,
@@ -388,7 +406,6 @@ def tune(
                 block_quant_shape=block_quant_shape,
                 use_deep_gemm=use_deep_gemm,
                 imported_packages=imported_packages,
-                num_iters=num_iters,
             )
         except imported_packages["triton"].runtime.autotuner.OutOfResources:
             # Some configurations may be invalid and fail to compile.
@@ -435,7 +452,7 @@ def sort_config(config: BenchmarkConfig) -> BenchmarkConfig:
     }
 
 
-def get_configs_compute_bound(use_fp16: bool) -> list[dict[str, int]]:
+def get_configs_compute_bound(use_fp16: bool, smash_config: SmashConfigPrefixWrapper) -> list[dict[str, int]]:
     """
     Get the gridsearch space for the kernel (tiling and warp scheduling).
 
@@ -443,7 +460,8 @@ def get_configs_compute_bound(use_fp16: bool) -> list[dict[str, int]]:
     ----------
     use_fp16: bool
         Whether to use fp16.
-
+    smash_config: SmashConfigPrefixWrapper
+        The Smash configuration.
     Returns
     -------
     list[dict[str, int]]
@@ -452,9 +470,9 @@ def get_configs_compute_bound(use_fp16: bool) -> list[dict[str, int]]:
     configs: list[BenchmarkConfig] = []
 
     # Reduced search space for faster tuning.
-    block_m_range = [16, 32, 64, 128, 256]
-    block_n_range = [32, 64, 128, 256]
-    block_k_range = [64, 128, 256]
+    block_m_range = [2**i for i in range(4, smash_config["block_size_m_max"]+1)]
+    block_n_range = [2**i for i in range(5, smash_config["block_size_n_max"]+1)]
+    block_k_range = [2**i for i in range(6, smash_config["block_size_k_max"]+1)]
     num_warps_range = [4, 8]
     group_m_range = [1, 16, 32, 64]
     num_stage_range = [2, 3, 4, 5]
@@ -531,8 +549,14 @@ def benchmark_config(
     float
         The average latency of the kernel.
     """
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required for MoeKernelTuner.")
+    # Ray sets CUDA_VISIBLE_DEVICES per worker to the GPU it scheduled
+    torch.cuda.set_device(0)
+    device = torch.device("cuda")
+
     init_dtype = torch.float16 if use_fp8_w8a8 else dtype
-    x = torch.randn(num_tokens, hidden_size, dtype=dtype)
+    x = torch.randn(num_tokens, hidden_size, dtype=dtype, device=device)
     if use_int8_w8a16:
         w1 = torch.randint(
             -127,
@@ -543,6 +567,7 @@ def benchmark_config(
                 hidden_size,
             ),
             dtype=torch.int8,
+            device=device,
         )
         w2 = torch.randint(
             -127,
@@ -553,15 +578,16 @@ def benchmark_config(
                 shard_intermediate_size // 2,
             ),
             dtype=torch.int8,
+            device=device,
         )
     else:
         w1 = torch.randn(
-            num_experts, shard_intermediate_size, hidden_size, dtype=init_dtype
+            num_experts, shard_intermediate_size, hidden_size, dtype=init_dtype, device=device
         )
         w2 = torch.randn(
-            num_experts, hidden_size, shard_intermediate_size // 2, dtype=init_dtype
+            num_experts, hidden_size, shard_intermediate_size // 2, dtype=init_dtype, device=device
         )
-    gating_output = torch.randn(num_iters, num_tokens, num_experts, dtype=torch.float32)
+    gating_output = torch.randn(num_iters, num_tokens, num_experts, dtype=torch.float32, device=device)
 
     w1_scale = None
     w2_scale = None
@@ -569,9 +595,9 @@ def benchmark_config(
     a2_scale = None
     if use_int8_w8a16:
         w1_scale = torch.randn(
-            (num_experts, 2 * shard_intermediate_size), dtype=torch.float32
+            (num_experts, 2 * shard_intermediate_size), dtype=torch.float32, device=device
         )
-        w2_scale = torch.randn((hidden_size, num_experts), dtype=torch.float32)
+        w2_scale = torch.randn((hidden_size, num_experts), dtype=torch.float32, device=device)
     if use_deep_gemm:
         # we use the default block shape for deepgemm
         block_quant_shape = [128, 128]
@@ -587,24 +613,24 @@ def benchmark_config(
             k_tiles_w1 = (K + block_k - 1) // block_k
             k_tiles_w2 = (N + block_k - 1) // block_k
             w1_scale = (
-                torch.rand((E, n_tiles_w1, k_tiles_w1), dtype=torch.float32)
+                torch.rand((E, n_tiles_w1, k_tiles_w1), dtype=torch.float32, device=device)
                 * factor_for_scale
             )
             w2_scale = (
-                torch.rand((E, n_tiles_w2, k_tiles_w2), dtype=torch.float32)
+                torch.rand((E, n_tiles_w2, k_tiles_w2), dtype=torch.float32, device=device)
                 * factor_for_scale
             )
         else:
-            w1_scale = torch.randn(num_experts, dtype=torch.float32)
-            w2_scale = torch.randn(num_experts, dtype=torch.float32)
+            w1_scale = torch.randn(num_experts, dtype=torch.float32, device=device)
+            w2_scale = torch.randn(num_experts, dtype=torch.float32, device=device)
 
-        a1_scale = torch.randn(1, dtype=torch.float32)
-        a2_scale = torch.randn(1, dtype=torch.float32)
+        a1_scale = torch.randn(1, dtype=torch.float32, device=device)
+        a2_scale = torch.randn(1, dtype=torch.float32, device=device)
 
-        w1 = w1.to(imported_packages["vllm_platforms"].current_platform.fp8_dtype())
-        w2 = w2.to(imported_packages["vllm_platforms"].current_platform.fp8_dtype())
+        w1 = w1.to(device=device, dtype=imported_packages["vllm_platforms"].current_platform.fp8_dtype())
+        w2 = w2.to(device=device, dtype=imported_packages["vllm_platforms"].current_platform.fp8_dtype())
 
-    input_gating = torch.empty(num_tokens, num_experts, dtype=torch.float32)
+    input_gating = torch.empty(num_tokens, num_experts, dtype=torch.float32, device=device)
 
     def prepare(i: int):
         input_gating.copy_(gating_output[i])
@@ -662,6 +688,7 @@ def benchmark_config(
 
     latencies: list[float] = []
     for i in range(num_iters):
+        print(f"Iteration {i} of {num_iters}")
         prepare(i)
         torch.cuda.synchronize()
 
@@ -724,17 +751,17 @@ def save_configs(
     # (i) Get the name of the config file
     # NB from vllm: The current naming convention uses w2.shape[2], which
     # is the intermediate size after silu_and_mul.
-    filename = imported_packages["fused_moe"].get_config_file_name(
+    filename = imported_packages["FusedMoE"].get_config_file_name(
         num_experts, shard_intermediate_size // 2, dtype_str, block_quant_shape
     )
 
     # (ii) Save the config to the hf cache (where `kernels` lib expects to find it)
     path_to_kernel_configs = os.path.join(path_to_huggingface_hub_cache, ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs")
     os.makedirs(path_to_kernel_configs, exist_ok=True)
-    filename = os.path.join(path_to_kernel_configs, filename)
-    if not os.path.exists(filename):
-        pruna_logger.info(f"Writing best config to {filename}...")
-        with open(filename, "w") as f:
+    filename_hf = os.path.join(path_to_kernel_configs, filename)
+    if not os.path.exists(filename_hf):
+        pruna_logger.info(f"Writing best config to {filename_hf}...")
+        with open(filename_hf, "w") as f:
             json.dump({"triton_version": imported_packages["triton"].__version__, **configs}, f, indent=4)
             f.write("\n")
 
@@ -744,9 +771,9 @@ def save_configs(
         path_where_vllm_is_installed = find_spec("vllm").submodule_search_locations[0]
         path_to_vllm_configs = os.path.join(os.path.dirname(path_where_vllm_is_installed), path_to_vllm_cache, "configs")
     os.makedirs(path_to_vllm_configs, exist_ok=True)
-    filename = os.path.join(path_to_vllm_configs, filename)
-    if not os.path.exists(filename):
-        pruna_logger.info(f"Writing best config to {filename}...")
-        with open(filename, "w") as f:
+    filename_vllm = os.path.join(path_to_vllm_configs, filename)
+    if not os.path.exists(filename_vllm):
+        pruna_logger.info(f"Writing best config to {filename_vllm}...")
+        with open(filename_vllm, "w") as f:
             json.dump({"triton_version": imported_packages["triton"].__version__, **configs}, f, indent=4)
             f.write("\n")

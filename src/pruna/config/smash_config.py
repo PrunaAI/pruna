@@ -39,6 +39,7 @@ ADDITIONAL_ARGS = [
     "device",
     "device_map",
     "cache_dir",
+    "artifacts",
     "save_fns",
     "save_artifacts_fns",
     "load_fns",
@@ -104,6 +105,9 @@ class SmashConfig:
 
         # internal variable to indicated that a model has been smashed for a specific batch size
         self.__locked_batch_size = False
+
+        # generic container for algorithm-produced artifacts that should be saved with the config
+        self.artifacts: dict[str, Any] = {}
 
         # ensure the cache directory is deleted on program exit
         atexit.register(self.cleanup_cache_dir)
@@ -321,7 +325,10 @@ class SmashConfig:
             config_dict[key] = convert_numpy_types(value)
 
         for name in ADDITIONAL_ARGS:
-            config_dict[name] = getattr(self, name)
+            value = getattr(self, name)
+            if name == "artifacts":
+                value = convert_artifacts_for_json(value)
+            config_dict[name] = value
 
         # do not save the old cache directory or device
         if "cache_dir" in config_dict:
@@ -757,3 +764,40 @@ def convert_numpy_types(input_value: Any) -> Any:
         return input_value.item()
     else:
         return input_value
+
+
+def convert_artifacts_for_json(value: Any) -> Any:
+    """
+    Convert artifacts to JSON-serializable forms.
+
+    - torch.dtype -> its string name (e.g., 'float16', 'bfloat16')
+    - Path -> str
+    - sets/tuples -> lists
+    - recursively handle dicts/lists
+
+    Parameters
+    ----------
+    value : Any
+        The value to convert.
+
+    Returns
+    -------
+    Any
+        The converted value.
+    """
+    if isinstance(value, dict):
+        return {k: convert_artifacts_for_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [convert_artifacts_for_json(v) for v in value]
+    if isinstance(value, tuple) or isinstance(value, set):
+        return [convert_artifacts_for_json(v) for v in value]
+    if isinstance(value, torch.dtype):
+        # map to canonical string
+        if value == getattr(torch, "float16", None):
+            return "float16"
+        if value == getattr(torch, "bfloat16", None):
+            return "bfloat16"
+        return str(value)
+    if isinstance(value, Path):
+        return str(value)
+    return value

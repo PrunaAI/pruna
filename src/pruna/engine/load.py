@@ -578,18 +578,38 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
     from pruna.algorithms.moe_kernel_tuner import MoEKernelTuner, save_configs
 
     imported_packages = MoEKernelTuner().import_algorithm_packages()
+    payload = getattr(smash_config, "artifacts", {}).get("moe_kernel_tuner")
+    if not payload:
+        pruna_logger.error(
+            "MoE kernel tuner artifacts not found in SmashConfig. "
+            "Ensure the tuner ran successfully before saving/loading."
+        )
+    best_configs = payload["best_configs_moe_kernel"]
+    num_experts = payload["num_experts"]
+    shard_intermediate_size = payload["shard_intermediate_size"]
+    dtype = payload["dtype"]
+    # Convert dtype string back to torch.dtype if needed
+    if dtype == "bfloat16":
+        dtype = torch.bfloat16
+    else:
+        dtype = torch.float16
+    use_fp8_w8a8 = payload["use_fp8_w8a8"]
+    use_int8_w8a16 = payload["use_int8_w8a16"]
+    block_quant_shape = payload["block_quant_shape"]
+
     save_configs(
-        smash_config["best_configs_moe_kernel"],
-        smash_config["num_experts"],
-        smash_config["shard_intermediate_size"],
-        smash_config["dtype"],
-        smash_config["use_fp8_w8a8"],
-        smash_config["use_int8_w8a16"],
-        smash_config["block_quant_shape"],
+        best_configs,
+        num_experts,
+        shard_intermediate_size,
+        dtype,
+        use_fp8_w8a8,
+        use_int8_w8a16,
+        block_quant_shape,
         smash_config["path_to_huggingface_hub_cache"],
         smash_config["path_to_vllm_cache"],
         imported_packages,
     )
+    smash_config.load_fns.remove(LOAD_FUNCTIONS.moe_kernel_tuner.name)
     return load_transformers_model(path, smash_config, **kwargs)
 
 
