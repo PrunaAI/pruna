@@ -96,8 +96,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "torch==2.7.0",
-    "torchvision==0.22.0",
+    "torch==2.8.0",
+    "torchvision==0.23.0",
     "torchmetrics[image]==1.7.4",
     "requests>=2.31.0",
     "transformers",
@@ -136,7 +136,8 @@ dependencies = [
     "aenum",
     "vbench-pruna; sys_platform != 'darwin'",
     "imageio-ffmpeg",
-    "jaxtyping"
+    "jaxtyping",
+    "vllm>=0.11.0",
 ]
 
 [project.optional-dependencies]
