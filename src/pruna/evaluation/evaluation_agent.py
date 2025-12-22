@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from typing import Any, List, Literal
@@ -258,7 +259,7 @@ class EvaluationAgent:
                         canonical_paths.append(canonical_path)
                     # Create aliases for the prompts if the user wants to save the artifacts with the prompt name.
                     # For doing that, the user needs to set the saving_kwargs["save_as_prompt_name"] to True.
-                    self._maybe_create_prompt_aliases(batch, canonical_paths, sample_idx)
+                    self._maybe_create_prompt_metadata(batch, canonical_paths, sample_idx)
 
                 batch = move_batch_to_device(batch, self.device)
                 processed_outputs = move_batch_to_device(processed_outputs, self.device)
@@ -348,11 +349,42 @@ class EvaluationAgent:
             results.append(metric.compute(model, self.task.dataloader))
         return results
 
-    def _maybe_create_prompt_aliases(self, batch, canonical_paths, sample_idx):
-        if not self.saving_kwargs.get("save_as_prompt_name", False):
+    def _maybe_create_prompt_metadata(self, batch, canonical_paths, sample_idx):
+        """
+        Write prompt-level metadata for saved artifacts.
+
+        If ``save_prompt_metadata`` is enabled, this function appends one JSONL
+        record per prompt to ``metadata.jsonl`` in the run output directory.
+        The canonical filename is used as the stable identifier.
+
+        Args:
+            batch: Batch tuple where the first element contains the prompts.
+            canonical_paths: List of canonical file paths corresponding to each
+                prompt in the batch.
+            sample_idx: Index of the current sample within the evaluation run.
+
+        Returns:
+        -------
+            None
+        """
+        if not self.saving_kwargs.get("save_prompt_metadata", False):
             return
 
-        (x, _) = batch
-        for prompt_idx, prompt in enumerate(x):
-            alias_name = f"{prompt}-{sample_idx}"
-            self.artifact_saver.create_alias(canonical_paths[prompt_idx], alias_name)
+        (x, _) = batch  # x = prompts
+
+        metadata_path = Path(self.root_dir) / "metadata.jsonl"
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with metadata_path.open("a", encoding="utf-8") as f:
+            for prompt_idx, prompt in enumerate(x):
+                record = {
+                    # stable ID (file actually on disk)
+                    "file": Path(canonical_paths[prompt_idx]).name,
+                    # full path
+                    "canonical_path": str(canonical_paths[prompt_idx]),
+                    # original prompt
+                    "prompt": str(prompt),
+                    "sample_idx": sample_idx,
+                    "prompt_idx": prompt_idx,
+                }
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
