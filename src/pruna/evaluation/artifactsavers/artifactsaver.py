@@ -102,7 +102,7 @@ class ArtifactSaver(ABC):
         return alias
 
 
-def sanitize_filename(name: str, max_length: int = 128) -> str:
+def sanitize_filename(name: str) -> str:
     """Sanitize a filename to make it safe for the filesystem. Works for every OS.
 
     Parameters
@@ -124,15 +124,12 @@ def sanitize_filename(name: str, max_length: int = 128) -> str:
     name = re.sub(r'[<>:"/\\|?*]', '_', name)
     # Whitespace -> underscore
     name = re.sub(r'\s+', '_', name)
-    # Control chars weg
+    # Control chars removed
     name = re.sub(r'[\x00-\x1f\x7f]', "", name)
     # Collapse multiple underscores into one
     name = re.sub(r'_+', '_', name)
     # remove leading/trailing dots/spaces/underscores
     name = name.strip(" ._")
-    # limit length
-    if len(name) > max_length:
-        name = name[:max_length].rstrip("._ ")
     if name == "":
         name = "untitled"
     return name
