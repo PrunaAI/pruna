@@ -151,7 +151,7 @@ gptq = [
     "threadpoolctl",
     "device-smi",
     "random-word",
-    "gptqmodel==4.0.0.dev0+cu126torch2.7; sys_platform != 'darwin' or platform_machine != 'arm64'",
+    "gptqmodel==5.6.12; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 full = [
