@@ -13,19 +13,19 @@
 # limitations under the License.
 from __future__ import annotations
 
+import json
+import pathlib
+import time
 from collections.abc import Iterable
+from datetime import datetime
+from importlib.util import find_spec
+from itertools import product
 from typing import Any, Dict, TypedDict
 
-import ray.experimental.tqdm_ray as tqdm_ray
 import ray
-import time
+import ray.experimental.tqdm_ray as tqdm_ray
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
-from datetime import datetime
-import os
-import json
-from itertools import product
-from importlib.util import find_spec
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -188,27 +188,29 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         model_config = model.config
         if model_config is None:
             raise ValueError(f"Model {model.__class__.__name__} has no config.")
-        E = model_config.num_experts                # number of experts
-        topk = model_config.num_experts_per_tok if is_moe_lm(model) else model_config.moe_topk[0] # number of active experts per token
+        nb_experts = model_config.num_experts                # number of experts
+        # number of active experts per token
+        topk = (
+            model_config.num_experts_per_tok
+            if is_moe_lm(model)
+            else model_config.moe_topk[0]
+        )
         # qwen_moe can use different intermediate size compared to mixtral.
         intermediate_size = (
             model_config.moe_intermediate_size
             if model_config.moe_intermediate_size is not None
             else model_config.intermediate_size
         )
-        hidden_size = model_config.hidden_size # model hidden dim
+        hidden_size = model_config.hidden_size  # model hidden dim
         assert intermediate_size % smash_config["tensor_parallel_size"] == 0, (
             f"intermediate_size {intermediate_size} is not divisible by tp "
             f"{smash_config['tensor_parallel_size']}."
         )
         shard_intermediate_size = 2 * intermediate_size // smash_config["tensor_parallel_size"]
-        
+
         # (ii) Get the compute parameters
         dtype = smash_config["compute_dtype"]
-        if dtype == "bfloat16":
-            dtype = torch.bfloat16
-        else: # default to float16
-            dtype = torch.float16
+        dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
 
@@ -227,7 +229,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         for batch_size in batch_sizes:
             output = tune.remote(
                 batch_size,                 # num_tokens
-                E,                          # num_experts
+                nb_experts,                          # num_experts per block
                 shard_intermediate_size,
                 hidden_size,
                 topk,
@@ -252,7 +254,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         # save configs in caches (for hf and vllm)
         save_configs(
             best_configs,
-            E,
+            nb_experts,
             shard_intermediate_size,
             dtype,
             use_fp8_w8a8,
@@ -265,7 +267,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         # stash results in the SmashConfig for later loading (cannot add new hyperparams to ConfigSpace here)
         payload = dict(
             best_configs_moe_kernel=best_configs,
-            num_experts=E,
+            num_experts=nb_experts,
             shard_intermediate_size=shard_intermediate_size,
             dtype=dtype,
             use_fp8_w8a8=use_fp8_w8a8,
@@ -291,15 +293,15 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         Dict[str, Any]
             The algorithm packages.
         """
+        import vllm.envs as envs
         import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
         import vllm.platforms as vllm_platforms
+        from vllm.model_executor.layers.fused_moe import override_config
         from vllm.model_executor.layers.fused_moe.config import (
             FusedMoEQuantConfig,
             _get_config_dtype_str,
         )
-        from vllm.model_executor.layers.fused_moe import override_config
         from vllm.triton_utils import triton
-        import vllm.envs as envs
 
         return dict(
             FusedMoEQuantConfig=FusedMoEQuantConfig,
@@ -311,16 +313,17 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             envs=envs,
         )
 
+
 class BenchmarkConfig(TypedDict):
-    """
-    The configuration for the matrix multiplication (tiling and warp scheduling).
-    """
+    """The configuration for the matrix multiplication (tiling and warp scheduling)."""
+
     BLOCK_SIZE_M: int
     BLOCK_SIZE_N: int
     BLOCK_SIZE_K: int
     GROUP_SIZE_M: int
     num_warps: int
     num_stages: int
+
 
 # Converts the function into a Ray actor and requests one GPU per actor instance
 @ray.remote(num_gpus=1)
@@ -412,6 +415,7 @@ def tune(
     assert best_config is not None
     return best_config
 
+
 def sort_config(config: BenchmarkConfig) -> BenchmarkConfig:
     """
     Sort the configuration (tiling and warp scheduling).
@@ -455,6 +459,7 @@ def get_configs_compute_bound(use_fp16: bool, smash_config: SmashConfigPrefixWra
         Whether to use fp16.
     smash_config: SmashConfigPrefixWrapper
         The Smash configuration.
+
     Returns
     -------
     list[dict[str, int]]
@@ -463,9 +468,9 @@ def get_configs_compute_bound(use_fp16: bool, smash_config: SmashConfigPrefixWra
     configs: list[BenchmarkConfig] = []
 
     # Reduced search space for faster tuning.
-    block_m_range = [2**i for i in range(4, smash_config["block_size_m_max"]+1)]
-    block_n_range = [2**i for i in range(5, smash_config["block_size_n_max"]+1)]
-    block_k_range = [2**i for i in range(6, smash_config["block_size_k_max"]+1)]
+    block_m_range = [2**i for i in range(4, smash_config["block_size_m_max"] + 1)]
+    block_n_range = [2**i for i in range(5, smash_config["block_size_n_max"] + 1)]
+    block_k_range = [2**i for i in range(6, smash_config["block_size_k_max"] + 1)]
     num_warps_range = [4, 8]
     group_m_range = [1, 16, 32, 64]
     num_stage_range = [2, 3, 4, 5]
@@ -597,20 +602,20 @@ def benchmark_config(
     if use_fp8_w8a8:
         if block_quant_shape:
             block_n, block_k = block_quant_shape[0], block_quant_shape[1]
-            E = num_experts
-            N = shard_intermediate_size // 2
-            K = hidden_size
+            e = num_experts
+            n = shard_intermediate_size // 2
+            k = hidden_size
             factor_for_scale = 1e-2
-            n_tiles_w1 = (2 * N + block_n - 1) // block_n
-            n_tiles_w2 = (K + block_n - 1) // block_n
-            k_tiles_w1 = (K + block_k - 1) // block_k
-            k_tiles_w2 = (N + block_k - 1) // block_k
+            n_tiles_w1 = (2 * n + block_n - 1) // block_n
+            n_tiles_w2 = (k + block_n - 1) // block_n
+            k_tiles_w1 = (k + block_k - 1) // block_k
+            k_tiles_w2 = (n + block_k - 1) // block_k
             w1_scale = (
-                torch.rand((E, n_tiles_w1, k_tiles_w1), dtype=torch.float32, device=device)
+                torch.rand((e, n_tiles_w1, k_tiles_w1), dtype=torch.float32, device=device)
                 * factor_for_scale
             )
             w2_scale = (
-                torch.rand((E, n_tiles_w2, k_tiles_w2), dtype=torch.float32, device=device)
+                torch.rand((e, n_tiles_w2, k_tiles_w2), dtype=torch.float32, device=device)
                 * factor_for_scale
             )
         else:
@@ -681,7 +686,6 @@ def benchmark_config(
 
     latencies: list[float] = []
     for i in range(num_iters):
-        print(f"Iteration {i} of {num_iters}")
         prepare(i)
         torch.cuda.synchronize()
 
@@ -749,10 +753,13 @@ def save_configs(
     )
 
     # (ii) Save the config to the hf cache (where `kernels` lib expects to find it)
-    path_to_kernel_configs = os.path.join(path_to_huggingface_hub_cache, ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs")
-    os.makedirs(path_to_kernel_configs, exist_ok=True)
-    filename_hf = os.path.join(path_to_kernel_configs, filename)
-    if not os.path.exists(filename_hf):
+    path_to_kernel_configs = (
+        pathlib.Path(path_to_huggingface_hub_cache) /
+        ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
+    )
+    pathlib.Path(path_to_kernel_configs).mkdir(exist_ok=True, parents=True)
+    filename_hf = path_to_kernel_configs / filename
+    if not pathlib.Path(filename_hf).exists():
         pruna_logger.info(f"Writing best config to {filename_hf}...")
         with open(filename_hf, "w") as f:
             json.dump({"triton_version": imported_packages["triton"].__version__, **configs}, f, indent=4)
@@ -762,10 +769,10 @@ def save_configs(
     path_to_vllm_configs = imported_packages["envs"].VLLM_TUNED_CONFIG_FOLDER
     if path_to_vllm_configs is None:
         path_where_vllm_is_installed = find_spec("vllm").submodule_search_locations[0]
-        path_to_vllm_configs = os.path.join(os.path.dirname(path_where_vllm_is_installed), path_to_vllm_cache)
-    os.makedirs(path_to_vllm_configs, exist_ok=True)
-    filename_vllm = os.path.join(path_to_vllm_configs, filename)
-    if not os.path.exists(filename_vllm):
+        path_to_vllm_configs = pathlib.Path(path_where_vllm_is_installed).parent / path_to_vllm_cache
+    pathlib.Path(path_to_vllm_configs).mkdir(exist_ok=True, parents=True)
+    filename_vllm = path_to_vllm_configs / filename
+    if not pathlib.Path(filename_vllm).exists():
         pruna_logger.info(f"Writing best config to {filename_vllm}...")
         with open(filename_vllm, "w") as f:
             json.dump({"triton_version": imported_packages["triton"].__version__, **configs}, f, indent=4)
