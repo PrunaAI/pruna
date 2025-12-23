@@ -190,7 +190,12 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             raise ValueError(f"Model {model.__class__.__name__} has no config.")
         E = model_config.num_experts                # number of experts
         topk = model_config.num_experts_per_tok if is_moe_lm(model) else model_config.moe_topk[0] # number of active experts per token
-        intermediate_size = model_config.intermediate_size # FFN intermediate size
+        # qwen_moe can use different intermediate size compared to mixtral.
+        intermediate_size = (
+            model_config.moe_intermediate_size
+            if model_config.moe_intermediate_size is not None
+            else model_config.intermediate_size
+        )
         hidden_size = model_config.hidden_size # model hidden dim
         assert intermediate_size % smash_config["tensor_parallel_size"] == 0, (
             f"intermediate_size {intermediate_size} is not divisible by tp "
@@ -208,19 +213,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
 
         # (iii) Tune the kernel over a range of batch sizes
-        batch_sizes = [
-            1,
-            2,]
-        #    4,
-        #    8,
-        #    16,
-        #    24,
-        #    32,
-        #    48,
-        #    64,
-        #    96,
-        #    128,
-        # ]
+        batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
 
         # use ray to parallelize the tuning
         ray.init()
@@ -769,7 +762,7 @@ def save_configs(
     path_to_vllm_configs = imported_packages["envs"].VLLM_TUNED_CONFIG_FOLDER
     if path_to_vllm_configs is None:
         path_where_vllm_is_installed = find_spec("vllm").submodule_search_locations[0]
-        path_to_vllm_configs = os.path.join(os.path.dirname(path_where_vllm_is_installed), path_to_vllm_cache, "configs")
+        path_to_vllm_configs = os.path.join(os.path.dirname(path_where_vllm_is_installed), path_to_vllm_cache)
     os.makedirs(path_to_vllm_configs, exist_ok=True)
     filename_vllm = os.path.join(path_to_vllm_configs, filename)
     if not os.path.exists(filename_vllm):
