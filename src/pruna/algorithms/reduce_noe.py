@@ -25,8 +25,8 @@ from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
+from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.target_modules import TargetModules
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
 from pruna.engine.utils import get_device_map, move_to_device, safe_memory_cleanup
 
@@ -65,9 +65,9 @@ class ReduceNOE(PrunaAlgorithmBase):
                 default_value=2,
                 meta=dict(desc="Number of experts triggered per token."),
             ),
-            TargetModules(
+            UnconstrainedHyperparameter(
                 name="target_name",
-                default_value={"include": ["num_experts_per_tok"], "exclude": []},
+                default_value="num_experts_per_tok",
                 meta=dict(
                     desc="Name of of the parameter in the config.json file to be modified, "
                     "e.g. 'num_experts_per_tok' for mixtral models. "
@@ -125,12 +125,10 @@ class ReduceNOE(PrunaAlgorithmBase):
             else:
                 with config_path.open("r", encoding="utf-8") as f:
                     config_json = json.load(f)
-                target_names = smash_config["target_name"]["include"]
-                if not target_names:
-                    raise ValueError(
-                        "The 'include' list in 'target_name' is empty. Please provide at least one config parameter name to modify."
-                    )
-                config_json[target_names[0]] = smash_config["num_experts_per_token"]
+                target_names = smash_config["target_name"]
+                if target_names not in config_json:
+                    raise KeyError(f"Target name '{target_names}' not found in config file at {config_path}")
+                config_json[target_names] = smash_config["num_experts_per_token"]
                 with config_path.open("w", encoding="utf-8") as f:
                     json.dump(config_json, f, indent=2)
                 safe_memory_cleanup()
