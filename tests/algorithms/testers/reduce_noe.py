@@ -1,4 +1,4 @@
-from pruna.algorithms.red_noe import ReduceNOE
+from pruna.algorithms.reduce_noe import ReduceNOE
 
 from .base_tester import AlgorithmTesterBase
 
