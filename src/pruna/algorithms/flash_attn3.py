@@ -127,7 +127,7 @@ class FlashAttn3(PrunaAlgorithmBase):
         Dict[str, Any]
             The algorithm packages.
         """
-        flash_attention_3 = get_kernel("kernels-community/flash-attn3")
+        flash_attention_3 = get_kernel("kernels-community/flash-attn3", "<0.1.0")
         packages = {"flash_attention_3": flash_attention_3}
 
         if Version(diffusers_version) >= Version("0.35.0.dev0"):
