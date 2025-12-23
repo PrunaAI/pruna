@@ -1,13 +1,13 @@
-from pruna.algorithms.red_noe import RedNOE
+from pruna.algorithms.red_noe import ReduceNOE
 
 from .base_tester import AlgorithmTesterBase
 
 
-class TestRedNOE(AlgorithmTesterBase):
-    """Test the RedNOE algorithm."""
+class TestReduceNOE(AlgorithmTesterBase):
+    """Test the ReduceNOE algorithm."""
 
     models = ["qwen3_next_moe_tiny_random"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
-    algorithm_class = RedNOE
+    algorithm_class = ReduceNOE
     metrics = ["perplexity"]

@@ -31,11 +31,11 @@ from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_m
 from pruna.engine.utils import get_device_map, move_to_device, safe_memory_cleanup
 
 
-class RedNOE(PrunaAlgorithmBase):
+class ReduceNOE(PrunaAlgorithmBase):
     """
-    Implement RedNOE for LMs and diffusers pipelines with MoE blocks.
+    Implement ReduceNOE for LMs and diffusers pipelines with MoE blocks.
 
-    RedNOE is a method to Reduce the Number Of Experts per token.
+    ReduceNOE is a method to Reduce the Number Of Experts per token.
     """
 
     algorithm_name: str = "red_noe"
