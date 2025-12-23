@@ -589,10 +589,7 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
     shard_intermediate_size = payload["shard_intermediate_size"]
     dtype = payload["dtype"]
     # Convert dtype string back to torch.dtype if needed
-    if dtype == "bfloat16":
-        dtype = torch.bfloat16
-    else:
-        dtype = torch.float16
+    dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
     use_fp8_w8a8 = payload["use_fp8_w8a8"]
     use_int8_w8a16 = payload["use_int8_w8a16"]
     block_quant_shape = payload["block_quant_shape"]

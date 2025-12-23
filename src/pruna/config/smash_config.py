@@ -789,7 +789,7 @@ def convert_artifacts_for_json(value: Any) -> Any:
         return {k: convert_artifacts_for_json(v) for k, v in value.items()}
     if isinstance(value, list):
         return [convert_artifacts_for_json(v) for v in value]
-    if isinstance(value, tuple) or isinstance(value, set):
+    if isinstance(value, (tuple, set)):
         return [convert_artifacts_for_json(v) for v in value]
     if isinstance(value, torch.dtype):
         # map to canonical string
