@@ -575,9 +575,9 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
     Any
         The loaded model.
     """
-    from pruna.algorithms.moe_kernel_tuner import MoEKernelTuner, save_configs
+    from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner, save_configs
 
-    imported_packages = MoEKernelTuner().import_algorithm_packages()
+    imported_packages = MoeKernelTuner().import_algorithm_packages()
     payload = getattr(smash_config, "artifacts", {}).get("moe_kernel_tuner")
     if not payload:
         pruna_logger.error(
@@ -597,6 +597,7 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
     use_int8_w8a16 = payload["use_int8_w8a16"]
     block_quant_shape = payload["block_quant_shape"]
 
+    # save the config attached to smash_config, inside the hf and vllm caches.
     save_configs(
         best_configs,
         num_experts,
@@ -605,8 +606,8 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
         use_fp8_w8a8,
         use_int8_w8a16,
         block_quant_shape,
-        smash_config["path_to_huggingface_hub_cache"],
-        smash_config["path_to_vllm_cache"],
+        smash_config["moe_kernel_tuner_path_to_huggingface_hub_cache"],
+        smash_config["moe_kernel_tuner_path_to_vllm_cache"],
         imported_packages,
     )
     smash_config.load_fns.remove(LOAD_FUNCTIONS.moe_kernel_tuner.name)
