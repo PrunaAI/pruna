@@ -584,31 +584,31 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
             "MoE kernel tuner artifacts not found in SmashConfig. "
             "Ensure the tuner ran successfully before saving/loading."
         )
-    best_configs = payload["best_configs_moe_kernel"]
-    num_experts = payload["num_experts"]
-    shard_intermediate_size = payload["shard_intermediate_size"]
-    dtype = payload["dtype"]
-    # Convert dtype string back to torch.dtype if needed
-    dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
-    use_fp8_w8a8 = payload["use_fp8_w8a8"]
-    use_int8_w8a16 = payload["use_int8_w8a16"]
-    block_quant_shape = payload["block_quant_shape"]
+    else:
+        best_configs = payload["best_configs_moe_kernel"]
+        num_experts = payload["num_experts"]
+        shard_intermediate_size = payload["shard_intermediate_size"]
+        dtype = payload["dtype"]
+        # Convert dtype string back to torch.dtype if needed
+        dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
+        use_fp8_w8a8 = payload["use_fp8_w8a8"]
+        use_int8_w8a16 = payload["use_int8_w8a16"]
 
-    # save the config attached to smash_config, inside the hf and vllm caches.
-    save_configs(
-        best_configs,
-        num_experts,
-        shard_intermediate_size,
-        dtype,
-        use_fp8_w8a8,
-        use_int8_w8a16,
-        block_quant_shape,
-        smash_config["moe_kernel_tuner_path_to_huggingface_hub_cache"],
-        smash_config["moe_kernel_tuner_path_to_vllm_cache"],
-        imported_packages,
-    )
-    smash_config.load_fns.remove(LOAD_FUNCTIONS.moe_kernel_tuner.name)
-    return load_transformers_model(path, smash_config, **kwargs)
+        # save the config attached to smash_config, inside the hf and vllm caches.
+        save_configs(
+            best_configs,
+            num_experts,
+            shard_intermediate_size,
+            dtype,
+            use_fp8_w8a8,
+            use_int8_w8a16,
+            None,
+            smash_config["moe_kernel_tuner_path_to_huggingface_hub_cache"],
+            smash_config["moe_kernel_tuner_path_to_vllm_cache"],
+            imported_packages,
+        )
+        smash_config.load_fns.remove(LOAD_FUNCTIONS.moe_kernel_tuner.name)
+        return load_transformers_model(path, smash_config, **kwargs)
 
 
 class LOAD_FUNCTIONS(Enum):  # noqa: N801

@@ -272,7 +272,6 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             dtype=dtype,
             use_fp8_w8a8=use_fp8_w8a8,
             use_int8_w8a16=use_int8_w8a16,
-            block_quant_shape=None,
         )
         # store artifacts in SmashConfig so they persist across save/load
         smash_config.artifacts["moe_kernel_tuner"] = payload
@@ -438,14 +437,14 @@ def sort_config(config: BenchmarkConfig) -> BenchmarkConfig:
         "num_warps": config["num_warps"],
         "num_stages": config["num_stages"],
         **(
-            {"waves_per_eu": config["waves_per_eu"]} if "waves_per_eu" in config else {}
+            {"waves_per_eu": config.get("waves_per_eu")} if "waves_per_eu" in config else {}
         ),
         **(
-            {"matrix_instr_nonkdim": config["matrix_instr_nonkdim"]}
+            {"matrix_instr_nonkdim": config.get("matrix_instr_nonkdim")}
             if "matrix_instr_nonkdim" in config
             else {}
         ),
-        **({"kpack": config["kpack"]} if "kpack" in config else {}),
+        **({"kpack": config.get("kpack")} if "kpack" in config else {}),
     }
 
 
@@ -768,7 +767,11 @@ def save_configs(
     # (iii) Save the config to the vllm cache (where `vllm` expects to find it)
     path_to_vllm_configs = imported_packages["envs"].VLLM_TUNED_CONFIG_FOLDER
     if path_to_vllm_configs is None:
-        path_where_vllm_is_installed = find_spec("vllm").submodule_search_locations[0]
+        submodule_locations = find_spec("vllm").submodule_search_locations
+        if submodule_locations is not None and len(submodule_locations) > 0:
+            path_where_vllm_is_installed = submodule_locations[0]
+        else:
+            raise RuntimeError("Could not determine installation path for vllm.")
         path_to_vllm_configs = pathlib.Path(path_where_vllm_is_installed).parent / path_to_vllm_cache
     pathlib.Path(path_to_vllm_configs).mkdir(exist_ok=True, parents=True)
     filename_vllm = path_to_vllm_configs / filename
