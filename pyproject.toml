@@ -156,8 +156,8 @@ gptq = [
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 full = [
-    "xformers==0.0.30",
-    "stable-fast-pruna==1.0.7",
+    "xformers>=0.0.30",
+    "stable-fast-pruna>=1.0.7",
 ]
 dev = [
     "wget",
