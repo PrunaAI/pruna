@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from traceback import print_tb
 from typing import Any, List, Literal
 
 import torch
@@ -82,6 +83,7 @@ class EvaluationAgent:
         seed_strategy: Literal["per_sample", "no_seed"] = "no_seed",
         global_seed: int | None = None,
         artifact_saver_export_format: str | None = None,
+        save_in_out_metadata: bool = False,
         saving_kwargs: dict = dict(),
     ) -> None:
         if task is not None:
@@ -103,6 +105,7 @@ class EvaluationAgent:
         self.device = set_to_best_available_device(self.task.device)
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
+        self.save_in_out_metadata: bool = save_in_out_metadata
         self.save_artifacts: bool = save_artifacts
         if save_artifacts:
             self.root_dir = root_dir if root_dir is not None else OUTPUT_DIR
@@ -259,7 +262,7 @@ class EvaluationAgent:
                         canonical_paths.append(canonical_path)
                     # Create aliases for the prompts if the user wants to save the artifacts with the prompt name.
                     # For doing that, the user needs to set the saving_kwargs["save_as_prompt_name"] to True.
-                    self._maybe_create_prompt_metadata(batch, canonical_paths, sample_idx)
+                    self._maybe_create_input_output_metadata(batch, canonical_paths, sample_idx, batch_idx)
 
                 batch = move_batch_to_device(batch, self.device)
                 processed_outputs = move_batch_to_device(processed_outputs, self.device)
@@ -349,7 +352,7 @@ class EvaluationAgent:
             results.append(metric.compute(model, self.task.dataloader))
         return results
 
-    def _maybe_create_prompt_metadata(self, batch, canonical_paths, sample_idx):
+    def _maybe_create_input_output_metadata(self, batch, canonical_paths, sample_idx, batch_idx):
         """
         Write prompt-level metadata for saved artifacts.
 
@@ -367,7 +370,7 @@ class EvaluationAgent:
         -------
             None
         """
-        if not self.saving_kwargs.get("save_prompt_metadata", False):
+        if not self.save_in_out_metadata:
             return
 
         (x, _) = batch  # x = prompts
@@ -385,6 +388,7 @@ class EvaluationAgent:
                     # original prompt
                     "prompt": str(prompt),
                     "sample_idx": sample_idx,
+                    "batch_idx": batch_idx,
                     "prompt_idx": prompt_idx,
                 }
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
