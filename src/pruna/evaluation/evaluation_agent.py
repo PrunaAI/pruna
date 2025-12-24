@@ -365,6 +365,7 @@ class EvaluationAgent:
             canonical_paths: List of canonical file paths corresponding to each
                 prompt in the batch.
             sample_idx: Index of the current sample within the evaluation run.
+            batch_idx: Index of the batch within the evaluation dataloader loop.
 
         Returns:
         -------
