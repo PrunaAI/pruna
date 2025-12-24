@@ -14,20 +14,16 @@
 
 from __future__ import annotations
 
-import fnmatch
-import re
-from collections import OrderedDict
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, List
 
 import torch
 from diffusers import DiffusionPipeline
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules
+from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
@@ -94,7 +90,6 @@ class SageAttn(PrunaAlgorithmBase):
             The wrapped model.
         """
         target_modules = smash_config["target_modules"]
-        exclude_first_and_last_transformer_blocks = smash_config["exclude_first_and_last_transformer_blocks"]
 
         if target_modules is None:
             target_modules = self.get_model_dependent_hyperparameter_defaults(
@@ -102,70 +97,48 @@ class SageAttn(PrunaAlgorithmBase):
                 smash_config
             )  # for consistency, not used yet
 
-        extra_excludes = (_get_transformer_sub_excludes(model) if exclude_first_and_last_transformer_blocks else [])
+        def apply_sage_attn(
+            root_name: str | None,
+            root_nn_module: torch.nn.Module,
+            relative_target_paths: List[str],
+        ) -> torch.nn.Module:
+            """
+            Apply the SageAttention backend to targeted submodules of a root module.
 
-        include_patterns = target_modules.get("include", [])
-        exclude_patterns = target_modules.get("exclude", [])
-        exclude_patterns.extend(extra_excludes)
+            For each relative submodule path, this function retrieves the corresponding
+            submodule from ``root_nn_module`` and applies
+            ``set_attention_backend("sage_hub")`` if the method is available.
 
-        # Heuristic: if any pattern contains a dot, there are nested rules
-        def has_nested_rules(comp_name: str) -> bool:
-            prefix = comp_name + "."
-            return any(p.startswith(prefix) for p in (include_patterns + exclude_patterns))
+            Parameters
+            ----------
+            root_name : str or None
+                The attribute name of the root module within the model (used for identification).
+                May be ``None`` if the model itself is a ``torch.nn.Module``.
+            root_nn_module : torch.nn.Module
+                The root torch.nn.module containing the targeted submodules.
+            relative_target_paths : List[str]
+                Relative paths of submodules (with respect to ``root_nn_module``) to consider.
 
-        def is_relevant_component_by_include(comp_name: str) -> bool:
-            if not include_patterns:
-                return True
-            if _matches_any(comp_name, include_patterns):   # "*", "transformer", ...
-                return True
-            prefix = comp_name + "."
-            return any(p.startswith(prefix) for p in include_patterns)  # "transformer.*", "transformer.blocks.*"
-
-        def should_apply(name: str) -> bool:
-            if exclude_patterns and _matches_any(name, exclude_patterns):
-                return False
-            return not include_patterns or _matches_any(name, include_patterns)
-
-        for comp_name, component in model.components.items():
-
-            # --- Check component level ---
-
-            # 1) Component-level filter (e.g. exclude "vae"), exclude if in exclude_patterns and not in include_patterns
-            if exclude_patterns and _matches_any(comp_name, exclude_patterns):
-                continue
-
-            # 2) Pick only relevant components
-            if not is_relevant_component_by_include(comp_name):
-                continue
-
-            # 3) If there are no nested rules for the current component,
-            # make a faster global call otherwise go to submodule level
-            if (hasattr(component, "set_attention_backend")
-                and not has_nested_rules(comp_name)
-                and should_apply(comp_name)):
-                component.set_attention_backend("sage_hub")
-                continue
-
-            # --- Check submodule level ---
-
-            # 1) Check for named_modules method for step 2) to work
-            if component is None or not hasattr(component, "named_modules"):
-                continue
-
-            # 2) Nested rules: iterate over submodules and match full_name
-            for sub_name, sub_module in component.named_modules():
-                if not sub_name:
+            Returns
+            -------
+            torch.nn.Module
+                The root ntorch.nn.module with the SageAttention backend applied where supported.
+            """
+            for rel_path in relative_target_paths:
+                try:
+                    sub_module = root_nn_module.get_submodule(rel_path)
+                except AttributeError:
+                    # safety net: should not happen,
+                    # since the paths come from named_modules()
                     continue
-
-                full_name = f"{comp_name}.{sub_name}"  # e.g., transformer.blocks.0.attn1
-
-                if not should_apply(full_name):
-                    continue
-
                 if hasattr(sub_module, "set_attention_backend"):
                     sub_module.set_attention_backend("sage_hub")
+                else:
+                    pruna_logger.warning(f"Module {root_name}.{rel_path} does not have a set_attention_backend method"
+                    "and will not be replaced with SageAttention")
+            return root_nn_module
 
-        return model
+        return map_targeted_nn_roots(apply_sage_attn, model, target_modules)
 
     def get_hyperparameters(self) -> list:
         """
@@ -178,12 +151,6 @@ class SageAttn(PrunaAlgorithmBase):
             configuration system.
         """
         return [
-            Boolean(
-                "exclude_first_and_last_transformer_blocks",
-                default=False,
-                meta=dict(desc="If True, do NOT apply SageAttention to the first and last"
-                "transformer blocks for each transformer component."),
-            ),
             TargetModules(name="target_modules", default_value=None),
         ]
 
@@ -215,137 +182,3 @@ class SageAttn(PrunaAlgorithmBase):
         exclude = []
 
         return {"include": include, "exclude": exclude}
-
-
-def _get_transformer_sub_excludes(
-    model: Any,
-) -> list[str]:
-    """
-    Build a list of glob patterns excluding the first and last transformer blocks.
-
-    This inspects transformer-like components (e.g. "transformer", "transformer_2") and
-    derives glob patterns that exclude the first and last block paths containing modules
-    that support ``set_attention_backend``.
-
-    Parameters
-    ----------
-    model : Any
-        A Diffusers pipeline-like object with a ``components`` mapping containing
-        transformer components.
-
-    Returns
-    -------
-    list[str]
-        A flat list of glob patterns (e.g. "transformer.blocks.0*") to be added to the
-        exclude patterns for targeting.
-    """
-    excludes: list[str] = []
-
-    roots = _get_transformer_roots(model)
-
-    for root in roots:
-        # get the component
-        comp = model.components.get(root, None)
-        # if the component is None/missing (e.g. the case for transformer_2 in Wan2.2-TI2V-5B-Diffusers), skip it
-        if comp is None:
-            pruna_logger.warning("skip %s for excludes: component is None", root)
-            continue
-        # get the attention names
-        attn_names = [
-            name
-            for name, module in model.components[root].named_modules()
-            if name and hasattr(module, "set_attention_backend")
-        ]
-        # if there are no attention names, skip it
-        if not attn_names:
-            continue
-
-        # get the block paths
-        block_paths = _unique_in_order([n.rsplit(".", 1)[0] for n in attn_names])
-
-        # if there are less than 3 block paths, skip it
-        if len(block_paths) < 3:
-            pruna_logger.warning(f"Root {root} has less than 3 transformer blocks."
-            "Thus its first and last blocks are not excluded for sage_attn.")
-            continue
-
-        # We just want to exclude the first and last blocks of the transformer components
-        excludes.extend([
-            f"{root}.{block_paths[0]}*",
-            f"{root}.{block_paths[-1]}*",
-        ])
-
-    return excludes
-
-
-def _get_transformer_roots(model: Any) -> list[str]:
-    """
-    Get transformer component root names from a Diffusers pipeline.
-
-    A "transformer root" is any entry in ``model.components`` named "transformer" or
-    starting with "transformer_". Roots are returned in numeric order such that
-    "transformer" comes first, then "transformer_2", "transformer_10", etc.
-
-    Parameters
-    ----------
-    model : Any
-        A Diffusers pipeline-like object exposing a ``components`` mapping.
-
-    Returns
-    -------
-    list[str]
-        Sorted list of transformer component names found in ``model.components``.
-    """
-    roots = []
-    for name, _ in model.components.items():
-        if name == "transformer" or name.startswith("transformer_"):
-            roots.append(name)
-
-    # Sort the roots by the number of the transformer component, just to be sure
-    def key(n: str) -> int:
-        # transformer -> 0, transformer_10 -> 10
-        if n == "transformer":
-            return 0
-        m = re.match(r"transformer_(\d+)$", n)
-        return int(m.group(1)) if m else 10**9  # unknown suffix goes to end
-
-    return sorted(roots, key=key)
-
-
-def _unique_in_order(items: list[str]) -> list[str]:
-    """
-    Remove duplicates while preserving the original order.
-
-    Parameters
-    ----------
-    items : list[str]
-        Input items.
-
-    Returns
-    -------
-    list[str]
-        A list with the same relative order as the input, with duplicates removed.
-    """
-    return list(OrderedDict.fromkeys(items))
-
-
-def _matches_any(name: str, patterns: list[str]) -> bool:
-    """
-    Check whether a name matches any glob pattern in a list.
-
-    Uses Unix shell-style wildcards via ``fnmatch`` (e.g., "*", "transformer.*",
-    "transformer.blocks.0*").
-
-    Parameters
-    ----------
-    name : str
-        The string to test (e.g., "transformer.blocks.0.attn1").
-    patterns : list[str]
-        List of glob patterns to match against.
-
-    Returns
-    -------
-    bool
-        True if ``name`` matches at least one pattern, otherwise False.
-    """
-    return any(fnmatch.fnmatch(name, pat) for pat in (patterns or []))
