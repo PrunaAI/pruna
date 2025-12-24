@@ -563,17 +563,17 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
 
     Parameters
     ----------
-    path: str | Path
+    path : str | Path
         The path to the model directory.
-    smash_config: SmashConfig
+    smash_config : SmashConfig
         The SmashConfig object containing the best configs for the MoE kernel tuner.
-    **kwargs: Any
+    **kwargs : Any
         Additional keyword arguments to pass to the model loading function.
 
     Returns
     -------
     Any
-        The loaded model.
+        The loaded MoE model.
     """
     from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner, save_configs
 

@@ -347,33 +347,33 @@ def tune(
 
     Parameters
     ----------
-    num_tokens: int
+    num_tokens : int
         The number of tokens in the batch.
-    num_experts: int
+    num_experts : int
         The number of experts.
-    shard_intermediate_size: int
+    shard_intermediate_size : int
         The intermediate size of the model in the shard (if using tensor parallelism).
-    hidden_size: int
+    hidden_size : int
         The hidden size of the model.
-    topk: int
+    topk : int
         The number of active experts per token.
-    dtype: torch.dtype
+    dtype : torch.dtype
         The dtype to use for the weights and activations.
-    use_fp8_w8a8: bool
+    use_fp8_w8a8 : bool
         Whether to use fp8_w8a8.
-    use_int8_w8a16: bool
+    use_int8_w8a16 : bool
         Whether to use int8_w8a16.
-    search_space: list[dict[str, int]]
+    search_space : list[dict[str, int]]
         The search space for the kernel (tiling and warp scheduling).
-    block_quant_shape: list[int]
+    block_quant_shape : list[int]
         The block shape for the kernel (None here).
-    use_deep_gemm: bool
+    use_deep_gemm : bool
         Whether to use deep gemm (False here).
-    imported_packages: Dict[str, Any]
+    imported_packages : Dict[str, Any]
         The imported packages (vllm, triton, etc.).
-    seed: int
+    seed : int
         The random seed.
-    num_iters: int
+    num_iters : int
         The number of iterations to average the kernel time on.
 
     Returns
@@ -421,7 +421,7 @@ def sort_config(config: BenchmarkConfig) -> BenchmarkConfig:
 
     Parameters
     ----------
-    config: BenchmarkConfig
+    config : BenchmarkConfig
         The configuration to sort.
 
     Returns
@@ -454,9 +454,9 @@ def get_configs_compute_bound(use_fp16: bool, smash_config: SmashConfigPrefixWra
 
     Parameters
     ----------
-    use_fp16: bool
+    use_fp16 : bool
         Whether to use fp16.
-    smash_config: SmashConfigPrefixWrapper
+    smash_config : SmashConfigPrefixWrapper
         The Smash configuration.
 
     Returns
@@ -514,31 +514,31 @@ def benchmark_config(
 
     Parameters
     ----------
-    config: BenchmarkConfig
+    config : BenchmarkConfig
         The configuration to benchmark.
-    num_tokens: int
+    num_tokens : int
         The number of tokens in the batch.
-    num_experts: int
+    num_experts : int
         The number of experts.
-    shard_intermediate_size: int
+    shard_intermediate_size : int
         The intermediate size of the model in the shard (if using tensor parallelism).
-    hidden_size: int
+    hidden_size : int
         The hidden size of the model.
-    topk: int
+    topk : int
         The number of active experts per token.
-    dtype: torch.dtype
+    dtype : torch.dtype
         The dtype to use for the weights and activations.
-    use_fp8_w8a8: bool
+    use_fp8_w8a8 : bool
         Whether to use fp8_w8a8.
-    use_int8_w8a16: bool
+    use_int8_w8a16 : bool
         Whether to use int8_w8a16.
-    num_iters: int
+    num_iters : int
         The number of iterations to run the benchmark.
-    block_quant_shape: list[int]
+    block_quant_shape : list[int]
         The block shape for the kernel (None here).
-    use_deep_gemm: bool
+    use_deep_gemm : bool
         Whether to use deep gemm (False here).
-    imported_packages: Dict[str, Any]
+    imported_packages : Dict[str, Any]
         The imported packages (vllm, triton, etc.).
 
     Returns
@@ -715,29 +715,25 @@ def save_configs(
 
     Parameters
     ----------
-    configs: dict[int, BenchmarkConfig]
+    configs : dict[int, BenchmarkConfig]
         The best configs.
-    num_experts: int
+    num_experts : int
         The number of experts.
-    shard_intermediate_size: int
+    shard_intermediate_size : int
         The intermediate size of the model in the shard (if using tensor parallelism).
-    hidden_size: int
-        The hidden size of the model.
-    topk: int
-        The number of active experts per token.
-    dtype: torch.dtype
+    dtype : torch.dtype
         The dtype to use for the weights and activations.
-    use_fp8_w8a8: bool
+    use_fp8_w8a8 : bool
         Whether to use fp8_w8a8.
-    use_int8_w8a16: bool
+    use_int8_w8a16 : bool
         Whether to use int8_w8a16.
-    block_quant_shape: list[int]
+    block_quant_shape : list[int]
         The block shape for the kernel (None here).
-    path_to_huggingface_hub_cache: str
+    path_to_huggingface_hub_cache : str
         The path to the huggingface hub cache.
-    path_to_vllm_cache: str
+    path_to_vllm_cache : str
         The path to the vllm cache.
-    imported_packages: Dict[str, Any]
+    imported_packages : Dict[str, Any]
         The imported packages (vllm, triton, etc.).
     """
     dtype_str = imported_packages["_get_config_dtype_str"](
