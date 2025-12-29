@@ -379,9 +379,13 @@ class EvaluationAgent:
         metadata_path = Path(self.root_dir) / "metadata.jsonl"
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
 
+        model_role = "reference" if self.evaluation_for_first_model else "candidate"
+
         with metadata_path.open("a", encoding="utf-8") as f:
             for prompt_idx, prompt in enumerate(x):
                 record = {
+                    # Model role: reference or candidate
+                    "model_role": model_role,
                     # stable ID (file actually on disk)
                     "file": Path(canonical_paths[prompt_idx]).name,
                     # full path
