@@ -88,6 +88,8 @@ class DistributedServer:
         global global_pipe
         # Determine rank
         rank = mp.current_process()._identity[0] - 1
+        # Ensure each worker reports the correct device before consistency checks
+        smash_config["device"] = f"cuda:{rank}"
         dist.init_process_group(backend="nccl", world_size=world_size, rank=rank)
         # Bind this process to its GPU before CUDA operations
         torch.cuda.set_device(rank)

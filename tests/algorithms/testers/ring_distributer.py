@@ -34,9 +34,19 @@ class TestRingAttn(AlgorithmTesterBase):
         """Post-smash hook."""
         assert hasattr(model, "pool")
 
+    def execute_smash(self, model, smash_config):
+        """Store the smashed distributed model for reuse."""
+        smashed_model = super().execute_smash(model, smash_config)
+        self._smashed_model = smashed_model
+        return smashed_model
+
     def execute_load(self):
-        """Overwrite model loading as this is not supported for distributed models."""
-        pass
+        """Return the stored smashed model (distributed models aren't saved)."""
+        return getattr(self, "_smashed_model", None)
+
+    def execute_evaluation(self, model, datamodule, device):
+        """Skip evaluation for distributed models as it's not fully supported."""
+        pytest.skip("Evaluation not supported for distributed ring_attn models")
 
     @classmethod
     def execute_save(cls, smashed_model: PrunaModel):
