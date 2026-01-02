@@ -470,24 +470,33 @@ def find_module_layers_type(model: Any, layer_type: type, exclude_module_names: 
 
 
 @contextmanager
-def protect_layers(obj: torch.nn.Module, path_list: list[str]):
+def protect_layers(module: torch.nn.Module, path_list: list[str]):
     """
     Temporarily rename 'layers' attribute to '_hqq_original_layers' in a context manager.
 
     Parameters
     ----------
-    obj : Any
-        The object whose 'layers' attribute needs to be safely overwritten.
+    module : Any
+        The module whose 'layers' attribute needs to be safely overwritten.
+    path_list : list[str]
+        A list of paths in the module, possibly using the 'layers' attribute which must be renamed.
+        This list is modified in place, and restored when exiting the context manager.
+
+    Yields
+    ------
+    None
+        This context manager does not yield a value and is intended to be
+        used for its side effects only (temporary attribute renaming).
     """
-    has_layers = hasattr(obj, "layers")
-    orig_layers = getattr(obj, "layers", None)
+    has_layers = hasattr(module, "layers")
+    orig_layers = getattr(module, "layers", None)
 
     try:
         if has_layers:
             # Avoid overwriting if already renamed
-            if not hasattr(obj, "_hqq_original_layers"):
-                setattr(obj, "_hqq_original_layers", orig_layers)
-            delattr(obj, "layers")
+            if not hasattr(module, "_hqq_original_layers"):
+                setattr(module, "_hqq_original_layers", orig_layers)
+            delattr(module, "layers")
 
             # Replace names in path list with the protected names
             for i, path in enumerate(path_list):
@@ -496,8 +505,8 @@ def protect_layers(obj: torch.nn.Module, path_list: list[str]):
     finally:
         if has_layers:
             # Restore the original layers attribute
-            setattr(obj, "layers", getattr(obj, "_hqq_original_layers"))
-            delattr(obj, "_hqq_original_layers")
+            setattr(module, "layers", getattr(module, "_hqq_original_layers"))
+            delattr(module, "_hqq_original_layers")
 
             # Restore the original names in path list
             for i, path in enumerate(path_list):
