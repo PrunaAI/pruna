@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, Type
 
@@ -202,23 +203,26 @@ class HQQDiffusers(PrunaAlgorithmBase):
             torch.nn.Module
                 The quantized component.
             """
-            module.layers = find_module_layers_type(module, nn.Linear)
-
-            warn_model_specific_errors(module, subpaths)
-
+            # needs to be computed on original attribute names, so before protecting the layers attribute
             ignored_leaf_modules = get_skipped_submodules(module, subpaths, filter_fn=is_leaf_module)
-            auto_hqq_hf_diffusers_model = construct_base_class(
-                imported_modules, extra_ignore_modules=ignored_leaf_modules
-            )
 
-            compute_dtype = module.dtype
+            with protect_layers(module, ignored_leaf_modules):
+                module.layers = find_module_layers_type(module, nn.Linear)
 
-            auto_hqq_hf_diffusers_model.quantize_model(
-                module,
-                quant_config=config,
-                compute_dtype=compute_dtype,
-                device=smash_config["device"],
-            )
+                warn_model_specific_errors(module, subpaths)
+
+                auto_hqq_hf_diffusers_model = construct_base_class(
+                    imported_modules, extra_ignore_modules=ignored_leaf_modules
+                )
+
+                compute_dtype = module.dtype
+
+                auto_hqq_hf_diffusers_model.quantize_model(
+                    module,
+                    quant_config=config,
+                    compute_dtype=compute_dtype,
+                    device=smash_config["device"],
+                )
 
             # skipped layers are not casted to device and compute dtype so we need to do it manually
             for name, submodule in module.named_modules():
@@ -463,3 +467,50 @@ def find_module_layers_type(model: Any, layer_type: type, exclude_module_names: 
         if isinstance(module, layer_type) and name not in exclude_module_names:
             layers.append(module)
     return layers
+
+
+@contextmanager
+def protect_layers(obj: torch.nn.Module, path_list: list[str]):
+    """
+    Temporarily rename 'layers' attribute to '_hqq_original_layers' in a context manager.
+
+    Parameters
+    ----------
+    obj : Any
+        The object whose 'layers' attribute needs to be safely overwritten.
+    """
+    has_layers = hasattr(obj, "layers")
+    orig_layers = getattr(obj, "layers", None)
+
+    try:
+        if has_layers:
+            # Avoid overwriting if already renamed
+            if not hasattr(obj, "_hqq_original_layers"):
+                setattr(obj, "_hqq_original_layers", orig_layers)
+            delattr(obj, "layers")
+
+            # Replace names in path list with the protected names
+            for i, path in enumerate(path_list):
+                path_list[i] = _exact_path_rename(path, "layers", "_hqq_original_layers")
+            yield
+    finally:
+        if has_layers:
+            # Restore the original layers attribute
+            setattr(obj, "layers", getattr(obj, "_hqq_original_layers"))
+            delattr(obj, "_hqq_original_layers")
+
+            # Restore the original names in path list
+            for i, path in enumerate(path_list):
+                path_list[i] = _exact_path_rename(path, "_hqq_original_layers", "layers")
+
+
+def _exact_path_rename(path: str, old: str, new: str) -> str:
+    """Rename the old attribute name with the new one in the path."""
+    if path == old:
+        return new
+    elif path.startswith(f"{old}."):
+        return path.replace(f"{old}.", f"{new}.", 1)
+    elif path.endswith(f".{old}"):
+        return path[: -(len(old) + 1)] + f".{new}"
+    else:
+        return path.replace(f".{old}.", f".{new}.")
