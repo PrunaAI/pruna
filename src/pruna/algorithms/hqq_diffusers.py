@@ -491,7 +491,7 @@ def protect_layers(obj: torch.nn.Module, path_list: list[str]):
 
             # Replace names in path list with the protected names
             for i, path in enumerate(path_list):
-                path_list[i] = _exact_path_rename(path, "layers", "_hqq_original_layers")
+                path_list[i] = _rename_attribute(path, "layers", "_hqq_original_layers")
             yield
     finally:
         if has_layers:
@@ -501,16 +501,14 @@ def protect_layers(obj: torch.nn.Module, path_list: list[str]):
 
             # Restore the original names in path list
             for i, path in enumerate(path_list):
-                path_list[i] = _exact_path_rename(path, "_hqq_original_layers", "layers")
+                path_list[i] = _rename_attribute(path, "_hqq_original_layers", "layers")
 
 
-def _exact_path_rename(path: str, old: str, new: str) -> str:
+def _rename_attribute(path: str, old: str, new: str) -> str:
     """Rename the old attribute name with the new one in the path."""
     if path == old:
         return new
     elif path.startswith(f"{old}."):
         return path.replace(f"{old}.", f"{new}.", 1)
-    elif path.endswith(f".{old}"):
-        return path[: -(len(old) + 1)] + f".{new}"
     else:
-        return path.replace(f".{old}.", f".{new}.")
+        return path
