@@ -137,7 +137,13 @@ dependencies = [
     "vbench-pruna; sys_platform != 'darwin'",
     "imageio-ffmpeg",
     "jaxtyping",
+<<<<<<< HEAD
     "peft>=0.17.1",
+=======
+    "peft>=0.18.0",
+    "trl<=0.21.0",
+    "termcolor==2.3.0",
+>>>>>>> 8215794 (added PERP recovery algorithms without distillion)
 ]
 
 [project.optional-dependencies]

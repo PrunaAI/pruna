@@ -67,6 +67,7 @@ class AlgorithmTag(Enum):
         "batcher",
         "Batching groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing overall processing time.",
     )
+<<<<<<< HEAD
     DISTILLER = (
         "distiller",
         "Distillation trains a smaller, simpler model to mimic a larger, more complex model.",
@@ -78,6 +79,11 @@ class AlgorithmTag(Enum):
     RESAMPLER = (
         "resampler",
         "Resamplers change the shape of image or video latents during generation to speed up inference.",
+=======
+    RECOVERER = (
+        "recoverer",
+        "Recovery restores the performance of a model after compression.",
+>>>>>>> 8215794 (added PERP recovery algorithms without distillion)
     )
 
     def __init__(self, name: str, description: str):
