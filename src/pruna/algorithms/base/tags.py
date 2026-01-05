@@ -64,6 +64,10 @@ class AlgorithmTag(Enum):
         "batcher",
         "Batching groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing overall processing time.",
     )
+    RECOVERER = (
+        "recoverer",
+        "Recovery restores the performance of a model after compression.",
+    )
 
     def __init__(self, name: str, description: str):
         """
