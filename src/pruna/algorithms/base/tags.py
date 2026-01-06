@@ -68,6 +68,10 @@ class AlgorithmTag(Enum):
         "recoverer",
         "Recovery restores the performance of a model after compression.",
     )
+    DISTILLER = (
+    "distiller",
+    "Distillation trains a smaller, simpler model to mimic a larger, more complex model.",
+    )
 
     def __init__(self, name: str, description: str):
         """
