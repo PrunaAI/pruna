@@ -127,7 +127,7 @@ dependencies = [
     "ctranslate2==4.6.0",
     "whisper-s2t==1.3.1",
     "hqq==0.2.7.post1",
-    "torchao==0.12.0", #ref: https://github.com/pytorch/ao/issues/2919#issue-3375688762
+    "torchao==0.15.0", #ref: https://github.com/pytorch/ao/issues/2919#issue-3375688762
     "llmcompressor",
     "gliner; python_version >= '3.10'",
     "piq",
