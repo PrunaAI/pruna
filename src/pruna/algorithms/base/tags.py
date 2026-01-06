@@ -85,6 +85,10 @@ class AlgorithmTag(Enum):
         "Recovery restores the performance of a model after compression.",
 >>>>>>> 8215794 (added PERP recovery algorithms without distillion)
     )
+    DISTILLER = (
+    "distiller",
+    "Distillation trains a smaller, simpler model to mimic a larger, more complex model.",
+    )
 
     def __init__(self, name: str, description: str):
         """
