@@ -63,7 +63,7 @@ class DistributedServer:
         self.smash_config = smash_config
         self.device = "cuda"
         if self.world_size < 2:
-            raise ValueError("Distributers require at least 2 GPUs")
+            raise ValueError("This algorithm requires at least 2 GPUs")
 
     def set_env_vars(self):
         """Set the environment variables for torch multi-processing."""
