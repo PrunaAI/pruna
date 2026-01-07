@@ -197,8 +197,8 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         )
         # qwen_moe can use different intermediate size compared to mixtral.
         intermediate_size = (
-            model_config.moe_intermediate_size
-            if model_config.moe_intermediate_size is not None
+            getattr(model_config, "moe_intermediate_size", None)
+            if getattr(model_config, "moe_intermediate_size", None) is not None
             else model_config.intermediate_size
         )
         hidden_size = model_config.hidden_size  # model hidden dim
@@ -246,6 +246,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             outputs.append(output)
 
         configs = ray.get(outputs)
+        ray.shutdown()
 
         # (iv) Sort the configs by batch size and save the best configs
         best_configs = {
@@ -411,7 +412,13 @@ def tune(
 
     now = datetime.now()
     pruna_logger.info(f"{now.ctime()}] Completed tuning for batch_size={num_tokens}")
-    assert best_config is not None
+    if best_config is None:
+        raise RuntimeError(
+            f"No valid kernel configuration was found for batch_size={num_tokens}. "
+            "All configurations failed (e.g., due to OutOfResources). "
+            "This can happen on GPUs with limited resources. "
+            "Consider reducing your model size, batch size, or tuning search space."
+        )
     return best_config
 
 
