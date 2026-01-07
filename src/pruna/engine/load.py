@@ -580,10 +580,12 @@ def load_moe_kernel_tuner(path: str | Path, smash_config: SmashConfig, **kwargs)
     imported_packages = MoeKernelTuner().import_algorithm_packages()
     payload = getattr(smash_config, "artifacts", {}).get("moe_kernel_tuner")
     if not payload:
-        pruna_logger.error(
+        error_msg = (
             "MoE kernel tuner artifacts not found in SmashConfig. "
             "Ensure the tuner ran successfully before saving/loading."
         )
+        pruna_logger.error(error_msg)
+        raise RuntimeError(error_msg)
     else:
         best_configs = payload["best_configs_moe_kernel"]
         num_experts = payload["num_experts"]
