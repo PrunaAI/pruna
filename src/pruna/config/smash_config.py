@@ -354,6 +354,7 @@ class SmashConfig:
         self.save_fns = []
         self.load_fns = []
         self.reapply_after_load = {}
+        self.artifacts = {}
 
         # reset potentially previously used cache directory
         self.reset_cache_dir()
