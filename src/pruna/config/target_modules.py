@@ -18,9 +18,17 @@ import fnmatch
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 import torch
+from diffusers import DiffusionPipeline
 from typing_extensions import override
 
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
+from pruna.engine.model_checks import (
+    get_diffusers_transformer_models,
+    get_diffusers_unet_models,
+    is_causal_lm,
+    is_janus_llamagen_ar,
+    is_transformers_pipeline_with_causal_lm,
+)
 from pruna.engine.utils import get_nn_modules
 
 TARGET_MODULES_TYPE = Dict[Literal["include", "exclude"], List[str]]
@@ -92,6 +100,36 @@ class TargetModules(UnconstrainedHyperparameter):
             value["exclude"] = []  # for consistency
 
         return super().legal_value(value)
+
+
+def target_backbone(model: Any) -> TARGET_MODULES_TYPE:
+    """
+    Target the model or in the case of a pipeline, its backbone.
+
+    Parameters
+    ----------
+    model : Any
+        The model or pipeline.
+
+    Returns
+    -------
+    TARGET_MODULES_TYPE
+        The target modules for the model or pipeline's backbone.
+    """
+    if is_causal_lm(model):
+        return {"include": ["*"], "exclude": ["lm_head"]}
+    elif is_transformers_pipeline_with_causal_lm(model):
+        return {"include": ["model.*"], "exclude": ["model.lm_head"]}
+    elif isinstance(model, DiffusionPipeline):
+        denoiser_cls = tuple(get_diffusers_unet_models() + get_diffusers_transformer_models())
+        include = [
+            f"{attr_name}.*" for attr_name, component in model.components.items() if isinstance(component, denoiser_cls)
+        ]
+        return {"include": include, "exclude": []}
+    elif is_janus_llamagen_ar(model):
+        return {"include": ["model.language_model.*"], "exclude": []}
+    else:  # includes the unet/transformers cases and the case where the model is an undefined torch.nn.Module
+        return {"include": ["*"], "exclude": ["lm_head"]}
 
 
 def is_targeted(path: str, target_modules: TARGET_MODULES_TYPE) -> bool:
