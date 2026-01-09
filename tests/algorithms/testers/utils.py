@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import Any
 
 from pruna.config.smash_config import SmashConfig
@@ -15,7 +15,7 @@ def restrict_recovery_time(smash_config: SmashConfig, algorithm_name: str) -> No
 
 def replace_datamodule_with_distillation_datamodule(smash_config: SmashConfig, model: Any) -> None:
     """Create a distillation datamodule from the model and replace the datamodule in the smash config."""
-    cache_dir = os.path.join(smash_config.cache_dir, f"{model.__class__.__name__.lower()}_distillation")
+    cache_dir = Path(smash_config.cache_dir) / f"{model.__class__.__name__.lower()}_distillation"
     distillation_data = DiffusionDistillationDataModule(
         pipeline=model,
         caption_datamodule=smash_config.data,
