@@ -2,11 +2,11 @@ from typing import Any
 
 import pytest
 import torch
-from pruna import SmashConfig
-from pruna.engine.utils import get_nn_modules
 
+from pruna import SmashConfig
 from pruna.algorithms.distillation_perp import TextToImageLoraDistillation
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.utils import get_nn_modules
 
 from .base_tester import AlgorithmTesterBase
 from .utils import replace_datamodule_with_distillation_datamodule, restrict_recovery_time

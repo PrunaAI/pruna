@@ -2,11 +2,11 @@ from typing import Any
 
 import pytest
 import torch
-from pruna import SmashConfig
-from pruna.engine.utils import get_nn_modules
 
+from pruna import SmashConfig
 from pruna.algorithms.perp import TextToImageInPlacePERP
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.utils import get_nn_modules
 
 from .base_tester import AlgorithmTesterBase
 from .utils import restrict_recovery_time
