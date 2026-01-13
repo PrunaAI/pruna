@@ -262,7 +262,8 @@ class EvaluationAgent:
                         canonical_paths.append(canonical_path)
                     # Create aliases for the prompts if the user wants to save the artifacts with the prompt name.
                     # For doing that, the user needs to set the saving_kwargs["save_as_prompt_name"] to True.
-                    self._maybe_create_input_output_metadata(batch, canonical_paths, sample_idx, batch_idx)
+                    if self.save_in_out_metadata:
+                        self._create_input_output_metadata(batch, canonical_paths, sample_idx, batch_idx)
 
                 batch = move_batch_to_device(batch, self.device)
                 processed_outputs = move_batch_to_device(processed_outputs, self.device)
@@ -352,7 +353,7 @@ class EvaluationAgent:
             results.append(metric.compute(model, self.task.dataloader))
         return results
 
-    def _maybe_create_input_output_metadata(self, batch, canonical_paths, sample_idx, batch_idx):
+    def _create_input_output_metadata(self, batch, canonical_paths, sample_idx, batch_idx):
         """
         Write prompt-level metadata for saved artifacts.
 
@@ -371,9 +372,6 @@ class EvaluationAgent:
         -------
             None
         """
-        if not self.save_in_out_metadata:
-            return
-
         (x, _) = batch  # x = prompts
 
         metadata_path = Path(self.root_dir) / "metadata.jsonl"
