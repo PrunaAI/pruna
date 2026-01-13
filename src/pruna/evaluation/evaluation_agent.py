@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from traceback import print_tb
 from typing import Any, List, Literal
 
 import torch
