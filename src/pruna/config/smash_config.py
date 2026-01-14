@@ -40,7 +40,9 @@ ADDITIONAL_ARGS = [
     "device_map",
     "cache_dir",
     "save_fns",
+    "save_artifacts_fns",
     "load_fns",
+    "load_artifacts_fns",
     "reapply_after_load",
 ]
 
@@ -86,6 +88,8 @@ class SmashConfig:
 
         self.save_fns: list[str] = []
         self.load_fns: list[str] = []
+        self.save_artifacts_fns: list[str] = []
+        self.load_artifacts_fns: list[str] = []
         self.reapply_after_load: dict[str, str | None] = {}
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
