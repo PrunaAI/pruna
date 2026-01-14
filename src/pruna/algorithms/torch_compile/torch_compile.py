@@ -35,6 +35,7 @@ from pruna.engine.model_checks import (
     is_transformers_pipeline_with_causal_lm,
 )
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.save_artifacts import SAVE_ARTIFACTS_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 # This allows for torch compile to use more cache memory to compile the model
@@ -187,7 +188,7 @@ class TorchCompile(PrunaAlgorithmBase):
 
         # importantly, the torch artifacts saving need to be done *after* the before-compile-save
         if smash_config["torch_compile_make_portable"]:
-            smash_config.save_fns.append(SAVE_FUNCTIONS.torch_artifacts.name)
+            smash_config.save_artifacts_fns.append(SAVE_ARTIFACTS_FUNCTIONS.torch_artifacts.name)
         return output
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
