@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from pruna.algorithms.base.tags import AlgorithmTag
-from pruna.algorithms.perp import PERPRecoverer
+from pruna.algorithms.global_utils.recovery.perp_recoverer import PERPRecoverer
 
 
 class TextToImagePERPDistillation(PERPRecoverer):
@@ -38,8 +38,8 @@ class TextToImagePERPDistillation(PERPRecoverer):
     group_tags: list[AlgorithmTag] = [AlgorithmTag.DISTILLER, AlgorithmTag.RECOVERER]  # type: ignore[attr-defined]
     algorithm_name = "text_to_image_distillation_perp"
     tokenizer_required = False
-    compatible_before: Iterable[str | AlgorithmTag] = ["quanto", "torch_dynamic", "deepcache", "flux_caching"]
-    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile", "x_fast"]
+    compatible_before: Iterable[str | AlgorithmTag] = ["quanto", "torch_dynamic", "deepcache"]
+    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile"]
     runs_on: list[str] = ["cuda"]
 
     def __init__(self, use_lora: bool = True, use_in_place: bool = True) -> None:

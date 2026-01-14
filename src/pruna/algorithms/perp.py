@@ -37,8 +37,8 @@ class TextToImagePERP(PERPRecoverer):
 
     algorithm_name: str = "text_to_image_perp"
     tokenizer_required: bool = False
-    compatible_before: Iterable[str | AlgorithmTag] = ["quanto", "torch_dynamic", "deepcache", "flux_caching"]
-    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile", "x_fast"]
+    compatible_before: Iterable[str | AlgorithmTag] = ["quanto", "torch_dynamic", "deepcache"]
+    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile"]
     runs_on: list[str] = ["cuda"]
 
     def __init__(self, use_lora: bool = True, use_in_place: bool = True) -> None:
@@ -90,7 +90,7 @@ class TextToTextPERP(PERPRecoverer):
     algorithm_name: str = "text_to_text_perp"
     tokenizer_required: bool = True
     compatible_before: Iterable[str | AlgorithmTag] = ["half", "quanto", "torch_dynamic"]
-    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile", "x_fast"]
+    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile"]
 
     def __init__(self, use_lora: bool = True, use_in_place: bool = True) -> None:
         super().__init__(task_name="text_to_text", use_lora=use_lora, use_in_place=use_in_place, is_distillation=False)
