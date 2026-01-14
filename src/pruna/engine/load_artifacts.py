@@ -85,9 +85,31 @@ class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* load functions.
 
-    Artifact loaders are functions that are called *after* the main model load
+    Artifact loaders are functions that are called after the main model load
     has completed. They attach additional runtime state to the already-loaded
-    model (e.g. FP8 scales) or restore global caches.
+    model (e.g. compilation cache).
+
+    This enum provides callable functions for loading such artifacts.
+
+    Parameters
+    ----------
+    value : callable
+        The artifact load function to be called.
+    names : str
+        The name of the enum member.
+    module : str
+        The module where the enum is defined.
+    qualname : str
+        The qualified name of the enum.
+    type : type
+        The type of the enum.
+    start : int
+        The start index for auto-numbering enum values.
+
+    Examples
+    --------
+    >>> LOAD_ARTIFACTS_FUNCTIONS.torch_artifacts(model, model_path, smash_config)
+    # Torch artifacts loaded into the current runtime
     """
 
     torch_artifacts = partial(load_torch_artifacts)
