@@ -354,6 +354,8 @@ class SmashConfig:
         # flush also saving / load functionality associated with a specific configuration
         self.save_fns = []
         self.load_fns = []
+        self.save_artifacts_fns = []
+        self.load_artifacts_fns = []
         self.reapply_after_load = {}
 
         # reset potentially previously used cache directory
