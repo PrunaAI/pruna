@@ -60,6 +60,11 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     # since the model was just loaded from a file, we do not need to prepare saving anymore
     smash_config._prepare_saving = False
 
+    # Backward compatibility with torch artifacts save function
+    if "torch_artifacts" in smash_config.load_fns:
+        smash_config.load_fns.remove("torch_artifacts")
+        smash_config.load_artifacts_fns.append("torch_artifacts")
+
     resmash_fn = kwargs.pop("resmash_fn", resmash)
 
     if len(smash_config.load_fns) == 0:

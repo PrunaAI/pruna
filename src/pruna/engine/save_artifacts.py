@@ -19,7 +19,7 @@ from typing import Any
 import torch
 
 from pruna.config.smash_config import SmashConfig
-from pruna.engine.load import LOAD_FUNCTIONS
+from pruna.engine.load_artifacts import LOAD_ARTIFACTS_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
@@ -83,7 +83,7 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     artifact_path = Path(model_path) / "artifact_bytes.bin"
     artifact_path.write_bytes(artifact_bytes)
 
-    smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
+    smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.torch_artifacts.name)
 
 
 class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
