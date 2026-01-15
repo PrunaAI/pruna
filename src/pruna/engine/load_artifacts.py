@@ -16,15 +16,15 @@ from __future__ import annotations
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any
 
 import torch
 
 from pruna.config.smash_config import SmashConfig
+from pruna.engine.pruna_model import PrunaModel
 from pruna.logging.logger import pruna_logger
 
 
-def load_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+def load_artifacts(model: PrunaModel, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Load available artifacts.
 
@@ -57,7 +57,7 @@ def load_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig
         LOAD_ARTIFACTS_FUNCTIONS[fn_name](model, model_path, smash_config)
 
 
-def load_torch_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+def load_torch_artifacts(model: PrunaModel, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Load a torch artifacts from the given model path.
 
