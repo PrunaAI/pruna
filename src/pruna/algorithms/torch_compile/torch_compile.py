@@ -354,9 +354,6 @@ def fora_logic(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         model.cache_helper.double_stream_blocks_forward[idx] = compile_callable(function, smash_config)
     for idx, function in model.cache_helper.single_stream_blocks_forward.items():
         model.cache_helper.single_stream_blocks_forward[idx] = compile_callable(function, smash_config)
-    #model.text_encoder = compile_callable(model.text_encoder, smash_config)
-    #model.text_encoder_2 = compile_callable(model.text_encoder_2, smash_config)
-    #model.vae = compile_callable(model.vae, smash_config)
     return model
 
 

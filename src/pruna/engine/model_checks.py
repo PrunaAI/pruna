@@ -323,9 +323,8 @@ def is_flux_pipeline(model: Any) -> bool:
     if _check_pipeline_type(model, diffusers.pipelines.flux, "Flux"):
         return True
     # Check for Flux2 pipelines, older diffusers version might not have flux2 module
-    if hasattr(diffusers.pipelines, "flux2"):
-        if _check_pipeline_type(model, diffusers.pipelines.flux2, "Flux2"):
-            return True
+    if hasattr(diffusers.pipelines, "flux2") and _check_pipeline_type(model, diffusers.pipelines.flux2, "Flux2"):
+        return True
     return False
 
 

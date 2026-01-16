@@ -73,7 +73,9 @@ class FORA(PrunaAlgorithmBase):
                 "backbone_calls_per_step",
                 sequence=range(1, 4),
                 default_value=1,
-                meta=dict(desc="Number of backbone forward passes per diffusion step (e.g., 2 for classifier-free guidance)."),
+                meta=dict(
+                    desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."
+                ),
             ),
         ]
 
