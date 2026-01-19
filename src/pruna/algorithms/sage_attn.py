@@ -95,7 +95,7 @@ class SageAttn(PrunaAlgorithmBase):
             target_modules = self.get_model_dependent_hyperparameter_defaults(
                 model,
                 smash_config
-            )  # for consistency, not used yet
+            )
 
         def apply_sage_attn(
             root_name: str | None,
@@ -133,9 +133,6 @@ class SageAttn(PrunaAlgorithmBase):
                     continue
                 if hasattr(sub_module, "set_attention_backend"):
                     sub_module.set_attention_backend("sage_hub")
-                else:
-                    pruna_logger.warning(f"Module {root_name}.{rel_path} does not have a set_attention_backend method"
-                    "and will not be replaced with SageAttention")
             return root_nn_module
 
         return map_targeted_nn_roots(apply_sage_attn, model, target_modules)
@@ -178,7 +175,7 @@ class SageAttn(PrunaAlgorithmBase):
         """
         # So far, everything is included and nothing is excluded
         # Filtering is done in the _apply method by the set_attention_backend method
-        include = ["*"]
+        include = ["transformer*"]
         exclude = []
 
         return {"include": include, "exclude": exclude}
