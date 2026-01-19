@@ -172,7 +172,7 @@ class SageAttn(PrunaAlgorithmBase):
             A dictionary with keys "include" and "exclude" defining which modules should be
             targeted by default.
         """
-        # We include all transformer modules by default. 
+        # We include all transformer modules by default.
         # SageAttn might also be applicable to other modules but could significantly decrease model quality.
         include = ["transformer*"]
         exclude = []
