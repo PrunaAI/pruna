@@ -25,7 +25,6 @@ from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.logging.logger import pruna_logger
 
 
 class SageAttn(PrunaAlgorithmBase):
