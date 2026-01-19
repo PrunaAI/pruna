@@ -105,6 +105,25 @@ def is_speech_seq2seq_model(model: Any) -> bool:
     return False
 
 
+def is_moe_lm(model: Any) -> bool:
+    """
+    Check if the model is a MoE LM.
+
+    Currently all MoE LMs are based on Mixtral in transformers.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a MoE LM, False otherwise.
+    """
+    return hasattr(model, "num_experts")
+
+
 def is_transformers_pipeline_with_causal_lm(model: Any) -> bool:
     """
     Check if the model is a transformers pipeline (for tasks like text generation, classification, etc.).
@@ -156,6 +175,23 @@ def is_transformers_pipeline_with_speech_recognition(model: Any) -> bool:
     return isinstance(model, AutomaticSpeechRecognitionPipeline) and is_speech_seq2seq_model(
         getattr(model, "model", None)
     )
+
+
+def is_transformers_pipeline_with_moe_lm(model: Any) -> bool:
+    """
+    Check if the model is a transformers pipeline with a MoE LM.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a transformers pipeline with a MoE LM, False otherwise.
+    """
+    return isinstance(model, TextGenerationPipeline) and is_moe_lm(getattr(model, "model", None))
 
 
 def is_diffusers_pipeline(model: Any, include_video: bool = False) -> bool:
