@@ -150,6 +150,13 @@ class Torchao(PrunaAlgorithmBase):
         bool
             True if the model is suitable for torchao quantization, False otherwise.
         """
+        pruna_logger.warning(
+            "torchao has strict version compatibility requirements with torch. "
+            "If you encounter crashes when using torchao, ensure that your torch and torchao "
+            "versions are compatible, as documented in the torchao compatibility table: "
+            "https://github.com/pytorch/ao/issues/2919#issue-3375688762"
+        )
+
         transformer_models = get_diffusers_transformer_models()
         unet_models = get_diffusers_unet_models()
         if isinstance(model, tuple(transformer_models)):
