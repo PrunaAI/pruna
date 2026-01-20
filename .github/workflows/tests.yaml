@@ -24,7 +24,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.11"]
 
     steps:
       - name: Checkout code
@@ -67,7 +67,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.11"]
 
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
