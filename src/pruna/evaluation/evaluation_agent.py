@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from typing import Any, List, Literal
@@ -83,6 +84,7 @@ class EvaluationAgent:
         seed_strategy: Literal["per_sample", "no_seed"] = "no_seed",
         global_seed: int | None = None,
         artifact_saver_export_format: str | None = None,
+        save_in_out_metadata: bool = False,
         saving_kwargs: dict = dict(),
     ) -> None:
         if task is not None:
@@ -104,6 +106,7 @@ class EvaluationAgent:
         self.device = set_to_best_available_device(self.task.device)
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
+        self.save_in_out_metadata: bool = save_in_out_metadata
         self.save_artifacts: bool = save_artifacts
         if save_artifacts:
             self.root_dir = root_dir if root_dir is not None else OUTPUT_DIR
@@ -259,6 +262,11 @@ class EvaluationAgent:
                         canonical_path = self.artifact_saver.save_artifact(processed_output)
                         canonical_paths.append(canonical_path)
 
+                    # Create aliases for the prompts if the user wants to save the artifacts with the prompt name.
+                    # For doing that, the user needs to set the saving_kwargs["save_as_prompt_name"] to True.
+                    if self.save_in_out_metadata:
+                        self._create_input_output_metadata(batch, canonical_paths, sample_idx, batch_idx)
+
                 batch = move_batch_to_device(batch, self.device)
                 processed_outputs = move_batch_to_device(processed_outputs, self.device)
                 (x, gt) = batch
@@ -346,3 +354,47 @@ class EvaluationAgent:
         for metric in children_of_base:
             results.append(metric.compute(model, self.task.dataloader))
         return results
+
+
+    def _create_input_output_metadata(self, batch, canonical_paths, sample_idx, batch_idx):
+        """
+        Write prompt-level metadata for saved artifacts.
+
+        If ``save_prompt_metadata`` is enabled, this function appends one JSONL
+        record per prompt to ``metadata.jsonl`` in the run output directory.
+        The canonical filename is used as the stable identifier.
+
+        Args:
+            batch: Batch tuple where the first element contains the prompts.
+            canonical_paths: List of canonical file paths corresponding to each
+                prompt in the batch.
+            sample_idx: Index of the current sample within the evaluation run.
+            batch_idx: Index of the batch within the evaluation dataloader loop.
+
+        Returns:
+        -------
+            None
+        """
+        (x, _) = batch  # x = prompts
+
+        metadata_path = Path(self.root_dir) / "metadata.jsonl"
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+
+        model_role = "reference" if self.evaluation_for_first_model else "candidate"
+
+        with metadata_path.open("a", encoding="utf-8") as f:
+            for prompt_idx, prompt in enumerate(x):
+                record = {
+                    # Model role: reference or candidate
+                    "model_role": model_role,
+                    # stable ID (file actually on disk)
+                    "file": Path(canonical_paths[prompt_idx]).name,
+                    # full path
+                    "canonical_path": str(canonical_paths[prompt_idx]),
+                    # original prompt
+                    "prompt": str(prompt),
+                    "sample_idx": sample_idx,
+                    "batch_idx": batch_idx,
+                    "prompt_idx": prompt_idx,
+                }
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from pruna.evaluation.artifactsavers.artifactsaver import ArtifactSaver
 from pruna.evaluation.artifactsavers.video_artifactsaver import VideoArtifactSaver
+from pruna.evaluation.artifactsavers.image_artifactsaver import ImageArtifactSaver
 
 
 def assign_artifact_saver(
@@ -28,11 +29,11 @@ def assign_artifact_saver(
 
     Parameters
     ----------
-    modality : str
+    modality: str
         The modality of the data.
-    root : str
+    root: str
         The root directory to save the artifacts.
-    export_format : str
+    export_format: str
         The format to save the artifacts.
 
     Returns
@@ -42,5 +43,7 @@ def assign_artifact_saver(
     """
     if modality == "video":
         return VideoArtifactSaver(root=root, export_format=export_format)
+    if modality == "image":
+        return ImageArtifactSaver(root=root, export_format=export_format)
     else:
         raise ValueError(f"Modality {modality} is not supported")
