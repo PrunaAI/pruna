@@ -69,6 +69,14 @@ class FORA(PrunaAlgorithmBase):
                 default_value=2,
                 meta=dict(desc="How many steps to wait before starting to cache."),
             ),
+            OrdinalHyperparameter(
+                "backbone_calls_per_step",
+                sequence=range(1, 4),
+                default_value=1,
+                meta=dict(
+                    desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."
+                ),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -103,7 +111,12 @@ class FORA(PrunaAlgorithmBase):
         Any
             The model with FORA caching enabled.
         """
-        model.cache_helper = CacheHelper(model, smash_config["interval"], smash_config["start_step"])
+        model.cache_helper = CacheHelper(
+            model,
+            smash_config["interval"],
+            smash_config["start_step"],
+            smash_config["backbone_calls_per_step"],
+        )
         model.cache_helper.enable()
         return model
 
@@ -120,19 +133,22 @@ class CacheHelper:
         The interval at which the transformer outputs are computed.
     start_step : int
         The step at which the interval caching starts.
+    backbone_calls_per_step : int
+        Number of backbone forward passes per diffusion step (e.g., 2 for classifier-free guidance).
     """
 
-    def __init__(self, pipe: Any, interval: int, start_step: int) -> None:
+    def __init__(self, pipe: Any, interval: int, start_step: int, backbone_calls_per_step: int = 1) -> None:
         self.pipe = pipe
         self.transformer = pipe.transformer
         self.interval = interval
         self.start_step = start_step
+        self.backbone_calls_per_step = backbone_calls_per_step
 
         # the cache schedule contains the caching decision for each step
         # 1 = compute outputs for step, 0 = reuse cached outputs
         self.cache_schedule: List[int] = []
         self.step: int = 0
-
+        self._forward_call_count: int = 0
         # Store original methods to be able to restore them later
         self.transformer_forward: Optional[Callable] = None
         self.pipe_call: Optional[Callable] = None
@@ -186,7 +202,12 @@ class CacheHelper:
             block.forward = self.single_stream_blocks_forward[idx]
         self.reset()
 
-    def set_params(self, interval: Optional[int] = None, start_step: Optional[int] = None) -> None:
+    def set_params(
+        self,
+        interval: Optional[int] = None,
+        start_step: Optional[int] = None,
+        backbone_calls_per_step: Optional[int] = None,
+    ) -> None:
         """
         Set caching parameters.
 
@@ -196,6 +217,8 @@ class CacheHelper:
             The interval at which the transformer outputs are computed.
         start_step : Optional[int]
             The step at which caching starts.
+        backbone_calls_per_step : Optional[int]
+            Number of backbone forward passes per diffusion step (e.g., 2 for CFG).
         """
         if interval is not None:
             if not isinstance(interval, int):
@@ -209,6 +232,12 @@ class CacheHelper:
             if start_step < 0:
                 raise ValueError("start_step must be non-negative.")
             self.start_step = start_step
+        if backbone_calls_per_step is not None:
+            if not isinstance(backbone_calls_per_step, int):
+                raise ValueError("backbone_calls_per_step must be an integer.")
+            if backbone_calls_per_step < 1:
+                raise ValueError("backbone_calls_per_step must be at least 1.")
+            self.backbone_calls_per_step = backbone_calls_per_step
 
     def wrap_pipe(self, pipe: Any) -> None:
         """
@@ -244,10 +273,13 @@ class CacheHelper:
         @functools.wraps(transformer_forward)
         def wrapped_forward(*args, **kwargs):  # noqa: ANN201
             num_steps = len(self.pipe.scheduler.timesteps)
-            if self.step == 0:
+            if self.step == 0 and self._forward_call_count == 0:
                 self.cache_schedule = self.get_cache_schedule(num_steps)
             result = transformer_forward(*args, **kwargs)
-            self.step += 1
+            self._forward_call_count += 1
+            if self._forward_call_count >= self.backbone_calls_per_step:
+                self._forward_call_count = 0
+                self.step += 1
             return result
 
         transformer.forward = wrapped_forward
@@ -268,12 +300,14 @@ class CacheHelper:
 
         @functools.wraps(block_forward)
         def wrapped_forward(*args, **kwargs):  # noqa: ANN201
+            # Use (layer, call_idx) as cache key to separate cond/uncond caches for CFG
+            cache_key = (layer, self._forward_call_count)
             if self.cache_schedule[self.step]:
                 output = self.double_stream_blocks_forward[layer](*args, **kwargs)
-                self.double_stream_blocks_cache[layer] = output
+                self.double_stream_blocks_cache[cache_key] = output
                 return output
             else:
-                return self.double_stream_blocks_cache[layer]
+                return self.double_stream_blocks_cache[cache_key]
 
         block.forward = wrapped_forward
 
@@ -293,12 +327,14 @@ class CacheHelper:
 
         @functools.wraps(block_forward)
         def wrapped_forward(*args, **kwargs):  # noqa: ANN201
+            # Use (layer, call_idx) as cache key to separate cond/uncond caches for CFG
+            cache_key = (layer, self._forward_call_count)
             if self.cache_schedule[self.step]:
                 result = self.single_stream_blocks_forward[layer](*args, **kwargs)
-                self.single_stream_blocks_cache[layer] = result
+                self.single_stream_blocks_cache[cache_key] = result
                 return result
             else:
-                return self.single_stream_blocks_cache[layer]
+                return self.single_stream_blocks_cache[cache_key]
 
         block.forward = wrapped_forward
 
@@ -307,3 +343,4 @@ class CacheHelper:
         self.double_stream_blocks_cache.clear()
         self.single_stream_blocks_cache.clear()
         self.step = 0
+        self._forward_call_count = 0

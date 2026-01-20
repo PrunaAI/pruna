@@ -344,7 +344,7 @@ def is_transformer_pipeline(model: Any) -> bool:
 
 def is_flux_pipeline(model: Any) -> bool:
     """
-    Check if model is a Flux pipeline.
+    Check if model is a Flux pipeline or a Flux2 pipeline.
 
     Parameters
     ----------
@@ -354,9 +354,12 @@ def is_flux_pipeline(model: Any) -> bool:
     Returns
     -------
     bool
-        True if model is a Flux pipeline, False otherwise.
+        True if model is a Flux pipeline or a Flux2 pipeline, False otherwise.
     """
-    return _check_pipeline_type(model, diffusers.pipelines.flux, "Flux")
+    if _check_pipeline_type(model, diffusers.pipelines.flux, "Flux"):
+        return True
+    # Check for Flux2 pipelines, older diffusers version might not have flux2 module
+    return hasattr(diffusers.pipelines, "flux2") and _check_pipeline_type(model, diffusers.pipelines.flux2, "Flux2")
 
 
 def is_sdxl_pipeline(model: Any) -> bool:
