@@ -68,8 +68,14 @@ class DiffuserHandler(InferenceHandler):
         Any
             The prepared inputs.
         """
+        # Many diffusers pipelines accept `prompt`, but it is not always the first positional argument
+        # (e.g. some pipelines have `image` first and `prompt` second). To be robust, pass prompts
+        # as a keyword argument whenever possible.
         if "prompt" in self.call_signature.parameters or "args" in self.call_signature.parameters:
             x, _ = batch
+            if "prompt" in self.call_signature.parameters:
+                return {"prompt": x}
+            # Fallback: pipelines that use *args without a named `prompt`
             return x
         else:  # Unconditional generation models
             return None
