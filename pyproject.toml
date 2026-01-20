@@ -103,7 +103,7 @@ dependencies = [
     "transformers",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
-    "datasets>=0.34",
+    "datasets>=3.0",
     "numpy>=1.24.4",
     "numpydoc>=1.6.0",
     "diffusers>=0.21.4",
