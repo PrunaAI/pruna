@@ -168,6 +168,9 @@ class TorchMetrics(Enum):
         The type of the enum value.
     start : int
         The starting value for the enum.
+    boundary : enum.FlagBoundary or None
+        Boundary handling mode used by the Enum functional API for Flag and
+        IntFlag enums.
     """
 
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")

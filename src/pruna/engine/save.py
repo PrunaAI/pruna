@@ -528,6 +528,9 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
         The type of the enum.
     start : int
         The start index for auto-numbering enum values.
+    boundary : enum.FlagBoundary or None
+        Boundary handling mode used by the Enum functional API for Flag and
+        IntFlag enums.
 
     Examples
     --------
