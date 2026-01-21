@@ -42,8 +42,11 @@ from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
     CALL_TYPES,
+    IMAGE,
+    MODALITIES,
     PAIRWISE,
     SINGLE,
+    TEXT,
     get_pairwise_pairing,
     get_single_pairing,
     metric_data_processor,
@@ -124,9 +127,7 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
 
 
 def ssim_update(
-        metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure,
-        preds: Any,
-        target: Any
+    metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure, preds: Any, target: Any
 ) -> None:
     """
     Update handler for SSIM or MS-SSIM metric.
@@ -173,6 +174,24 @@ class TorchMetrics(Enum):
         IntFlag enums.
     """
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ccb1b25 (feat: metric modalities as sets)
+    fid = (partial(FrechetInceptionDistance), fid_update, "gt_y", {IMAGE})
+    accuracy = (partial(Accuracy), None, "y_gt", MODALITIES)
+    perplexity = (partial(Perplexity), None, "y_gt", {TEXT})
+    clip_score = (partial(CLIPScore), None, "y_x", {IMAGE})
+    precision = (partial(Precision), None, "y_gt", MODALITIES)
+    recall = (partial(Recall), None, "y_gt", MODALITIES)
+    psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt", {IMAGE})
+    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", {IMAGE})
+    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt", {IMAGE})
+    lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt", {IMAGE})
+    arniqa = (partial(ARNIQA), arniqa_update, "y", {IMAGE})
+    clipiqa = (partial(CLIPImageQualityAssessment), None, "y", {IMAGE})
+<<<<<<< HEAD
+=======
     fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
     accuracy = (partial(Accuracy), None, "y_gt")
     perplexity = (partial(Perplexity), None, "y_gt")
@@ -185,11 +204,22 @@ class TorchMetrics(Enum):
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
     arniqa = (partial(ARNIQA), arniqa_update, "y")
     clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
+>>>>>>> 7d11666 (Kid metric added (#435))
+=======
+>>>>>>> ccb1b25 (feat: metric modalities as sets)
 
     def __init__(self, *args, **kwargs) -> None:
         self.tm = self.value[0]
         self.update_fn = self.value[1] or default_update
         self.call_type = self.value[2]
+<<<<<<< HEAD
+<<<<<<< HEAD
+        self.modality = self.value[3]
+=======
+        self.compute_fn = self.value[3] if len(self.value) > 3 else None
+>>>>>>> 7d11666 (Kid metric added (#435))
+=======
+>>>>>>> 2629405 (Pin `torchao==0.12.0` to avoid PyTorch ABI warnings, also pin `numpydoc>=1.6.0` and `ty==0.0.1a21` for compatibility. (#417))
 
     def __call__(self, **kwargs) -> Metric:
         """
@@ -263,6 +293,15 @@ class TorchMetricWrapper(StatefulMetric):
 
             # Get the specific update function for the metric, or use the default if not found.
             self.update_fn = TorchMetrics[metric_name].update_fn
+<<<<<<< HEAD
+<<<<<<< HEAD
+            self.modality = TorchMetrics[metric_name].modality
+=======
+            # Get the compute function if available (e.g., for KID), otherwise None
+            self.compute_fn = TorchMetrics[metric_name].compute_fn
+>>>>>>> 7d11666 (Kid metric added (#435))
+=======
+>>>>>>> 2629405 (Pin `torchao==0.12.0` to avoid PyTorch ABI warnings, also pin `numpydoc>=1.6.0` and `ty==0.0.1a21` for compatibility. (#417))
         except KeyError:
             raise ValueError(f"Metric {metric_name} is not supported.")
 
