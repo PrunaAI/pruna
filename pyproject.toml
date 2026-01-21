@@ -142,7 +142,7 @@ dependencies = [
 [project.optional-dependencies]
 stable-fast = [
     "xformers>=0.0.30",
-    "stable-fast-pruna==1.0.7",
+    "stable-fast-pruna==1.0.8",
 ]
 # dependencies are added here because the wheels aren't bundling them
 gptq = [
@@ -156,7 +156,7 @@ gptq = [
 ]
 full = [
     "xformers>=0.0.30",
-    "stable-fast-pruna==1.0.7",
+    "stable-fast-pruna==1.0.8",
 ]
 dev = [
     "wget",
