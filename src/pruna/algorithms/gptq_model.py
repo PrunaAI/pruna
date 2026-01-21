@@ -94,6 +94,10 @@ class GPTQ(PrunaAlgorithmBase):
         bool
             True if the model is a causal language model, False otherwise.
         """
+        import torch
+        torch_version = torch.__version__
+        if "2.7" not in torch_version:
+            raise RuntimeError(f"GPTQ is only supported on PyTorch 2.7.x, but got {torch_version}")
         return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
