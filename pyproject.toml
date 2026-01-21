@@ -195,7 +195,7 @@ dev = [
 ]
 cpu = []
 intel = [
-    "intel-extension-for-pytorch==2.7.0",
+    "intel-extension-for-pytorch>=2.7.0",
 ]
 
 [build-system]
