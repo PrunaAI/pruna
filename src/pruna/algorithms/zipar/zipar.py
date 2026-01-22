@@ -15,12 +15,15 @@
 from typing import Any, Dict
 
 from ConfigSpace import UniformIntegerHyperparameter
+from packaging.version import Version
+from transformers import __version__ as transformers_version
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.algorithms.zipar.utils import JanusZipARGenerator
 from pruna.engine.model_checks import is_janus_llamagen_ar
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.logging.logger import pruna_logger
 
 
 class ZipAR(PrunaAlgorithmBase):
@@ -55,8 +58,16 @@ class ZipAR(PrunaAlgorithmBase):
         Returns
         -------
         bool
-            True if the model is a Janus LlamaGen AR model, False otherwise.
+            True if the model is a Janus LlamaGen AR model and transformers version is 4.54.0, False otherwise.
         """
+        # Check transformers version - ZipAR requires transformers==4.54.0 due to Janus code instability
+        if Version(transformers_version) != Version("4.54.0"):
+            pruna_logger.warning(
+                f"ZipAR requires transformers==4.54.0, but found {transformers_version}. "
+                "Install with: pip install pruna[zipar]"
+            )
+            return False
+
         return is_janus_llamagen_ar(model)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
