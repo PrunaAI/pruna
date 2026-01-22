@@ -25,7 +25,7 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.utils import determine_dtype
+from pruna.engine.utils import determine_dtype, get_device
 
 
 class Img2ImgDenoise(PrunaAlgorithmBase):
@@ -211,7 +211,7 @@ class DenoiseHelper:
         self.original_pipe_call = self.model.__call__
         self.strength = strength
         # Store device for placing tensors if needed
-        self.device = getattr(model, "device", torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+        self.device = torch.device(get_device(model))
 
     def _wrapped_pipe_call(self, *args, **kwargs) -> Any:
         """
