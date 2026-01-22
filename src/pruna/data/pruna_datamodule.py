@@ -25,6 +25,9 @@ from torch.utils.data import Dataset as TorchDataset
 from transformers.tokenization_utils import PreTrainedTokenizer as AutoTokenizer
 
 from pruna.data import base_datasets
+from pruna.evaluation.benchmarks.adapter import benchmark_to_datasets
+from pruna.evaluation.benchmarks.base import Benchmark
+from pruna.evaluation.benchmarks.registry import BenchmarkRegistry
 from pruna.data.collate import pruna_collate_fns
 from pruna.data.utils import TokenizerMissingError
 from pruna.logging.logger import pruna_logger
@@ -161,6 +164,13 @@ class PrunaDataModule(LightningDataModule):
         PrunaDataModule
             The PrunaDataModule.
         """
+        # Check if it's a benchmark first
+        benchmark_class = BenchmarkRegistry.get(dataset_name)
+        if benchmark_class is not None:
+            return cls.from_benchmark(
+                benchmark_class(seed=seed), tokenizer, collate_fn_args, dataloader_args
+            )
+
         setup_fn, collate_fn_name, default_collate_fn_args = base_datasets[dataset_name]
 
         # use default collate_fn_args and override with user-provided ones
@@ -175,6 +185,50 @@ class PrunaDataModule(LightningDataModule):
 
         train_ds, val_ds, test_ds = setup_fn()
 
+        return cls.from_datasets(
+            (train_ds, val_ds, test_ds), collate_fn_name, tokenizer, collate_fn_args, dataloader_args
+        )
+
+    @classmethod
+    def from_benchmark(
+        cls,
+        benchmark: Benchmark,
+        tokenizer: AutoTokenizer | None = None,
+        collate_fn_args: dict = dict(),
+        dataloader_args: dict = dict(),
+    ) -> "PrunaDataModule":
+        """
+        Create a PrunaDataModule from a Benchmark instance.
+
+        Parameters
+        ----------
+        benchmark : Benchmark
+            The benchmark instance.
+        tokenizer : AutoTokenizer | None
+            The tokenizer to use (if needed for the task type).
+        collate_fn_args : dict
+            Any additional arguments for the collate function.
+        dataloader_args : dict
+            Any additional arguments for the dataloader.
+
+        Returns
+        -------
+        PrunaDataModule
+            The PrunaDataModule.
+        """
+        train_ds, val_ds, test_ds = benchmark_to_datasets(benchmark)
+        
+        # Determine collate function based on task type
+        task_to_collate = {
+            "text_to_image": "prompt_collate",
+            "text_generation": "text_generation_collate",
+            "audio": "audio_collate",
+            "image_classification": "image_classification_collate",
+            "question_answering": "question_answering_collate",
+        }
+        
+        collate_fn_name = task_to_collate.get(benchmark.task_type, "prompt_collate")
+        
         return cls.from_datasets(
             (train_ds, val_ds, test_ds), collate_fn_name, tokenizer, collate_fn_args, dataloader_args
         )
