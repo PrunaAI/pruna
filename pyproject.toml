@@ -78,7 +78,7 @@ gptqmodel = [
 
 [project]
 name = "pruna"
-version = "0.3.0"
+version = "0.3.1"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
