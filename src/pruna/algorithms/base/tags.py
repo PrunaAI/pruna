@@ -67,6 +67,10 @@ class AlgorithmTag(Enum):
         "batcher",
         "Batching groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing overall processing time.",
     )
+    ENHANCER = (
+        "enhancer",
+        "Enhancers improve the quality of the model's output. Enhancers can range from post-processing to test time compute algorithms.",
+    )
 
     def __init__(self, name: str, description: str):
         """
