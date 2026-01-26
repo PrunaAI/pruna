@@ -145,7 +145,6 @@ stable-fast = [
     "stable-fast-pruna==1.0.8",
 ]
 
-
 sparge-attn = [
   "ninja",
   "spas_sage_attn @ git+https://github.com/thu-ml/SpargeAttn.git",
