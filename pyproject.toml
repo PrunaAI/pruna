@@ -144,6 +144,13 @@ stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
 ]
+
+
+sparge-attn = [
+  "ninja",
+  "spas_sage_attn @ git+https://github.com/thu-ml/SpargeAttn.git",
+]
+
 # dependencies are added here because the wheels aren't bundling them
 gptq = [
     "logbar",
