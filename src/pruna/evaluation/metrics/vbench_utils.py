@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import inspect
 import hashlib
 import re
 from pathlib import Path
@@ -265,7 +266,7 @@ def prepare_batch(batch: str | tuple[str | List[str], Any], task: str = "t2v", t
         raise ValueError(f"Invalid task: {task}. Use 'i2v' or 't2v'.")
 
 
-def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
+def _normalize_save_format(save_format: str, save_fn: Callable = None) -> tuple[str, Callable]:
     """
     Normalize the save format to be used in the generate_videos function.
 
@@ -279,10 +280,16 @@ def _normalize_save_format(save_format: str) -> tuple[str, Callable]:
     tuple[str, Callable]
         The normalized save format and the save function.
     """
+    
     save_format = save_format.lower().strip()
-    if save_format == "mp4":
+    if not save_format.startswith("."):
+        save_format = "." + save_format
+    
+    if save_fn is not None:
+        return save_format, save_fn
+    if save_format == ".mp4":
         return ".mp4", export_to_video
-    if save_format == "gif":
+    if save_format == ".gif":
         return ".gif", export_to_gif
     raise ValueError(f"Invalid save_format: {save_format}. Use 'mp4' or 'gif'.")
 
@@ -378,13 +385,13 @@ def create_vbench_file_name(
     return filename
 
 
-def sample_video_from_pipelines(pipeline: Any, seeder: Any, prompt: str, **kwargs):
+def sample_video_from_pipelines(model: Any, seeder: Any, prompt: str, **kwargs):
     """
     Sample a video from diffusers pipeline.
 
     Parameters
     ----------
-    pipeline : Any
+    model : Any
         The pipeline to sample from.
     seeder : Any
         The seeding generator.
@@ -401,46 +408,42 @@ def sample_video_from_pipelines(pipeline: Any, seeder: Any, prompt: str, **kwarg
     is_return_dict = kwargs.pop("return_dict", True)
     with torch.inference_mode():
         if is_return_dict:
-            out = pipeline(prompt=prompt, generator=seeder, **kwargs).frames[0]
+            out = model(prompt=prompt, generator=seeder, **kwargs).frames[0]
         else:
             # If return_dict is False, the pipeline returns a tuple of (frames, metadata).
-            out = pipeline(prompt=prompt, generator=seeder, **kwargs)[0]
+            out = model(prompt=prompt, generator=seeder, **kwargs)[0]
 
     return out
 
-
-def _wrap_sampler(model: Any, sampling_fn: Callable[..., Any]) -> Callable[..., Any]:
+def seed_rng(x: int) -> torch.Generator:
     """
-    Wrap a user-provided sampling function into a uniform callable.
-
-    The returned callable has a keyword-only signature:
-        sampler(*, prompt: str, seeder: Any, device: str|torch.device, **kwargs)
-
-    This wrapper always passes `model` as the first positional argument, so
-    custom functions can name their first parameter `model` or `pipeline`, etc.
-
+    Seed the RNG.
     Parameters
     ----------
-    model : Any
-        The model to sample from.
-    sampling_fn : Callable[..., Any]
-        The sampling function to wrap.
+    x : int
+        The seed to seed the RNG with.
 
     Returns
     -------
-    Callable[..., Any]
-        The wrapped sampling function.
+    torch.Generator
+        The seeded RNG.
     """
-    if sampling_fn != sample_video_from_pipelines:
-        pruna_logger.info(
-            "Using custom sampling function. Ensure it accepts (model, *, prompt, seeder, device, **kwargs)."
-        )
+    return torch.Generator("cpu").manual_seed(x)
 
-    # The sampling function may expect the model as "pipeline" so we pass it as an arg and not a kwarg.
-    def sampler(*, prompt: str, seeder: Any, **kwargs: Any) -> Any:
-        return sampling_fn(model, prompt=prompt, seeder=seeder, **kwargs)
+def sample_seed(x: int) -> int:
+    """
+    Sample a seed.
+    Parameters
+    ----------
+    x : int
+        The seed to sample.
 
-    return sampler
+    Returns
+    -------
+    int
+        The sampled seed.
+    """
+    return torch.randint(low=0, high=2**31 -1, generator=seed_rng(x), dtype=torch.int64, size=(1,)).item()
 
 
 def generate_videos(
@@ -452,17 +455,17 @@ def generate_videos(
     partition_index: int = 0,
     split: str = "test",
     unique_sample_per_video_count: int = 1,
-    global_seed: int = 42,
     sampling_fn: Callable[..., Any] = sample_video_from_pipelines,
-    fps: int = 16,
+    save_fn: Callable = None,
     save_dir: str | Path = "./saved_videos",
     save_format: str = "mp4",
     filename_fn: Callable = create_vbench_file_name,
     special_str: str = "",
-    device: str | torch.device = None,
     experiment_name: str = "",
     sampling_seed_fn: Callable[..., Any] = get_sample_seed,
+    get_next_seed_fn: Callable[..., Any] = seed_rng,
     pipeline_task: str = "t2v",
+    save_kwargs: dict = {},
     **model_kwargs,
 ) -> None:
     """
@@ -521,9 +524,7 @@ def generate_videos(
     **model_kwargs : Any
         Additional keyword arguments to pass to the sampling function.
     """
-    file_extension, save_fn = _normalize_save_format(save_format)
-
-    device = set_to_best_available_device(device)
+    file_extension, save_fn = _normalize_save_format(save_format, save_fn)
 
     prompt_iterable = _normalize_prompts(inputs, split, batch_size=1, num_samples=num_samples,
     fraction=samples_fraction, data_partition_strategy=data_partition_strategy,
@@ -532,20 +533,29 @@ def generate_videos(
     save_dir = Path(save_dir)
     _ensure_dir(save_dir)
 
-    # set a run-level seed (VBench suggests this) (important for reproducibility)
-    def seed_rng(x: int) -> torch.Generator:
-        return torch.Generator("cpu").manual_seed(x)
-    sampler = _wrap_sampler(model=model, sampling_fn=sampling_fn)
-
-    target_height = model_kwargs.get("target_height", 720)
-    target_width = model_kwargs.get("target_width", 1280)
+    # Try to use model's __call__ signature default for 'height' and 'width', else fallback to 720 and 1280.
+    model_call_params = inspect.signature(getattr(model, "__call__", lambda: None)).parameters
+    if "height" in model_call_params:
+        target_height = model_kwargs.get("height", model_call_params["height"].default)
+        if target_height is inspect.Parameter.empty:
+            target_height = 720
+    if "width" in model_call_params:
+        target_width = model_kwargs.get("width", model_call_params["width"].default)
+        if target_width is inspect.Parameter.empty:
+            target_width = 1280
     mod_value = 1
     if pipeline_task == "i2v":
-        mod_value = model.vae_scale_factor_spatial * model.transformer.config.patch_size[1]
+        vae_scale = getattr(model, "vae_scale_factor_spatial", 1)
+        patch_size = getattr(getattr(model, "transformer", None), "config", {}).get("patch_size", [1, 1])[1]
+        mod_value = vae_scale * patch_size
 
     for batch in prompt_iterable:
         prompt, image = prepare_batch(batch, task=pipeline_task,
         target_height=target_height, target_width=target_width, mod_value=mod_value)
+        if image:
+            model_kwargs.update({"height": image.height, "width": image.width})
+        sampling_params = model_kwargs.copy()
+        sampling_params.update({"model": model, "prompt": prompt, "seeder": None, "image": image})
         for idx in range(unique_sample_per_video_count):
             file_name = filename_fn(sanitize_prompt(prompt), idx, special_str, file_extension)
             out_path = save_dir / file_name
@@ -554,13 +564,11 @@ def generate_videos(
                 continue
             else:
                 seed = sampling_seed_fn(experiment_name, prompt, idx)
-                if pipeline_task == "i2v":
-                    vid = sampler(prompt=prompt, image=image, seeder=seed_rng(seed), **model_kwargs)
-                elif pipeline_task == "t2v":
-                    vid = sampler(prompt=prompt, seeder=seed_rng(seed), **model_kwargs)
-                else:
-                    raise ValueError(f"Invalid task: {pipeline_task}. Use 'i2v' or 't2v'.")
-                save_fn(vid, out_path, fps=fps)
+                seeder = get_next_seed_fn(seed)
+                sampling_params["seeder"] = seeder
+                vid = sampling_fn(**sampling_params)
+
+                save_fn(vid, out_path, **save_kwargs)
 
                 del vid
                 safe_memory_cleanup()
