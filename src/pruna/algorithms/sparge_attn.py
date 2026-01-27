@@ -56,7 +56,7 @@ class SpargeAttn(PrunaAlgorithmBase):
     def required_install(self) -> str | None:
         # Instruction string. Pruna will display it on import errors.
         return (
-            "Requires the SpargeAttn CUDA package providing `spas_sage_attn`."
+            "Requires the SpargeAttn package providing `spas_sage_attn`."
             "Please install the pruna extension pip install pruna[sparge-attn] or" 
             "install the sparge-attn package manually from the github repository:"
             "https://github.com/thu-ml/SpargeAttn"
