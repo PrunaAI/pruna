@@ -65,7 +65,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["qkv_diffusers"]
-    compatible_after: Iterable[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile"]
+    compatible_after: Iterable[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile", "sage_attn"]
 
     def get_hyperparameters(self) -> list:
         """
