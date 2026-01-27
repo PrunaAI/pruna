@@ -93,9 +93,10 @@ jobs:
             .cache/huggingface/datasets
             .cache/huggingface/hub
             .cache/huggingface/models
-          key: hf-datasets-${{ runner.os }}-${{ hashFiles('tests/**/*.py') }}
+          key: hf-cache-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
-            hf-datasets-${{ runner.os }}-
+            hf-cache-${{ runner.os }}-${{ matrix.python-version }}-
+            hf-cache-${{ runner.os }}-
 
       - name: Export HF token for subprocesses
         run: |
