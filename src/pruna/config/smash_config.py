@@ -242,12 +242,6 @@ class SmashConfig:
             "batcher",
             "factorizer",
             "kernel",
-            "distiller",
-            "recoverer",
-            "enhancer",
-            "distributer",
-            "resampler",
-            "decoder",
         ]
         for name in deprecated_keys:
             if name in config_dict:

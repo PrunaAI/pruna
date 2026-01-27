@@ -69,6 +69,7 @@ class TorchCompile(PrunaAlgorithmBase):
         "flash_attn3",
         "deepcache",
         "fora",
+        "ring_attn",
     ]
 
     def get_hyperparameters(self) -> list:
