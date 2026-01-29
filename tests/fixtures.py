@@ -91,6 +91,15 @@ def get_diffusers_model(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, S
     return model, smash_config
 
 
+def get_diffusers_model_with_tokenizer(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
+    """Get a diffusers model for image generation."""
+    model, _ = get_diffusers_model(model_id, **kwargs)
+    smash_config = SmashConfig()
+    smash_config.add_data("LAION256")
+    smash_config.add_tokenizer("openai/clip-vit-base-patch32")
+    return model, smash_config
+
+
 def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
     """Get an AutoModelForCausalLM model for text generation."""
     model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
@@ -184,6 +193,9 @@ MODEL_FACTORY: dict[str, Callable] = {
     "sd_tiny_random": partial(get_diffusers_model, "dg845/tiny-random-stable-diffusion"),
     "sana_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-sana"),
     "flux_tiny_random": partial(get_diffusers_model, "katuni4ka/tiny-random-flux", torch_dtype=torch.bfloat16),
+    "flux_tiny_random_with_tokenizer": partial(
+        get_diffusers_model_with_tokenizer, "katuni4ka/tiny-random-flux", torch_dtype=torch.float16
+    ),
     # text generation models
     "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
     "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
