@@ -447,9 +447,9 @@ def sample_seed(x: int) -> int:
 
 
 def generate_videos(
-    model: Any,
     inputs: str | List[str] | PrunaDataModule,
     num_samples: int | None = None,
+    model: Any | None = None,
     samples_fraction: float = 1.0,
     data_partition_strategy: str = "indexed",
     partition_index: int = 0,
@@ -469,42 +469,36 @@ def generate_videos(
     **model_kwargs,
 ) -> None:
     """
-    Generate N samples per prompt and save them to disk with seed tracking.
+    Generate N samples per prompt and save them to disk.
 
-    This function:
-      - Normalizes prompts (string, list, or datamodule).
-      - Uses an RNG seeded with `global_seed` for reproducibility across runs.
-      - Saves videos as MP4 or GIF.
 
     Parameters
     ----------
-    model : Any
-        The model to sample from.
     inputs : str | List[str] | List[tuple(str, Any)]| PrunaDataModule
         The inputs to sample from.
     num_samples : int | None
         The number of samples to generate. If unique_sample_per_video_count is greater than 1,
         the total number of outputs will be num_samples * unique_sample_per_video_count.
+    model : Any | None
+        The model to sample from.
     samples_fraction : float
-        The fraction of the dataset to sample from.
+        The fraction of the dataset to sample from. Only supported for PrunaDataModule.
     data_partition_strategy : str
-        The strategy to use for partitioning the dataset. Can be "indexed" or "random".
+        The strategy to use for partitioning the dataset. Can be "indexed" or "random". Only supported for PrunaDataModule.
         Indexed means that the dataset will be partitioned and the partition_index will be used to select the partition.
         Random means that the dataset will be shuffled and the first num_samples or samples_fraction will be used.
         Indexed is the default strategy.
     partition_index : int
-        The index to use for partitioning the dataset.
+        The index to use for partitioning the dataset. Only supported for PrunaDataModule.
     split : str
-        The split to sample from.
+        The split to sample from. Only supported for PrunaDataModule.
         Default is "test" since most benchmarking datamodules in Pruna are configured to use the test split.
     unique_sample_per_video_count : int
         The number of unique samples per video.
-    global_seed : int
-        The global seed to sample from.
     sampling_fn : Callable[..., Any]
         The sampling function to use.
-    fps : int
-        The frames per second of the exported video.
+    save_fn : Callable
+        The function to save the videos.
     save_dir : str | Path
         The directory to save the videos to.
     save_format : str
@@ -513,14 +507,16 @@ def generate_videos(
         The function to create the file name.
     special_str : str
         A special string to add to the file name if you wish to add a specific identifier.
-    device : str | torch.device | None
-        The device to sample on. If None, the best available device will be used.
     experiment_name : str
         The name of the experiment. Used to create the seed.
     sampling_seed_fn : Callable[..., Any]
-        The function to create the seed.
+        The function to create the global seed.
+    get_next_seed_fn : Callable[..., Any]
+        The function to create the next seed.
     pipeline_task: str
         The task to perform with the pipeline. Can be "i2v" or "t2v".
+    save_kwargs : dict
+        Additional keyword arguments to pass to the save function.
     **model_kwargs : Any
         Additional keyword arguments to pass to the sampling function.
     """
@@ -533,18 +529,20 @@ def generate_videos(
     save_dir = Path(save_dir)
     _ensure_dir(save_dir)
 
-    # Try to use model's __call__ signature default for 'height' and 'width', else fallback to 720 and 1280.
-    model_call_params = inspect.signature(getattr(model, "__call__", lambda: None)).parameters
-    if "height" in model_call_params:
-        target_height = model_kwargs.get("height", model_call_params["height"].default)
-        if target_height is inspect.Parameter.empty:
-            target_height = 720
-    if "width" in model_call_params:
-        target_width = model_kwargs.get("width", model_call_params["width"].default)
-        if target_width is inspect.Parameter.empty:
-            target_width = 1280
+    target_height = model_kwargs.get("height",None)
+    target_width = model_kwargs.get("width",None)
+    if target_height is None or target_width is None:
+        if model:
+            model_call_params = inspect.signature(getattr(model, "__call__", lambda: None)).parameters
+            if "height" in model_call_params:
+                target_height = model_call_params["height"].default
+            if "width" in model_call_params:
+                target_width = model_call_params["width"].default
+
+
+
     mod_value = 1
-    if pipeline_task == "i2v":
+    if pipeline_task == "i2v" and model:
         vae_scale = getattr(model, "vae_scale_factor_spatial", 1)
         patch_size = getattr(getattr(model, "transformer", None), "config", {}).get("patch_size", [1, 1])[1]
         mod_value = vae_scale * patch_size
@@ -552,7 +550,7 @@ def generate_videos(
     for batch in prompt_iterable:
         prompt, image = prepare_batch(batch, task=pipeline_task,
         target_height=target_height, target_width=target_width, mod_value=mod_value)
-        if image:
+        if model and image:
             model_kwargs.update({"height": image.height, "width": image.width})
         sampling_params = model_kwargs.copy()
         sampling_params.update({"model": model, "prompt": prompt, "seeder": None, "image": image})
