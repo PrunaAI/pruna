@@ -104,3 +104,50 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("GenAI-Bench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
+
+
+def setup_oneig_text_rendering_dataset(
+    seed: int,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the OneIG Text Rendering benchmark dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The OneIG Text Rendering dataset (dummy train, dummy val, test).
+    """
+    import csv
+    import io
+
+    import requests
+
+    url = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/main/benchmark/text_rendering.csv"
+    response = requests.get(url)
+    reader = csv.DictReader(io.StringIO(response.text))
+
+    records = []
+    for row in reader:
+        records.append({
+            "text": row.get("prompt", ""),
+            "text_content": row.get("text_content", row.get("text", "")),
+        })
+
+    ds = Dataset.from_list(records)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("OneIG Text Rendering is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds

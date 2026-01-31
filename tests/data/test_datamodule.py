@@ -45,6 +45,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("GenAIBench", dict(), marks=pytest.mark.slow),
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGTextRendering", dict(), marks=pytest.mark.slow),
     ],
 )
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
@@ -96,3 +97,18 @@ def test_parti_prompts_with_category_filter():
     assert len(prompts) == 4
     assert all(isinstance(p, str) for p in prompts)
     assert all(aux["Category"] == "Animals" for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_oneig_text_rendering_auxiliaries():
+    """Test OneIGTextRendering loading with auxiliaries."""
+    dm = PrunaDataModule.from_string(
+        "OneIGTextRendering", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all("text_content" in aux for aux in auxiliaries)

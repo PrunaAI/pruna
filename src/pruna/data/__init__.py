@@ -29,6 +29,7 @@ from pruna.data.datasets.image import (
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
+    setup_oneig_text_rendering_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -100,6 +101,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -212,6 +214,13 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         description="Language modeling benchmark based on Wikipedia articles.",
         metrics=["perplexity"],
         task_type="text_generation",
+    ),
+    "OneIGTextRendering": BenchmarkInfo(
+        name="oneig_text_rendering",
+        display_name="OneIG Text Rendering",
+        description="Evaluates text rendering quality in generated images using OCR-based metrics.",
+        metrics=["clip_score", "clipiqa"],
+        task_type="text_to_image",
     ),
 }
 
