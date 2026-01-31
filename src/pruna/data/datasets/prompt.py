@@ -171,3 +171,65 @@ def setup_imgedit_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
+GEDIT_SUBSETS = [
+    "background_change", "color_alter", "material_alter", "motion_change", "ps_human",
+    "style_change", "subject_add", "subject_remove", "subject_replace", "text_change", "tone_transfer"
+]
+
+
+def setup_gedit_dataset(
+    seed: int,
+    subset: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the GEditBench dataset for image editing evaluation.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    subset : str | None
+        Filter by task type. Available: background_change, color_alter, material_alter,
+        motion_change, ps_human, style_change, subject_add, subject_remove, subject_replace,
+        text_change, tone_transfer. If None, returns all subsets.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The GEditBench dataset (dummy train, dummy val, test).
+    """
+    if subset is not None and subset not in GEDIT_SUBSETS:
+        raise ValueError(f"Invalid subset: {subset}. Must be one of {GEDIT_SUBSETS}")
+
+    task_type_map = {"subject_add": "subject-add", "subject_remove": "subject-remove", "subject_replace": "subject-replace"}
+
+    ds = load_dataset("stepfun-ai/GEdit-Bench")["train"]  # type: ignore[index]
+    ds = ds.filter(lambda x: x["instruction_language"] == "en")
+
+    if subset is not None:
+        hf_task_type = task_type_map.get(subset, subset)
+        ds = ds.filter(lambda x, tt=hf_task_type: x["task_type"] == tt)
+
+    records = []
+    for row in ds:
+        task_type = row.get("task_type", "")
+        subset_name = {v: k for k, v in task_type_map}.get(task_type, task_type)
+        records.append({
+            "text": row.get("instruction", ""),
+            "subset": subset_name,
+        })
+
+    ds = Dataset.from_list(records)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("GEditBench is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+

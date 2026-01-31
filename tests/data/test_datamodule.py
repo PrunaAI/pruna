@@ -46,6 +46,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
         pytest.param("ImgEdit", dict(), marks=pytest.mark.slow),
+        pytest.param("GEditBench", dict(), marks=pytest.mark.slow),
     ],
 )
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
@@ -113,3 +114,18 @@ def test_imgedit_with_subset_filter():
     assert all(isinstance(p, str) for p in prompts)
     assert all(aux["subset"] == "replace" for aux in auxiliaries)
     assert all("judge_prompt" in aux for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_geditbench_with_subset_filter():
+    """Test GEditBench loading with subset filter."""
+    dm = PrunaDataModule.from_string(
+        "GEditBench", subset="background_change", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["subset"] == "background_change" for aux in auxiliaries)

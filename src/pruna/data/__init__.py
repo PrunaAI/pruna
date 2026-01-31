@@ -28,6 +28,7 @@ from pruna.data.datasets.image import (
 )
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
+    setup_gedit_dataset,
     setup_genai_bench_dataset,
     setup_imgedit_dataset,
     setup_parti_prompts_dataset,
@@ -102,6 +103,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
     "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "GEditBench": (setup_gedit_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -222,6 +224,17 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         metrics=["accuracy"],
         task_type="image_edit",
         subsets=["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"],
+    ),
+    "GEditBench": BenchmarkInfo(
+        name="gedit_bench",
+        display_name="GEdit Bench",
+        description="Image editing benchmark with 11 task types for evaluating fine-grained editing capabilities.",
+        metrics=["accuracy"],
+        task_type="image_edit",
+        subsets=[
+            "background_change", "color_alter", "material_alter", "motion_change", "ps_human",
+            "style_change", "subject_add", "subject_remove", "subject_replace", "text_change", "tone_transfer"
+        ],
     ),
 }
 
