@@ -12,18 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
+_EVALUATION_DEPS_ERROR = (
+    "Evaluation dependencies not installed. "
+    "Install with: pip install pruna[evaluation]"
+)
 
-from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
-from pruna.evaluation.metrics.metric_cmmd import CMMD
-from pruna.evaluation.metrics.metric_dino_score import DinoScore
-from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
-from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
-from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
-from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
-from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
-from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
-from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+try:
+    from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
+
+    from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
+    from pruna.evaluation.metrics.metric_cmmd import CMMD
+    from pruna.evaluation.metrics.metric_dino_score import DinoScore
+    from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
+    from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
+    from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
+    from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
+    from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
+    from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
+    from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+except ImportError as e:
+    raise ImportError(_EVALUATION_DEPS_ERROR) from e
 
 __all__ = [
     "MetricRegistry",
