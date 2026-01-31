@@ -224,22 +224,25 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         display_name="OneIG Text Rendering",
         description="Evaluates text rendering quality in generated images using OCR-based metrics.",
         metrics=["accuracy"],
-        task_type="text_generation",
+        task_type="text_to_image",
     ),
     "OneIGAlignment": BenchmarkInfo(
         name="oneig_alignment",
         display_name="OneIG Alignment",
         description="Evaluates image-text alignment for anime, human, and object generation with VQA-based questions.",
         metrics=["accuracy"],
-        task_type="text_generation",
+        task_type="text_to_image",
         subsets=["Anime_Stylization", "Portrait", "General_Object"],
     ),
     "DPG": BenchmarkInfo(
         name="dpg",
         display_name="DPG",
-        description="Descriptive Prompt Generation benchmark for evaluating image understanding across entity, attribute, relation, and global aspects.",
+        description=(
+            "Descriptive Prompt Generation benchmark for evaluating image understanding "
+            "across entity, attribute, relation, and global aspects."
+        ),
         metrics=["accuracy"],
-        task_type="text_generation",
+        task_type="text_to_image",
         subsets=["entity", "attribute", "relation", "global", "other"],
     ),
 }
