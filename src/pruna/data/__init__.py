@@ -109,7 +109,8 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
 
 @dataclass
 class BenchmarkInfo:
-    """Metadata for a benchmark dataset.
+    """
+    Metadata for a benchmark dataset.
 
     Parameters
     ----------
