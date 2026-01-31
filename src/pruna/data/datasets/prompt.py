@@ -105,8 +105,8 @@ def _generate_geneval_question(entry: dict) -> list[str]:
     if tag == "position" and len(include) >= 2:
         a_cls = include[0].get("class", "")
         b_cls = include[1].get("class", "")
-        pos = include[1].get("position", ["", 0])
-        if pos:
+        pos = include[1].get("position")
+        if pos and pos[0]:
             questions.append(f"Is the {b_cls} {pos[0]} the {a_cls}?")
 
     return questions
