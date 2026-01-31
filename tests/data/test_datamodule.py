@@ -4,7 +4,6 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
-from pruna.data import BenchmarkInfo, benchmark_info
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -52,12 +51,11 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
     """Test the datamodule from a string."""
     # get tokenizer if available
-    tokenizer = collate_fn_args.get("tokenizer", None)
+    tokenizer = collate_fn_args.get("tokenizer")
 
     # get the datamodule from the string
     datamodule = PrunaDataModule.from_string(dataset_name, collate_fn_args=collate_fn_args, tokenizer=tokenizer)
     datamodule.limit_datasets(10)
-
 
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
@@ -84,13 +82,10 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     iterate_dataloaders(datamodule)
 
 
-
 @pytest.mark.slow
 def test_parti_prompts_with_category_filter():
     """Test PartiPrompts loading with category filter."""
-    dm = PrunaDataModule.from_string(
-        "PartiPrompts", category="Animals", dataloader_args={"batch_size": 4}
-    )
+    dm = PrunaDataModule.from_string("PartiPrompts", category="Animals", dataloader_args={"batch_size": 4})
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
     prompts, auxiliaries = batch
@@ -101,31 +96,27 @@ def test_parti_prompts_with_category_filter():
 
 
 @pytest.mark.slow
-def test_imgedit_with_subset_filter():
-    """Test ImgEdit loading with subset filter."""
-    dm = PrunaDataModule.from_string(
-        "ImgEdit", subset="replace", dataloader_args={"batch_size": 4}
-    )
+def test_imgedit_with_category_filter():
+    """Test ImgEdit loading with category filter."""
+    dm = PrunaDataModule.from_string("ImgEdit", category="replace", dataloader_args={"batch_size": 4})
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
     prompts, auxiliaries = batch
 
     assert len(prompts) == 4
     assert all(isinstance(p, str) for p in prompts)
-    assert all(aux["subset"] == "replace" for aux in auxiliaries)
+    assert all(aux["category"] == "replace" for aux in auxiliaries)
     assert all("judge_prompt" in aux for aux in auxiliaries)
 
 
 @pytest.mark.slow
-def test_geditbench_with_subset_filter():
-    """Test GEditBench loading with subset filter."""
-    dm = PrunaDataModule.from_string(
-        "GEditBench", subset="background_change", dataloader_args={"batch_size": 4}
-    )
+def test_geditbench_with_category_filter():
+    """Test GEditBench loading with category filter."""
+    dm = PrunaDataModule.from_string("GEditBench", category="background_change", dataloader_args={"batch_size": 4})
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
     prompts, auxiliaries = batch
 
     assert len(prompts) == 4
     assert all(isinstance(p, str) for p in prompts)
-    assert all(aux["subset"] == "background_change" for aux in auxiliaries)
+    assert all(aux["category"] == "background_change" for aux in auxiliaries)
