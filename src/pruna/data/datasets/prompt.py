@@ -219,3 +219,65 @@ def setup_oneig_alignment_dataset(
 
     pruna_logger.info("OneIG Alignment is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
+
+
+DPG_CATEGORIES = ["entity", "attribute", "relation", "global", "other"]
+
+
+def setup_dpg_dataset(
+    seed: int,
+    category: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the DPG (Descriptive Prompt Generation) benchmark dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    category : str | None
+        Filter by category. Available: entity, attribute, relation, global, other.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The DPG dataset (dummy train, dummy val, test).
+    """
+    import csv
+    import io
+
+    import requests
+
+    url = "https://raw.githubusercontent.com/TencentQQGYLab/ELLA/main/dpg_bench/prompts.csv"
+    response = requests.get(url)
+    reader = csv.DictReader(io.StringIO(response.text))
+
+    records = []
+    for row in reader:
+        row_category = row.get("category", row.get("category_broad", ""))
+
+        if category is not None:
+            if category not in DPG_CATEGORIES:
+                raise ValueError(f"Invalid category: {category}. Must be one of {DPG_CATEGORIES}")
+            if row_category != category:
+                continue
+
+        records.append({
+            "text": row.get("prompt", ""),
+            "category_broad": row_category,
+            "questions": row.get("questions", "").split("|") if row.get("questions") else [],
+        })
+
+    ds = Dataset.from_list(records)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("DPG is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds

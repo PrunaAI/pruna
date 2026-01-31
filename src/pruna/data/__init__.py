@@ -27,6 +27,7 @@ from pruna.data.datasets.image import (
     setup_mnist_dataset,
 )
 from pruna.data.datasets.prompt import (
+    setup_dpg_dataset,
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
     setup_oneig_alignment_dataset,
@@ -104,6 +105,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
     "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIGAlignment": (setup_oneig_alignment_dataset, "prompt_with_auxiliaries_collate", {}),
+    "DPG": (setup_dpg_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -231,6 +233,14 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         metrics=["accuracy"],
         task_type="text_generation",
         subsets=["Anime_Stylization", "Portrait", "General_Object"],
+    ),
+    "DPG": BenchmarkInfo(
+        name="dpg",
+        display_name="DPG",
+        description="Descriptive Prompt Generation benchmark for evaluating image understanding across entity, attribute, relation, and global aspects.",
+        metrics=["accuracy"],
+        task_type="text_generation",
+        subsets=["entity", "attribute", "relation", "global", "other"],
     ),
 }
 
