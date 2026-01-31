@@ -151,3 +151,71 @@ def setup_oneig_text_rendering_dataset(
 
     pruna_logger.info("OneIG Text Rendering is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
+
+
+ONEIG_ALIGNMENT_CATEGORIES = ["Anime_Stylization", "Portrait", "General_Object"]
+
+
+def setup_oneig_alignment_dataset(
+    seed: int,
+    category: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the OneIG Alignment benchmark dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    category : str | None
+        Filter by category. Available: Anime_Stylization, Portrait, General_Object.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The OneIG Alignment dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    import requests
+
+    ds = load_dataset("OneIG-Bench/OneIG-Bench")["test"]  # type: ignore[index]
+
+    url = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/main/benchmark/alignment_questions.json"
+    response = requests.get(url)
+    questions_data = json.loads(response.text)
+
+    questions_by_id = {q["id"]: q for q in questions_data}
+
+    records = []
+    for row in ds:
+        row_id = row.get("id", "")
+        row_category = row.get("category", "")
+
+        if category is not None:
+            if category not in ONEIG_ALIGNMENT_CATEGORIES:
+                raise ValueError(f"Invalid category: {category}. Must be one of {ONEIG_ALIGNMENT_CATEGORIES}")
+            if row_category != category:
+                continue
+
+        q_info = questions_by_id.get(row_id, {})
+        records.append({
+            "text": row.get("prompt", ""),
+            "category": row_category,
+            "questions": q_info.get("questions", []),
+            "dependencies": q_info.get("dependencies", []),
+        })
+
+    ds = Dataset.from_list(records)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("OneIG Alignment is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
