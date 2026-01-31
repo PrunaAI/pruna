@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Callable, Tuple
 
@@ -97,8 +98,81 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         {"img_size": 224},
     ),
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
-    "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
+    "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
+}
+
+
+@dataclass
+class BenchmarkInfo:
+    """Metadata for a benchmark dataset."""
+
+    name: str
+    display_name: str
+    description: str
+    metrics: list[str]
+    task_type: str
+    subsets: list[str] = field(default_factory=list)
+
+
+benchmark_info: dict[str, BenchmarkInfo] = {
+    "PartiPrompts": BenchmarkInfo(
+        name="parti_prompts",
+        display_name="Parti Prompts",
+        description=(
+            "Over 1,600 diverse English prompts across 12 categories with 11 challenge aspects "
+            "ranging from basic to complex, enabling comprehensive assessment of model capabilities "
+            "across different domains and difficulty levels."
+        ),
+        metrics=["arniqa", "clip", "clip_iqa", "sharpness"],
+        task_type="text_to_image",
+        subsets=[
+            "Abstract",
+            "Animals",
+            "Artifacts",
+            "Arts",
+            "Food & Beverage",
+            "Illustrations",
+            "Indoor Scenes",
+            "Outdoor Scenes",
+            "People",
+            "Produce & Plants",
+            "Vehicles",
+            "World Knowledge",
+            "Basic",
+            "Complex",
+            "Fine-grained Detail",
+            "Imagination",
+            "Linguistic Structures",
+            "Perspective",
+            "Properties & Positioning",
+            "Quantity",
+            "Simple Detail",
+            "Style & Format",
+            "Writing & Symbols",
+        ],
+    ),
+    "DrawBench": BenchmarkInfo(
+        name="drawbench",
+        display_name="DrawBench",
+        description="A comprehensive benchmark for evaluating text-to-image generation models.",
+        metrics=["clip", "clip_iqa", "sharpness"],
+        task_type="text_to_image",
+    ),
+    "GenAIBench": BenchmarkInfo(
+        name="genai_bench",
+        display_name="GenAI Bench",
+        description="A benchmark for evaluating generative AI models.",
+        metrics=["clip", "clip_iqa", "sharpness"],
+        task_type="text_to_image",
+    ),
+    "VBench": BenchmarkInfo(
+        name="vbench",
+        display_name="VBench",
+        description="A benchmark for evaluating video generation models.",
+        metrics=["clip", "fvd"],
+        task_type="text_to_video",
+    ),
 }
