@@ -107,7 +107,24 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
 
 @dataclass
 class BenchmarkInfo:
-    """Metadata for a benchmark dataset."""
+    """
+    Metadata for a benchmark dataset.
+
+    Parameters
+    ----------
+    name : str
+        Internal identifier for the benchmark.
+    display_name : str
+        Human-readable name for display purposes.
+    description : str
+        Description of what the benchmark evaluates.
+    metrics : list[str]
+        List of metric names used for evaluation.
+    task_type : str
+        Type of task the benchmark evaluates (e.g., 'text_to_image').
+    subsets : list[str]
+        Optional list of benchmark subset names.
+    """
 
     name: str
     display_name: str
