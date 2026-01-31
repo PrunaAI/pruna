@@ -84,6 +84,39 @@ def setup_parti_prompts_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
+def setup_long_text_bench_dataset(
+    seed: int,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the Long Text Bench dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all 160 samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The Long Text Bench dataset (dummy train, dummy val, test).
+    """
+    ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
+    ds = ds.rename_column("text", "text_content")
+    ds = ds.rename_column("prompt", "text")
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("LongTextBench is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+
+
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the GenAI Bench dataset.

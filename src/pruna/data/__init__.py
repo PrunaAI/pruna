@@ -29,6 +29,7 @@ from pruna.data.datasets.image import (
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
+    setup_long_text_bench_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -100,6 +101,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -107,7 +109,23 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
 
 @dataclass
 class BenchmarkInfo:
-    """Metadata for a benchmark dataset."""
+    """Metadata for a benchmark dataset.
+
+    Parameters
+    ----------
+    name : str
+        Internal identifier for the benchmark.
+    display_name : str
+        Human-readable name for display purposes.
+    description : str
+        Description of what the benchmark evaluates.
+    metrics : list[str]
+        List of metric names used for evaluation.
+    task_type : str
+        Type of task the benchmark evaluates (e.g., 'text_to_image').
+    subsets : list[str]
+        Optional list of benchmark subset names.
+    """
 
     name: str
     display_name: str
@@ -174,5 +192,16 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         description="A benchmark for evaluating video generation models.",
         metrics=["clip", "fvd"],
         task_type="text_to_video",
+    ),
+    "LongTextBench": BenchmarkInfo(
+        name="long_text_bench",
+        display_name="Long Text Bench",
+        description=(
+            "Extended detail-rich prompts averaging 284.89 tokens with evaluation dimensions of "
+            "character attributes, structured locations, scene attributes, and spatial relationships "
+            "to test compositional reasoning under long prompt complexity."
+        ),
+        metrics=["text_score"],
+        task_type="text_to_image",
     ),
 }
