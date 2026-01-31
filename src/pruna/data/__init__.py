@@ -192,4 +192,70 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         metrics=["clip", "fvd"],
         task_type="text_to_video",
     ),
+    "COCO": BenchmarkInfo(
+        name="coco",
+        display_name="COCO",
+        description="Microsoft COCO dataset for image generation evaluation with real image-caption pairs.",
+        metrics=["fid", "clip", "clip_iqa"],
+        task_type="text_to_image",
+    ),
+    "ImageNet": BenchmarkInfo(
+        name="imagenet",
+        display_name="ImageNet",
+        description="Large-scale image classification benchmark with 1000 classes.",
+        metrics=["accuracy", "top5_accuracy"],
+        task_type="image_classification",
+    ),
+    "WikiText": BenchmarkInfo(
+        name="wikitext",
+        display_name="WikiText",
+        description="Language modeling benchmark based on Wikipedia articles.",
+        metrics=["perplexity"],
+        task_type="text_generation",
+    ),
 }
+
+
+def list_benchmarks(task_type: str | None = None) -> list[str]:
+    """
+    List available benchmark names.
+
+    Parameters
+    ----------
+    task_type : str | None
+        Filter by task type (e.g., 'text_to_image', 'text_to_video').
+        If None, returns all benchmarks.
+
+    Returns
+    -------
+    list[str]
+        List of benchmark names.
+    """
+    if task_type is None:
+        return list(benchmark_info.keys())
+    return [name for name, info in benchmark_info.items() if info.task_type == task_type]
+
+
+def get_benchmark_info(name: str) -> BenchmarkInfo:
+    """
+    Get benchmark metadata by name.
+
+    Parameters
+    ----------
+    name : str
+        The benchmark name.
+
+    Returns
+    -------
+    BenchmarkInfo
+        The benchmark metadata.
+
+    Raises
+    ------
+    KeyError
+        If benchmark name is not found.
+    """
+    if name not in benchmark_info:
+        available = ", ".join(benchmark_info.keys())
+        raise KeyError(f"Benchmark '{name}' not found. Available: {available}")
+    return benchmark_info[name]
