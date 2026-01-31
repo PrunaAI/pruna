@@ -84,6 +84,57 @@ def setup_parti_prompts_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
+def setup_hps_dataset(
+    seed: int,
+    category: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the HPS (Human Preference Score) benchmark dataset.
+
+    License: MIT
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    category : str | None
+        Filter by category. Available categories: anime, concept-art, paintings, photo.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The HPS dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    from huggingface_hub import hf_hub_download
+
+    hps_categories = ["anime", "concept-art", "paintings", "photo"]
+    categories_to_load = [category] if category else hps_categories
+
+    all_prompts = []
+    for cat in categories_to_load:
+        if cat not in hps_categories:
+            raise ValueError(f"Invalid category: {cat}. Must be one of {hps_categories}")
+        file_path = hf_hub_download("zhwang/HPDv2", f"{cat}.json", subfolder="benchmark", repo_type="dataset")
+        with open(file_path, "r") as f:
+            prompts = json.load(f)
+            for prompt in prompts:
+                all_prompts.append({"text": prompt, "category": cat})
+
+    ds = Dataset.from_list(all_prompts)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("HPS is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+
+
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the GenAI Bench dataset.
