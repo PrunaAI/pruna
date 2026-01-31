@@ -104,3 +104,70 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("GenAI-Bench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
+
+
+IMGEDIT_SUBSETS = ["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"]
+
+
+def setup_imgedit_dataset(
+    seed: int,
+    subset: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the ImgEdit benchmark dataset for image editing evaluation.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    subset : str | None
+        Filter by edit type. Available: replace, add, remove, adjust, extract, style,
+        background, compose. If None, returns all subsets.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The ImgEdit dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    import requests
+
+    if subset is not None and subset not in IMGEDIT_SUBSETS:
+        raise ValueError(f"Invalid subset: {subset}. Must be one of {IMGEDIT_SUBSETS}")
+
+    instructions_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/b3eb8e74d7cd1fd0ce5341eaf9254744a8ab4c0b/Benchmark/Basic/basic_edit.json"
+    judge_prompts_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/c14480ac5e7b622e08cd8c46f96624a48eb9ab46/Benchmark/Basic/prompts.json"
+
+    instructions = json.loads(requests.get(instructions_url).text)
+    judge_prompts = json.loads(requests.get(judge_prompts_url).text)
+
+    records = []
+    for _, instruction in instructions.items():
+        edit_type = instruction.get("edit_type", "")
+
+        if subset is not None and edit_type != subset:
+            continue
+
+        records.append({
+            "text": instruction.get("prompt", ""),
+            "subset": edit_type,
+            "image_id": instruction.get("id", ""),
+            "judge_prompt": judge_prompts.get(edit_type, ""),
+        })
+
+    ds = Dataset.from_list(records)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("ImgEdit is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+
+

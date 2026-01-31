@@ -29,6 +29,7 @@ from pruna.data.datasets.image import (
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
+    setup_imgedit_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -100,6 +101,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -212,6 +214,14 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         description="Language modeling benchmark based on Wikipedia articles.",
         metrics=["perplexity"],
         task_type="text_generation",
+    ),
+    "ImgEdit": BenchmarkInfo(
+        name="imgedit",
+        display_name="ImgEdit",
+        description="Comprehensive image editing benchmark with 8 edit types: replace, add, remove, adjust, extract, style, background, compose.",
+        metrics=["accuracy"],
+        task_type="image_edit",
+        subsets=["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"],
     ),
 }
 
