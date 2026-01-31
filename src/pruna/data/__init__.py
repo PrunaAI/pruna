@@ -29,8 +29,7 @@ from pruna.data.datasets.image import (
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
-    setup_oneig_alignment_dataset,
-    setup_oneig_text_rendering_dataset,
+    setup_oneig_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -102,8 +101,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
     "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
-    "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
-    "OneIGAlignment": (setup_oneig_alignment_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -217,20 +215,13 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         metrics=["perplexity"],
         task_type="text_generation",
     ),
-    "OneIGTextRendering": BenchmarkInfo(
-        name="oneig_text_rendering",
-        display_name="OneIG Text Rendering",
-        description="Evaluates text rendering quality in generated images using OCR-based metrics.",
+    "OneIG": BenchmarkInfo(
+        name="oneig",
+        display_name="OneIG",
+        description="Comprehensive benchmark for text rendering and image-text alignment evaluation across anime, portrait, and object generation.",
         metrics=["accuracy"],
         task_type="text_generation",
-    ),
-    "OneIGAlignment": BenchmarkInfo(
-        name="oneig_alignment",
-        display_name="OneIG Alignment",
-        description="Evaluates image-text alignment for anime, human, and object generation with VQA-based questions.",
-        metrics=["accuracy"],
-        task_type="text_generation",
-        subsets=["Anime_Stylization", "Portrait", "General_Object"],
+        subsets=["text_rendering", "anime_alignment", "portrait_alignment", "object_alignment"],
     ),
 }
 
