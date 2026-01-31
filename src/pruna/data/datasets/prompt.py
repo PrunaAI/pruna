@@ -122,14 +122,16 @@ def _load_oneig_text_rendering(seed: int) -> Dataset:
 
     records = []
     for row in reader:
-        records.append({
-            "text": row.get("prompt", ""),
-            "subset": "text_rendering",
-            "text_content": row.get("text_content", row.get("text", "")),
-            "category": None,
-            "questions": [],
-            "dependencies": [],
-        })
+        records.append(
+            {
+                "text": row.get("prompt", ""),
+                "subset": "text_rendering",
+                "text_content": row.get("text_content", row.get("text", "")),
+                "category": None,
+                "questions": [],
+                "dependencies": [],
+            }
+        )
 
     return Dataset.from_list(records).shuffle(seed=seed)
 
@@ -165,14 +167,16 @@ def _load_oneig_alignment(seed: int, category: str | None = None) -> Dataset:
 
         subset_name = {v: k for k, v in category_map.items()}.get(row_category, "alignment")
         q_info = questions_by_id.get(row_id, {})
-        records.append({
-            "text": row.get("prompt", ""),
-            "subset": subset_name,
-            "text_content": None,
-            "category": row_category,
-            "questions": q_info.get("questions", []),
-            "dependencies": q_info.get("dependencies", []),
-        })
+        records.append(
+            {
+                "text": row.get("prompt", ""),
+                "subset": subset_name,
+                "text_content": None,
+                "category": row_category,
+                "questions": q_info.get("questions", []),
+                "dependencies": q_info.get("dependencies", []),
+            }
+        )
 
     return Dataset.from_list(records).shuffle(seed=seed)
 
@@ -221,6 +225,9 @@ def setup_oneig_dataset(
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
+
+    if len(ds) == 0:
+        raise ValueError(f"No samples found for subset '{subset}'. Check that the subset exists and has data.")
 
     pruna_logger.info("OneIG is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
