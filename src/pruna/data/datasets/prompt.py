@@ -84,6 +84,91 @@ def setup_parti_prompts_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
+GENEVAL_CATEGORIES = ["single_object", "two_object", "counting", "colors", "position", "color_attr"]
+
+
+def _generate_geneval_question(entry: dict) -> list[str]:
+    """Generate evaluation questions from GenEval metadata."""
+    tag = entry.get("tag", "")
+    include = entry.get("include", [])
+    questions = []
+
+    for obj in include:
+        cls = obj.get("class", "")
+        if "color" in obj:
+            questions.append(f"Does the image contain a {obj['color']} {cls}?")
+        elif "count" in obj:
+            questions.append(f"Does the image contain exactly {obj['count']} {cls}(s)?")
+        else:
+            questions.append(f"Does the image contain a {cls}?")
+
+    if tag == "position" and len(include) >= 2:
+        a_cls = include[0].get("class", "")
+        b_cls = include[1].get("class", "")
+        pos = include[1].get("position", ["", 0])
+        if pos:
+            questions.append(f"Is the {b_cls} {pos[0]} the {a_cls}?")
+
+    return questions
+
+
+def setup_geneval_dataset(
+    seed: int,
+    category: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the GenEval benchmark dataset.
+
+    License: MIT
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    category : str | None
+        Filter by category. Available: single_object, two_object, counting, colors, position, color_attr.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The GenEval dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    import requests
+
+    url = "https://raw.githubusercontent.com/djghosh13/geneval/d927da8e42fde2b1b5cd743da4df5ff83c1654ff/prompts/evaluation_metadata.jsonl"
+    response = requests.get(url)
+    data = [json.loads(line) for line in response.text.splitlines()]
+
+    if category is not None:
+        if category not in GENEVAL_CATEGORIES:
+            raise ValueError(f"Invalid category: {category}. Must be one of {GENEVAL_CATEGORIES}")
+        data = [entry for entry in data if entry.get("tag") == category]
+
+    records = []
+    for entry in data:
+        questions = _generate_geneval_question(entry)
+        records.append({
+            "text": entry["prompt"],
+            "tag": entry.get("tag", ""),
+            "questions": questions,
+            "include": entry.get("include", []),
+        })
+
+    ds = Dataset.from_list(records)
+    ds = ds.shuffle(seed=seed)
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    pruna_logger.info("GenEval is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+
+
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the GenAI Bench dataset.
