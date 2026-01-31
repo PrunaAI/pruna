@@ -218,9 +218,12 @@ benchmark_info: dict[str, BenchmarkInfo] = {
     "OneIG": BenchmarkInfo(
         name="oneig",
         display_name="OneIG",
-        description="Comprehensive benchmark for text rendering and image-text alignment evaluation across anime, portrait, and object generation.",
+        description=(
+            "Comprehensive benchmark for text rendering and image-text alignment "
+            "evaluation across anime, portrait, and object generation."
+        ),
         metrics=["accuracy"],
-        task_type="text_generation",
+        task_type="text_to_image",
         subsets=["text_rendering", "anime_alignment", "portrait_alignment", "object_alignment"],
     ),
 }

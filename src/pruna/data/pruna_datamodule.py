@@ -136,6 +136,7 @@ class PrunaDataModule(LightningDataModule):
         dataloader_args: dict = dict(),
         seed: int = 42,
         category: str | list[str] | None = None,
+        subset: str | None = None,
     ) -> "PrunaDataModule":
         """
         Create a PrunaDataModule from the dataset name with preimplemented dataset loading.
@@ -152,9 +153,10 @@ class PrunaDataModule(LightningDataModule):
             Any additional arguments for the dataloader.
         seed : int
             The seed to use.
-
         category : str | list[str] | None
             The category of the dataset.
+        subset : str | None
+            The subset of the dataset.
 
         Returns
         -------
@@ -172,6 +174,9 @@ class PrunaDataModule(LightningDataModule):
 
         if "category" in inspect.signature(setup_fn).parameters:
             setup_fn = partial(setup_fn, category=category)
+
+        if "subset" in inspect.signature(setup_fn).parameters:
+            setup_fn = partial(setup_fn, subset=subset)
 
         train_ds, val_ds, test_ds = setup_fn()
 

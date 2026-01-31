@@ -126,6 +126,9 @@ def _load_oneig_text_rendering(seed: int) -> Dataset:
             "text": row.get("prompt", ""),
             "subset": "text_rendering",
             "text_content": row.get("text_content", row.get("text", "")),
+            "category": None,
+            "questions": [],
+            "dependencies": [],
         })
 
     return Dataset.from_list(records).shuffle(seed=seed)
@@ -165,6 +168,7 @@ def _load_oneig_alignment(seed: int, category: str | None = None) -> Dataset:
         records.append({
             "text": row.get("prompt", ""),
             "subset": subset_name,
+            "text_content": None,
             "category": row_category,
             "questions": q_info.get("questions", []),
             "dependencies": q_info.get("dependencies", []),
