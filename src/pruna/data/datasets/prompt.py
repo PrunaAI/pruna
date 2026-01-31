@@ -120,7 +120,7 @@ def setup_hps_dataset(
         if cat not in hps_categories:
             raise ValueError(f"Invalid category: {cat}. Must be one of {hps_categories}")
         file_path = hf_hub_download("zhwang/HPDv2", f"{cat}.json", subfolder="benchmark", repo_type="dataset")
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             prompts = json.load(f)
             for prompt in prompts:
                 all_prompts.append({"text": prompt, "category": cat})
