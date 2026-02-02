@@ -80,6 +80,10 @@ def setup_parti_prompts_dataset(
         ds = ds.select(range(min(num_samples, len(ds))))
 
     ds = ds.rename_column("Prompt", "text")
+
+    if len(ds) == 0:
+        raise ValueError(f"No samples found for category '{category}'.")
+
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
