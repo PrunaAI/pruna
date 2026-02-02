@@ -90,7 +90,7 @@ def unfreeze_parameters_by_name(module: torch.nn.Module, target_modules: tuple[s
         The number of parameters found that match the given name but were not trainable.
     """
     if len(target_modules) == 0:
-        return
+        return (0, 0)
 
     activated_parameters, skipped_parameters = 0, 0
     for name, parameter in module.named_parameters():

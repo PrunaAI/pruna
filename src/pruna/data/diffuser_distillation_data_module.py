@@ -28,6 +28,7 @@ from pruna.algorithms.global_utils.recovery.finetuners.diffusers.distillation_ar
 )
 from pruna.algorithms.global_utils.recovery.finetuners.diffusers.utils import get_denoiser_attr
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.logging.logger import pruna_logger
 
 
 class DiffusionDistillationDataModule(PrunaDataModule):
@@ -150,7 +151,7 @@ class DiffusionDistillationDataModule(PrunaDataModule):
 
     def _prepare_one_dataset(
         self,
-        dataloader: Optional[DataLoader],
+        dataloader: Optional[DataLoader] | None,
         subdir_name: str,
     ) -> List[str]:
         """
@@ -168,6 +169,9 @@ class DiffusionDistillationDataModule(PrunaDataModule):
         List[str]
             The filenames of the dataset.
         """
+        if dataloader is None:
+            pruna_logger.warning(f"Missing dataloader for {subdir_name} data")
+            return None
         Path(self.save_path / subdir_name).mkdir(exist_ok=True, parents=True)
         desc = f"Prepare {subdir_name} distillation dataset"
         filenames: List[str] = []

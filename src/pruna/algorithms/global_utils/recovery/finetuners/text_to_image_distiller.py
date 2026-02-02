@@ -219,7 +219,7 @@ class TextToImageDistiller(PrunaFinetuner):
         )
         # make directory for logs and checkpoints
         model_path = pathlib.Path(smash_config.cache_dir) / "recovery"
-        model_path.mkdir(parents=True)
+        model_path.mkdir(exist_ok=True, parents=True)
 
         early_stopping = EarlyStopping(monitor="validation_loss", patience=3, mode="min", check_finite=True)
         checkpoint_callback = ModelCheckpoint(
