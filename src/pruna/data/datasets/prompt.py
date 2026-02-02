@@ -80,6 +80,10 @@ def setup_parti_prompts_dataset(
         ds = ds.select(range(min(num_samples, len(ds))))
 
     ds = ds.rename_column("Prompt", "text")
+
+    if len(ds) == 0:
+        raise ValueError(f"No samples found for category '{category}'.")
+
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
@@ -106,12 +110,12 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     return ds.select([0]), ds.select([0]), ds
 
 
-IMGEDIT_SUBSETS = ["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"]
+IMGEDIT_CATEGORIES = ["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"]
 
 
 def setup_imgedit_dataset(
     seed: int,
-    subset: str | None = None,
+    category: str | None = None,
     num_samples: int | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
@@ -123,9 +127,9 @@ def setup_imgedit_dataset(
     ----------
     seed : int
         The seed to use.
-    subset : str | None
+    category : str | None
         Filter by edit type. Available: replace, add, remove, adjust, extract, style,
-        background, compose. If None, returns all subsets.
+        background, compose. If None, returns all categories.
     num_samples : int | None
         Maximum number of samples to return. If None, returns all samples.
 
@@ -138,8 +142,8 @@ def setup_imgedit_dataset(
 
     import requests
 
-    if subset is not None and subset not in IMGEDIT_SUBSETS:
-        raise ValueError(f"Invalid subset: {subset}. Must be one of {IMGEDIT_SUBSETS}")
+    if category is not None and category not in IMGEDIT_CATEGORIES:
+        raise ValueError(f"Invalid category: {category}. Must be one of {IMGEDIT_CATEGORIES}")
 
     instructions_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/b3eb8e74d7cd1fd0ce5341eaf9254744a8ab4c0b/Benchmark/Basic/basic_edit.json"
     judge_prompts_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/c14480ac5e7b622e08cd8c46f96624a48eb9ab46/Benchmark/Basic/prompts.json"
@@ -151,13 +155,13 @@ def setup_imgedit_dataset(
     for _, instruction in instructions.items():
         edit_type = instruction.get("edit_type", "")
 
-        if subset is not None and edit_type != subset:
+        if category is not None and edit_type != category:
             continue
 
         records.append(
             {
                 "text": instruction.get("prompt", ""),
-                "subset": edit_type,
+                "category": edit_type,
                 "image_id": instruction.get("id", ""),
                 "judge_prompt": judge_prompts.get(edit_type, ""),
             }
@@ -168,6 +172,9 @@ def setup_imgedit_dataset(
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
+
+    if len(ds) == 0:
+        raise ValueError(f"No samples found for category '{category}'.")
 
     pruna_logger.info("ImgEdit is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
