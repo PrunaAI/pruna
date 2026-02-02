@@ -76,7 +76,11 @@ class HeadAdapter(PrunaAdapter):
         if len(model_heads) != 1:
             # = 0: model with no head, e.g. diffusers
             # > 1: model with multiple heads, e.g. for localization, not currently supported
-            model_head_names = [h[0] for h in model_heads]  # type: ignore[index]
+            model_head_names = [
+                comp_name
+                for comp_name, component in inspect.getmembers(model)
+                if isinstance(component, torch.nn.Linear) and "head" in comp_name.lower()
+            ]
             pruna_logger.warning(
                 f"Found multiple heads but expected only one: {model_head_names}. Skipping head finetuning."
             )

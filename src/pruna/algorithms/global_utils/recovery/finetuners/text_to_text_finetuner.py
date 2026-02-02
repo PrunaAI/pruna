@@ -220,37 +220,93 @@ class TextToTextFinetuner(PrunaFinetuner):
             The formatted dataset and dataset text field.
             A text field is only provided if the dataset is a huggingface dataset not yet tokenized.
         """
-        column_names = dataset.column_names  # type: ignore[union-attr]
-        if hasattr(dataset, "column_names") and "input_ids" in column_names:
-            # processed dataset with no need for tokenization
-            # remove all other columns, otherwise HF's Trainer tends to infer the wrong task from those columns
-            removed_columns = [col for col in column_names if col not in [text_field, "input_ids"]]
-            dataset = dataset.remove_columns(removed_columns)  # type: ignore[union-attr]
-            return dataset, None
-        elif hasattr(dataset, "column_names") and text_field in column_names:
-            # raw dataset with text field
-            # remove all other columns, otherwise HF's Trainer tends to infer the wrong task from those columns
-            removed_columns = [col for col in column_names if col != text_field]
-            dataset = dataset.remove_columns(removed_columns)  # type: ignore[union-attr]
-            return dataset, text_field
-        elif len(dataset[0]) == 2 and torch.all(dataset[0][0][1:] == dataset[0][1][:-1]):
-            # (input, label) format for next token prediction, input and label are the same with a single token shift
-            # attempt to convert dataset to a huggingface dataset
-            def data_generator() -> Iterator[dict[str, torch.Tensor]]:
-                for idx in range(len(dataset)):  # type: ignore[arg-type]
-                    data_input, label = dataset[idx]
-                    # append last token of label to input for next token prediction
-                    input_ids = torch.cat((data_input, label[..., -1:]))  # this conversion slows finetuning a little
-                    attention_mask = torch.ones_like(input_ids)
-                    yield {"input_ids": input_ids, "attention_mask": attention_mask}
+        # Handle HuggingFace Dataset - only access column_names for this type
+        if isinstance(dataset, Dataset):
+            column_names = dataset.column_names
+            if "input_ids" in column_names:
+                # processed dataset with no need for tokenization
+                # remove all other columns, otherwise HF's Trainer tends to infer the wrong task from those columns
+                removed_columns = [col for col in column_names if col not in [text_field, "input_ids"]]
+                return dataset.remove_columns(removed_columns), None
+            elif text_field in column_names:
+                # raw dataset with text field
+                # remove all other columns, otherwise HF's Trainer tends to infer the wrong task from those columns
+                removed_columns = [col for col in column_names if col != text_field]
+                return dataset.remove_columns(removed_columns), text_field
+            else:
+                pruna_logger.error(
+                    "The dataset provided for recovery is not compatible. Accepted format include:\n"
+                    " - huggingface datasets with a text field,\n"
+                    " - huggingface datasets with an input_ids field,\n"
+                    " - (input, label) format for next token prediction,\n"
+                    " - (extended_inputs,) format for next token prediction."
+                )
+                raise ValueError(f"Expected a HuggingFace dataset with text or input_ids fields for LoRA recovery but got: {dataset}")
 
-            dataset = Dataset.from_generator(data_generator)
-            return dataset, None
-        else:
+        # Handle PyTorch Dataset
+        if isinstance(dataset, torch.utils.data.Dataset):
+            first_sample = dataset[0]
+            
+            # Check if already in (extended_inputs,) format - single tensor or tuple/list with one tensor
+            if isinstance(first_sample, torch.Tensor):
+                # Single tensor format
+                def data_generator() -> Iterator[dict[str, torch.Tensor]]:
+                    for idx in range(len(dataset)):  # type: ignore[arg-type]
+                        input_ids = dataset[idx]
+                        if not isinstance(input_ids, torch.Tensor):
+                            input_ids = torch.tensor(input_ids)
+                        attention_mask = torch.ones_like(input_ids)
+                        yield {"input_ids": input_ids, "attention_mask": attention_mask}
+                return Dataset.from_generator(data_generator), None
+            elif isinstance(first_sample, (tuple, list)) and len(first_sample) == 1:
+                # Tuple/list with single element - already in extended format
+                if isinstance(first_sample[0], torch.Tensor):
+                    def data_generator() -> Iterator[dict[str, torch.Tensor]]:
+                        for idx in range(len(dataset)):  # type: ignore[arg-type]
+                            sample = dataset[idx]
+                            input_ids = sample[0] if isinstance(sample, (tuple, list)) else sample
+                            if not isinstance(input_ids, torch.Tensor):
+                                input_ids = torch.tensor(input_ids)
+                            attention_mask = torch.ones_like(input_ids)
+                            yield {"input_ids": input_ids, "attention_mask": attention_mask}
+                    return Dataset.from_generator(data_generator), None
+            
+            # Check if in (input, label) format for next token prediction
+            if isinstance(first_sample, (tuple, list)) and len(first_sample) == 2:
+                data_input, label = first_sample
+                if (
+                    isinstance(data_input, torch.Tensor)
+                    and isinstance(label, torch.Tensor)
+                    and len(data_input) > 0
+                    and len(label) > 0
+                    and torch.all(data_input[1:] == label[:-1])
+                ):
+                    # (input, label) format with single token shift
+                    def data_generator() -> Iterator[dict[str, torch.Tensor]]:
+                        for idx in range(len(dataset)):  # type: ignore[arg-type]
+                            data_input, label = dataset[idx]
+                            # append last token of label to input for next token prediction
+                            input_ids = torch.cat((data_input, label[..., -1:]))  # this conversion slows finetuning a little
+                            attention_mask = torch.ones_like(input_ids)
+                            yield {"input_ids": input_ids, "attention_mask": attention_mask}
+                    return Dataset.from_generator(data_generator), None
+            
+            # If we get here, the torch dataset format is not recognized
             pruna_logger.error(
                 "The dataset provided for recovery is not compatible. Accepted format include:\n"
                 " - huggingface datasets with a text field,\n"
                 " - huggingface datasets with an input_ids field,\n"
-                " - (input, label) format for next token prediction."
+                " - (input, label) format for next token prediction,\n"
+                " - (extended_inputs,) format for next token prediction."
             )
-            raise ValueError(f"Expected a dataset with text or input_ids fields for LoRA recovery but got: {dataset}")
+            raise ValueError(f"Expected a torch dataset in (input, label) or (extended_inputs,) format for LoRA recovery but got: {dataset}")
+
+        # Unknown dataset type
+        pruna_logger.error(
+            "The dataset provided for recovery is not compatible. Accepted format include:\n"
+            " - huggingface datasets with a text field,\n"
+            " - huggingface datasets with an input_ids field,\n"
+            " - (input, label) format for next token prediction,\n"
+            " - (extended_inputs,) format for next token prediction."
+        )
+        raise ValueError(f"Expected a Dataset or torch.utils.data.Dataset for LoRA recovery but got: {type(dataset)}")
