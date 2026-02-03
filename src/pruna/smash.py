@@ -66,14 +66,14 @@ def smash(
 
         if not experimental:
             # check if the algorithms are compatible with each other
-            check_algorithm_cross_compatibility(smash_config)
+            check_algorithm_cross_compatibility(model, smash_config)
             # check if the model type is compatible with the given configuration
             check_model_compatibility(model, smash_config)
             # check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for an algorithm
             check_argument_compatibility(smash_config)
 
         # determine algorithm order based on requirements of individual algorithms
-        algorithm_order = determine_algorithm_order(smash_config, experimental=experimental)
+        algorithm_order = determine_algorithm_order(model, smash_config, experimental=experimental)
         # perform any necessary setup steps before the smashing process begins
         execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
 
