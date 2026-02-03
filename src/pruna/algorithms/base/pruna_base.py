@@ -43,6 +43,8 @@ class PrunaAlgorithmBase(ABC):
         # Initialize compatibility lists from class-level defaults
         self._compatible_before = list(type(self).__dict__.get("compatible_before", []))
         self._compatible_after = list(type(self).__dict__.get("compatible_after", []))
+        self._disjointly_compatible_before = list(type(self).__dict__.get("disjointly_compatible_before", []))
+        self._disjointly_compatible_after = list(type(self).__dict__.get("disjointly_compatible_after", []))
 
     def __init_subclass__(cls, **kwargs):
         """Intercept the instantiation of subclasses of the PrunaAlgorithmBase class."""
@@ -171,6 +173,60 @@ class PrunaAlgorithmBase(ABC):
             Iterable of algorithm names that can be executed after this algorithm.
         """
         self._compatible_after = list(value)
+
+    @property
+    def disjointly_compatible_before(self) -> Iterable[str | AlgorithmTag]:
+        """
+        Get algorithms that can run before this algorithm on disjoint submodules.
+
+        Defining a non-empty list of algorithms that can run before this algorithm on disjoint submodules requires the
+        algorithm to have a 'target_modules' hyperparameter to specify which parts of the model it should be applied to.
+
+        Returns
+        -------
+        Iterable[str | AlgorithmTag]
+            Iterable of algorithm names or tags.
+        """
+        return self._disjointly_compatible_before
+
+    @disjointly_compatible_before.setter
+    def disjointly_compatible_before(self, value: Iterable[str | AlgorithmTag]) -> None:
+        """
+        Set algorithms that can run before this algorithm on disjoint submodules.
+
+        Parameters
+        ----------
+        value : Iterable[str | AlgorithmTag]
+            Iterable of algorithm names or tags.
+        """
+        self._disjointly_compatible_before = list(value)
+
+    @property
+    def disjointly_compatible_after(self) -> Iterable[str | AlgorithmTag]:
+        """
+        Get algorithms that can run after this algorithm on disjoint submodules.
+
+        Defining a non-empty list of algorithms that can run after this algorithm on disjoint submodules requires the
+        algorithm to have a 'target_modules' hyperparameter to specify which parts of the model it should be applied to.
+
+        Returns
+        -------
+        Iterable[str | AlgorithmTag]
+            Iterable of algorithm names or tags.
+        """
+        return self._disjointly_compatible_after
+
+    @disjointly_compatible_after.setter
+    def disjointly_compatible_after(self, value: Iterable[str | AlgorithmTag]) -> None:
+        """
+        Set algorithms that can run after this algorithm on disjoint submodules.
+
+        Parameters
+        ----------
+        value : Iterable[str | AlgorithmTag]
+            Iterable of algorithm names or tags.
+        """
+        self._disjointly_compatible_after = list(value)
 
     @abstractmethod
     def model_check_fn(self, model: Any) -> bool:
@@ -326,16 +382,21 @@ class PrunaAlgorithmBase(ABC):
             )
         )
 
-    def get_incompatible_algorithms(self) -> list[str]:
+    def get_disjointly_compatible_algorithms(self) -> list[str]:
         """
-        Get algorithms incompatible with the current algorithm.
+        Get algorithms disjointly compatible with the current algorithm.
 
         Returns
         -------
         list[str]
-            The incompatible algorithms.
+            The disjointly compatible algorithms.
         """
-        return list(set(SMASH_SPACE.get_all_algorithms()) - set(self.get_compatible_algorithms()))
+        return list(
+            set(
+                _expand_tags_into_algorithm_names(self.disjointly_compatible_before)
+                + _expand_tags_into_algorithm_names(self.disjointly_compatible_after)
+            )
+        )
 
     def get_algorithms_to_run_before(self) -> list[str]:
         """
@@ -358,6 +419,28 @@ class PrunaAlgorithmBase(ABC):
             The required algorithms.
         """
         return _expand_tags_into_algorithm_names(self.compatible_after)
+
+    def get_algorithms_to_run_before_disjointly(self) -> list[str]:
+        """
+        Get algorithms that can run before this algorithm on disjoint submodules.
+
+        Returns
+        -------
+        list[str]
+            The required algorithms.
+        """
+        return _expand_tags_into_algorithm_names(self.disjointly_compatible_before)
+
+    def get_algorithms_to_run_after_disjointly(self) -> list[str]:
+        """
+        Get algorithms that can run after this algorithm on disjoint submodules.
+
+        Returns
+        -------
+        list[str]
+            The required algorithms.
+        """
+        return _expand_tags_into_algorithm_names(self.disjointly_compatible_after)
 
 
 def wrap_handle_imports(func):
