@@ -115,7 +115,7 @@ class LLMInt8(PrunaAlgorithmBase):
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+    ) -> dict[str, Any]:
         """
         Get default values for the target_modules based on the model and configuration.
 
@@ -128,10 +128,11 @@ class LLMInt8(PrunaAlgorithmBase):
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default target_modules for the algorithm.
+        dict[str, Any]
+            A dictionary containing the default target_modules for the algorithm.
         """
-        return target_backbone(model)
+        target_modules: TARGET_MODULES_TYPE = target_backbone(model)
+        return {"target_modules": target_modules}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -149,10 +150,10 @@ class LLMInt8(PrunaAlgorithmBase):
         Any
             The quantized model.
         """
-        target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
         if target_modules is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-        target_modules = cast(TARGET_MODULES_TYPE, target_modules)
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         def quantize_causal_lm(attr_name: str | None, causal_lm: torch.nn.Module, subpaths: list[str]) -> Any:
             """

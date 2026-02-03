@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -105,7 +105,7 @@ class Quanto(PrunaAlgorithmBase):
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+    ) -> dict[str, Any]:
         """
         Get default values for the target_modules based on the model and configuration.
 
@@ -118,10 +118,11 @@ class Quanto(PrunaAlgorithmBase):
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default target_modules for the algorithm.
+        dict[str, Any]
+            A dictionary containing the default target_modules for the algorithm.
         """
-        return target_backbone(model)
+        target_modules: TARGET_MODULES_TYPE = target_backbone(model)
+        return {"target_modules": target_modules}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -140,9 +141,10 @@ class Quanto(PrunaAlgorithmBase):
             The quantized model.
         """
         imported_modules = self.import_algorithm_packages()
-        target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
         if target_modules is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         weights = getattr(imported_modules["quanto"], smash_config["weight_bits"])
         activations = (
