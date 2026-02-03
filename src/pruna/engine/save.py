@@ -20,7 +20,7 @@ import tempfile
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, cast
 
 import torch
 import transformers
@@ -28,7 +28,7 @@ from huggingface_hub import ModelCard, ModelCardData, login, repo_exists, upload
 from safetensors.torch import save_model
 
 from pruna.config.smash_config import SMASH_CONFIG_FILE_NAME
-from pruna.config.target_modules import map_targeted_nn_roots
+from pruna.config.target_modules import TARGET_MODULES_TYPE, map_targeted_nn_roots
 from pruna.engine.load import (
     LOAD_FUNCTIONS,
     PICKLED_FILE_NAME,
@@ -443,7 +443,8 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
 
     # save the quantized components
     if smash_config["hqq_diffusers_target_modules"] is None:
-        target_modules = hf_quantizer.get_model_dependent_hyperparameter_defaults(model, smash_config)
+        defaults = hf_quantizer.get_model_dependent_hyperparameter_defaults(model, smash_config)
+        target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
     else:
         target_modules = smash_config["hqq_diffusers_target_modules"]
     model = map_targeted_nn_roots(save_component, model, target_modules)
