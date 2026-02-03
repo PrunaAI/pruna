@@ -17,7 +17,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Iterable
 from functools import partial
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter
@@ -173,7 +173,7 @@ class Torchao(PrunaAlgorithmBase):
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+    ) -> dict[str, Any]:
         """
         Get default values for the target_modules based on the model and configuration.
 
@@ -186,10 +186,10 @@ class Torchao(PrunaAlgorithmBase):
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default target_modules for the algorithm.
+        dict[str, Any]
+            A dictionary containing the default target_modules for the algorithm.
         """
-        target_modules = target_backbone(model)
+        target_modules: TARGET_MODULES_TYPE = target_backbone(model)
 
         # exclude norm and embedding modules based on the excluded modules hyperparameter
         if "norm" in smash_config["excluded_modules"]:
@@ -198,7 +198,7 @@ class Torchao(PrunaAlgorithmBase):
         if "embedding" in smash_config["excluded_modules"]:
             for embedding_module in EMBEDDING_MODULES:
                 target_modules["exclude"].extend(_get_patterns_for_exact_attribute_match(embedding_module))
-        return target_modules
+        return {"target_modules": target_modules}
 
     def _validate_config(self, smash_config: SmashConfigPrefixWrapper) -> None:
         """
@@ -251,10 +251,10 @@ class Torchao(PrunaAlgorithmBase):
         self._validate_config(smash_config)
 
         # Suppress torchao INFO messages (e.g., about skipping small layers) during quantization
-        if smash_config["target_modules"] is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-        else:
-            target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
+        if target_modules is None:
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         with suppress_logging("torchao.quantization.quant_api"):
             imported_modules = self.import_algorithm_packages()
