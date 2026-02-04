@@ -165,6 +165,8 @@ def check_algorithm_cross_compatibility(model: Any, smash_config: SmashConfig) -
 
     Parameters
     ----------
+    model : Any
+        The model to check the algorithm cross-compatibility for.
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
     """
