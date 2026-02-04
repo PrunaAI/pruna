@@ -44,7 +44,14 @@ class FORA(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["qkv_diffusers", "diffusers_int8", "hqq_diffusers", "torchao", "flash_attn3"]
+    compatible_before: Iterable[str] = [
+        "qkv_diffusers",
+        "diffusers_int8",
+        "hqq_diffusers",
+        "torchao",
+        "flash_attn3",
+        "sage_attn"
+    ]
     compatible_after: Iterable[str] = ["stable_fast", "torch_compile"]
 
     def get_hyperparameters(self) -> list:
