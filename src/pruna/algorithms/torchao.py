@@ -95,6 +95,8 @@ class Torchao(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["qkv_diffusers", "torch_structured"]
     compatible_after: Iterable[str] = ["flash_attn3", "fora", "torch_compile", "sage_attn"]
+    disjointly_compatible_before: Iterable[str] = ["hqq_diffusers"]
+    disjointly_compatible_after: Iterable[str] = []
 
     def get_hyperparameters(self) -> list:
         """
