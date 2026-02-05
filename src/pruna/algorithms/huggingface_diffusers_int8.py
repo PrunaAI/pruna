@@ -25,7 +25,7 @@ from diffusers import BitsAndBytesConfig as DiffusersBitsAndBytesConfig
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
-from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
     TARGET_MODULES_TYPE,
     TargetModules,
@@ -126,7 +126,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
         return hasattr(model, "unet") and isinstance(model.unet, tuple(transformer_and_unet_models))
 
     def get_model_dependent_hyperparameter_defaults(
-        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
+        self, model: Any, smash_config: SmashConfigPrefixWrapper
     ) -> dict[str, Any]:
         """
         Get default values for the target_modules based on the model and configuration.
@@ -135,8 +135,8 @@ class DiffusersInt8(PrunaAlgorithmBase):
         ----------
         model : Any
             The model to get the default hyperparameters from.
-        smash_config : SmashConfig
-            The SmashConfig object.
+        smash_config : SmashConfigPrefixWrapper
+            The SmashConfig object wrapped with the algorithm-specific prefix.
 
         Returns
         -------
