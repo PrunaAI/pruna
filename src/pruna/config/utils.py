@@ -15,7 +15,7 @@
 from typing import Any, cast
 
 from pruna.algorithms import AlgorithmRegistry
-from pruna.config.smash_config import SmashConfig
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, expand_list_of_targeted_paths
 
 
@@ -66,7 +66,8 @@ def get_target_modules(model: Any, smash_config: SmashConfig, algorithm: str) ->
 
     target_modules: None | TARGET_MODULES_TYPE = smash_config[target_modules_hyperparameter]
     if target_modules is None:  # target modules exists but is set to default value
-        defaults = AlgorithmRegistry[algorithm].get_model_dependent_hyperparameter_defaults(model, smash_config)
+        wrapped_config = SmashConfigPrefixWrapper(smash_config, f"{algorithm}_")
+        defaults = AlgorithmRegistry[algorithm].get_model_dependent_hyperparameter_defaults(model, wrapped_config)
         target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
     return target_modules
 
