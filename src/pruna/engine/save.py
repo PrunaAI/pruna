@@ -62,11 +62,6 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     if not model_path.exists():
         model_path.mkdir(parents=True, exist_ok=True)
 
-    # Backward compatibility with torch artifacts save function
-    if "torch_artifacts" in smash_config.save_fns:
-        smash_config.save_fns.remove("torch_artifacts")
-        smash_config.save_artifacts_fns.append("torch_artifacts")
-
     # in the case of no specialized save functions, we use the model's original save function
     if len(smash_config.save_fns) == 0:
         pruna_logger.debug("Using model's original save function...")

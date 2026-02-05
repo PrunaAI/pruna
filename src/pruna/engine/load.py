@@ -57,13 +57,10 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     """
     smash_config = SmashConfig()
     smash_config.load_from_json(model_path)
+    if "torch_artifacts" in smash_config.load_fns:
+        _convert_to_artifact(smash_config, model_path)
     # since the model was just loaded from a file, we do not need to prepare saving anymore
     smash_config._prepare_saving = False
-
-    # Backward compatibility with torch artifacts save function
-    if "torch_artifacts" in smash_config.load_fns:
-        smash_config.load_fns.remove("torch_artifacts")
-        smash_config.load_artifacts_fns.append("torch_artifacts")
 
     resmash_fn = kwargs.pop("resmash_fn", resmash)
 
@@ -83,6 +80,35 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     load_artifacts(model, model_path, smash_config)
 
     return model, smash_config
+
+
+def _convert_to_artifact(smash_config: SmashConfig, model_path: str | Path) -> None:
+    """Convert legacy 'torch_artifacts' entries to the new artifact-based fields.
+
+    This handles older configs that still store 'torch_artifacts' under
+    'save_fns' or 'load_fns' instead of the corresponding '*_artifacts_fns'
+    fields.
+    """
+    updated = False
+
+    if "torch_artifacts" in smash_config.save_fns:
+        smash_config.save_fns.remove("torch_artifacts")
+        smash_config.save_artifacts_fns.append("torch_artifacts")
+        updated = True
+
+    if "torch_artifacts" in smash_config.load_fns:
+        smash_config.load_fns.remove("torch_artifacts")
+        smash_config.load_artifacts_fns.append("torch_artifacts")
+        updated = True
+
+    if updated:
+        pruna_logger.warning(
+            "The legacy 'torch_artifacts' save/load function entry in your SmashConfig is deprecated; "
+            "your config file has been updated automatically. If you downloaded this smashed model, "
+            "please ask the provider to update their model by loading it once with a recent version "
+            "of Pruna and re-uploading it."
+        )
+        smash_config.save_to_json(model_path)
 
 
 def load_pruna_model_from_pretrained(
