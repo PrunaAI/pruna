@@ -556,6 +556,18 @@ class SmashConfig:
             # we convert this to native python types for printing and handing arguments to pruna algorithms
             return convert_numpy_types(return_value)
 
+    def __contains__(self, name: str) -> bool:
+        """
+        Check if a configuration key exists in the SmashConfig.
+
+        This supports both additional arguments (like 'batch_size', 'device', etc.)
+        and any hyperparameter name present in the underlying ConfigSpace configuration,
+        such as per-algorithm keys like '{algorithm_name}_target_modules'.
+        """
+        if name in ADDITIONAL_ARGS:
+            return True
+        return name in self._configuration
+
     def __setitem__(self, name: str, value: Any) -> None:
         """
         Set a configuration value for a given name.
