@@ -1,10 +1,10 @@
 from typing import Any, Callable
 
 import pytest
-from transformers import AutoTokenizer
-from datasets import Dataset
-from torch.utils.data import TensorDataset
 import torch
+from transformers import AutoTokenizer
+
+from pruna.data import BenchmarkInfo, benchmark_info
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -80,3 +80,19 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     assert labels.dtype == torch.int64
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
+
+
+
+@pytest.mark.slow
+def test_parti_prompts_with_category_filter():
+    """Test PartiPrompts loading with category filter."""
+    dm = PrunaDataModule.from_string(
+        "PartiPrompts", category="Animals", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["Category"] == "Animals" for aux in auxiliaries)
