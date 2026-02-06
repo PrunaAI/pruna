@@ -30,6 +30,7 @@ from tqdm.auto import tqdm as base_tqdm
 from transformers import pipeline
 
 from pruna import SmashConfig
+from pruna.engine.load_artifacts import load_artifacts
 from pruna.engine.utils import load_json_config, move_to_device, set_to_best_available_device
 from pruna.logging.logger import pruna_logger
 
@@ -56,6 +57,8 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     """
     smash_config = SmashConfig()
     smash_config.load_from_json(model_path)
+    if "torch_artifacts" in smash_config.load_fns:
+        _convert_to_artifact(smash_config, model_path)
     # since the model was just loaded from a file, we do not need to prepare saving anymore
     smash_config._prepare_saving = False
 
@@ -63,11 +66,6 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
 
     if len(smash_config.load_fns) == 0:
         raise ValueError("Load function has not been set.")
-
-    # load torch artifacts if they exist
-    if LOAD_FUNCTIONS.torch_artifacts.name in smash_config.load_fns:
-        load_torch_artifacts(model_path, **kwargs)
-        smash_config.load_fns.remove(LOAD_FUNCTIONS.torch_artifacts.name)
 
     if len(smash_config.load_fns) > 1:
         pruna_logger.error(f"Load functions not used: {smash_config.load_fns[1:]}")
@@ -78,7 +76,39 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
         model = resmash_fn(model, smash_config)
 
+    # load artifacts (e.g. speed up the warmup or make it more consistent)
+    load_artifacts(model, model_path, smash_config)
+
     return model, smash_config
+
+
+def _convert_to_artifact(smash_config: SmashConfig, model_path: str | Path) -> None:
+    """Convert legacy 'torch_artifacts' entries to the new artifact-based fields.
+
+    This handles older configs that still store 'torch_artifacts' under
+    'save_fns' or 'load_fns' instead of the corresponding '*_artifacts_fns'
+    fields.
+    """
+    updated = False
+
+    if "torch_artifacts" in smash_config.save_fns:
+        smash_config.save_fns.remove("torch_artifacts")
+        smash_config.save_artifacts_fns.append("torch_artifacts")
+        updated = True
+
+    if "torch_artifacts" in smash_config.load_fns:
+        smash_config.load_fns.remove("torch_artifacts")
+        smash_config.load_artifacts_fns.append("torch_artifacts")
+        updated = True
+
+    if updated:
+        pruna_logger.warning(
+            "The legacy 'torch_artifacts' save/load function entry in your SmashConfig is deprecated; "
+            "your config file has been updated automatically. If you downloaded this smashed model, "
+            "please ask the provider to update their model by loading it once with a recent version "
+            "of Pruna and re-uploading it."
+        )
+        smash_config.save_to_json(model_path)
 
 
 def load_pruna_model_from_pretrained(
@@ -440,23 +470,6 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         )
 
 
-def load_torch_artifacts(model_path: str | Path, **kwargs) -> None:
-    """
-    Load a torch artifacts from the given model path.
-
-    Parameters
-    ----------
-    model_path : str | Path
-        The path to the model directory.
-    **kwargs : Any
-        Additional keyword arguments to pass to the model loading function.
-    """
-    artifact_path = Path(model_path) / "artifact_bytes.bin"
-    artifact_bytes = artifact_path.read_bytes()
-
-    torch.compiler.load_cache_artifacts(artifact_bytes)
-
-
 def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
@@ -580,7 +593,6 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     pickled = partial(load_pickled)
     hqq = partial(load_hqq)
     hqq_diffusers = partial(load_hqq_diffusers)
-    torch_artifacts = partial(load_torch_artifacts)
 
     def __call__(self, *args, **kwargs) -> Any:
         """

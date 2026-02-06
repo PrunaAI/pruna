@@ -36,6 +36,7 @@ from pruna.engine.load import (
     SAVE_BEFORE_SMASH_CACHE_DIR,
 )
 from pruna.engine.model_checks import get_helpers, is_janus_llamagen_ar
+from pruna.engine.save_artifacts import save_artifacts
 from pruna.engine.utils import determine_dtype, monkeypatch
 from pruna.logging.logger import pruna_logger
 
@@ -61,10 +62,6 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     if not model_path.exists():
         model_path.mkdir(parents=True, exist_ok=True)
 
-    if SAVE_FUNCTIONS.torch_artifacts.name in smash_config.save_fns:
-        save_torch_artifacts(model, model_path, smash_config)
-        smash_config.save_fns.remove(SAVE_FUNCTIONS.torch_artifacts.name)
-
     # in the case of no specialized save functions, we use the model's original save function
     if len(smash_config.save_fns) == 0:
         pruna_logger.debug("Using model's original save function...")
@@ -87,10 +84,12 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     else:
         pruna_logger.debug(f"Several save functions stacked: {smash_config.save_fns}, defaulting to pickled")
         save_fn = SAVE_FUNCTIONS.pickled
-        smash_config.load_fns = [LOAD_FUNCTIONS.pickled.name]
 
     # execute selected save function
     save_fn(model, model_path, smash_config)
+
+    # save artifacts as well
+    save_artifacts(model, model_path, smash_config)
 
     # save smash config (includes tokenizer and processor)
     smash_config.save_to_json(model_path)
@@ -460,36 +459,6 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
-def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
-    """
-    Save the model by saving the torch artifacts.
-
-    Parameters
-    ----------
-    model : Any
-        The model to save.
-    model_path : str | Path
-        The directory to save the model to.
-    smash_config : SmashConfig
-        The SmashConfig object containing the save and load functions.
-    """
-    artifacts = torch.compiler.save_cache_artifacts()
-
-    assert artifacts is not None
-    artifact_bytes, _ = artifacts
-
-    # check if the bytes are empty
-    if artifact_bytes == b"\x00\x00\x00\x00\x00\x00\x00\x01":
-        pruna_logger.error(
-            "Model has not been run before. Please run the model before saving to construct the compilation graph."
-        )
-
-    artifact_path = Path(model_path) / "artifact_bytes.bin"
-    artifact_path.write_bytes(artifact_bytes)
-
-    smash_config.load_fns.append(LOAD_FUNCTIONS.torch_artifacts.name)
-
-
 def reapply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Reapply the model.
@@ -543,7 +512,6 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     hqq_diffusers = partial(save_model_hqq_diffusers)
     save_before_apply = partial(save_before_apply)
     reapply = partial(reapply)
-    torch_artifacts = partial(save_torch_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """
