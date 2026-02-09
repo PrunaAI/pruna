@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import shutil
 from enum import Enum
 from functools import partial
 from pathlib import Path
-import shutil
 from typing import Any
 
 import torch
@@ -88,9 +88,7 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
 
 
 def save_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
-    """
-    Move the tuned config from pruna cache into the model directory.
-    """
+    """Move the tuned config from pruna cache into the model directory."""
     save_dir = Path(model_path) / "moe_kernel_tuned_configs"
     save_dir.mkdir(parents=True, exist_ok=True)
     shutil.move(Path(smash_config.cache_dir) / "moe_kernel_tuned_configs", save_dir)
