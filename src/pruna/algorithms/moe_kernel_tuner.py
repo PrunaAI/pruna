@@ -31,8 +31,8 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.engine.load import LOAD_FUNCTIONS
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
+from pruna.engine.save_artifacts import SAVE_ARTIFACTS_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
@@ -252,7 +252,10 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         best_configs = {
             M: sort_config(config) for M, config in zip(batch_sizes, configs)
         }
-        # save configs in caches (for hf and vllm)
+        end = time.time()
+        pruna_logger.info(f"Tuning took {end - start:.2f} seconds")
+
+        # save configs in hf/vllm caches for direct usage
         save_configs(
             best_configs,
             nb_experts,
@@ -265,7 +268,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             smash_config["path_to_vllm_cache"],
             imported_packages,
         )
-        # stash results in the SmashConfig for later loading (cannot add new hyperparams to ConfigSpace here)
+        # results to be saved for later loading
         payload = dict(
             best_configs_moe_kernel=best_configs,
             num_experts=nb_experts,
@@ -274,12 +277,14 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             use_fp8_w8a8=use_fp8_w8a8,
             use_int8_w8a16=use_int8_w8a16,
         )
-        # store artifacts in SmashConfig so they persist across save/load
-        smash_config.artifacts["moe_kernel_tuner"] = payload
-        # attach load function to the smash config for loading
-        smash_config.load_fns.append(LOAD_FUNCTIONS.moe_kernel_tuner.name)
-        end = time.time()
-        pruna_logger.info(f"Tuning took {end - start:.2f} seconds")
+        # store artifacts in pruna cache for later saving/loading
+        save_dir = smash_config.cache_dir / "moe_kernel_tuned_configs"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        with open(save_dir / "moe_kernel_tuner.json", "w") as f:
+            json.dump(payload, f)
+
+        # attach artifacts save function to the smash config for saving
+        smash_config.save_artifacts_fns.append(SAVE_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)
 
         # (v) Return the model (untouched; only the configs are saved)
         return model
