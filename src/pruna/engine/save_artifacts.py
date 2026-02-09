@@ -14,6 +14,7 @@
 from enum import Enum
 from functools import partial
 from pathlib import Path
+import shutil
 from typing import Any
 
 import torch
@@ -86,6 +87,18 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.torch_artifacts.name)
 
 
+def save_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Move the tuned config from pruna cache into the model directory.
+    """
+    save_dir = Path(model_path) / "moe_kernel_tuned_configs"
+    save_dir.mkdir(parents=True, exist_ok=True)
+    shutil.move(Path(smash_config.cache_dir) / "moe_kernel_tuned_configs", save_dir)
+
+    # define here the load artifacts function
+    smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)
+
+
 class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* save functions.
@@ -121,6 +134,7 @@ class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
 
     torch_artifacts = partial(save_torch_artifacts)
+    moe_kernel_tuner_artifacts = partial(save_moe_kernel_tuner_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """

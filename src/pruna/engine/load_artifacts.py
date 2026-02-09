@@ -81,6 +81,56 @@ def load_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
+def load_moe_kernel_tuner_artifacts(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+    """
+    Load a tuned kernel config inside the hf/vllm caches, then load the model.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the best configs for the MoE kernel tuner.
+    **kwargs : Any
+        Additional keyword arguments to pass to the model loading function.
+
+    Returns
+    -------
+    Any
+        The loaded MoE model.
+    """
+    from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner, save_configs
+
+    imported_packages = MoeKernelTuner().import_algorithm_packages()
+    save_dir = Path(path) / "moe_kernel_tuned_configs"
+    payload = json.load(open(save_dir / "moe_kernel_tuner.json"))
+    if not payload:
+        raise ValueError(f"MoE kernel tuner artifacts not found in {save_dir}")
+    else:
+        best_configs = payload["best_configs_moe_kernel"]
+        num_experts = payload["num_experts"]
+        shard_intermediate_size = payload["shard_intermediate_size"]
+        dtype = payload["dtype"]
+        # Convert dtype string back to torch.dtype if needed
+        dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
+        use_fp8_w8a8 = payload["use_fp8_w8a8"]
+        use_int8_w8a16 = payload["use_int8_w8a16"]
+
+        # save the config attached to smash_config, inside the hf and vllm caches.
+        save_configs(
+            best_configs,
+            num_experts,
+            shard_intermediate_size,
+            dtype,
+            use_fp8_w8a8,
+            use_int8_w8a16,
+            None,
+            smash_config["moe_kernel_tuner_path_to_huggingface_hub_cache"],
+            smash_config["moe_kernel_tuner_path_to_vllm_cache"],
+            imported_packages,
+        )
+
+
 class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* load functions.
@@ -116,6 +166,7 @@ class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
 
     torch_artifacts = partial(load_torch_artifacts)
+    moe_kernel_tuner_artifacts = partial(load_moe_kernel_tuner_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """Call the underlying load function."""
