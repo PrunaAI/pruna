@@ -251,6 +251,8 @@ class UpscaleHelper:
             applied to improve image quality and resolution.
         """
         output = self.original_pipe_call(*args, **kwargs)
+        if output is None or not hasattr(output, "images") or not output.images:
+            return output
         enhanced_images = []
         for image in output.images:
             # Get the original image size before enhancement
