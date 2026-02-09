@@ -218,35 +218,43 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
 
         # use ray to parallelize the tuning
-        ray.init()
+        ray.init(ignore_reinit_error=True)
 
-        is_fp16 = not (use_fp8_w8a8 or use_int8_w8a16)
-        search_space = get_configs_compute_bound(is_fp16, smash_config)
+        search_space = get_configs_compute_bound(smash_config)
         pruna_logger.info(f"Start tuning over {len(search_space)} configurations...")
 
         start = time.time()
         outputs = []
-        for batch_size in batch_sizes:
-            output = tune.remote(
-                batch_size,                 # num_tokens
-                nb_experts,                          # num_experts per block
-                shard_intermediate_size,
-                hidden_size,
-                topk,
-                dtype,
-                use_fp8_w8a8,
-                use_int8_w8a16,
-                search_space,
-                None,                       # we don't suport block quantization for now
-                False,                      # not use_deep_gemm
-                imported_packages,
-                0,                          # random seed
-                smash_config["num_iters"],
-            )
-            outputs.append(output)
+        configs = []
 
-        configs = ray.get(outputs)
-        ray.shutdown()
+        # try/except to catch any exceptions that may stuck the ray workers.
+        try:
+            for batch_size in batch_sizes:
+                output = tune.remote(
+                    batch_size,                 # num_tokens
+                    nb_experts,                          # num_experts per block
+                    shard_intermediate_size,
+                    hidden_size,
+                    topk,
+                    dtype,
+                    use_fp8_w8a8,
+                    use_int8_w8a16,
+                    search_space,
+                    None,                       # we don't suport block quantization for now
+                    False,                      # not use_deep_gemm
+                    imported_packages,
+                    0,                          # random seed
+                    smash_config["num_iters"],
+                )
+                outputs.append(output)
+
+            configs = ray.get(outputs)
+        finally:
+            # Try to shutdown ray, and catch any exceptions.
+            try:
+                ray.shutdown()
+            except Exception as e:
+                pruna_logger.warning(f"Exception during ray.shutdown(): {e}")
 
         # (iv) Sort the configs by batch size and save the best configs
         best_configs = {
@@ -273,7 +281,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             best_configs_moe_kernel=best_configs,
             num_experts=nb_experts,
             shard_intermediate_size=shard_intermediate_size,
-            dtype=dtype,
+            dtype="bfloat16" if dtype == torch.bfloat16 else "float16",
             use_fp8_w8a8=use_fp8_w8a8,
             use_int8_w8a16=use_int8_w8a16,
         )
@@ -460,14 +468,12 @@ def sort_config(config: BenchmarkConfig) -> BenchmarkConfig:
     }
 
 
-def get_configs_compute_bound(use_fp16: bool, smash_config: SmashConfigPrefixWrapper) -> list[dict[str, int]]:
+def get_configs_compute_bound(smash_config: SmashConfigPrefixWrapper) -> list[dict[str, int]]:
     """
     Get the gridsearch space for the kernel (tiling and warp scheduling).
 
     Parameters
     ----------
-    use_fp16 : bool
-        Whether to use fp16.
     smash_config : SmashConfigPrefixWrapper
         The Smash configuration.
 
