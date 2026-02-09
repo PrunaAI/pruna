@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import json
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -103,7 +104,8 @@ def load_moe_kernel_tuner_artifacts(path: str | Path, smash_config: SmashConfig,
 
     imported_packages = MoeKernelTuner().import_algorithm_packages()
     save_dir = Path(path) / "moe_kernel_tuned_configs"
-    payload = json.load(open(save_dir / "moe_kernel_tuner.json"))
+    with open(save_dir / "moe_kernel_tuner.json") as f:
+        payload = json.load(f)
     if not payload:
         raise ValueError(f"MoE kernel tuner artifacts not found in {save_dir}")
     else:
