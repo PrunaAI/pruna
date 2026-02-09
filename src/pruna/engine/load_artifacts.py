@@ -84,16 +84,16 @@ def load_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
 
 def load_moe_kernel_tuner_artifacts(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
-    Load a tuned kernel config inside the hf/vllm caches, then load the model.
+    Load a tuned kernel config inside the hf/vllm caches.
 
     Parameters
     ----------
     path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
-        The SmashConfig object containing the best configs for the MoE kernel tuner.
+        The SmashConfig object.
     **kwargs : Any
-        Additional keyword arguments to pass to the model loading function.
+        Additional keyword arguments to pass to the function.
 
     Returns
     -------

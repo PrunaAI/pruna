@@ -88,7 +88,23 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
 
 
 def save_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
-    """Move the tuned config from pruna cache into the model directory."""
+    """
+    Move the tuned config from pruna cache into the model directory.
+
+    Parameters
+    ----------
+    model : Any
+        The model to save artifacts for.
+    model_path : str | Path
+        The directory where the model and its artifacts will be saved.
+    smash_config : SmashConfig
+        The SmashConfig object.
+
+    Returns
+    -------
+    None
+        This function does not return anything.
+    """
     save_dir = Path(model_path) / "moe_kernel_tuned_configs"
     save_dir.mkdir(parents=True, exist_ok=True)
     shutil.move(Path(smash_config.cache_dir) / "moe_kernel_tuned_configs", save_dir)
