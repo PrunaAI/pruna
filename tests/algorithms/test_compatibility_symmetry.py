@@ -50,6 +50,7 @@ def test_compatibility_symmetry():
 
 
 def test_disjointly_compatible_algorithms_have_target_modules():
+    """Enforce that all algorithms with disjointly compatible algorithms have a target_modules hyperparameter."""
     pruna_algorithms = AlgorithmRegistry._registry
 
     missing_target_modules = []
@@ -61,7 +62,35 @@ def test_disjointly_compatible_algorithms_have_target_modules():
             if not has_target_modules:
                 missing_target_modules.append(alg_name)
     
-    assert len(missing_target_modules) == 0, (
-        f"Found {len(missing_target_modules)} algorithms with disjointly compatible algorithms but no target_modules hyperparameter: " +
-        ", ".join(f"{alg_name}" for alg_name in missing_target_modules)
+    assert not missing_target_modules, (
+        f"Found {len(missing_target_modules)} algorithms with disjointly compatible algorithms "
+        f"but no target_modules hyperparameter: {missing_target_modules}"
     )
+
+
+def test_no_redundant_disjoint_compatibility():
+    """Enforce that no algorithm lists a disjointly compatible algorithm that is already marked as compatible in the same order."""
+    pruna_algorithms = AlgorithmRegistry._registry
+
+    redundant_disjoint_compatibility = {}
+
+    for alg_name, alg in pruna_algorithms.items():
+        redundant_before = list(set(alg.get_algorithms_to_run_before()) & set(alg.get_algorithms_to_run_before_disjointly()))
+        redundant_after = list(set(alg.get_algorithms_to_run_after()) & set(alg.get_algorithms_to_run_after_disjointly()))
+        if redundant_before or redundant_after:
+            redundant_disjoint_compatibility[alg_name] = {}
+        if redundant_before:
+            redundant_disjoint_compatibility[alg_name]["before"] = redundant_before
+        if redundant_after:
+            redundant_disjoint_compatibility[alg_name]["after"] = redundant_after
+
+    if not redundant_disjoint_compatibility:
+        return
+
+    report_header = f"Found redundant disjoint compatibility relationships in {len(redundant_disjoint_compatibility)} algorithms:"
+    per_algorithm_report = [
+        f"- {alg_name}: before: {redundancy.get('before', [])} - after: {redundancy.get('after', [])}"
+        for alg_name, redundancy in redundant_disjoint_compatibility.items()
+    ]
+    report_detail = "\n".join(per_algorithm_report)
+    raise ValueError(f"{report_header}\n{report_detail}")
