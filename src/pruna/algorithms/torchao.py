@@ -177,19 +177,23 @@ class Torchao(PrunaAlgorithmBase):
         self, model: Any, smash_config: SmashConfigPrefixWrapper
     ) -> dict[str, Any]:
         """
-        Get default values for the target_modules based on the model and configuration.
+        Provide default `target_modules` using `target_backbone`, with additional exclusions.
+
+        Extends the base backbone targets by optionally excluding norm and embedding modules
+        based on the `excluded_modules` hyperparameter in `smash_config`.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
-        smash_config : SmashConfig
-            The SmashConfig object.
+            The model to derive defaults from.
+        smash_config : SmashConfigPrefixWrapper
+            The algorithm-prefixed configuration. Used to read `excluded_modules`
+            to determine which module types to exclude.
 
         Returns
         -------
         dict[str, Any]
-            A dictionary containing the default target_modules for the algorithm.
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
         target_modules: TARGET_MODULES_TYPE = target_backbone(model)
 

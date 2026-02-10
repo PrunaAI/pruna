@@ -129,19 +129,19 @@ class DiffusersInt8(PrunaAlgorithmBase):
         self, model: Any, smash_config: SmashConfigPrefixWrapper
     ) -> dict[str, Any]:
         """
-        Get default values for the target_modules based on the model and configuration.
+        Provide default `target_modules` using `target_backbone` to target the model backbone.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
+            The model to derive defaults from.
         smash_config : SmashConfigPrefixWrapper
-            The SmashConfig object wrapped with the algorithm-specific prefix.
+            The algorithm-prefixed configuration.
 
         Returns
         -------
         dict[str, Any]
-            A dictionary containing the default target_modules for the algorithm.
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
         target_modules: TARGET_MODULES_TYPE = target_backbone(model)
         return {"target_modules": target_modules}

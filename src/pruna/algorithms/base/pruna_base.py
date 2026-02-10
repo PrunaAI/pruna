@@ -271,21 +271,26 @@ class PrunaAlgorithmBase(ABC):
         self, model: Any, smash_config: SmashConfigPrefixWrapper
     ) -> dict[str, Any]:
         """
-        Get default values for unconstrained hyperparameters based on the model and configuration.
+        Provide model-dependent default values for hyperparameters declared in `get_hyperparameters`.
 
-        Subclasses can override this method to provide default values for their unconstrained hyperparameters.
+        This method is called at apply-time for hyperparameter whose default value depends on the model architecture.
+        Subclasses should inspect the model architecture and return sensible defaults. The most common use case
+        is returning a `target_modules` that specifies which parts of the model the algorithm should target.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
+            The model to derive defaults from (used to inspect architecture, component names, etc.).
         smash_config : SmashConfigPrefixWrapper
-            The SmashConfig object wrapped with the algorithm-specific prefix.
+            The algorithm-prefixed configuration. Can be used to read other already-set hyperparameters
+            that may influence the choice of defaults.
 
         Returns
         -------
-        Any
-            The default unconstrained hyperparameters values for the algorithm.
+        dict[str, Any]
+            A dictionary mapping hyperparameter names (without the algorithm prefix) to
+            their default values, e.g. `{"target_modules": {"include": ["transformer.*"], "exclude": []}}`.
+            Returns an empty dict when the algorithm has no model-dependent defaults.
         """
         return {}
 

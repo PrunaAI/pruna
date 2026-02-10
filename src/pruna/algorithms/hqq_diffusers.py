@@ -133,19 +133,22 @@ class HQQDiffusers(PrunaAlgorithmBase):
         self, model: Any, smash_config: SmashConfigPrefixWrapper
     ) -> dict[str, Any]:
         """
-        Get default values for the target_modules based on the model and configuration.
+        Provide default `target_modules` by detecting transformer and unet components in the pipeline.
+
+        Inspects the model's attributes and includes any that are known diffusers transformer
+        or unet models. Falls back to targeting all modules if none are found.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
-        smash_config : SmashConfig
-            The SmashConfig object.
+            The model to derive defaults from.
+        smash_config : SmashConfigPrefixWrapper
+            The algorithm-prefixed configuration.
 
         Returns
         -------
         dict[str, Any]
-            A dictionary containing the default target_modules for the algorithm.
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
         include: list[str] = []
         exclude: list[str] = []

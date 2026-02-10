@@ -101,19 +101,19 @@ class LLMCompressor(PrunaAlgorithmBase):
         self, model: Any, smash_config: SmashConfigPrefixWrapper
     ) -> dict[str, Any]:
         """
-        Get the default hyperparameters for the model.
+        Provide default `target_modules` using `target_backbone` to target the model backbone.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
+            The model to derive defaults from.
         smash_config : SmashConfigPrefixWrapper
-            The configuration for the quantization.
+            The algorithm-prefixed configuration.
 
         Returns
         -------
         dict[str, Any]
-            A dictionary containing the default target_modules for the algorithm.
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
         target_modules: TARGET_MODULES_TYPE = target_backbone(model)
         return {"target_modules": target_modules}
