@@ -82,13 +82,15 @@ def load_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
-def load_moe_kernel_tuner_artifacts(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+def load_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a tuned kernel config inside the hf/vllm caches.
 
     Parameters
     ----------
-    path : str | Path
+    model : Any
+        The model to load the artifacts for.
+    model_path : str | Path
         The path to the model directory.
     smash_config : SmashConfig
         The SmashConfig object.
@@ -103,7 +105,7 @@ def load_moe_kernel_tuner_artifacts(path: str | Path, smash_config: SmashConfig,
     from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner, save_configs
 
     imported_packages = MoeKernelTuner().import_algorithm_packages()
-    save_dir = Path(path) / "moe_kernel_tuned_configs"
+    save_dir = Path(model_path) / "moe_kernel_tuned_configs"
     with open(save_dir / "moe_kernel_tuner.json") as f:
         payload = json.load(f)
     if not payload:
