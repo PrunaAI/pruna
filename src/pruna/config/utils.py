@@ -72,9 +72,9 @@ def get_target_modules(model: Any, smash_config: SmashConfig, algorithm: str) ->
     return target_modules
 
 
-def are_disjoint_target_modules(model: Any, smash_config: SmashConfig, alg_a: str, alg_b: str) -> bool:
+def are_disjoint_target_modules(model: Any, smash_config: SmashConfig, alg_a: str, alg_b: str) -> tuple[bool, list[str]]:
     """
-    Check if two target modules target disjoint sets of the model's submodules.
+    Check if two algorithms target disjoint sets of the model's submodules.
 
     Parameters
     ----------
@@ -89,12 +89,16 @@ def are_disjoint_target_modules(model: Any, smash_config: SmashConfig, alg_a: st
 
     Returns
     -------
-    bool
-        True if the two target modules target disjoint sets of the model's submodules, False otherwise.
+    are_disjoint : bool
+        Whether the target modules of the two algorithms are disjoint.
+    overlap : list[str]
+        The paths of the submodules targeted by both algorithms. Empty if disjoint.
     """
     target_modules_a = get_target_modules(model, smash_config, alg_a)
     target_modules_b = get_target_modules(model, smash_config, alg_b)
 
     target_modules_a_expanded = expand_list_of_targeted_paths(target_modules_a, model)
     target_modules_b_expanded = expand_list_of_targeted_paths(target_modules_b, model)
-    return len(set(target_modules_a_expanded) & set(target_modules_b_expanded)) == 0
+    overlap = list(set(target_modules_a_expanded) & set(target_modules_b_expanded))
+    are_disjoint = not overlap
+    return are_disjoint, overlap

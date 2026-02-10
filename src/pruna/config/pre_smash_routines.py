@@ -181,13 +181,14 @@ def check_algorithm_cross_compatibility(model: Any, smash_config: SmashConfig) -
         else:
             # alg_a is disjointly compatible with alg_b, we need to check their target modules
             # they are disjointly compatible so they must have target modules hyperparameters
-            if not are_disjoint_target_modules(model, smash_config, alg_a, alg_b):
+            are_disjoint, overlap = are_disjoint_target_modules(model, smash_config, alg_a, alg_b)
+            if not are_disjoint:
+                pruna_logger.debug(f"Overlapping target modules between '{alg_a}' and '{alg_b}': {overlap}")
                 raise ValueError(
-                    (
-                        f"Incompatible target modules: Algorithms '{alg_a}' and '{alg_b}' can only be used together "
-                        "if they operate on separate (non-overlapping) sets of modules within the model. "
-                        "Please configure their 'target_modules' hyperparameters so that the targets do not overlap."
-                    )
+                    f"Incompatible target modules: Algorithms '{alg_a}' and '{alg_b}' can only be used together "
+                    "if they operate on non-overlapping sets of model modules. "
+                    "Please adjust their 'target_modules' hyperparameters to eliminate the overlap. "
+                    "Enable debug logging to see the specific overlapping modules."
                 )
 
 
@@ -293,12 +294,12 @@ def construct_algorithm_directed_graph(model: Any, smash_config: SmashConfig) ->
 
         if alg_a in alg_b_instance.get_algorithms_to_run_before() or (
             alg_a in alg_b_instance.get_algorithms_to_run_before_disjointly()
-            and are_disjoint_target_modules(model, smash_config, alg_a, alg_b)
+            and are_disjoint_target_modules(model, smash_config, alg_a, alg_b)[0]
         ):
             graph.add_edge(alg_a, alg_b)
         if alg_a in alg_b_instance.get_algorithms_to_run_after() or (
             alg_a in alg_b_instance.get_algorithms_to_run_after_disjointly()
-            and are_disjoint_target_modules(model, smash_config, alg_a, alg_b)
+            and are_disjoint_target_modules(model, smash_config, alg_a, alg_b)[0]
         ):
             graph.add_edge(alg_b, alg_a)
 
