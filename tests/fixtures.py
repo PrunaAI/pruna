@@ -114,6 +114,15 @@ def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple
     return model, smash_config
 
 
+def get_vit_pipeline_for_specific_task(model_id: str, task: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
+    """Get a transformers pipeline for specific task."""
+    model = pipeline(task, model=model_id, **kwargs)
+    smash_config = SmashConfig()
+
+    smash_config.add_data("ImageNet")
+    return model, smash_config
+
+
 def get_transformers_pipeline_for_specific_task(
     model_id: str, task: str, **kwargs: dict[str, Any]
 ) -> tuple[Any, SmashConfig]:
@@ -174,6 +183,10 @@ MODEL_FACTORY: dict[str, Callable] = {
     "shufflenet": partial(get_torchvision_model, "shufflenet_v2_x0_5"),
     "mobilenet_v2": partial(get_torchvision_model, "mobilenet_v2"),
     "resnet_18": partial(get_torchvision_model, "resnet18"),
+    "vit_base": partial(get_vit_pipeline_for_specific_task, "google/vit-base-patch16-224", task="image-classification"),
+    "vit_large": partial(
+        get_vit_pipeline_for_specific_task, "google/vit-large-patch16-224", task="image-classification"
+    ),
     # image generation models
     "stable_diffusion_v1_4": partial(get_diffusers_model, "CompVis/stable-diffusion-v1-4"),
     "stable_diffusion_3_medium_diffusers": partial(
