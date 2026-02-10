@@ -176,9 +176,7 @@ def check_algorithm_cross_compatibility(model: Any, smash_config: SmashConfig) -
     for alg_a, alg_b in algorithm_pairs:
         if alg_a in AlgorithmRegistry[alg_b].get_compatible_algorithms():
             continue
-        elif alg_a not in AlgorithmRegistry[alg_b].get_disjointly_compatible_algorithms():
-            raise ValueError(f"Algorithm {alg_a} is incompatible with {alg_b}")
-        else:
+        elif alg_a in AlgorithmRegistry[alg_b].get_disjointly_compatible_algorithms():
             # alg_a is disjointly compatible with alg_b, we need to check their target modules
             # they are disjointly compatible so they must have target modules hyperparameters
             are_disjoint, overlap = are_disjoint_target_modules(model, smash_config, alg_a, alg_b)
@@ -190,6 +188,8 @@ def check_algorithm_cross_compatibility(model: Any, smash_config: SmashConfig) -
                     "Please adjust their 'target_modules' hyperparameters to eliminate the overlap. "
                     "Enable debug logging to see the specific overlapping modules."
                 )
+        else:
+            raise ValueError(f"Algorithm {alg_a} is incompatible with {alg_b}")
 
 
 def check_directional_compatibility_violations(graph: nx.DiGraph, algorithm_order: list[str]) -> list[tuple[str, str]]:
