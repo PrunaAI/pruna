@@ -35,6 +35,47 @@ def _cleanup_distributed():
         dist.destroy_process_group()
 
 
+def start_distributed_server_if_needed(model, smash_config):
+    """
+    Start a DistributedServer if ring_attn requires one and the environment supports it.
+
+    When ``torch.distributed`` is available but not yet initialised and multiple
+    CUDA GPUs are present, the model is moved to CPU (so it can be pickled) and
+    a :class:`DistributedServer` is spawned.
+
+    Parameters
+    ----------
+    model : Any
+        The model / pipeline to distribute.
+    smash_config : Any
+        The SmashConfig for the current smash call.
+
+    Returns
+    -------
+    DistributedServer | None
+        A started server if one was spawned, otherwise ``None``.
+    """
+    if not (dist.is_available() and not dist.is_initialized()):
+        return None
+
+    device_str = str(smash_config.device).lower()
+    if not (device_str.startswith("cuda") and torch.cuda.device_count() > 1):
+        return None
+
+    from pruna.engine.utils import move_to_device
+
+    try:
+        # send the pipeline to CPU so it can be pickled and fanned out to workers
+        move_to_device(model, "cpu")
+    except Exception as exc:  # pragma: no cover - best-effort move
+        pruna_logger.debug(f"Could not move model to CPU before spawn: {exc}")
+
+    pruna_logger.info("Detected ring_attn; starting DistributedServer (no torchrun env detected).")
+    server = DistributedServer(model, smash_config)
+    server.start()
+    return server
+
+
 class DistributedServer:
     """
     Wrapper to distribute the model across multiple GPUs.
