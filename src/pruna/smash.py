@@ -80,28 +80,11 @@ def smash(
         # ring_attn needs a process group; if we're not already under torchrun/torch.distributed,
         # spawn our local multi-proc server and return early with the wrapped model.
         if "ring_attn" in algorithm_order:
-            try:
-                import torch
-                import torch.distributed as dist
+            from pruna.algorithms.ring_attn.utils.server_utils import start_distributed_server_if_needed
 
-                from pruna.algorithms.ring_attn import DistributedServer
-                from pruna.engine.utils import move_to_device
-            except Exception as exc:  # pragma: no cover - defensive guard
-                pruna_logger.debug(f"ring_attn distributed setup skipped: {exc}")
-            else:
-                if dist.is_available() and not dist.is_initialized():
-                    device_str = str(smash_config.device).lower()
-                    if device_str.startswith("cuda") and torch.cuda.device_count() > 1:
-                        try:
-                            # send the pipeline to CPU so it can be pickled and fanned out to workers
-                            move_to_device(model, "cpu")
-                        except Exception as exc:  # pragma: no cover - best-effort move
-                            pruna_logger.debug(f"Could not move model to CPU before spawn: {exc}")
-
-                        pruna_logger.info("Detected ring_attn; starting DistributedServer (no torchrun env detected).")
-                        server = DistributedServer(model, smash_config)
-                        server.start()
-                        return PrunaModel(server, smash_config=smash_config)
+            server = start_distributed_server_if_needed(model, smash_config)
+            if server is not None:
+                return PrunaModel(server, smash_config=smash_config)
 
         # iterate through all algorithms groups in a predefined order
         for algorithm in algorithm_order:
