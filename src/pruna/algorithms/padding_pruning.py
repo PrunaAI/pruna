@@ -128,7 +128,7 @@ class PaddingPruner(PrunaAlgorithmBase):
 
 class PaddingPruningHelper:
     """
-    Helper for Prompt Pruning.
+    Helper for Padding Pruning.
 
     Parameters
     ----------
