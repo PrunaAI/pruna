@@ -58,16 +58,14 @@ class ZipAR(PrunaAlgorithmBase):
         Returns
         -------
         bool
-            True if the model is a Janus LlamaGen AR model and transformers version is 4.54.0, False otherwise.
+            True if the model is a Janus LlamaGen AR model, False otherwise.
         """
-        # Check transformers version - ZipAR requires transformers==4.54.0 due to Janus code instability
+        # Warn when using a transformers version other than 4.54.0 (ZipAR is tested with 4.54.0 due to Janus API)
         if Version(transformers_version) != Version("4.54.0"):
             pruna_logger.warning(
-                f"ZipAR requires transformers==4.54.0, but found {transformers_version}. "
-                "Install with: pip install pruna[zipar]"
+                f"ZipAR is tested with transformers==4.54.0; you have {transformers_version}. "
+                "Other versions may be unstable with Janus models. Consider pinning: pip install transformers==4.54.0"
             )
-            return False
-
         return is_janus_llamagen_ar(model)
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -118,6 +116,12 @@ class ZipAR(PrunaAlgorithmBase):
         Any
             The model with the ZipAR decoder applied.
         """
+        if Version(transformers_version) != Version("4.54.0"):
+            pruna_logger.warning(
+                f"Applying ZipAR with transformers=={transformers_version}. "
+                "ZipAR is tested with transformers==4.54.0; if you encounter errors, "
+                "consider pinning: pip install transformers==4.54.0"
+            )
         model.zipar_helper = JanusZipARGenerator(model, window_size=smash_config["window_size"])
         model.zipar_helper.enable()
         return model
