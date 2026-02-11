@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import shutil
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -86,6 +87,34 @@ def save_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.torch_artifacts.name)
 
 
+def save_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Move the tuned config from pruna cache into the model directory.
+
+    Parameters
+    ----------
+    model : Any
+        The model to save artifacts for.
+    model_path : str | Path
+        The directory where the model and its artifacts will be saved.
+    smash_config : SmashConfig
+        The SmashConfig object.
+
+    Returns
+    -------
+    None
+        This function does not return anything.
+    """
+    save_dir = Path(model_path) / "moe_kernel_tuned_configs"
+    src_dir = Path(smash_config.cache_dir) / "moe_kernel_tuned_configs"
+    if save_dir.exists():
+        shutil.rmtree(save_dir)
+    shutil.move(src_dir, save_dir)
+
+    # define here the load artifacts function
+    smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)
+
+
 class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* save functions.
@@ -121,6 +150,7 @@ class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
 
     torch_artifacts = partial(save_torch_artifacts)
+    moe_kernel_tuner_artifacts = partial(save_moe_kernel_tuner_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """
