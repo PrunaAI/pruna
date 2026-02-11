@@ -76,6 +76,7 @@ def test_full_integration_combo(
     "model_fixture, algorithms_to_target_modules, allow_pickle_files, metric",
     [
         ("flux_tiny_random", {"torchao": {"include": ["transformer.*attn*"]}, "hqq_diffusers": {"include": ["transformer.*ff*", "transformer.*mlp*"]}}, False, 'cmmd'),
+        ("llama_3_tiny_random", {"torchao": {"include": ["model.*attn*"]}, "hqq": {"include": ["model.*mlp*"]}}, False, 'perplexity'),
     ],
     indirect=["model_fixture"],
 )
