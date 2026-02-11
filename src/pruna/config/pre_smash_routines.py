@@ -22,6 +22,7 @@ from networkx import DiGraph
 
 from pruna import SmashConfig
 from pruna.algorithms import AlgorithmRegistry
+from pruna.config.utils import are_disjoint_target_modules
 from pruna.engine.utils import get_device, get_device_map, get_device_type, move_to_device, split_device
 from pruna.logging.logger import pruna_logger
 
@@ -158,12 +159,14 @@ def execute_algorithm_pre_smash_hooks(model: Any, smash_config: SmashConfig, alg
         algorithm.pre_smash_hook(model, smash_config)
 
 
-def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
+def check_algorithm_cross_compatibility(model: Any, smash_config: SmashConfig) -> None:
     """
     Check if the active algorithms are compatible with each other.
 
     Parameters
     ----------
+    model : Any
+        The model to check the algorithm cross-compatibility for.
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
     """
@@ -171,7 +174,21 @@ def check_algorithm_cross_compatibility(smash_config: SmashConfig) -> None:
     algorithm_pairs = list(itertools.permutations(active_algorithms, 2))
 
     for alg_a, alg_b in algorithm_pairs:
-        if alg_a in AlgorithmRegistry[alg_b].get_incompatible_algorithms():
+        if alg_a in AlgorithmRegistry[alg_b].get_compatible_algorithms():
+            continue
+        elif alg_a in AlgorithmRegistry[alg_b].get_disjointly_compatible_algorithms():
+            # alg_a is disjointly compatible with alg_b, we need to check their target modules
+            # they are disjointly compatible so they must have target modules hyperparameters
+            are_disjoint, overlap = are_disjoint_target_modules(model, smash_config, alg_a, alg_b)
+            if not are_disjoint:
+                pruna_logger.debug(f"Overlapping target modules between '{alg_a}' and '{alg_b}': {overlap}")
+                raise ValueError(
+                    f"Incompatible target modules: Algorithms '{alg_a}' and '{alg_b}' can only be used together "
+                    "if they operate on non-overlapping sets of model modules. "
+                    "Please adjust their 'target_modules' hyperparameters to eliminate the overlap. "
+                    "Enable debug logging to see the specific overlapping modules."
+                )
+        else:
             raise ValueError(f"Algorithm {alg_a} is incompatible with {alg_b}")
 
 
@@ -202,12 +219,14 @@ def check_directional_compatibility_violations(graph: nx.DiGraph, algorithm_orde
     return violations
 
 
-def determine_algorithm_order(smash_config: SmashConfig, experimental: bool = False) -> list[str]:
+def determine_algorithm_order(model: Any, smash_config: SmashConfig, experimental: bool = False) -> list[str]:
     """
     Determine the order of the active algorithms based on their ordering requirements.
 
     Parameters
     ----------
+    model : Any
+        The model to check the algorithm order for.
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
     experimental : bool, optional
@@ -224,7 +243,7 @@ def determine_algorithm_order(smash_config: SmashConfig, experimental: bool = Fa
     ValueError
         If the algorithm order violates directional compatibility and experimental is False.
     """
-    graph = construct_algorithm_directed_graph(smash_config)
+    graph = construct_algorithm_directed_graph(model, smash_config)
     if smash_config._algorithm_order is not None:
         # If experimental mode is not enabled, the order still needs to adhere to directional compatibility constraints
         violations = check_directional_compatibility_violations(graph, smash_config._algorithm_order)
@@ -247,12 +266,14 @@ def determine_algorithm_order(smash_config: SmashConfig, experimental: bool = Fa
         raise ValueError("Cycle detected in the algorithm order, the current algorithm configuration is not possible.")
 
 
-def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
+def construct_algorithm_directed_graph(model: Any, smash_config: SmashConfig) -> nx.DiGraph:
     """
     Construct a directed graph of the algorithms to be applied based on their ordering requirements.
 
     Parameters
     ----------
+    model : Any
+        The model to check the algorithm order for.
     smash_config : SmashConfig
         The SmashConfig object containing the algorithm configuration.
 
@@ -269,9 +290,17 @@ def construct_algorithm_directed_graph(smash_config: SmashConfig) -> nx.DiGraph:
         graph.add_node(algorithm)
 
     for alg_a, alg_b in algorithm_pairs:
-        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_before():
+        alg_b_instance = AlgorithmRegistry[alg_b]
+
+        if alg_a in alg_b_instance.get_algorithms_to_run_before() or (
+            alg_a in alg_b_instance.get_algorithms_to_run_before_disjointly()
+            and are_disjoint_target_modules(model, smash_config, alg_a, alg_b)[0]
+        ):
             graph.add_edge(alg_a, alg_b)
-        if alg_a in AlgorithmRegistry[alg_b].get_algorithms_to_run_after():
+        if alg_a in alg_b_instance.get_algorithms_to_run_after() or (
+            alg_a in alg_b_instance.get_algorithms_to_run_after_disjointly()
+            and are_disjoint_target_modules(model, smash_config, alg_a, alg_b)[0]
+        ):
             graph.add_edge(alg_b, alg_a)
 
     return graph
