@@ -28,11 +28,11 @@ def save_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig
     Save all configured artifacts for a model.
 
     This function is intended to be called *after* the main model save function
-    (e.g. :func:`save_pruna_model`). It iterates over
-    ``smash_config.save_artifacts_fns`` and invokes each corresponding
-    :class:`SAVE_ARTIFACTS_FUNCTIONS` member. Each artifact saver is independent
+    (e.g. `save_pruna_model`). It iterates over
+    `smash_config.save_artifacts_fns` and invokes each corresponding
+    `SAVE_ARTIFACTS_FUNCTIONS` member. Each artifact saver is independent
     and is responsible for appending its own load function(s) to
-    ``smash_config.load_fns`` as needed.
+    `smash_config.load_fns` as needed.
 
     Parameters
     ----------
@@ -42,7 +42,7 @@ def save_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig
         The directory where the model and its artifacts are saved.
     smash_config : SmashConfig
         The SmashConfig object containing the artifact save function names in
-        ``save_artifacts_fns``.
+        `save_artifacts_fns`.
     """
     smash_config.load_artifacts_fns.clear()  # accumulate as we run the save artifact functions
 

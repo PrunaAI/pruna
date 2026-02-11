@@ -360,8 +360,8 @@ class PrunaAlgorithmBase(ABC):
             save_pruna_model(model, save_dir, smash_config)
 
         # save algorithms to reapply after loading
-        if self.save_fn == SAVE_FUNCTIONS.save_before_apply or self.save_fn == SAVE_FUNCTIONS.reapply:
-            smash_config.reapply_after_load[self.algorithm_name] = True
+        reapply_fns = [SAVE_FUNCTIONS.save_before_apply, SAVE_FUNCTIONS.reapply]
+        smash_config.reapply_after_load[self.algorithm_name] = self.save_fn in reapply_fns
 
         # if the registered save function is None, the original saving function remains
         if self.save_fn is not None and self.save_fn != SAVE_FUNCTIONS.reapply:

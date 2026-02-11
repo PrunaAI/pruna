@@ -64,6 +64,8 @@ class HQQ(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["torch_structured"]
     compatible_after: Iterable[str] = ["torch_compile", "sage_attn"]
+    disjointly_compatible_before: Iterable[str] = []
+    disjointly_compatible_after: Iterable[str] = ["torchao"]
 
     def get_hyperparameters(self) -> list:
         """
