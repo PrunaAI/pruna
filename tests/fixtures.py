@@ -198,6 +198,6 @@ MODEL_FACTORY: dict[str, Callable] = {
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
     "qwen3_next_moe_tiny_random": partial(
-        get_automodel_transformers, "tiny-random/qwen3-next-moe", torch_dtype=torch.bfloat16
+        get_automodel_transformers, "yujiepan/qwen1.5-moe-tiny-random", torch_dtype=torch.bfloat16
     ),
 }
