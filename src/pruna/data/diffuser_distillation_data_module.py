@@ -151,7 +151,7 @@ class DiffusionDistillationDataModule(PrunaDataModule):
 
     def _prepare_one_dataset(
         self,
-        dataloader: Optional[DataLoader] | None,
+        dataloader: Optional[DataLoader],
         subdir_name: str,
     ) -> List[str]:
         """
@@ -171,7 +171,7 @@ class DiffusionDistillationDataModule(PrunaDataModule):
         """
         if dataloader is None:
             pruna_logger.warning(f"Missing dataloader for {subdir_name} data")
-            return None
+            return []
         Path(self.save_path / subdir_name).mkdir(exist_ok=True, parents=True)
         desc = f"Prepare {subdir_name} distillation dataset"
         filenames: List[str] = []
