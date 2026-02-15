@@ -24,7 +24,7 @@ from ConfigSpace import CategoricalHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots, target_backbone
 from pruna.engine.model_checks import (
     get_diffusers_transformer_models,
@@ -172,7 +172,7 @@ class Torchao(PrunaAlgorithmBase):
         return isinstance(model, torch.nn.Module)
 
     def get_model_dependent_hyperparameter_defaults(
-        self, model: Any, smash_config: SmashConfigPrefixWrapper
+        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
         Get default values for the target_modules based on the model and configuration.

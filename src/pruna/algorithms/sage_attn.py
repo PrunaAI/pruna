@@ -22,7 +22,7 @@ from diffusers import DiffusionPipeline
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
 from pruna.engine.save import SAVE_FUNCTIONS
 
@@ -91,10 +91,7 @@ class SageAttn(PrunaAlgorithmBase):
         target_modules = smash_config["target_modules"]
 
         if target_modules is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(
-                model,
-                smash_config
-            )
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
 
         def apply_sage_attn(
             root_name: str | None,
@@ -153,7 +150,7 @@ class SageAttn(PrunaAlgorithmBase):
     def get_model_dependent_hyperparameter_defaults(
         self,
         model: Any,
-        smash_config: SmashConfigPrefixWrapper,
+        smash_config: SmashConfig | SmashConfigPrefixWrapper,
     ) -> TARGET_MODULES_TYPE:
         """
         Get model-dependent default hyperparameters for this algorithm.

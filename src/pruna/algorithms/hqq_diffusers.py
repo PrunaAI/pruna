@@ -26,7 +26,7 @@ from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
     TARGET_MODULES_TYPE,
     TargetModules,
@@ -128,7 +128,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
         return any(isinstance(attr_value, tuple(transformer_and_unet_models)) for attr_value in model.__dict__.values())
 
     def get_model_dependent_hyperparameter_defaults(
-        self, model: Any, smash_config: SmashConfigPrefixWrapper
+        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
         Get default values for the target_modules based on the model and configuration.
