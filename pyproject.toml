@@ -33,7 +33,7 @@ invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
-possibly-unbound-import = "ignore"
+possibly-missing-import = "ignore"
 missing-argument = "ignore"
 
 [tool.coverage.run]
@@ -181,7 +181,7 @@ dev = [
     "pytest-rerunfailures",
     "coverage",
     "docutils",
-    "ty==0.0.1a21",
+    "ty==0.0.16",
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
