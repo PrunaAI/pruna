@@ -87,6 +87,24 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Learn how to use the ``target_modules`` parameter to target specific modules in your model.
 
+   .. grid-item-card:: Blazingly Fast Computer Vision
+      :text-align: center
+      :link: ./computer_vision.ipynb
+
+      Optimize any ``computer vision`` model with ``x_fast`` ``compilation``.
+
+   .. grid-item-card:: Recover Quality after Quantization
+      :text-align: center
+      :link: ./recovery.ipynb
+
+      Recover quality using ``text_to_image_perp`` after ``diffusers_int8`` ``quantization``.
+
+   .. grid-item-card:: Distribute across GPUs with Ring Attention
+      :text-align: center
+      :link: ./ring_attn.ipynb
+
+      Distribute your ``Flux`` model across multiple GPUs with ``ring_attn`` and ``torch_compile``.
+
 .. toctree::
    :hidden:
    :maxdepth: 1
