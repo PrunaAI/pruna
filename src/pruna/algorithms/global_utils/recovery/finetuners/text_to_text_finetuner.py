@@ -241,12 +241,15 @@ class TextToTextFinetuner(PrunaFinetuner):
                     " - (input, label) format for next token prediction,\n"
                     " - (extended_inputs,) format for next token prediction."
                 )
-                raise ValueError(f"Expected a HuggingFace dataset with text or input_ids fields for LoRA recovery but got: {dataset}")
+                raise ValueError(
+                    f"Expected a HuggingFace dataset with text or input_ids fields "
+                    f"for LoRA recovery but got: {dataset}"
+                )
 
         # Handle PyTorch Dataset
         if isinstance(dataset, torch.utils.data.Dataset):
             first_sample = dataset[0]
-            
+
             # Check if already in (extended_inputs,) format - single tensor or tuple/list with one tensor
             if isinstance(first_sample, torch.Tensor):
                 # Single tensor format
@@ -270,7 +273,7 @@ class TextToTextFinetuner(PrunaFinetuner):
                             attention_mask = torch.ones_like(input_ids)
                             yield {"input_ids": input_ids, "attention_mask": attention_mask}
                     return Dataset.from_generator(data_generator), None
-            
+
             # Check if in (input, label) format for next token prediction
             if isinstance(first_sample, (tuple, list)) and len(first_sample) == 2:
                 data_input, label = first_sample
@@ -286,11 +289,12 @@ class TextToTextFinetuner(PrunaFinetuner):
                         for idx in range(len(dataset)):  # type: ignore[arg-type]
                             data_input, label = dataset[idx]
                             # append last token of label to input for next token prediction
-                            input_ids = torch.cat((data_input, label[..., -1:]))  # this conversion slows finetuning a little
+                            # this conversion slows finetuning a little
+                            input_ids = torch.cat((data_input, label[..., -1:]))
                             attention_mask = torch.ones_like(input_ids)
                             yield {"input_ids": input_ids, "attention_mask": attention_mask}
                     return Dataset.from_generator(data_generator), None
-            
+
             # If we get here, the torch dataset format is not recognized
             pruna_logger.error(
                 "The dataset provided for recovery is not compatible. Accepted format include:\n"
@@ -299,7 +303,10 @@ class TextToTextFinetuner(PrunaFinetuner):
                 " - (input, label) format for next token prediction,\n"
                 " - (extended_inputs,) format for next token prediction."
             )
-            raise ValueError(f"Expected a torch dataset in (input, label) or (extended_inputs,) format for LoRA recovery but got: {dataset}")
+            raise ValueError(
+                f"Expected a torch dataset in (input, label) or (extended_inputs,) format "
+                f"for LoRA recovery but got: {dataset}"
+            )
 
         # Unknown dataset type
         pruna_logger.error(
