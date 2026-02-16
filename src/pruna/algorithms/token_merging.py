@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Callable
+from typing import Any, Callable, Optional, Tuple, Union
 
 import torch
 from ConfigSpace import UniformIntegerHyperparameter
@@ -230,8 +230,9 @@ try:
         def forward(
             self,
             hidden_states: torch.Tensor,
-            head_mask: torch.Tensor | None = None,
-        ) -> tuple[torch.Tensor, torch.Tensor]:
+            head_mask: Optional[torch.Tensor] = None,
+            output_attentions: bool = False,
+        ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor]]:
             """Forward pass with proportional attention and key-metric storage."""
             batch_size = hidden_states.shape[0]
             new_shape = (batch_size, -1, self.num_attention_heads, self.attention_head_size)
@@ -256,10 +257,12 @@ try:
             context_layer = (attn_probs @ value_layer).transpose(1, 2)
             context_layer = context_layer.reshape(batch_size, -1, self.all_head_size)
 
+            outputs = (context_layer, attn_probs) if output_attentions else (context_layer,)
+
             # Store the key mean as the similarity metric for token merging.
             self._tome_info["metric"] = key_layer.mean(1)
 
-            return context_layer, attn_weights
+            return outputs
 
     class ToMeViTLayer(_HFViTLayer):
         """
@@ -276,12 +279,19 @@ try:
         def forward(
             self,
             hidden_states: torch.Tensor,
-            head_mask: torch.Tensor | None = None,
-        ) -> torch.Tensor:
+            head_mask: Optional[torch.Tensor] = None,
+            output_attentions: bool = False,
+        ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor]]:
             """Forward pass with token merging between attention and MLP."""
             # --- self-attention + first residual ---
-            hidden_states_norm = self.layernorm_before(hidden_states)
-            attention_output = self.attention(hidden_states_norm, head_mask)
+            self_attention_outputs = self.attention(
+                self.layernorm_before(hidden_states),
+                head_mask,
+                output_attentions=output_attentions,
+            )
+            attention_output = self_attention_outputs[0]
+            outputs = self_attention_outputs[1:]  # add self attentions if we output attention weights
+
             hidden_states = attention_output + hidden_states
 
             # --- token merging ---
@@ -303,7 +313,9 @@ try:
             layer_output = self.intermediate(layer_output)
             layer_output = self.output(layer_output, hidden_states)
 
-            return layer_output
+            outputs = (layer_output,) + outputs
+
+            return outputs
 
 except ImportError:
     ToMeViTSelfAttention = None
