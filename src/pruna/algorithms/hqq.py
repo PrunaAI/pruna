@@ -17,7 +17,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 from collections.abc import Iterable
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
@@ -64,6 +64,8 @@ class HQQ(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["torch_structured"]
     compatible_after: Iterable[str] = ["torch_compile", "sage_attn"]
+    disjointly_compatible_before: Iterable[str] = []
+    disjointly_compatible_after: Iterable[str] = ["torchao"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -135,21 +137,22 @@ class HQQ(PrunaAlgorithmBase):
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
-        Get default values for the target_modules based on the model and configuration.
+        Provide default `target_modules` using `target_backbone` to target the model backbone.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
-        smash_config : SmashConfig
-            The SmashConfig object.
+            The model to derive defaults from.
+        smash_config : SmashConfigPrefixWrapper
+            The algorithm-prefixed configuration.
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default target_modules for the algorithm.
+        dict[str, Any]
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
-        return target_backbone(model)
+        target_modules: TARGET_MODULES_TYPE = target_backbone(model)
+        return {"target_modules": target_modules}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -177,10 +180,10 @@ class HQQ(PrunaAlgorithmBase):
         move_to_device(model, "cpu")
         safe_memory_cleanup()
 
-        if smash_config["target_modules"] is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-        else:
-            target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
+        if target_modules is None:
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
         self.verify_target_modules(model, target_modules)
 
         def quantize_component(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> torch.nn.Module:

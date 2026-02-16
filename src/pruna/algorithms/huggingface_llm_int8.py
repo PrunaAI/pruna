@@ -26,7 +26,7 @@ from transformers.modeling_utils import PreTrainedModel
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
-from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
     TARGET_MODULES_TYPE,
     TargetModules,
@@ -114,24 +114,25 @@ class LLMInt8(PrunaAlgorithmBase):
         return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def get_model_dependent_hyperparameter_defaults(
-        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+        self, model: Any, smash_config: SmashConfigPrefixWrapper
+    ) -> dict[str, Any]:
         """
-        Get default values for the target_modules based on the model and configuration.
+        Provide default `target_modules` using `target_backbone` to target the model backbone.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
-        smash_config : SmashConfig
-            The SmashConfig object.
+            The model to derive defaults from.
+        smash_config : SmashConfigPrefixWrapper
+            The algorithm-prefixed configuration.
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default target_modules for the algorithm.
+        dict[str, Any]
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
-        return target_backbone(model)
+        target_modules: TARGET_MODULES_TYPE = target_backbone(model)
+        return {"target_modules": target_modules}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -149,10 +150,10 @@ class LLMInt8(PrunaAlgorithmBase):
         Any
             The quantized model.
         """
-        target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
         if target_modules is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-        target_modules = cast(TARGET_MODULES_TYPE, target_modules)
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         def quantize_causal_lm(attr_name: str | None, causal_lm: torch.nn.Module, subpaths: list[str]) -> Any:
             """

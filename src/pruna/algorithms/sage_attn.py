@@ -153,21 +153,23 @@ class SageAttn(PrunaAlgorithmBase):
         smash_config: SmashConfig | SmashConfigPrefixWrapper,
     ) -> TARGET_MODULES_TYPE:
         """
-        Get model-dependent default hyperparameters for this algorithm.
+        Provide default `target_modules` targeting all transformer modules.
+
+        SageAttn may also be applicable to other modules but could significantly
+        decrease model quality, so only transformer modules are included by default.
 
         Parameters
         ----------
         model : Any
-            The model/pipeline instance for which defaults should be computed.
+            The model to derive defaults from.
         smash_config : SmashConfigPrefixWrapper
-            The configuration wrapper passed to the algorithm. It can be used to read other
-            algorithm settings when selecting defaults.
+            The algorithm-prefixed configuration.
 
         Returns
         -------
         TARGET_MODULES_TYPE
-            A dictionary with keys "include" and "exclude" defining which modules should be
-            targeted by default.
+            A dictionary with "include" and "exclude" keys defining which modules
+            should be targeted by default.
         """
         # We include all transformer modules by default.
         # SageAttn might also be applicable to other modules but could significantly decrease model quality.

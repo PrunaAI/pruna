@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, cast
 
 import torch
 import torch.nn as nn
@@ -66,6 +66,8 @@ class HQQDiffusers(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["qkv_diffusers"]
     compatible_after: Iterable[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile", "sage_attn"]
+    disjointly_compatible_before: Iterable[str] = []
+    disjointly_compatible_after: Iterable[str] = ["torchao"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -131,19 +133,22 @@ class HQQDiffusers(PrunaAlgorithmBase):
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
     ) -> TARGET_MODULES_TYPE:
         """
-        Get default values for the target_modules based on the model and configuration.
+        Provide default `target_modules` by detecting transformer and unet components in the pipeline.
+
+        Inspects the model's attributes and includes any that are known diffusers transformer
+        or unet models. Falls back to targeting all modules if none are found.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
-        smash_config : SmashConfig
-            The SmashConfig object.
+            The model to derive defaults from.
+        smash_config : SmashConfigPrefixWrapper
+            The algorithm-prefixed configuration.
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default target_modules for the algorithm.
+        dict[str, Any]
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
         include: list[str] = []
         exclude: list[str] = []
@@ -153,7 +158,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
                 include.append(f"{attr_name}.*")
         if not include:
             include = ["*"]
-        return {"include": include, "exclude": exclude}
+        return {"target_modules": {"include": include, "exclude": exclude}}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -178,10 +183,10 @@ class HQQDiffusers(PrunaAlgorithmBase):
         )
         imported_modules = self.import_algorithm_packages()
 
-        if smash_config["target_modules"] is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-        else:
-            target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
+        if target_modules is None:
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         config = imported_modules["HqqConfig"](nbits=smash_config["weight_bits"], group_size=smash_config["group_size"])
 
