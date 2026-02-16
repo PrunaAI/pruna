@@ -100,7 +100,7 @@ dependencies = [
     "torchvision>=0.22.0",
     "torchmetrics[image]==1.7.4",
     "requests>=2.31.0",
-    "transformers<5.0.0",
+    "transformers<6.0.0",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
     "datasets>=3.0",
