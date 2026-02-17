@@ -310,12 +310,8 @@ def benchmark_config(
             device=device,
         )
     else:
-        w1 = torch.randn(
-            num_experts, shard_intermediate_size, hidden_size, dtype=init_dtype, device=device
-        )
-        w2 = torch.randn(
-            num_experts, hidden_size, shard_intermediate_size // 2, dtype=init_dtype, device=device
-        )
+        w1 = torch.randn(num_experts, shard_intermediate_size, hidden_size, dtype=init_dtype, device=device)
+        w2 = torch.randn(num_experts, hidden_size, shard_intermediate_size // 2, dtype=init_dtype, device=device)
     gating_output = torch.randn(num_iters, num_tokens, num_experts, dtype=torch.float32, device=device)
 
     w1_scale = None
@@ -323,9 +319,7 @@ def benchmark_config(
     a1_scale = None
     a2_scale = None
     if use_int8_w8a16:
-        w1_scale = torch.randn(
-            (num_experts, 2 * shard_intermediate_size), dtype=torch.float32, device=device
-        )
+        w1_scale = torch.randn((num_experts, 2 * shard_intermediate_size), dtype=torch.float32, device=device)
         w2_scale = torch.randn((hidden_size, num_experts), dtype=torch.float32, device=device)
     if use_deep_gemm:
         block_quant_shape = [128, 128]
@@ -340,14 +334,8 @@ def benchmark_config(
             n_tiles_w2 = (k + block_n - 1) // block_n
             k_tiles_w1 = (k + block_k - 1) // block_k
             k_tiles_w2 = (n + block_k - 1) // block_k
-            w1_scale = (
-                torch.rand((e, n_tiles_w1, k_tiles_w1), dtype=torch.float32, device=device)
-                * factor_for_scale
-            )
-            w2_scale = (
-                torch.rand((e, n_tiles_w2, k_tiles_w2), dtype=torch.float32, device=device)
-                * factor_for_scale
-            )
+            w1_scale = torch.rand((e, n_tiles_w1, k_tiles_w1), dtype=torch.float32, device=device) * factor_for_scale
+            w2_scale = torch.rand((e, n_tiles_w2, k_tiles_w2), dtype=torch.float32, device=device) * factor_for_scale
         else:
             w1_scale = torch.randn(num_experts, dtype=torch.float32, device=device)
             w2_scale = torch.randn(num_experts, dtype=torch.float32, device=device)
@@ -521,12 +509,12 @@ def save_configs(
         data[str(k)] = v
 
     path_to_kernel_configs = (
-        pathlib.Path(path_to_huggingface_hub_cache) /
-        ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
+        pathlib.Path(path_to_huggingface_hub_cache) / ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
     )
     path_hf = path_to_kernel_configs / filename
     write_config_file(
-        path_hf, data,
+        path_hf,
+        data,
         merge_if_exists=True,
         write_only_if_missing=False,
         log_label=str(path_hf),
@@ -542,7 +530,8 @@ def save_configs(
         path_to_vllm_configs = pathlib.Path(path_where_vllm_is_installed).parent / path_to_vllm_cache
     path_vllm = pathlib.Path(path_to_vllm_configs) / filename
     write_config_file(
-        path_vllm, data,
+        path_vllm,
+        data,
         merge_if_exists=False,
         write_only_if_missing=True,
         log_label=str(path_vllm),
