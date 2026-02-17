@@ -105,11 +105,9 @@ def save_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_co
     None
         This function does not return anything.
     """
-    save_dir = Path(model_path) / "moe_kernel_tuned_configs"
-    src_dir = Path(smash_config.cache_dir) / "moe_kernel_tuned_configs"
-    if save_dir.exists():
-        shutil.rmtree(save_dir)
-    shutil.move(src_dir, save_dir)
+    src_file = Path(smash_config.cache_dir) / "moe_kernel_tuner.json"
+    dest_file = Path(model_path) / "moe_kernel_tuner.json"
+    shutil.move(src_file, dest_file)
 
     # define here the load artifacts function
     smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)

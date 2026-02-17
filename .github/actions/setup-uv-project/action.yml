@@ -20,4 +20,4 @@ runs:
           uv-venv-${{ runner.os }}-${{ matrix.python-version || '3.11' }}-
 
     - shell: bash
-      run: uv sync --extra dev
+      run: uv sync --extra dev --extra vllm

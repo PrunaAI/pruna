@@ -14,16 +14,10 @@
 from __future__ import annotations
 
 import json
-import pathlib
 import time
 from collections.abc import Iterable
-from datetime import datetime
-from importlib.util import find_spec
-from itertools import product
-from typing import Any, Dict, TypedDict
+from typing import Any
 
-import ray
-import ray.experimental.tqdm_ray as tqdm_ray
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
@@ -32,15 +26,17 @@ from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
+from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.save_artifacts import SAVE_ARTIFACTS_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
 class MoeKernelTuner(PrunaAlgorithmBase):
     """
-    Tune the MoE Triton kernel for the model.
+    Tune the MoE (Mixture of Experts) Triton kernel for the model.
 
-    Uses vLLM to tune the MoE kernel.
+    Uses vLLM to tune the MoE kernel. If an existing artifact exists and the
+    Triton version matches, tuning is skipped and cached configs are reused.
     """
 
     algorithm_name: str = "moe_kernel_tuner"
@@ -53,25 +49,9 @@ class MoeKernelTuner(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = [
-        tags.KERNEL,
-        tags.QUANTIZER,
-        tags.PRUNER,
-        tags.CACHER,
-        tags.FACTORIZER,
-        tags.BATCHER,
-        tags.COMPILER,
-    ]
-    compatible_after: Iterable[str] = [
-        tags.KERNEL,
-        tags.QUANTIZER,
-        tags.PRUNER,
-        tags.CACHER,
-        tags.FACTORIZER,
-        tags.BATCHER,
-        tags.COMPILER,
-    ]
-    required_install = "``uv pip install vllm``"
+    compatible_before: Iterable[str] = tags.tags_compatible_with_moe_kernel()
+    compatible_after: Iterable[str] = tags.tags_compatible_with_moe_kernel()
+    required_install = "``uv pip install vllm>=0.11.0``"
 
     def get_hyperparameters(self) -> list:
         """
@@ -157,15 +137,16 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         bool
             True if the model is a valid model for the algorithm, False otherwise.
         """
-        # Hunyuan3-image is a MoE model, but not depending on mixtral
         if model.__class__.__name__ == "HunyuanImage3ForCausalMM":
             return True
-        else:
-            return is_moe_lm(model) or is_transformers_pipeline_with_moe_lm(model)
+        return is_moe_lm(model) or is_transformers_pipeline_with_moe_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
         Tune the MoE Triton kernel for the model.
+
+        If an existing artifact exists in the cache with the same Triton version,
+        tuning is skipped and the cached configs are restored to the HF/vLLM caches.
 
         Parameters
         ----------
@@ -184,29 +165,20 @@ class MoeKernelTuner(PrunaAlgorithmBase):
 
         imported_packages = self.import_algorithm_packages()
 
-        # (i) Get the MoE parameters
-        model_config = model.config
+        # (i) Get the MoE parameters: exception first (Hunyuan), then general case.
+        model_config = getattr(model, "config", None)
         if model_config is None:
             raise ValueError(f"Model {model.__class__.__name__} has no config.")
-        nb_experts = model_config.num_experts                # number of experts
-        # number of active experts per token
-        topk = (
-            model_config.num_experts_per_tok
-            if is_moe_lm(model)
-            else model_config.moe_topk[0]
-        )
-        # qwen_moe can use different intermediate size compared to mixtral.
-        intermediate_size = (
-            getattr(model_config, "moe_intermediate_size", None)
-            if getattr(model_config, "moe_intermediate_size", None) is not None
-            else model_config.intermediate_size
-        )
-        hidden_size = model_config.hidden_size  # model hidden dim
-        assert intermediate_size % smash_config["tensor_parallel_size"] == 0, (
-            f"intermediate_size {intermediate_size} is not divisible by tp "
-            f"{smash_config['tensor_parallel_size']}."
-        )
-        shard_intermediate_size = 2 * intermediate_size // smash_config["tensor_parallel_size"]
+
+        tensor_parallel_size = int(smash_config["tensor_parallel_size"])
+        if model.__class__.__name__ == "HunyuanImage3ForCausalMM":
+            nb_experts, shard_intermediate_size, hidden_size, topk = extract_hunyuan_dimensions(
+                model, model_config, tensor_parallel_size
+            )
+        else:
+            nb_experts, shard_intermediate_size, hidden_size, topk = (
+                extract_transformers_moe_dimensions(model, model_config, tensor_parallel_size)
+            )
 
         # (ii) Get the compute parameters
         dtype = smash_config["compute_dtype"]
@@ -214,58 +186,73 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
 
-        # (iii) Tune the kernel over a range of batch sizes
+        # (iii) Tune the kernel over a range of batch sizes (single GPU per Ray worker).
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
+        ray = imported_packages["ray"]
+        tune_kernel = imported_packages["tune_kernel"]
+        get_configs_compute_bound = imported_packages["get_configs_compute_bound"]
+        ensure_benchmark_config = imported_packages["ensure_benchmark_config"]
+        save_configs = imported_packages["save_configs"]
+        NoValidConfigError = imported_packages["NoValidConfigError"]
 
-        # use ray to parallelize the tuning
         ray.init(ignore_reinit_error=True)
-
         search_space = get_configs_compute_bound(smash_config)
         pruna_logger.info(f"Start tuning over {len(search_space)} configurations...")
 
         start = time.time()
-        outputs = []
-        configs = []
+        ray_outputs: list[Any] = []
+        tune_kernel = ray.remote(num_gpus=1)(tune_kernel)
 
-        # try/except to catch any exceptions that may stuck the ray workers.
+        for batch_size in batch_sizes:
+            out = tune_kernel.remote(
+                batch_size,
+                nb_experts,
+                shard_intermediate_size,
+                hidden_size,
+                topk,
+                dtype,
+                use_fp8_w8a8,
+                use_int8_w8a16,
+                search_space,
+                None,
+                False,
+                imported_packages,
+                0,  # fixed seed for reproducibility
+                smash_config["num_iters"],
+            )
+            ray_outputs.append(out)
+
+        # Shutdown Ray processes on other devices and log any resulting exception as warnings.
+        tuned_config_by_batch_size: dict[int, Any] = {}
         try:
-            for batch_size in batch_sizes:
-                output = tune.remote(
-                    batch_size,                 # num_tokens
-                    nb_experts,                          # num_experts per block
-                    shard_intermediate_size,
-                    hidden_size,
-                    topk,
-                    dtype,
-                    use_fp8_w8a8,
-                    use_int8_w8a16,
-                    search_space,
-                    None,                       # we don't suport block quantization for now
-                    False,                      # not use_deep_gemm
-                    imported_packages,
-                    0,                          # random seed
-                    smash_config["num_iters"],
-                )
-                outputs.append(output)
-
-            configs = ray.get(outputs)
+            for batch_size, output_ref in zip(batch_sizes, ray_outputs):
+                try:
+                    raw_config = ray.get(output_ref)
+                    tuned_config_by_batch_size[batch_size] = ensure_benchmark_config(raw_config)
+                except NoValidConfigError:
+                    pruna_logger.warning(
+                        "No valid config for batch_size=%s; skipping (smaller batch sizes may still be used).",
+                        batch_size,
+                    )
         finally:
-            # Try to shutdown ray, and catch any exceptions.
             try:
                 ray.shutdown()
             except Exception as e:
-                pruna_logger.warning(f"Exception during ray.shutdown(): {e}")
+                pruna_logger.warning("Exception during ray.shutdown(): %s", e)
 
-        # (iv) Sort the configs by batch size and save the best configs
-        best_configs = {
-            M: sort_config(config) for M, config in zip(batch_sizes, configs)
-        }
+        if not tuned_config_by_batch_size:
+            raise RuntimeError(
+                "No valid kernel configuration was found for any batch size. "
+                "All configurations failed (e.g., due to OutOfResources). "
+                "This can happen on GPUs with limited resources. "
+                "Consider reducing your model size or tuning search space."
+            )
+
         end = time.time()
         pruna_logger.info(f"Tuning took {end - start:.2f} seconds")
 
-        # save configs in hf/vllm caches for direct usage
         save_configs(
-            best_configs,
+            tuned_config_by_batch_size,
             nb_experts,
             shard_intermediate_size,
             dtype,
@@ -276,36 +263,46 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             smash_config["path_to_vllm_cache"],
             imported_packages,
         )
-        # results to be saved for later loading
-        payload = dict(
-            best_configs_moe_kernel=best_configs,
-            num_experts=nb_experts,
-            shard_intermediate_size=shard_intermediate_size,
-            dtype="bfloat16" if dtype == torch.bfloat16 else "float16",
-            use_fp8_w8a8=use_fp8_w8a8,
-            use_int8_w8a16=use_int8_w8a16,
+
+        best_configs_and_hyperparameters = {
+            "triton_version": triton_version,
+            "best_configs_moe_kernel": tuned_config_by_batch_size,
+            "num_experts": nb_experts,
+            "shard_intermediate_size": shard_intermediate_size,
+            "dtype": "bfloat16" if dtype == torch.bfloat16 else "float16",
+            "use_fp8_w8a8": use_fp8_w8a8,
+            "use_int8_w8a16": use_int8_w8a16,
+        }
+        with open(smash_config.cache_dir / "moe_kernel_tuner.json", "w") as f:
+            json.dump(best_configs_and_hyperparameters, f)
+
+        smash_config.save_artifacts_fns.append(
+            SAVE_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name
         )
-        # store artifacts in pruna cache for later saving/loading
-        save_dir = smash_config.cache_dir / "moe_kernel_tuned_configs"
-        save_dir.mkdir(parents=True, exist_ok=True)
-        with open(save_dir / "moe_kernel_tuner.json", "w") as f:
-            json.dump(payload, f)
-
-        # attach artifacts save function to the smash config for saving
-        smash_config.save_artifacts_fns.append(SAVE_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)
-
-        # (v) Return the model (untouched; only the configs are saved)
         return model
 
-    def import_algorithm_packages(self) -> Dict[str, Any]:
+    def import_algorithm_packages(self) -> dict[str, Any]:
         """
-        Import the algorithm packages.
+        Import the algorithm packages (vLLM, Triton, Ray, and utils).
+
+        Ray is imported here so it is not a top-level dependency of the package.
+        Utils are imported here so they are only loaded when this algorithm is used.
 
         Returns
         -------
-        Dict[str, Any]
-            The algorithm packages.
+        dict[str, Any]
+            The algorithm packages and helpers (tune, save_configs, etc.).
         """
+        import ray
+        from pruna.algorithms.utils.moe_kernel_tuner import (
+            BenchmarkConfig,
+            NoValidConfigError,
+            ensure_benchmark_config,
+            get_configs_compute_bound,
+            save_configs,
+            tune_kernel,
+        )
+
         import vllm.envs as envs
         import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
         import vllm.platforms as vllm_platforms
@@ -324,473 +321,140 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             triton=triton,
             override_config=override_config,
             envs=envs,
+            ray=ray,
+            tune_kernel=_tune_kernel,
+            get_configs_compute_bound=get_configs_compute_bound,
+            ensure_benchmark_config=ensure_benchmark_config,
+            save_configs=save_configs,
+            NoValidConfigError=NoValidConfigError,
+            BenchmarkConfig=BenchmarkConfig,
         )
 
 
-class BenchmarkConfig(TypedDict):
-    """The configuration for the matrix multiplication (tiling and warp scheduling)."""
-
-    BLOCK_SIZE_M: int
-    BLOCK_SIZE_N: int
-    BLOCK_SIZE_K: int
-    GROUP_SIZE_M: int
-    num_warps: int
-    num_stages: int
-
-
-# Converts the function into a Ray actor and requests one GPU per actor instance
-@ray.remote(num_gpus=1)
-def tune(
-        num_tokens: int,
-        num_experts: int,
-        shard_intermediate_size: int,
-        hidden_size: int,
-        topk: int,
-        dtype: torch.dtype,
-        use_fp8_w8a8: bool,
-        use_int8_w8a16: bool,
-        search_space: list[dict[str, int]],
-        block_quant_shape: list[int],
-        use_deep_gemm: bool,
-        imported_packages: Dict[str, Any],
-        seed: int,
-        num_iters: int,
-    ) -> dict[str, int]:
+def extract_hunyuan_dimensions(
+    model: Any,
+    model_config: Any,
+    tensor_parallel_size: int,
+) -> tuple[int, int, int, int]:
     """
-    Tune a given Triton kernel.
+    Extract MoE dimensions for HunyuanImage3ForCausalMM.
 
     Parameters
     ----------
-    num_tokens : int
-        The number of tokens in the batch.
-    num_experts : int
-        The number of experts.
-    shard_intermediate_size : int
-        The intermediate size of the model in the shard (if using tensor parallelism).
-    hidden_size : int
-        The hidden size of the model.
-    topk : int
-        The number of active experts per token.
-    dtype : torch.dtype
-        The dtype to use for the weights and activations.
-    use_fp8_w8a8 : bool
-        Whether to use fp8_w8a8.
-    use_int8_w8a16 : bool
-        Whether to use int8_w8a16.
-    search_space : list[dict[str, int]]
-        The search space for the kernel (tiling and warp scheduling).
-    block_quant_shape : list[int]
-        The block shape for the kernel (None here).
-    use_deep_gemm : bool
-        Whether to use deep gemm (False here).
-    imported_packages : Dict[str, Any]
-        The imported packages (vllm, triton, etc.).
-    seed : int
-        The random seed.
-    num_iters : int
-        The number of iterations to average the kernel time on.
+    model : Any
+        The model (used only for type context).
+    model_config : Any
+        The model's config object. Must have num_experts, moe_topk, intermediate_size, hidden_size.
+    tensor_parallel_size : int
+        Tensor parallel size (must divide intermediate_size).
 
     Returns
     -------
-    dict[str, int]
-        The best config.
+    tuple[int, int, int, int]
+        (nb_experts, shard_intermediate_size, hidden_size, topk).
+        - nb_experts: number of experts in the MoE layer.
+        - shard_intermediate_size: intermediate dimension per GPU shard (after SiLU-and-mul).
+        - hidden_size: model hidden dimension.
+        - topk: number of active experts per token.
     """
-    imported_packages["vllm_platforms"].current_platform.seed_everything(seed)
-    best_config = None
-    best_time = float("inf")
+    if getattr(model_config, "num_experts", None) is None:
+        raise ValueError(
+            f"Model config {type(model_config).__name__} is missing attribute 'num_experts'."
+        )
+    if getattr(model_config, "moe_topk", None) is None:
+        raise ValueError(
+            f"Model config {type(model_config).__name__} is missing attribute 'moe_topk'."
+        )
+    if getattr(model_config, "intermediate_size", None) is None:
+        raise ValueError(
+            f"Model config {type(model_config).__name__} is missing attribute 'intermediate_size'."
+        )
+    if getattr(model_config, "hidden_size", None) is None:
+        raise ValueError(
+            f"Model config {type(model_config).__name__} is missing attribute 'hidden_size'."
+        )
 
-    for config in tqdm_ray.tqdm(search_space):
-        try:
-            kernel_time = benchmark_config(
-                config,
-                num_tokens,
-                num_experts,
-                shard_intermediate_size,
-                hidden_size,
-                topk,
-                dtype,
-                use_fp8_w8a8,
-                use_int8_w8a16,
-                num_iters=num_iters,
-                block_quant_shape=block_quant_shape,
-                use_deep_gemm=use_deep_gemm,
-                imported_packages=imported_packages,
+    nb_experts = int(model_config.num_experts)
+    topk = int(model_config.moe_topk[0])
+    intermediate_size = int(model_config.intermediate_size)
+    hidden_size = int(model_config.hidden_size)
+
+    if intermediate_size % tensor_parallel_size != 0:
+        raise ValueError(
+            f"Expected tensor_parallel_size to be a divisor of the model's intermediate size "
+            f"(MLP hidden dimension) {intermediate_size}, but got {tensor_parallel_size}."
+        )
+    shard_intermediate_size = 2 * intermediate_size // tensor_parallel_size
+    return nb_experts, shard_intermediate_size, hidden_size, topk
+
+
+def extract_transformers_moe_dimensions(
+    model: Any,
+    model_config: Any,
+    tensor_parallel_size: int,
+) -> tuple[int, int, int, int]:
+    """
+    Extract MoE dimensions for standard transformers MoE LMs (e.g. Mixtral, Qwen-MoE).
+
+    Parameters
+    ----------
+    model : Any
+        The model (used to decide num_experts_per_tok vs moe_topk).
+    model_config : Any
+        The model's config. Must have num_experts, intermediate_size (or moe_intermediate_size),
+        hidden_size, and either num_experts_per_tok or moe_topk.
+    tensor_parallel_size : int
+        Tensor parallel size (must divide intermediate_size).
+
+    Returns
+    -------
+    tuple[int, int, int, int]
+        (nb_experts, shard_intermediate_size, hidden_size, topk).
+        - nb_experts: number of experts in the MoE layer.
+        - shard_intermediate_size: intermediate dimension per GPU shard.
+        - hidden_size: model hidden dimension.
+        - topk: number of active experts per token.
+    """
+    if getattr(model_config, "num_experts", None) is None:
+        raise ValueError(
+            f"Model config {type(model_config).__name__} is missing attribute 'num_experts'."
+        )
+    if getattr(model_config, "hidden_size", None) is None:
+        raise ValueError(
+            f"Model config {type(model_config).__name__} is missing attribute 'hidden_size'."
+        )
+
+    nb_experts = int(model_config.num_experts)
+    hidden_size = int(model_config.hidden_size)
+
+    if is_moe_lm(model):
+        if getattr(model_config, "num_experts_per_tok", None) is None:
+            raise ValueError(
+                f"Model config {type(model_config).__name__} is missing attribute 'num_experts_per_tok'."
             )
-        except imported_packages["triton"].runtime.autotuner.OutOfResources:
-            # Some configurations may be invalid and fail to compile.
-            continue
-
-        if kernel_time < best_time:
-            best_time, best_config = kernel_time, config
-
-    now = datetime.now()
-    pruna_logger.info(f"{now.ctime()}] Completed tuning for batch_size={num_tokens}")
-    if best_config is None:
-        raise RuntimeError(
-            f"No valid kernel configuration was found for batch_size={num_tokens}. "
-            "All configurations failed (e.g., due to OutOfResources). "
-            "This can happen on GPUs with limited resources. "
-            "Consider reducing your model size, batch size, or tuning search space."
-        )
-    return best_config
-
-
-def sort_config(config: BenchmarkConfig) -> BenchmarkConfig:
-    """
-    Sort the configuration (tiling and warp scheduling).
-
-    Parameters
-    ----------
-    config : BenchmarkConfig
-        The configuration to sort.
-
-    Returns
-    -------
-    BenchmarkConfig
-        The sorted configuration.
-    """
-    return {
-        "BLOCK_SIZE_M": config["BLOCK_SIZE_M"],
-        "BLOCK_SIZE_N": config["BLOCK_SIZE_N"],
-        "BLOCK_SIZE_K": config["BLOCK_SIZE_K"],
-        "GROUP_SIZE_M": config["GROUP_SIZE_M"],
-        "num_warps": config["num_warps"],
-        "num_stages": config["num_stages"],
-        **(
-            {"waves_per_eu": config.get("waves_per_eu")} if "waves_per_eu" in config else {}
-        ),
-        **(
-            {"matrix_instr_nonkdim": config.get("matrix_instr_nonkdim")}
-            if "matrix_instr_nonkdim" in config
-            else {}
-        ),
-        **({"kpack": config.get("kpack")} if "kpack" in config else {}),
-    }
-
-
-def get_configs_compute_bound(smash_config: SmashConfigPrefixWrapper) -> list[dict[str, int]]:
-    """
-    Get the gridsearch space for the kernel (tiling and warp scheduling).
-
-    Parameters
-    ----------
-    smash_config : SmashConfigPrefixWrapper
-        The Smash configuration.
-
-    Returns
-    -------
-    list[dict[str, int]]
-        The search space for the kernel (tiling and warp scheduling).
-    """
-    configs: list[BenchmarkConfig] = []
-
-    # Reduced search space for faster tuning.
-    block_m_range = [2**i for i in range(4, smash_config["block_size_m_max"] + 1)]
-    block_n_range = [2**i for i in range(5, smash_config["block_size_n_max"] + 1)]
-    block_k_range = [2**i for i in range(6, smash_config["block_size_k_max"] + 1)]
-    num_warps_range = [4, 8]
-    group_m_range = [1, 16, 32, 64]
-    num_stage_range = [2, 3, 4, 5]
-
-    param_ranges = {
-        "BLOCK_SIZE_M": block_m_range,
-        "BLOCK_SIZE_N": block_n_range,
-        "BLOCK_SIZE_K": block_k_range,
-        "GROUP_SIZE_M": group_m_range,
-        "num_warps": num_warps_range,
-        "num_stages": num_stage_range,
-    }
-
-    keys, values = zip(*param_ranges.items())
-    for config_values in product(*values):
-        config = dict(zip(keys, config_values))
-        configs.append(config)
-
-    return configs
-
-
-def benchmark_config(
-    config: BenchmarkConfig,
-    num_tokens: int,
-    num_experts: int,
-    shard_intermediate_size: int,
-    hidden_size: int,
-    topk: int,
-    dtype: torch.dtype,
-    use_fp8_w8a8: bool,
-    use_int8_w8a16: bool,
-    num_iters: int = 100,
-    block_quant_shape: list[int] = None,
-    use_deep_gemm: bool = False,
-    imported_packages: Dict[str, Any] = None,
-) -> float:
-    """
-    Benchmark a given Triton kernel using CUDAGraph.
-
-    This function is copied from the vllm repository.
-    https://github.com/vllm-project/vllm/blob/main/benchmarks/kernels/benchmark_moe.py
-
-    Parameters
-    ----------
-    config : BenchmarkConfig
-        The configuration to benchmark.
-    num_tokens : int
-        The number of tokens in the batch.
-    num_experts : int
-        The number of experts.
-    shard_intermediate_size : int
-        The intermediate size of the model in the shard (if using tensor parallelism).
-    hidden_size : int
-        The hidden size of the model.
-    topk : int
-        The number of active experts per token.
-    dtype : torch.dtype
-        The dtype to use for the weights and activations.
-    use_fp8_w8a8 : bool
-        Whether to use fp8_w8a8.
-    use_int8_w8a16 : bool
-        Whether to use int8_w8a16.
-    num_iters : int
-        The number of iterations to run the benchmark.
-    block_quant_shape : list[int]
-        The block shape for the kernel (None here).
-    use_deep_gemm : bool
-        Whether to use deep gemm (False here).
-    imported_packages : Dict[str, Any]
-        The imported packages (vllm, triton, etc.).
-
-    Returns
-    -------
-    float
-        The average latency of the kernel.
-    """
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is required for MoeKernelTuner.")
-    # Ray sets CUDA_VISIBLE_DEVICES per worker to the GPU it scheduled
-    torch.cuda.set_device(0)
-    device = torch.device("cuda")
-
-    init_dtype = torch.float16 if use_fp8_w8a8 else dtype
-    x = torch.randn(num_tokens, hidden_size, dtype=dtype, device=device)
-    if use_int8_w8a16:
-        w1 = torch.randint(
-            -127,
-            127,
-            (
-                num_experts,
-                shard_intermediate_size,
-                hidden_size,
-            ),
-            dtype=torch.int8,
-            device=device,
-        )
-        w2 = torch.randint(
-            -127,
-            127,
-            (
-                num_experts,
-                hidden_size,
-                shard_intermediate_size // 2,
-            ),
-            dtype=torch.int8,
-            device=device,
-        )
+        topk = int(model_config.num_experts_per_tok)
     else:
-        w1 = torch.randn(
-            num_experts, shard_intermediate_size, hidden_size, dtype=init_dtype, device=device
-        )
-        w2 = torch.randn(
-            num_experts, hidden_size, shard_intermediate_size // 2, dtype=init_dtype, device=device
-        )
-    gating_output = torch.randn(num_iters, num_tokens, num_experts, dtype=torch.float32, device=device)
-
-    w1_scale = None
-    w2_scale = None
-    a1_scale = None
-    a2_scale = None
-    if use_int8_w8a16:
-        w1_scale = torch.randn(
-            (num_experts, 2 * shard_intermediate_size), dtype=torch.float32, device=device
-        )
-        w2_scale = torch.randn((hidden_size, num_experts), dtype=torch.float32, device=device)
-    if use_deep_gemm:
-        # we use the default block shape for deepgemm
-        block_quant_shape = [128, 128]
-    if use_fp8_w8a8:
-        if block_quant_shape:
-            block_n, block_k = block_quant_shape[0], block_quant_shape[1]
-            e = num_experts
-            n = shard_intermediate_size // 2
-            k = hidden_size
-            factor_for_scale = 1e-2
-            n_tiles_w1 = (2 * n + block_n - 1) // block_n
-            n_tiles_w2 = (k + block_n - 1) // block_n
-            k_tiles_w1 = (k + block_k - 1) // block_k
-            k_tiles_w2 = (n + block_k - 1) // block_k
-            w1_scale = (
-                torch.rand((e, n_tiles_w1, k_tiles_w1), dtype=torch.float32, device=device)
-                * factor_for_scale
+        if getattr(model_config, "moe_topk", None) is None:
+            raise ValueError(
+                f"Model config {type(model_config).__name__} is missing attribute 'moe_topk'."
             )
-            w2_scale = (
-                torch.rand((e, n_tiles_w2, k_tiles_w2), dtype=torch.float32, device=device)
-                * factor_for_scale
+        topk = int(model_config.moe_topk[0])
+
+    moe_intermediate = getattr(model_config, "moe_intermediate_size", None)
+    if moe_intermediate is not None:
+        intermediate_size = int(moe_intermediate)
+    else:
+        if getattr(model_config, "intermediate_size", None) is None:
+            raise ValueError(
+                f"Model config {type(model_config).__name__} is missing attribute "
+                "'intermediate_size' or 'moe_intermediate_size'."
             )
-        else:
-            w1_scale = torch.randn(num_experts, dtype=torch.float32, device=device)
-            w2_scale = torch.randn(num_experts, dtype=torch.float32, device=device)
+        intermediate_size = int(model_config.intermediate_size)
 
-        a1_scale = torch.randn(1, dtype=torch.float32, device=device)
-        a2_scale = torch.randn(1, dtype=torch.float32, device=device)
-
-        w1 = w1.to(device=device, dtype=imported_packages["vllm_platforms"].current_platform.fp8_dtype())
-        w2 = w2.to(device=device, dtype=imported_packages["vllm_platforms"].current_platform.fp8_dtype())
-
-    input_gating = torch.empty(num_tokens, num_experts, dtype=torch.float32, device=device)
-
-    def prepare(i: int):
-        input_gating.copy_(gating_output[i])
-
-    def run():
-        if use_fp8_w8a8:
-            quant_dtype = torch.float8_e4m3fn
-        elif use_int8_w8a16:
-            quant_dtype = torch.int8
-        else:
-            quant_dtype = None
-
-        quant_config = imported_packages["FusedMoEQuantConfig"].make(
-            quant_dtype=quant_dtype,
-            w1_scale=w1_scale,
-            w2_scale=w2_scale,
-            a1_scale=a1_scale,
-            a2_scale=a2_scale,
-            block_shape=block_quant_shape,
+    if intermediate_size % tensor_parallel_size != 0:
+        raise ValueError(
+            f"Expected tensor_parallel_size to be a divisor of the model's intermediate size "
+            f"(MLP hidden dimension) {intermediate_size}, but got {tensor_parallel_size}."
         )
-
-        with imported_packages["override_config"](config):
-            topk_weights, topk_ids, token_expert_indices = imported_packages["FusedMoE"].fused_topk(
-                x, input_gating, topk, renormalize=not use_deep_gemm
-            )
-            return imported_packages["FusedMoE"].fused_experts(
-                x,
-                w1,
-                w2,
-                topk_weights,
-                topk_ids,
-                inplace=True,
-                quant_config=quant_config,
-                allow_deep_gemm=use_deep_gemm,
-            )
-
-    # JIT compilation & warmup
-    run()
-    torch.cuda.synchronize()
-
-    # Capture 10 invocations with CUDA graph
-    graph = torch.cuda.CUDAGraph()
-    with torch.cuda.graph(graph):
-        for _ in range(10):
-            run()
-    torch.cuda.synchronize()
-
-    # Warmup
-    for _ in range(5):
-        graph.replay()
-    torch.cuda.synchronize()
-
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
-
-    latencies: list[float] = []
-    for i in range(num_iters):
-        prepare(i)
-        torch.cuda.synchronize()
-
-        start_event.record()
-        graph.replay()
-        end_event.record()
-        end_event.synchronize()
-        latencies.append(start_event.elapsed_time(end_event))
-    avg = sum(latencies) / (num_iters * 10) * 1000  # us
-    graph.reset()
-    return avg
-
-
-def save_configs(
-    configs: dict[int, BenchmarkConfig],
-    num_experts: int,
-    shard_intermediate_size: int,
-    dtype: torch.dtype,
-    use_fp8_w8a8: bool,
-    use_int8_w8a16: bool,
-    block_quant_shape: list[int],
-    path_to_huggingface_hub_cache: str,
-    path_to_vllm_cache: str,
-    imported_packages: Dict[str, Any],
-) -> None:
-    """
-    Save the best configs to the hf cache and vllm cache.
-
-    Parameters
-    ----------
-    configs : dict[int, BenchmarkConfig]
-        The best configs.
-    num_experts : int
-        The number of experts.
-    shard_intermediate_size : int
-        The intermediate size of the model in the shard (if using tensor parallelism).
-    dtype : torch.dtype
-        The dtype to use for the weights and activations.
-    use_fp8_w8a8 : bool
-        Whether to use fp8_w8a8.
-    use_int8_w8a16 : bool
-        Whether to use int8_w8a16.
-    block_quant_shape : list[int]
-        The block shape for the kernel (None here).
-    path_to_huggingface_hub_cache : str
-        The path to the huggingface hub cache.
-    path_to_vllm_cache : str
-        The path to the vllm cache.
-    imported_packages : Dict[str, Any]
-        The imported packages (vllm, triton, etc.).
-    """
-    dtype_str = imported_packages["_get_config_dtype_str"](
-        dtype, use_int8_w8a16=use_int8_w8a16, use_fp8_w8a8=use_fp8_w8a8
-    )
-
-    # (i) Get the name of the config file
-    # NB from vllm: The current naming convention uses w2.shape[2], which
-    # is the intermediate size after silu_and_mul.
-    filename = imported_packages["FusedMoE"].get_config_file_name(
-        num_experts, shard_intermediate_size // 2, dtype_str, block_quant_shape
-    )
-
-    # (ii) Save the config to the hf cache (where `kernels` lib expects to find it)
-    path_to_kernel_configs = (
-        pathlib.Path(path_to_huggingface_hub_cache) /
-        ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
-    )
-    pathlib.Path(path_to_kernel_configs).mkdir(exist_ok=True, parents=True)
-    filename_hf = path_to_kernel_configs / filename
-    if not pathlib.Path(filename_hf).exists():
-        pruna_logger.info(f"Writing best config to {filename_hf}...")
-        with open(filename_hf, "w") as f:
-            json.dump({"triton_version": imported_packages["triton"].__version__, **configs}, f, indent=4)
-            f.write("\n")
-
-    # (iii) Save the config to the vllm cache (where `vllm` expects to find it)
-    path_to_vllm_configs = imported_packages["envs"].VLLM_TUNED_CONFIG_FOLDER
-    if path_to_vllm_configs is None:
-        submodule_locations = find_spec("vllm").submodule_search_locations
-        if submodule_locations is not None and len(submodule_locations) > 0:
-            path_where_vllm_is_installed = submodule_locations[0]
-        else:
-            raise RuntimeError("Could not determine installation path for vllm.")
-        path_to_vllm_configs = pathlib.Path(path_where_vllm_is_installed).parent / path_to_vllm_cache
-    pathlib.Path(path_to_vllm_configs).mkdir(exist_ok=True, parents=True)
-    filename_vllm = path_to_vllm_configs / filename
-    if not pathlib.Path(filename_vllm).exists():
-        pruna_logger.info(f"Writing best config to {filename_vllm}...")
-        with open(filename_vllm, "w") as f:
-            json.dump({"triton_version": imported_packages["triton"].__version__, **configs}, f, indent=4)
-            f.write("\n")
+    shard_intermediate_size = 2 * intermediate_size // tensor_parallel_size
+    return nb_experts, shard_intermediate_size, hidden_size, topk
