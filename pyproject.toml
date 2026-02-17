@@ -138,10 +138,13 @@ dependencies = [
     "imageio-ffmpeg",
     "jaxtyping",
     "peft>=0.17.1",
-    "vllm>=0.11.0",
 ]
 
 [project.optional-dependencies]
+vllm = [
+    "vllm>=0.11.0",
+    "ray",
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
