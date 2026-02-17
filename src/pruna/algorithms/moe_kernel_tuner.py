@@ -26,8 +26,6 @@ from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
-from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.save_artifacts import SAVE_ARTIFACTS_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
@@ -176,8 +174,8 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 model, model_config, tensor_parallel_size
             )
         else:
-            nb_experts, shard_intermediate_size, hidden_size, topk = (
-                extract_transformers_moe_dimensions(model, model_config, tensor_parallel_size)
+            nb_experts, shard_intermediate_size, hidden_size, topk = extract_transformers_moe_dimensions(
+                model, model_config, tensor_parallel_size
             )
 
         # (ii) Get the compute parameters
@@ -193,7 +191,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         get_configs_compute_bound = imported_packages["get_configs_compute_bound"]
         ensure_benchmark_config = imported_packages["ensure_benchmark_config"]
         save_configs = imported_packages["save_configs"]
-        NoValidConfigError = imported_packages["NoValidConfigError"]
+        no_valid_config_error = imported_packages["NoValidConfigError"]
 
         ray.init(ignore_reinit_error=True)
         search_space = get_configs_compute_bound(smash_config)
@@ -229,7 +227,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 try:
                     raw_config = ray.get(output_ref)
                     tuned_config_by_batch_size[batch_size] = ensure_benchmark_config(raw_config)
-                except NoValidConfigError:
+                except no_valid_config_error:
                     pruna_logger.warning(
                         "No valid config for batch_size=%s; skipping (smaller batch sizes may still be used).",
                         batch_size,
@@ -265,7 +263,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         )
 
         best_configs_and_hyperparameters = {
-            "triton_version": triton_version,
+            "triton_version": imported_packages["triton"].__version__,
             "best_configs_moe_kernel": tuned_config_by_batch_size,
             "num_experts": nb_experts,
             "shard_intermediate_size": shard_intermediate_size,
@@ -276,9 +274,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         with open(smash_config.cache_dir / "moe_kernel_tuner.json", "w") as f:
             json.dump(best_configs_and_hyperparameters, f)
 
-        smash_config.save_artifacts_fns.append(
-            SAVE_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name
-        )
+        smash_config.save_artifacts_fns.append(SAVE_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)
         return model
 
     def import_algorithm_packages(self) -> dict[str, Any]:
@@ -294,15 +290,6 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             The algorithm packages and helpers (tune, save_configs, etc.).
         """
         import ray
-        from pruna.algorithms.utils.moe_kernel_tuner import (
-            BenchmarkConfig,
-            NoValidConfigError,
-            ensure_benchmark_config,
-            get_configs_compute_bound,
-            save_configs,
-            tune_kernel,
-        )
-
         import vllm.envs as envs
         import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
         import vllm.platforms as vllm_platforms
@@ -312,6 +299,14 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             _get_config_dtype_str,
         )
         from vllm.triton_utils import triton
+        from pruna.algorithms.utils.moe_kernel_tuner import (
+            BenchmarkConfig,
+            NoValidConfigError,
+            ensure_benchmark_config,
+            get_configs_compute_bound,
+            save_configs,
+            tune_kernel,
+        )
 
         return dict(
             FusedMoEQuantConfig=FusedMoEQuantConfig,
@@ -322,7 +317,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             override_config=override_config,
             envs=envs,
             ray=ray,
-            tune_kernel=_tune_kernel,
+            tune_kernel=tune_kernel,
             get_configs_compute_bound=get_configs_compute_bound,
             ensure_benchmark_config=ensure_benchmark_config,
             save_configs=save_configs,
@@ -358,21 +353,13 @@ def extract_hunyuan_dimensions(
         - topk: number of active experts per token.
     """
     if getattr(model_config, "num_experts", None) is None:
-        raise ValueError(
-            f"Model config {type(model_config).__name__} is missing attribute 'num_experts'."
-        )
+        raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'num_experts'.")
     if getattr(model_config, "moe_topk", None) is None:
-        raise ValueError(
-            f"Model config {type(model_config).__name__} is missing attribute 'moe_topk'."
-        )
+        raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'moe_topk'.")
     if getattr(model_config, "intermediate_size", None) is None:
-        raise ValueError(
-            f"Model config {type(model_config).__name__} is missing attribute 'intermediate_size'."
-        )
+        raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'intermediate_size'.")
     if getattr(model_config, "hidden_size", None) is None:
-        raise ValueError(
-            f"Model config {type(model_config).__name__} is missing attribute 'hidden_size'."
-        )
+        raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'hidden_size'.")
 
     nb_experts = int(model_config.num_experts)
     topk = int(model_config.moe_topk[0])
@@ -416,28 +403,20 @@ def extract_transformers_moe_dimensions(
         - topk: number of active experts per token.
     """
     if getattr(model_config, "num_experts", None) is None:
-        raise ValueError(
-            f"Model config {type(model_config).__name__} is missing attribute 'num_experts'."
-        )
+        raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'num_experts'.")
     if getattr(model_config, "hidden_size", None) is None:
-        raise ValueError(
-            f"Model config {type(model_config).__name__} is missing attribute 'hidden_size'."
-        )
+        raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'hidden_size'.")
 
     nb_experts = int(model_config.num_experts)
     hidden_size = int(model_config.hidden_size)
 
     if is_moe_lm(model):
         if getattr(model_config, "num_experts_per_tok", None) is None:
-            raise ValueError(
-                f"Model config {type(model_config).__name__} is missing attribute 'num_experts_per_tok'."
-            )
+            raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'num_experts_per_tok'.")
         topk = int(model_config.num_experts_per_tok)
     else:
         if getattr(model_config, "moe_topk", None) is None:
-            raise ValueError(
-                f"Model config {type(model_config).__name__} is missing attribute 'moe_topk'."
-            )
+            raise ValueError(f"Model config {type(model_config).__name__} is missing attribute 'moe_topk'.")
         topk = int(model_config.moe_topk[0])
 
     moe_intermediate = getattr(model_config, "moe_intermediate_size", None)
