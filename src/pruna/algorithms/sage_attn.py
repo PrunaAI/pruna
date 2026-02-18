@@ -19,6 +19,7 @@ from typing import Any, List
 
 import torch
 from diffusers import DiffusionPipeline
+from typing_extensions import cast
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -91,10 +92,8 @@ class SageAttn(PrunaAlgorithmBase):
         target_modules = smash_config["target_modules"]
 
         if target_modules is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(
-                model,
-                smash_config
-            )
+            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)["target_modules"]
+            target_modules = cast(TARGET_MODULES_TYPE, target_modules)
 
         def apply_sage_attn(
             root_name: str | None,
@@ -154,7 +153,7 @@ class SageAttn(PrunaAlgorithmBase):
         self,
         model: Any,
         smash_config: SmashConfigPrefixWrapper,
-    ) -> TARGET_MODULES_TYPE:
+    ) -> dict[str, Any]:
         """
         Provide default `target_modules` targeting all transformer modules.
 
@@ -178,5 +177,5 @@ class SageAttn(PrunaAlgorithmBase):
         # SageAttn might also be applicable to other modules but could significantly decrease model quality.
         include = ["transformer*"]
         exclude = []
-
-        return {"include": include, "exclude": exclude}
+        target_modules = {"include": include, "exclude": exclude}
+        return {"target_modules": target_modules}
