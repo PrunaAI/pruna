@@ -294,6 +294,13 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         import vllm.envs as envs
         import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
         import vllm.platforms as vllm_platforms
+        from vllm.model_executor.layers.fused_moe import override_config
+        from vllm.model_executor.layers.fused_moe.config import (
+            FusedMoEQuantConfig,
+            _get_config_dtype_str,
+        )
+        from vllm.triton_utils import triton
+
         from pruna.algorithms.utils.moe_kernel_tuner import (
             BenchmarkConfig,
             NoValidConfigError,
@@ -302,12 +309,6 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             save_configs,
             tune_kernel,
         )
-        from vllm.model_executor.layers.fused_moe import override_config
-        from vllm.model_executor.layers.fused_moe.config import (
-            FusedMoEQuantConfig,
-            _get_config_dtype_str,
-        )
-        from vllm.triton_utils import triton
 
         return dict(
             FusedMoEQuantConfig=FusedMoEQuantConfig,
