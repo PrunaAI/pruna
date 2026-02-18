@@ -26,6 +26,7 @@ from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_moe_lm, is_transformers_pipeline_with_moe_lm
+from pruna.engine.save_artifacts import SAVE_ARTIFACTS_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
 
@@ -293,12 +294,6 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         import vllm.envs as envs
         import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
         import vllm.platforms as vllm_platforms
-        from vllm.model_executor.layers.fused_moe import override_config
-        from vllm.model_executor.layers.fused_moe.config import (
-            FusedMoEQuantConfig,
-            _get_config_dtype_str,
-        )
-        from vllm.triton_utils import triton
         from pruna.algorithms.utils.moe_kernel_tuner import (
             BenchmarkConfig,
             NoValidConfigError,
@@ -307,6 +302,12 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             save_configs,
             tune_kernel,
         )
+        from vllm.model_executor.layers.fused_moe import override_config
+        from vllm.model_executor.layers.fused_moe.config import (
+            FusedMoEQuantConfig,
+            _get_config_dtype_str,
+        )
+        from vllm.triton_utils import triton
 
         return dict(
             FusedMoEQuantConfig=FusedMoEQuantConfig,
