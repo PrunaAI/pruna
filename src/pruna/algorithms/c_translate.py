@@ -393,7 +393,7 @@ class GeneratorWrapper:
             x_tensor = x["input_ids"]
         else:
             x_tensor = x
-        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]
+        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]  # type: ignore[not-subscriptable]
         return self.generator.generate_batch(token_list, min_length=min_length, max_length=max_length, *args, **kwargs)  # type: ignore[operator]
 
 
@@ -468,7 +468,7 @@ class TranslatorWrapper:
             x_tensor = x["input_ids"]
         else:
             x_tensor = x
-        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]
+        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]  # type: ignore[not-subscriptable]
         return self.translator.translate_batch(  # type: ignore[operator]
             token_list,
             min_decoding_length=min_decoding_length,

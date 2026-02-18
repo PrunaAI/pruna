@@ -26,7 +26,7 @@ from transformers import AutoModelForCausalLM, Pipeline
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
     TARGET_MODULES_TYPE,
     TargetModules,
@@ -134,8 +134,8 @@ class HQQ(PrunaAlgorithmBase):
         return is_causal_lm(model) or is_janus_llamagen_ar(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def get_model_dependent_hyperparameter_defaults(
-        self, model: Any, smash_config: SmashConfigPrefixWrapper
-    ) -> dict[str, Any]:
+        self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
+    ) -> TARGET_MODULES_TYPE:  # ty: ignore[invalid-method-override]
         """
         Provide default `target_modules` using `target_backbone` to target the model backbone.
 

@@ -107,7 +107,7 @@ class TorchDynamic(PrunaAlgorithmBase):
             else:
                 modules_to_quantize = {torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d, torch.nn.Linear}
 
-            quantized_model = torch.quantization.quantize_dynamic(
+            quantized_model = torch.quantization.quantize_dynamic(  # type: ignore[deprecated]
                 model,
                 modules_to_quantize,
                 dtype=getattr(torch, smash_config["weight_bits"]),

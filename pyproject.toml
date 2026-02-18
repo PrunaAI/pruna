@@ -33,8 +33,10 @@ invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
 no-matching-overload = "ignore" # mypy is more permissive with overloads
 unresolved-reference = "ignore" # mypy is more permissive with references
-possibly-unbound-import = "ignore"
+possibly-missing-import = "ignore"
+possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
+unused-type-ignore-comment = "ignore"
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -181,7 +183,7 @@ dev = [
     "pytest-rerunfailures",
     "coverage",
     "docutils",
-    "ty==0.0.1a21",
+    "ty==0.0.17",
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
