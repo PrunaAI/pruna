@@ -1,0 +1,46 @@
+name: PR Title Convention
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  check-title:
+    name: Validate PR title
+    runs-on: ubuntu-22.04
+    timeout-minutes: 1
+    steps:
+      - name: Check conventional commit format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Allowed conventional commit types
+          TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
+
+          # Pattern: type(optional-scope): description
+          # OR: type!: description (breaking change)
+          PATTERN="^($TYPES)(\(.+\))?\!?: .+"
+
+          if echo "$PR_TITLE" | grep -qP "$PATTERN"; then
+            echo "PR title is valid: $PR_TITLE"
+          else
+            echo "::error::PR title does not follow Conventional Commits."
+            echo ""
+            echo "Got:      $PR_TITLE"
+            echo ""
+            echo "Expected: <type>[optional scope]: <description>"
+            echo ""
+            echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            echo "Read more: https://www.conventionalcommits.org/en/v1.0.0/"
+            echo ""
+            echo "Examples:"
+            echo "  feat: add new optimization algorithm"
+            echo "  fix: resolve memory leak in model loading"
+            echo "  ci(pruna): pin transformers version"
+            echo ""
+            exit 1
+          fi
