@@ -100,8 +100,9 @@ def tune_kernel(
     BenchmarkConfig
         The best config found.
     """
-    import ray.experimental.tqdm_ray as tqdm_ray
     from datetime import datetime
+
+    import ray.experimental.tqdm_ray as tqdm_ray
 
     imported_packages["vllm_platforms"].current_platform.seed_everything(seed)
     best_config = None
