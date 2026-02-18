@@ -135,7 +135,7 @@ class HQQ(PrunaAlgorithmBase):
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+    ) -> TARGET_MODULES_TYPE:  # ty: ignore[invalid-method-override]
         """
         Provide default `target_modules` using `target_backbone` to target the model backbone.
 

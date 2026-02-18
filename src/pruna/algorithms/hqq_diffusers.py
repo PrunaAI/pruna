@@ -131,7 +131,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfig | SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+    ) -> TARGET_MODULES_TYPE:  # ty: ignore[invalid-method-override]
         """
         Provide default `target_modules` by detecting transformer and unet components in the pipeline.
 

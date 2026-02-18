@@ -151,7 +151,7 @@ class SageAttn(PrunaAlgorithmBase):
         self,
         model: Any,
         smash_config: SmashConfig | SmashConfigPrefixWrapper,
-    ) -> TARGET_MODULES_TYPE:
+    ) -> TARGET_MODULES_TYPE:  # ty: ignore[invalid-method-override]
         """
         Provide default `target_modules` targeting all transformer modules.
 
