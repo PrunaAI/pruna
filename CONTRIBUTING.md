@@ -9,13 +9,13 @@ Contributions that do not adhere to the code of conduct will be ignored.
 
 There are various ways you can contribute:
 
-- Have a question? Discuss with us on [Discord](https://discord.gg/JFQmtFKCjd) or check out the [FAQ](https://docs.pruna.ai/en/stable/docs_pruna/faq.html)
-- Have an idea for a new tutorial? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request) or chat with us on [Discord](https://discord.gg/JFQmtFKCjd)
-- Found a bug? Open an issue with a [bug report](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#bug-report)
-- Want a new feature? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/opening_an_issue.html#feature-request)
-- Have a new algorithm to add? Check out the [guide on adding algorithms](https://docs.pruna.ai/en/stable/docs_pruna/contributions/adding_algorithm.html)
-- Have a new metric to add? Check out the [guide on adding metrics](https://docs.pruna.ai/en/stable/docs_pruna/contributions/adding_metric.html)
-- Have a new dataset to add? Check out the [guide on adding datasets](https://docs.pruna.ai/en/stable/docs_pruna/contributions/adding_dataset.html)
+- Have a question? Discuss with us on [Discord](https://discord.gg/JFQmtFKCjd) or check out the [FAQ](https://docs.pruna.ai/en/stable/resources/faq.html)
+- Have an idea for a new tutorial? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/open_an_issue.html#feature-request) or chat with us on [Discord](https://discord.gg/JFQmtFKCjd)
+- Found a bug? Open an issue with a [bug report](https://docs.pruna.ai/en/stable/docs_pruna/contributions/open_an_issue.html#bug-report)
+- Want a new feature? Open an issue with a [feature request](https://docs.pruna.ai/en/stable/docs_pruna/contributions/open_an_issue.html#feature-request)
+- Have a new algorithm to add? Check out the [guide on adding algorithms](https://docs.pruna.ai/en/stable/docs_pruna/user_manual/customize_algorithm.html)
+- Have a new metric to add? Check out the [guide on adding metrics](https://docs.pruna.ai/en/stable/docs_pruna/user_manual/customize_metric.html)
+- Have a new dataset to add? Check out the [guide on adding datasets](https://docs.pruna.ai/en/stable/docs_pruna/user_manual/customize_dataset.html)
 
 ---
 
