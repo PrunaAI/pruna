@@ -109,6 +109,22 @@ These tutorials will guide you through the process of using |pruna| to optimize 
    :hidden:
    :maxdepth: 1
    :caption: Pruna
-   :glob:
-
-   ./*
+   
+   image_generation
+   video_generation
+   llms
+   reasoning_llm
+   asr_tutorial
+   cv_cpu
+   diffusion_quantization_acceleration
+   evaluation_agent_cmmd
+   sana_diffusers_int8
+   flux2klein4b_tutorial
+   sd_deepcache
+   deploying_sana_tutorial
+   target_modules_quanto
+   portable_compilation
+   llm_quantization_compilation_acceleration
+   computer_vision
+   recovery
+   ring_attn
