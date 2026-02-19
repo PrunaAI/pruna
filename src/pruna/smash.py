@@ -77,6 +77,15 @@ def smash(
         # perform any necessary setup steps before the smashing process begins
         execute_algorithm_pre_smash_hooks(model, smash_config, algorithm_order)
 
+        # ring_attn needs a process group; if we're not already under torchrun/torch.distributed,
+        # spawn our local multi-proc server and return early with the wrapped model.
+        if "ring_attn" in algorithm_order:
+            from pruna.algorithms.ring_attn.utils.server_utils import start_distributed_server_if_needed
+
+            server = start_distributed_server_if_needed(model, smash_config)
+            if server is not None:
+                return PrunaModel(server, smash_config=smash_config)
+
         # iterate through all algorithms groups in a predefined order
         for algorithm in algorithm_order:
             pruna_logger.info(f"Starting {algorithm}...")

@@ -50,6 +50,7 @@ class QKVFusing(PrunaAlgorithmBase):
         "deepcache",
         "fora",
         "torch_compile",
+        "ring_attn",
     ]
 
     def model_check_fn(self, model: Any) -> bool:
