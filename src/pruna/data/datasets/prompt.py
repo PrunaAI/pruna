@@ -81,7 +81,7 @@ def setup_parti_prompts_dataset(
                 lambda x: x["Category"] == category or x["Challenge"] == category
             )
 
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
@@ -228,7 +228,7 @@ def setup_oneig_dataset(
         datasets_to_concat.append(_load_oneig_alignment(seed, alignment_subset))
 
     ds = concatenate_datasets(datasets_to_concat) if len(datasets_to_concat) > 1 else datasets_to_concat[0]
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
