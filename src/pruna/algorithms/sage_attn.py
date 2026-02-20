@@ -22,8 +22,8 @@ from diffusers import DiffusionPipeline
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
-from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
-from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
+from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.target_modules import TargetModules, map_targeted_nn_roots
 from pruna.engine.save import SAVE_FUNCTIONS
 
 
@@ -150,8 +150,8 @@ class SageAttn(PrunaAlgorithmBase):
     def get_model_dependent_hyperparameter_defaults(
         self,
         model: Any,
-        smash_config: SmashConfig | SmashConfigPrefixWrapper,
-    ) -> TARGET_MODULES_TYPE:  # ty: ignore[invalid-method-override]
+        smash_config: SmashConfigPrefixWrapper,
+    ) -> dict[str, Any]:
         """
         Provide default `target_modules` targeting all transformer modules.
 
