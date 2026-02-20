@@ -1,10 +1,9 @@
 from typing import Any, Callable
 
 import pytest
-from transformers import AutoTokenizer
-from datasets import Dataset
-from torch.utils.data import TensorDataset
 import torch
+from transformers import AutoTokenizer
+
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -45,6 +44,9 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("GenAIBench", dict(), marks=pytest.mark.slow),
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGTextRendering", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGAlignment", dict(), marks=pytest.mark.slow),
+        pytest.param("DPG", dict(), marks=pytest.mark.slow),
     ],
 )
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
@@ -80,3 +82,66 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     assert labels.dtype == torch.int64
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
+
+
+
+@pytest.mark.slow
+def test_parti_prompts_with_category_filter():
+    """Test PartiPrompts loading with category filter."""
+    dm = PrunaDataModule.from_string(
+        "PartiPrompts", category="Animals", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["Category"] == "Animals" for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_oneig_text_rendering_auxiliaries():
+    """Test OneIGTextRendering loading with auxiliaries."""
+    dm = PrunaDataModule.from_string(
+        "OneIGTextRendering", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all("text_content" in aux for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_oneig_alignment_with_category_filter():
+    """Test OneIGAlignment loading with category filter."""
+    dm = PrunaDataModule.from_string(
+        "OneIGAlignment", category="Portrait", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["category"] == "Portrait" for aux in auxiliaries)
+    assert all("questions" in aux for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_dpg_with_category_filter():
+    """Test DPG loading with category filter."""
+    dm = PrunaDataModule.from_string(
+        "DPG", category="entity", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["category_broad"] == "entity" for aux in auxiliaries)
+    assert all("questions" in aux for aux in auxiliaries)
