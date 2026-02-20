@@ -81,7 +81,7 @@ def setup_parti_prompts_dataset(
                 lambda x: x["Category"] == category or x["Challenge"] == category
             )
 
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
@@ -115,7 +115,7 @@ def setup_long_text_bench_dataset(
     ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("text", "text_content")
     ds = ds.rename_column("prompt", "text")
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
