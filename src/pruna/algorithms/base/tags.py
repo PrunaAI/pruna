@@ -79,6 +79,10 @@ class AlgorithmTag(Enum):
         "resampler",
         "Resamplers change the shape of image or video latents during generation to speed up inference.",
     )
+    RECOVERER = (
+        "recoverer",
+        "Recovery restores the performance of a model after compression.",
+    )
 
     def __init__(self, name: str, description: str):
         """
