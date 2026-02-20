@@ -75,6 +75,7 @@ These tutorials will guide you through the process of using |pruna| to optimize 
       :link: ./sd_deepcache.ipynb
 
       Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
+
    .. grid-item-card:: Optimize and Deploy Sana diffusers with Pruna and Hugging Face
       :text-align: center
       :link: ./deploying_sana_tutorial.ipynb
@@ -105,26 +106,23 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Distribute your ``Flux`` model across multiple GPUs with ``ring_attn`` and ``torch_compile``.
 
+   .. grid-item-card:: Reducing Warm-up Time for Compilation
+      :text-align: center
+      :link: ./portable_compilation.ipynb
+
+      Reduce warm-up time significantly when re-loading a ``torch_compile`` compiled model on a new machine.
+
+   .. grid-item-card:: Quantize and Speedup any LLM
+      :text-align: center
+      :link: ./llm_quantization_compilation_acceleration.ipynb
+
+      Optimize latency and memory footprint of any LLM with ``hqq`` ``quantization`` and ``torch_compile`` ``compilation``.
+
 .. toctree::
    :hidden:
    :maxdepth: 1
    :caption: Pruna
-   
-   image_generation
-   video_generation
-   llms
-   reasoning_llm
-   asr_tutorial
-   cv_cpu
-   diffusion_quantization_acceleration
-   evaluation_agent_cmmd
-   sana_diffusers_int8
-   flux2klein4b_tutorial
-   sd_deepcache
-   deploying_sana_tutorial
-   target_modules_quanto
-   portable_compilation
-   llm_quantization_compilation_acceleration
-   computer_vision
-   recovery
-   ring_attn
+   :glob:
+
+   ./*
+
