@@ -80,6 +80,24 @@ class AlgorithmTag(Enum):
         "Resamplers change the shape of image or video latents during generation to speed up inference.",
     )
 
+    @classmethod
+    def tags_compatible_with_moe_kernel(cls) -> list["AlgorithmTag"]:
+        """
+        Return tags that the MoE kernel tuner is compatible with (for ordering).
+
+        Used so that compatible_before / compatible_after can be derived from
+        the enum and stay in sync when new tags are added.
+        """
+        return [
+            cls.KERNEL,
+            cls.QUANTIZER,
+            cls.PRUNER,
+            cls.CACHER,
+            cls.FACTORIZER,
+            cls.BATCHER,
+            cls.COMPILER,
+        ]
+
     def __init__(self, name: str, description: str):
         """
         Initialize an algorithm tag with name and description.

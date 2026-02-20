@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import json
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -81,6 +82,71 @@ def load_torch_artifacts(model: Any, model_path: str | Path, smash_config: Smash
     torch.compiler.load_cache_artifacts(artifact_bytes)
 
 
+def load_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+    """
+    Load a tuned kernel config inside the hf/vllm caches.
+
+    Parameters
+    ----------
+    model : Any
+        The model to load the artifacts for.
+    model_path : str | Path
+        The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object.
+    **kwargs : Any
+        Additional keyword arguments to pass to the function.
+
+    Returns
+    -------
+    Any
+        The loaded MoE model.
+    """
+    from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner
+    from pruna.algorithms.utils.moe_kernel_tuner import save_configs
+
+    imported_packages = MoeKernelTuner().import_algorithm_packages()
+    save_dir = Path(model_path)
+    with open(save_dir / "moe_kernel_tuner.json") as f:
+        best_configs_and_hyperparameters = json.load(f)
+    if not best_configs_and_hyperparameters:
+        raise ValueError(f"MoE kernel tuner artifacts not found in {save_dir}")
+    else:
+        # check if the triton version is the same as the one used to tune the kernel
+        triton_version = best_configs_and_hyperparameters["triton_version"]
+        if triton_version != imported_packages["triton"].__version__:
+            msg = (
+                f"Triton version mismatch: {triton_version} != "
+                f"{imported_packages['triton'].__version__}. "
+                "Performance may be degraded or config may be invalid. "
+                "We recommend re-tuning the kernel in your environment."
+            )
+            pruna_logger.info(msg)
+
+        best_configs = best_configs_and_hyperparameters["best_configs_moe_kernel"]
+        num_experts = best_configs_and_hyperparameters["num_experts"]
+        shard_intermediate_size = best_configs_and_hyperparameters["shard_intermediate_size"]
+        dtype = best_configs_and_hyperparameters["dtype"]
+        # Convert dtype string back to torch.dtype if needed
+        dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
+        use_fp8_w8a8 = best_configs_and_hyperparameters["use_fp8_w8a8"]
+        use_int8_w8a16 = best_configs_and_hyperparameters["use_int8_w8a16"]
+
+        # save the config attached to smash_config, inside the hf and vllm caches.
+        save_configs(
+            best_configs,
+            num_experts,
+            shard_intermediate_size,
+            dtype,
+            use_fp8_w8a8,
+            use_int8_w8a16,
+            None,
+            smash_config["moe_kernel_tuner_path_to_huggingface_hub_cache"],
+            smash_config["moe_kernel_tuner_path_to_vllm_cache"],
+            imported_packages,
+        )
+
+
 class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* load functions.
@@ -116,6 +182,7 @@ class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
 
     torch_artifacts = partial(load_torch_artifacts)
+    moe_kernel_tuner_artifacts = partial(load_moe_kernel_tuner_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """Call the underlying load function."""
