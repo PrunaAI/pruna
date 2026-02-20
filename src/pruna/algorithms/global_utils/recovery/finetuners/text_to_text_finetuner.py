@@ -32,6 +32,14 @@ from pruna.algorithms.global_utils.recovery.utils import get_dtype, split_defaul
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.logging.logger import pruna_logger
 
+_INCOMPATIBLE_DATASET_MSG = (
+    "The dataset provided for recovery is not compatible. Accepted format include:\n"
+    " - huggingface datasets with a text field,\n"
+    " - huggingface datasets with an input_ids field,\n"
+    " - (input, label) format for next token prediction,\n"
+    " - (extended_inputs,) format for next token prediction."
+)
+
 
 class TextToTextFinetuner(PrunaFinetuner):
     """Finetuner for text-to-text models."""
@@ -234,20 +242,14 @@ class TextToTextFinetuner(PrunaFinetuner):
                 removed_columns = [col for col in column_names if col != text_field]
                 return dataset.remove_columns(removed_columns), text_field
             else:
-                pruna_logger.error(
-                    "The dataset provided for recovery is not compatible. Accepted format include:\n"
-                    " - huggingface datasets with a text field,\n"
-                    " - huggingface datasets with an input_ids field,\n"
-                    " - (input, label) format for next token prediction,\n"
-                    " - (extended_inputs,) format for next token prediction."
-                )
+                pruna_logger.error(_INCOMPATIBLE_DATASET_MSG)
                 raise ValueError(
                     f"Expected a HuggingFace dataset with text or input_ids fields "
                     f"for LoRA recovery but got: {dataset}"
                 )
 
         # Handle PyTorch Dataset
-        if isinstance(dataset, torch.utils.data.Dataset):
+        elif isinstance(dataset, torch.utils.data.Dataset):
             first_sample = dataset[0]
 
             # Check if already in (extended_inputs,) format - single tensor or tuple/list with one tensor
@@ -275,7 +277,7 @@ class TextToTextFinetuner(PrunaFinetuner):
                     return Dataset.from_generator(data_generator), None
 
             # Check if in (input, label) format for next token prediction
-            if isinstance(first_sample, (tuple, list)) and len(first_sample) == 2:
+            elif isinstance(first_sample, (tuple, list)) and len(first_sample) == 2:
                 data_input, label = first_sample
                 if (
                     isinstance(data_input, torch.Tensor)
@@ -296,24 +298,15 @@ class TextToTextFinetuner(PrunaFinetuner):
                     return Dataset.from_generator(data_generator), None
 
             # If we get here, the torch dataset format is not recognized
-            pruna_logger.error(
-                "The dataset provided for recovery is not compatible. Accepted format include:\n"
-                " - huggingface datasets with a text field,\n"
-                " - huggingface datasets with an input_ids field,\n"
-                " - (input, label) format for next token prediction,\n"
-                " - (extended_inputs,) format for next token prediction."
-            )
+            pruna_logger.error(_INCOMPATIBLE_DATASET_MSG)
             raise ValueError(
                 f"Expected a torch dataset in (input, label) or (extended_inputs,) format "
                 f"for LoRA recovery but got: {dataset}"
             )
 
         # Unknown dataset type
-        pruna_logger.error(
-            "The dataset provided for recovery is not compatible. Accepted format include:\n"
-            " - huggingface datasets with a text field,\n"
-            " - huggingface datasets with an input_ids field,\n"
-            " - (input, label) format for next token prediction,\n"
-            " - (extended_inputs,) format for next token prediction."
-        )
-        raise ValueError(f"Expected a Dataset or torch.utils.data.Dataset for LoRA recovery but got: {type(dataset)}")
+        else:
+            pruna_logger.error(_INCOMPATIBLE_DATASET_MSG)
+            raise ValueError(
+                f"Expected a datasets.Dataset or torch.utils.data.Dataset for LoRA recovery but got: {type(dataset)}"
+            )
