@@ -72,7 +72,14 @@ def setup_parti_prompts_dataset(
     ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
 
     if category is not None:
-        ds = ds.filter(lambda x: x["Category"] == category or x["Challenge"] == category)
+        if isinstance(category, list):
+            ds = ds.filter(
+                lambda x: x["Category"] in category or x["Challenge"] in category
+            )
+        else:
+            ds = ds.filter(
+                lambda x: x["Category"] == category or x["Challenge"] == category
+            )
 
     ds = ds.shuffle(seed=seed)
 
