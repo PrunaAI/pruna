@@ -1,10 +1,9 @@
 from typing import Any, Callable
 
 import pytest
-from transformers import AutoTokenizer
-from datasets import Dataset
-from torch.utils.data import TensorDataset
 import torch
+from transformers import AutoTokenizer
+
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -45,6 +44,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("GenAIBench", dict(), marks=pytest.mark.slow),
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
+        pytest.param("GenEval", dict(), marks=pytest.mark.slow),
     ],
 )
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
@@ -80,3 +80,35 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     assert labels.dtype == torch.int64
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
+
+
+
+@pytest.mark.slow
+def test_parti_prompts_with_category_filter():
+    """Test PartiPrompts loading with category filter."""
+    dm = PrunaDataModule.from_string(
+        "PartiPrompts", category="Animals", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["Category"] == "Animals" for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_geneval_with_category_filter():
+    """Test GenEval loading with category filter."""
+    dm = PrunaDataModule.from_string(
+        "GenEval", category="counting", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all(aux["tag"] == "counting" for aux in auxiliaries)
+    assert all("questions" in aux for aux in auxiliaries)
