@@ -4,7 +4,6 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
-from pruna.data import BenchmarkInfo, benchmark_info
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
