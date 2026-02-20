@@ -41,7 +41,11 @@ def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     return ds.select([0]), ds.select([0]), ds
 
 
-def setup_parti_prompts_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+def setup_parti_prompts_dataset(
+    seed: int,
+    category: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the Parti Prompts dataset.
 
@@ -51,14 +55,42 @@ def setup_parti_prompts_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     ----------
     seed : int
         The seed to use.
+    category : str | None
+        Filter by Category or Challenge. Available categories: Abstract, Animals, Artifacts,
+        Arts, Food & Beverage, Illustrations, Indoor Scenes, Outdoor Scenes, People,
+        Produce & Plants, Vehicles, World Knowledge. Available challenges: Basic, Complex,
+        Fine-grained Detail, Imagination, Linguistic Structures, Perspective,
+        Properties & Positioning, Quantity, Simple Detail, Style & Format, Writing & Symbols.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
 
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
-        The Parti Prompts dataset.
+        The Parti Prompts dataset (dummy train, dummy val, test).
     """
     ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
+
+    if category is not None:
+        if isinstance(category, list):
+            ds = ds.filter(
+                lambda x: x["Category"] in category or x["Challenge"] in category
+            )
+        else:
+            ds = ds.filter(
+                lambda x: x["Category"] == category or x["Challenge"] == category
+            )
+
+    # Note: Not shuffling since these are test-only datasets
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
     ds = ds.rename_column("Prompt", "text")
+
+    if len(ds) == 0:
+        raise ValueError(f"No samples found for category '{category}'.")
+
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
@@ -82,4 +114,74 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     ds = load_dataset("BaiqiL/GenAI-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("GenAI-Bench is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+
+
+IMGEDIT_CATEGORIES = ["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"]
+
+
+def setup_imgedit_dataset(
+    seed: int,
+    category: str | None = None,
+    num_samples: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the ImgEdit benchmark dataset for image editing evaluation.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    category : str | None
+        Filter by edit type. Available: replace, add, remove, adjust, extract, style,
+        background, compose. If None, returns all categories.
+    num_samples : int | None
+        Maximum number of samples to return. If None, returns all samples.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The ImgEdit dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    import requests
+
+    if category is not None and category not in IMGEDIT_CATEGORIES:
+        raise ValueError(f"Invalid category: {category}. Must be one of {IMGEDIT_CATEGORIES}")
+
+    instructions_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/b3eb8e74d7cd1fd0ce5341eaf9254744a8ab4c0b/Benchmark/Basic/basic_edit.json"
+    judge_prompts_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/c14480ac5e7b622e08cd8c46f96624a48eb9ab46/Benchmark/Basic/prompts.json"
+
+    instructions = json.loads(requests.get(instructions_url).text)
+    judge_prompts = json.loads(requests.get(judge_prompts_url).text)
+
+    records = []
+    for _, instruction in instructions.items():
+        edit_type = instruction.get("edit_type", "")
+
+        if category is not None and edit_type != category:
+            continue
+
+        records.append(
+            {
+                "text": instruction.get("prompt", ""),
+                "category": edit_type,
+                "image_id": instruction.get("id", ""),
+                "judge_prompt": judge_prompts.get(edit_type, ""),
+            }
+        )
+
+    ds = Dataset.from_list(records)
+    # Note: Not shuffling since these are test-only datasets
+
+    if num_samples is not None:
+        ds = ds.select(range(min(num_samples, len(ds))))
+
+    if len(ds) == 0:
+        raise ValueError(f"No samples found for category '{category}'.")
+
+    pruna_logger.info("ImgEdit is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
