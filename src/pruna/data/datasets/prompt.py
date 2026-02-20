@@ -81,7 +81,7 @@ def setup_parti_prompts_dataset(
                 lambda x: x["Category"] == category or x["Challenge"] == category
             )
 
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
@@ -151,7 +151,7 @@ def setup_oneig_text_rendering_dataset(
         })
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
@@ -219,7 +219,7 @@ def setup_oneig_alignment_dataset(
         })
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
@@ -281,7 +281,7 @@ def setup_dpg_dataset(
         })
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
+    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
