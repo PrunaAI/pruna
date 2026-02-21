@@ -142,6 +142,7 @@ dependencies = [
 
 [project.optional-dependencies]
 evaluation = [
+    "pydantic>=2.0.0",
     "litellm>=1.0.0",
     "transformers>=4.40.0",
     "accelerate>=0.20.0",
