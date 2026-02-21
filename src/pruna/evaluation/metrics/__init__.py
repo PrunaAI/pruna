@@ -25,12 +25,12 @@ from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.metrics_vlm import (
-    VQAMetric,
     AlignmentScoreMetric,
     ImageEditScoreMetric,
     QAAccuracyMetric,
     TextScoreMetric,
     VieScoreMetric,
+    VQAMetric,
 )
 
 __all__ = [
