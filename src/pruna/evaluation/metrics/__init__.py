@@ -21,10 +21,13 @@ try:
     from pruna.evaluation.metrics.registry import MetricRegistry  # isort:skip
 
     from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
+    from pruna.evaluation.metrics.metric_clip_iqa import CLIPIQAMetric
+    from pruna.evaluation.metrics.metric_clip_score import CLIPScoreMetric
     from pruna.evaluation.metrics.metric_cmmd import CMMD
     from pruna.evaluation.metrics.metric_dino_score import DinoScore
     from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
     from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
+    from pruna.evaluation.metrics.metric_fid import FIDMetric
     from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
     from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
     from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
@@ -51,4 +54,7 @@ __all__ = [
     "DinoScore",
     "SharpnessMetric",
     "AestheticLAION",
+    "CLIPScoreMetric",
+    "FIDMetric",
+    "CLIPIQAMetric",
 ]
