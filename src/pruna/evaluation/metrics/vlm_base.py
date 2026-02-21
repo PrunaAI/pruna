@@ -77,7 +77,8 @@ class LitellmVLM(BaseVLM):
         results = []
         for image, prompt in zip(images, prompts):
             try:
-                response = self._litellm.acompletion(
+                # Use synchronous completion, not async
+                response = self._litellm.completion(
                     model=self.model_name,
                     messages=[{
                         "role": "user",
