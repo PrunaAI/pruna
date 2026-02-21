@@ -23,7 +23,8 @@ https://github.com/PrunaAI/InferBench
 
 from __future__ import annotations
 
-import os
+
+from pathlib import Path
 from typing import Any, List
 
 import huggingface_hub
@@ -113,8 +114,8 @@ class HPSMetric(StatefulMetric):
             self.model_dict["model"] = model
             self.model_dict["preprocess_val"] = preprocess_val
 
-            if not os.path.exists(root_path):
-                os.makedirs(root_path)
+            if not Path(root_path).exists():
+                Path(root_path).mkdir(parents=True, exist_ok=True)
             cp = huggingface_hub.hf_hub_download("xswu/HPSv2", hps_version_map[self.hps_version])
             checkpoint = torch.load(cp, map_location=self.device)
             model.load_state_dict(checkpoint["state_dict"])
