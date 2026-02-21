@@ -14,9 +14,11 @@
 """
 
 VLM (Vision-Language Model) base classes for metrics.
+
 This module provides two VLM implementations:
 1. LitellmVLM - Uses litellm for API-based VLM calls (supports 100+ providers)
 2. TransformersVLM - Uses local VLM models from HuggingFace Transformers
+
 Both support structured generation for stable outputs:
 - LitellmVLM: Uses pydantic models with response_format
 - TransformersVLM: Uses outlines for constrained decoding.
@@ -91,6 +93,7 @@ class LitellmVLM(BaseVLM):
         self.extra_kwargs = kwargs
         try:
             import litellm
+
             litellm.drop_params = True
             self._litellm = litellm
         except ImportError:
