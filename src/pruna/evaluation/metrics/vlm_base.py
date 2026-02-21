@@ -69,17 +69,10 @@ class BaseVLM(ABC):
 
 class LitellmVLM(BaseVLM):
     """
-
     VLM using litellm for API-based inference.
+
     Supports 100+ LLM providers (OpenAI, Anthropic, Azure, etc.)
     Default model is gpt-4o.
-    Supports structured generation via pydantic models:
-        from pydantic import BaseModel
-        class Answer(BaseModel):
-            score: int
-            reasoning: str
-        vlm = LitellmVLM()
-        vlm.generate(images, prompts, response_format=Answer).
     """
 
     def __init__(
@@ -200,13 +193,9 @@ class LitellmVLM(BaseVLM):
 
 class TransformersVLM(BaseVLM):
     """
-
     VLM using HuggingFace Transformers for local inference.
+
     Supports models like BLIP, LLaVA, etc.
-    Supports structured generation via outlines:
-        from outlines import generate
-        vlm = TransformersVLM()
-        # Uses constrained decoding for stable outputs.
     """
 
     def __init__(
