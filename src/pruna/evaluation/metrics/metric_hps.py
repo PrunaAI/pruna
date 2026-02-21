@@ -36,7 +36,7 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import get_call_type_for_single_metric, metric_data_processor, SINGLE
+from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_HPS = "hps"
@@ -90,7 +90,7 @@ class HPSMetric(StatefulMetric):
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
         try:
-            import hpsv2
+            import hpsv2  # noqa: F401
         except ImportError:
             pruna_logger.error("hpsv2 not installed. Install with: pip install hpsv2")
             raise
@@ -161,6 +161,5 @@ class HPSMetric(StatefulMetric):
             tensor = tensor[0]
         if tensor.max() > 1:
             tensor = tensor / 255.0
-        import numpy as np
         np_img = (tensor.cpu().numpy() * 255).astype("uint8")
         return Image.fromarray(np_img.transpose(1, 2, 0))
