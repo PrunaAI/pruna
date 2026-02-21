@@ -32,6 +32,7 @@ from typing import Any, List, Literal, Optional
 
 import numpy as np
 import torch
+from PIL import Image
 from pydantic import BaseModel
 
 from pruna.engine.utils import set_to_best_available_device
@@ -42,7 +43,7 @@ from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metr
 from pruna.evaluation.metrics.vlm_base import LitellmVLM, TransformersVLM
 
 
-def _tensor_to_pil(tensor: "torch.Tensor") -> "Image.Image":
+def _tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
     from PIL import Image
 
     if tensor.ndim == 4:
