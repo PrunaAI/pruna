@@ -52,10 +52,6 @@ class HPSMetric(StatefulMetric):
     match their text prompts based on human preferences.
     Higher scores indicate better alignment with human preferences.
 
-    Reference
-    ----------
-    HPSv2: https://github.com/tgxs002/HPSv2
-
     Parameters
     ----------
     *args : Any
@@ -69,6 +65,10 @@ class HPSMetric(StatefulMetric):
         The type of call to use for the metric.
     **kwargs : Any
         Additional keyword arguments.
+
+    References
+    ----------
+    HPSv2: https://github.com/tgxs002/HPSv2
     """
 
     scores: List[float]
