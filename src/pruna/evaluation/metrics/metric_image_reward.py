@@ -32,7 +32,7 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.utils import get_call_type_for_single_metric, metric_data_processor, SINGLE
 from pruna.logging.logger import pruna_logger
 
 METRIC_IMAGE_REWARD = "image_reward"
@@ -47,39 +47,43 @@ class ImageRewardMetric(StatefulMetric):
     match their text prompts based on learned human preferences.
     Higher scores indicate better alignment.
 
+    Reference
+    ----------
+    ImageReward: https://github.com/thaosu/ImageReward
+
     Parameters
     ----------
     *args : Any
-        Additional arguments to pass to the StatefulMetric constructor.
+        Additional arguments.
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     model_name : str, optional
         The ImageReward model to use. Default is "ImageReward-v1.0".
+    call_type : str, optional
+        The type of call to use for the metric.
     **kwargs : Any
-        Additional keyword arguments to pass to the StatefulMetric constructor.
-
-    References
-    ----------
-    ImageReward: https://github.com/thaosu/ImageReward
+        Additional keyword arguments.
     """
 
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = METRIC_IMAGE_REWARD
+    runs_on: List[str] = ["cpu", "cuda", "mps"]
 
     def __init__(
         self,
         *args,
         device: str | torch.device | None = None,
         model_name: str = "ImageReward-v1.0",
+        call_type: str = SINGLE,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.model_name = model_name
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
         # Import ImageReward lazily
         try:
@@ -89,15 +93,12 @@ class ImageRewardMetric(StatefulMetric):
             raise
 
         self.model = RM.load(self.model_name, device=str(self.device))
+        self.add_state("scores", [])
 
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
-
+    @torch.no_grad()
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
         """
         Update the metric with new batch data.
-
-        This computes the ImageReward scores for the given images and prompts.
 
         Parameters
         ----------
@@ -108,58 +109,40 @@ class ImageRewardMetric(StatefulMetric):
         outputs : torch.Tensor
             The output images to score.
         """
-        # Get images and prompts
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
-        images = inputs[0]  # Generated images
+        images = inputs[0]
         prompts = x if isinstance(x, list) else [""] * len(images)
 
-        with torch.no_grad():
-            for i, image in enumerate(images):
-                # Convert tensor to PIL Image if needed
-                if isinstance(image, torch.Tensor):
-                    image = self._tensor_to_pil(image)
+        for i, image in enumerate(images):
+            if isinstance(image, torch.Tensor):
+                image = self._tensor_to_pil(image)
 
-                prompt = prompts[i] if i < len(prompts) else ""
-
-                score = self.model.score(prompt, image)
-                self.total += score
-                self.count += 1
+            prompt = prompts[i] if i < len(prompts) else ""
+            score = self.model.score(prompt, image)
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
         """
-        Compute the average ImageReward metric based on previous updates.
+        Compute the mean ImageReward metric.
 
         Returns
         -------
         MetricResult
-            The average ImageReward metric.
+            The mean ImageReward metric.
         """
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+
+        import numpy as np
+        mean_score = float(np.mean(self.scores))
+        return MetricResult(self.metric_name, self.__dict__, mean_score)
 
     def _tensor_to_pil(self, tensor: torch.Tensor) -> Image.Image:
-        """
-        Convert a tensor to a PIL Image.
-
-        Parameters
-        ----------
-        tensor : torch.Tensor
-            The tensor to convert. Expected shape: (C, H, W) or (B, C, H, W).
-
-        Returns
-        -------
-        Image.Image
-            The converted PIL Image.
-        """
-        # Handle batch dimension
+        """Convert tensor to PIL Image."""
         if tensor.ndim == 4:
             tensor = tensor[0]
-
-        # Ensure values are in [0, 1]
         if tensor.max() > 1:
             tensor = tensor / 255.0
-
-        # Convert to numpy and then to PIL
-        numpy_image = tensor.cpu().numpy()
-        numpy_image = (numpy_image * 255).astype("uint8")
-        return Image.fromarray(numpy_image.transpose(1, 2, 0))
+        import numpy as np
+        np_img = (tensor.cpu().numpy() * 255).astype("uint8")
+        return Image.fromarray(np_img.transpose(1, 2, 0))
