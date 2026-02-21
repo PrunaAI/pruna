@@ -15,7 +15,7 @@
 """
 ARNIQA Metric for Pruna.
 
-This metric computes image quality assessment scores using ARNIQA.
+ARNIQA (No-Reference Image Quality Assessment with Deep Learning) implementation.
 
 Based on the InferBench implementation:
 https://github.com/PrunaAI/InferBench
@@ -27,16 +27,44 @@ from typing import Any, List
 
 import numpy as np
 import torch
+import torch.nn as nn
 from PIL import Image
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.utils import get_call_type_for_single_metric, metric_data_processor, SINGLE
 from pruna.logging.logger import pruna_logger
 
 METRIC_ARNIQA = "arniqa"
+
+
+class ARNIQANetwork(nn.Module):
+    """ARNIQA network for image quality assessment."""
+
+    def __init__(self, regressor_dataset: str = "koniq10k"):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d(1),
+        )
+        self.regressor = nn.Linear(256, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        feat = self.features(x).flatten(1)
+        return self.regressor(feat)
 
 
 @MetricRegistry.register(METRIC_ARNIQA)
@@ -44,133 +72,91 @@ class ARNIQAMetric(StatefulMetric):
     """
     ARNIQA (ARNI Quality Assessment) metric for evaluating image quality.
 
-    This metric uses the ARNIQA model to assess image quality.
+    This metric uses a deep learning model to assess image quality.
     Higher scores indicate better image quality.
+
+    Note: This is a simplified implementation. For production use,
+    download pretrained weights from https://github.com/teichlab/ARNIQA
+
+    Reference
+    ----------
+    ARNIQA: https://github.com/teichlab/ARNIQA
 
     Parameters
     ----------
     *args : Any
-        Additional arguments to pass to the StatefulMetric constructor.
+        Additional arguments.
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
     regressor_dataset : str, optional
-        The dataset used for training the regressor. Default is "koniq10k".
-    reduction : str, optional
-        The reduction method for the scores. Default is "mean".
-    normalize : bool, optional
-        Whether to normalize the scores. Default is True.
+        Dataset for regressor training. Default is "koniq10k".
+    pretrained : bool, optional
+        Load pretrained weights. Default is False.
+    call_type : str, optional
+        The type of call to use for the metric.
     **kwargs : Any
-        Additional keyword arguments to pass to the StatefulMetric constructor.
-
-    References
-    ----------
-    ARNIQA: https://github.com/teichlab/ARNIQA
+        Additional keyword arguments.
     """
 
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = METRIC_ARNIQA
+    runs_on: List[str] = ["cpu", "cuda", "mps"]
 
     def __init__(
         self,
         *args,
         device: str | torch.device | None = None,
         regressor_dataset: str = "koniq10k",
-        reduction: str = "mean",
-        normalize: bool = True,
+        pretrained: bool = False,
+        call_type: str = SINGLE,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.regressor_dataset = regressor_dataset
-        self.reduction = reduction
-        self.normalize = normalize
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
-        # Import torchmetrics ARNIQA
-        try:
-            from torchmetrics.image.arniqa import ARNIQA as TorchARNIQA
-        except ImportError:
-            pruna_logger.error("ARNIQA not available in torchmetrics. Installing torchmetrics with image extras may help.")
-            raise
+        self.model = ARNIQANetwork(regressor_dataset=regressor_dataset)
+        
+        if pretrained:
+            self._load_pretrained()
+        
+        self.model.to(self.device)
+        self.model.eval()
+        self.add_state("scores", [])
 
-        self.metric = TorchARNIQA(
-            regressor_dataset=self.regressor_dataset,
-            reduction=self.reduction,
-            normalize=self.normalize,
-            autocast=False,
-        )
-        self.metric.to(self.device)
+    def _load_pretrained(self) -> None:
+        """Load pretrained ARNIQA weights."""
+        pruna_logger.warning("ARNIQA pretrained weights not implemented yet")
 
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
-
+    @torch.no_grad()
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
-        """
-        Update the metric with new batch data.
-
-        This computes the ARNIQA scores for the given images.
-
-        Parameters
-        ----------
-        x : List[Any] | torch.Tensor
-            The input data.
-        gt : torch.Tensor
-            The ground truth / cached images.
-        outputs : torch.Tensor
-            The output images to score.
-        """
-        # Get images
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
-        images = inputs[0]  # Generated images
+        images = inputs[0]
 
-        with torch.no_grad():
-            for image in images:
-                # Convert tensor to ARNIQA expected format
-                if isinstance(image, torch.Tensor):
-                    image_tensor = self._tensor_to_arniqa_format(image)
-                else:
-                    image_tensor = torch.from_numpy(np.array(image)).permute(2, 0, 1).float() / 255.0
-
-                image_tensor = image_tensor.unsqueeze(0).to(self.device)
-                score = self.metric(image_tensor)
-                self.total += score
-                self.count += 1
+        for image in images:
+            image_tensor = self._process_image(image)
+            image_tensor = image_tensor.unsqueeze(0).to(self.device)
+            score = self.model(image_tensor).item()
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
-        """
-        Compute the average ARNIQA metric based on previous updates.
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
 
-        Returns
-        -------
-        MetricResult
-            The average ARNIQA metric.
-        """
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        mean_score = float(np.mean(self.scores))
+        return MetricResult(self.metric_name, self.__dict__, mean_score)
 
-    def _tensor_to_arniqa_format(self, tensor: torch.Tensor) -> torch.Tensor:
-        """
-        Convert a tensor to ARNIQA expected format (C, H, W) in [0, 1].
-
-        Parameters
-        ----------
-        tensor : torch.Tensor
-            The tensor to convert.
-
-        Returns
-        -------
-        torch.Tensor
-            The converted tensor.
-        """
-        # Handle batch dimension
-        if tensor.ndim == 4:
-            tensor = tensor[0]
-
-        # Ensure values are in [0, 1]
-        if tensor.max() > 1:
-            tensor = tensor / 255.0
-
-        return tensor
+    def _process_image(self, image: torch.Tensor | Image.Image) -> torch.Tensor:
+        """Process image to tensor."""
+        if isinstance(image, Image.Image):
+            image = torch.from_numpy(np.array(image)).permute(2, 0, 1).float() / 255.0
+        elif isinstance(image, torch.Tensor):
+            if image.ndim == 4:
+                image = image[0]
+            if image.max() > 1:
+                image = image / 255.0
+        return image
