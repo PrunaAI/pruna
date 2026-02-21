@@ -25,6 +25,7 @@ import math
 import re
 from typing import Any, List, Literal, Optional
 
+import numpy as np
 import torch
 from PIL import Image
 
@@ -32,7 +33,7 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.utils import get_call_type_for_single_metric, metric_data_processor, SINGLE
 from pruna.evaluation.metrics.vlm_base import BaseVLM, LitellmVLM, TransformersVLM
 
 
@@ -41,7 +42,6 @@ def _tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
         tensor = tensor[0]
     if tensor.max() > 1:
         tensor = tensor / 255.0
-    import numpy as np
     np_img = (tensor.cpu().numpy() * 255).astype("uint8")
     return Image.fromarray(np_img.transpose(1, 2, 0))
 
@@ -54,19 +54,20 @@ def _process_images(images: torch.Tensor) -> List[Image.Image]:
 @MetricRegistry.register("vqa")
 class VQAMetric(StatefulMetric):
     """VQA metric using VLM."""
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "vqa"
+    runs_on: List[str] = ["cpu"]  # API-based, doesn't need GPU
 
     def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None,
+                 call_type: str = SINGLE, **kwargs):
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.vlm = self._create_vlm(vlm_type, model_name, device, api_key)
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
 
     def _create_vlm(self, vlm_type: str, model_name: str, device: Any, api_key: Optional[str]) -> BaseVLM:
         if vlm_type == "litellm":
@@ -81,31 +82,32 @@ class VQAMetric(StatefulMetric):
             prompt = prompts[i] if i < len(prompts) else ""
             question = f'Does this image show "{prompt}"? Answer Yes or No.'
             score = self.vlm.score([image], [question], ["Yes"])[0]
-            self.total += score
-            self.count += 1
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
 
 
 # Alignment Score Metric
 @MetricRegistry.register("alignment_score")
 class AlignmentScoreMetric(StatefulMetric):
     """Alignment Score metric using VLM."""
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "alignment_score"
+    runs_on: List[str] = ["cpu"]
 
     def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None,
+                 call_type: str = SINGLE, **kwargs):
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.vlm = self._create_vlm(vlm_type, model_name, device, api_key)
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
 
     def _create_vlm(self, vlm_type: str, model_name: str, device: Any, api_key: Optional[str]) -> BaseVLM:
         if vlm_type == "litellm":
@@ -120,31 +122,32 @@ class AlignmentScoreMetric(StatefulMetric):
             prompt = prompts[i] if i < len(prompts) else ""
             question = f'Does this image show "{prompt}"? Answer Yes or No.'
             score = self.vlm.score([image], [question], ["Yes"])[0]
-            self.total += score
-            self.count += 1
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
 
 
 # Image Edit Score Metric
 @MetricRegistry.register("img_edit_score")
 class ImageEditScoreMetric(StatefulMetric):
     """Image Edit Score metric using VLM."""
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "img_edit_score"
+    runs_on: List[str] = ["cpu"]
 
     def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None,
+                 call_type: str = SINGLE, **kwargs):
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.vlm = self._create_vlm(vlm_type, model_name, device, api_key)
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
 
     def _create_vlm(self, vlm_type: str, model_name: str, device: Any, api_key: Optional[str]) -> BaseVLM:
         if vlm_type == "litellm":
@@ -160,35 +163,36 @@ class ImageEditScoreMetric(StatefulMetric):
             question = f'Rate 0-10: Does this image show "{prompt}"? Reply with a number.'
             responses = self.vlm.generate([image], [question])
             score = self._parse_score(responses[0])
-            self.total += score
-            self.count += 1
+            self.scores.append(score)
 
     def _parse_score(self, response: str) -> float:
         numbers = re.findall(r'\d+', response)
         return min(float(numbers[0]), 10.0) / 10.0 if numbers else 0.0
 
     def compute(self) -> MetricResult:
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
 
 
 # QA Accuracy Metric
 @MetricRegistry.register("qa_accuracy")
 class QAAccuracyMetric(StatefulMetric):
     """QA Accuracy metric using VLM."""
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "qa_accuracy"
+    runs_on: List[str] = ["cpu"]
 
     def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None,
+                 call_type: str = SINGLE, **kwargs):
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.vlm = self._create_vlm(vlm_type, model_name, device, api_key)
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
 
     def _create_vlm(self, vlm_type: str, model_name: str, device: Any, api_key: Optional[str]) -> BaseVLM:
         if vlm_type == "litellm":
@@ -202,31 +206,32 @@ class QAAccuracyMetric(StatefulMetric):
             question = "What is in this image? Answer:"
             responses = self.vlm.generate([image], [question])
             score = 1.0 if responses[0].strip() else 0.0
-            self.total += score
-            self.count += 1
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
 
 
 # Text Score Metric
 @MetricRegistry.register("text_score")
 class TextScoreMetric(StatefulMetric):
     """Text Score metric for text rendering using VLM."""
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
-    higher_is_better: bool = False
+    scores: List[float]
+    default_call_type: str = "y"
+    higher_is_better: bool = False  # Lower is better
     metric_name: str = "text_score"
+    runs_on: List[str] = ["cpu"]
 
     def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None,
+                 call_type: str = SINGLE, **kwargs):
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.vlm = self._create_vlm(vlm_type, model_name, device, api_key)
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
 
     def _create_vlm(self, vlm_type: str, model_name: str, device: Any, api_key: Optional[str]) -> BaseVLM:
         if vlm_type == "litellm":
@@ -240,31 +245,32 @@ class TextScoreMetric(StatefulMetric):
             prompt = "Extract all text from this image. If no text, say 'No text'."
             responses = self.vlm.generate([image], [prompt])
             score = 0.0 if responses[0].strip().lower() != "no text" else 10.0
-            self.total += score
-            self.count += 1
+            self.scores.append(score)
 
     def compute(self) -> MetricResult:
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
 
 
 # VieScore Metric
 @MetricRegistry.register("viescore")
 class VieScoreMetric(StatefulMetric):
     """VieScore metric for image quality using VLM."""
-    total: torch.Tensor
-    count: torch.Tensor
-    call_type: str = "y"
+    scores: List[float]
+    default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "viescore"
+    runs_on: List[str] = ["cpu"]
 
     def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None, **kwargs):
-        super().__init__(*args, **kwargs)
+                 model_name: str = "gpt-4o", device=None, api_key: Optional[str] = None,
+                 call_type: str = SINGLE, **kwargs):
+        super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.vlm = self._create_vlm(vlm_type, model_name, device, api_key)
-        self.add_state("total", torch.zeros(1))
-        self.add_state("count", torch.zeros(1))
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
 
     def _create_vlm(self, vlm_type: str, model_name: str, device: Any, api_key: Optional[str]) -> BaseVLM:
         if vlm_type == "litellm":
@@ -284,13 +290,13 @@ class VieScoreMetric(StatefulMetric):
             qual_resp = self.vlm.generate([image], [qual_prompt])[0]
             qual_score = self._parse_score(qual_resp)
             score = math.sqrt(sem_score * qual_score) / 10.0
-            self.total += score
-            self.count += 1
+            self.scores.append(score)
 
     def _parse_score(self, response: str) -> float:
         numbers = re.findall(r'\d+', response)
         return min(float(numbers[0]), 10.0) if numbers else 0.0
 
     def compute(self) -> MetricResult:
-        result = self.total / self.count if self.count.item() != 0 else torch.zeros(1)
-        return MetricResult(self.metric_name, self.__dict__.copy(), result.item())
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
