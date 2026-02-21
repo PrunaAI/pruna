@@ -131,6 +131,7 @@ dependencies = [
     "llmcompressor",
     "gliner; python_version >= '3.10'",
     "piq",
+    "hpsv2",
     "opencv-python",
     "kernels",
     "aenum",
@@ -141,6 +142,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+evaluation = [
+    "hpsv2",
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
