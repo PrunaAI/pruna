@@ -14,7 +14,4 @@ def test_docstrings(file: str) -> None:
     file : str
         The import statement to check.
     """
-    # Skip metrics_vlm module as it uses a different docstring pattern for VLM parameters
-    if "metrics_vlm" in file:
-        pytest.skip("metrics_vlm uses custom VLM parameter documentation")
     check_docstrings_content(file)
