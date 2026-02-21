@@ -89,7 +89,7 @@ class ImageRewardMetric(StatefulMetric):
         try:
             import ImageReward as ImageRewardModule
         except ImportError:
-            pruna_logger.error("ImageReward is not installed. Install with: pip install ImageReward")
+            pruna_logger.error("ImageReward is not installed. Install with: pip install image-reward")
             raise
 
         self.model = ImageRewardModule.load(self.model_name, device=str(self.device))
@@ -134,6 +134,7 @@ class ImageRewardMetric(StatefulMetric):
             return MetricResult(self.metric_name, self.__dict__, 0.0)
 
         import numpy as np
+
         mean_score = float(np.mean(self.scores))
         return MetricResult(self.metric_name, self.__dict__, mean_score)
 
