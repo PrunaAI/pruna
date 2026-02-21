@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, List, Literal, Optional, Type
+from typing import Any, List, Literal, Optional
 
 import numpy as np
 import torch
@@ -38,13 +38,13 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import get_call_type_for_single_metric, metric_data_processor, SINGLE
-from pruna.evaluation.metrics.vlm_base import BaseVLM, LitellmVLM, TransformersVLM
+from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.vlm_base import LitellmVLM, TransformersVLM
 
 
-def _tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
-    import numpy as np
+def _tensor_to_pil(tensor: "torch.Tensor") -> "Image.Image":
     from PIL import Image
+
     if tensor.ndim == 4:
         tensor = tensor[0]
     if tensor.max() > 1:
@@ -54,19 +54,20 @@ def _tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
 
 
 def _process_images(images: torch.Tensor) -> List[Any]:
-    from PIL import Image
     return [_tensor_to_pil(img) if isinstance(img, torch.Tensor) else img for img in images]
 
 
 # Pydantic models for structured generation
 class VQAnswer(BaseModel):
     """Structured output for VQA."""
+
     answer: str
     confidence: float = 1.0
 
 
 class ScoreOutput(BaseModel):
     """Structured output for scoring metrics."""
+
     score: float
     reasoning: Optional[str] = None
 
@@ -102,6 +103,7 @@ class VQAMetric(StatefulMetric):
     **kwargs : Any
         Additional arguments.
     """
+
     scores: List[float]
     default_call_type: str = "y"
     higher_is_better: bool = True
@@ -136,6 +138,18 @@ class VQAMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (text prompts).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output images to score.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -147,6 +161,14 @@ class VQAMetric(StatefulMetric):
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
+        """
+        Compute the metric result.
+
+        Returns
+        -------
+        MetricResult
+            The computed metric result.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
@@ -174,16 +196,25 @@ class AlignmentScoreMetric(StatefulMetric):
     **kwargs : Any
         Additional arguments.
     """
+
     scores: List[float]
     default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "alignment_score"
     runs_on: List[str] = ["cpu"]
 
-    def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", structured_output: bool = True,
-                 use_outlines: bool = False, device=None, api_key: Optional[str] = None,
-                 call_type: str = SINGLE, **kwargs):
+    def __init__(
+        self,
+        *args,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device=None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        **kwargs,
+    ):
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
@@ -198,6 +229,18 @@ class AlignmentScoreMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (text prompts).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output images to score.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -208,6 +251,14 @@ class AlignmentScoreMetric(StatefulMetric):
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
+        """
+        Compute the metric result.
+
+        Returns
+        -------
+        MetricResult
+            The computed metric result.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
@@ -226,16 +277,25 @@ class ImageEditScoreMetric(StatefulMetric):
     ----------
     VieScore: https://github.com/ByteDance/IEA-eval
     """
+
     scores: List[float]
     default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "img_edit_score"
     runs_on: List[str] = ["cpu"]
 
-    def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", structured_output: bool = True,
-                 use_outlines: bool = False, device=None, api_key: Optional[str] = None,
-                 call_type: str = SINGLE, **kwargs):
+    def __init__(
+        self,
+        *args,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device=None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        **kwargs,
+    ):
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
@@ -250,6 +310,18 @@ class ImageEditScoreMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (text prompts).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output images to score.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -262,11 +334,19 @@ class ImageEditScoreMetric(StatefulMetric):
 
     def _parse_score(self, response: str) -> float:
         if isinstance(response, str):
-            numbers = re.findall(r'\d+', response)
+            numbers = re.findall(r"\d+", response)
             return min(float(numbers[0]), 10.0) / 10.0 if numbers else 0.0
         return 0.0
 
     def compute(self) -> MetricResult:
+        """
+        Compute the metric result.
+
+        Returns
+        -------
+        MetricResult
+            The computed metric result.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
@@ -281,16 +361,25 @@ class QAAccuracyMetric(StatefulMetric):
     Uses VLM to answer questions about images.
     Higher scores indicate better image understanding.
     """
+
     scores: List[float]
     default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "qa_accuracy"
     runs_on: List[str] = ["cpu"]
 
-    def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", structured_output: bool = True,
-                 use_outlines: bool = False, device=None, api_key: Optional[str] = None,
-                 call_type: str = SINGLE, **kwargs):
+    def __init__(
+        self,
+        *args,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device=None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        **kwargs,
+    ):
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
@@ -305,6 +394,18 @@ class QAAccuracyMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (text prompts).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output images to score.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         for image in images:
@@ -314,6 +415,14 @@ class QAAccuracyMetric(StatefulMetric):
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
+        """
+        Compute the metric result.
+
+        Returns
+        -------
+        MetricResult
+            The computed metric result.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
@@ -328,16 +437,25 @@ class TextScoreMetric(StatefulMetric):
     Uses VLM for OCR to extract text and compare with ground truth.
     Lower scores (edit distance) are better.
     """
+
     scores: List[float]
     default_call_type: str = "y"
     higher_is_better: bool = False
     metric_name: str = "text_score"
     runs_on: List[str] = ["cpu"]
 
-    def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", structured_output: bool = True,
-                 use_outlines: bool = False, device=None, api_key: Optional[str] = None,
-                 call_type: str = SINGLE, **kwargs):
+    def __init__(
+        self,
+        *args,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device=None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        **kwargs,
+    ):
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
@@ -352,6 +470,18 @@ class TextScoreMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (text prompts).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output images to score.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         for image in images:
@@ -361,6 +491,14 @@ class TextScoreMetric(StatefulMetric):
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
+        """
+        Compute the metric result.
+
+        Returns
+        -------
+        MetricResult
+            The computed metric result.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
@@ -384,16 +522,25 @@ class VieScoreMetric(StatefulMetric):
     - Quality score: Naturalness and artifacts
     - Overall: Geometric mean of semantic and quality
     """
+
     scores: List[float]
     default_call_type: str = "y"
     higher_is_better: bool = True
     metric_name: str = "viescore"
     runs_on: List[str] = ["cpu"]
 
-    def __init__(self, *args, vlm_type: Literal["litellm", "transformers"] = "litellm",
-                 model_name: str = "gpt-4o", structured_output: bool = True,
-                 use_outlines: bool = False, device=None, api_key: Optional[str] = None,
-                 call_type: str = SINGLE, **kwargs):
+    def __init__(
+        self,
+        *args,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device=None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        **kwargs,
+    ):
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
@@ -408,6 +555,18 @@ class VieScoreMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (text prompts).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output images to score.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -430,11 +589,19 @@ class VieScoreMetric(StatefulMetric):
 
     def _parse_score(self, response: str) -> float:
         if isinstance(response, str):
-            numbers = re.findall(r'\d+', response)
+            numbers = re.findall(r"\d+", response)
             return min(float(numbers[0]), 10.0) if numbers else 0.0
         return 0.0
 
     def compute(self) -> MetricResult:
+        """
+        Compute the metric result.
+
+        Returns
+        -------
+        MetricResult
+            The computed metric result.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
