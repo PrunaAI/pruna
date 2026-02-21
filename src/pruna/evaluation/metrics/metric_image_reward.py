@@ -92,7 +92,7 @@ class ImageRewardMetric(StatefulMetric):
             pruna_logger.error("ImageReward is not installed. Install with: pip install ImageReward")
             raise
 
-        self.model = RM.load(self.model_name, device=str(self.device))
+        self.model = ImageRewardModule.load(self.model_name, device=str(self.device))
         self.add_state("scores", [])
 
     @torch.no_grad()
