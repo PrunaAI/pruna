@@ -25,6 +25,14 @@ from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, 
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metrics_vlm import (
+    VQAMetric,
+    AlignmentScoreMetric,
+    ImageEditScoreMetric,
+    QAAccuracyMetric,
+    TextScoreMetric,
+    VieScoreMetric,
+)
 
 __all__ = [
     "MetricRegistry",
@@ -45,4 +53,10 @@ __all__ = [
     "SharpnessMetric",
     "AestheticLAION",
     "LMEvalMetric",
+    "VQAMetric",
+    "AlignmentScoreMetric",
+    "ImageEditScoreMetric",
+    "QAAccuracyMetric",
+    "TextScoreMetric",
+    "VieScoreMetric",
 ]
