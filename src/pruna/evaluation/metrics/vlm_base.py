@@ -52,7 +52,25 @@ class BaseVLM(ABC):
         response_format: Optional[Type[BaseModel]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Generate responses for images and prompts."""
+        """
+        Generate responses for images and prompts.
+
+        Parameters
+        ----------
+        images : List[Image.Image]
+            List of PIL Images.
+        prompts : List[str]
+            List of text prompts.
+        response_format : Type[BaseModel] | None
+            Optional pydantic model for structured output.
+        **kwargs : Any
+            Additional arguments passed to the implementation.
+
+        Returns
+        -------
+        List[str]
+            Generated responses.
+        """
         pass
 
     @abstractmethod
@@ -63,7 +81,25 @@ class BaseVLM(ABC):
         answers: List[str],
         **kwargs: Any,
     ) -> List[float]:
-        """Score how well answers match images for given questions."""
+        """
+        Score how well answers match images for given questions.
+
+        Parameters
+        ----------
+        images : List[Image.Image]
+            List of PIL Images.
+        questions : List[str]
+            List of questions.
+        answers : List[str]
+            List of expected answers.
+        **kwargs : Any
+            Additional arguments passed to the implementation.
+
+        Returns
+        -------
+        List[float]
+            Scores for each image-question pair.
+        """
         pass
 
 
@@ -73,6 +109,15 @@ class LitellmVLM(BaseVLM):
 
     Supports 100+ LLM providers (OpenAI, Anthropic, Azure, etc.)
     Default model is gpt-4o.
+
+    Parameters
+    ----------
+    model_name : str, optional
+        Model name (e.g., gpt-4o). Default is "gpt-4o".
+    api_key : str | None, optional
+        API key for the provider. Uses LITELLM_API_KEY or OPENAI_API_KEY env if None.
+    **kwargs : Any
+        Additional arguments passed to litellm.
     """
 
     def __init__(
@@ -111,6 +156,8 @@ class LitellmVLM(BaseVLM):
             List of text prompts.
         response_format : Type[BaseModel] | None
             Optional pydantic model for structured output.
+        **kwargs : Any
+            Additional arguments passed to litellm completion.
 
         Returns
         -------
@@ -169,6 +216,8 @@ class LitellmVLM(BaseVLM):
             List of questions.
         answers : List[str]
             List of expected answers.
+        **kwargs : Any
+            Additional arguments passed to generate.
 
         Returns
         -------
@@ -196,6 +245,17 @@ class TransformersVLM(BaseVLM):
     VLM using HuggingFace Transformers for local inference.
 
     Supports models like BLIP, LLaVA, etc.
+
+    Parameters
+    ----------
+    model_name : str, optional
+        HuggingFace model name. Default is "Salesforce/blip2-opt-2.7b".
+    device : str | torch.device | None, optional
+        Device for inference. Auto-detected if None.
+    use_outlines : bool, optional
+        Use outlines for constrained decoding. Default is False.
+    **kwargs : Any
+        Additional arguments passed to model generation.
     """
 
     def __init__(
@@ -244,20 +304,22 @@ class TransformersVLM(BaseVLM):
         """
         Generate responses using local VLM.
 
-        Args:
-            images: List of PIL Images
-            prompts: List of text prompts
-            response_format: Optional format constraint (e.g., "json", "integer")
-        """
-        """
+        Parameters
+        ----------
+        images : List[Image.Image]
+            List of PIL Images.
+        prompts : List[str]
+            List of text prompts.
+        response_format : str | None
+            Optional format constraint (e.g., "json", "integer", "yes_no").
+        **kwargs : Any
+            Additional arguments passed to model generate.
 
-        Generate responses using local VLM.
-        Args:
-            images: List of PIL Images
-            prompts: List of text prompts
-            response_format: Optional format constraint (e.g., "json", "integer")
+        Returns
+        -------
+        List[str]
+            Generated responses.
         """
-
         self._load_model()
         results = []
         max_new_tokens = kwargs.get("max_new_tokens", 128)
@@ -347,6 +409,8 @@ class TransformersVLM(BaseVLM):
             List of questions.
         answers : List[str]
             List of expected answers.
+        **kwargs : Any
+            Additional arguments passed to generate.
 
         Returns
         -------

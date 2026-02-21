@@ -60,14 +60,32 @@ def _process_images(images: torch.Tensor) -> List[Any]:
 
 # Pydantic models for structured generation
 class VQAnswer(BaseModel):
-    """Structured output for VQA."""
+    """
+    Structured output for VQA.
+
+    Parameters
+    ----------
+    answer : str
+        The VQA answer text.
+    confidence : float, optional
+        Confidence score. Default is 1.0.
+    """
 
     answer: str
     confidence: float = 1.0
 
 
 class ScoreOutput(BaseModel):
-    """Structured output for scoring metrics."""
+    """
+    Structured output for scoring metrics.
+
+    Parameters
+    ----------
+    score : float
+        The numeric score.
+    reasoning : str | None, optional
+        Optional reasoning for the score.
+    """
 
     score: float
     reasoning: Optional[str] = None
@@ -89,6 +107,8 @@ class VQAMetric(StatefulMetric):
 
     Parameters
     ----------
+    *args : Any
+        Additional positional arguments.
     vlm_type : {"litellm", "transformers"}, optional
         VLM backend to use. Default is "litellm".
     model_name : str, optional
@@ -101,6 +121,8 @@ class VQAMetric(StatefulMetric):
         Device for transformers VLM.
     api_key : str | None, optional
         API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
     **kwargs : Any
         Additional arguments.
     """
@@ -190,10 +212,22 @@ class AlignmentScoreMetric(StatefulMetric):
 
     Parameters
     ----------
+    *args : Any
+        Additional positional arguments.
     vlm_type : {"litellm", "transformers"}, optional
         VLM backend. Default is "litellm".
+    model_name : str, optional
+        Model name. Default is "gpt-4o".
     structured_output : bool, optional
         Use structured generation. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is False.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
     **kwargs : Any
         Additional arguments.
     """
@@ -277,6 +311,27 @@ class ImageEditScoreMetric(StatefulMetric):
     Reference
     ----------
     VieScore: https://github.com/ByteDance/IEA-eval
+
+    Parameters
+    ----------
+    *args : Any
+        Additional positional arguments.
+    vlm_type : {"litellm", "transformers"}, optional
+        VLM backend. Default is "litellm".
+    model_name : str, optional
+        Model name. Default is "gpt-4o".
+    structured_output : bool, optional
+        Use structured generation. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is False.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    **kwargs : Any
+        Additional arguments.
     """
 
     scores: List[float]
@@ -361,6 +416,27 @@ class QAAccuracyMetric(StatefulMetric):
 
     Uses VLM to answer questions about images.
     Higher scores indicate better image understanding.
+
+    Parameters
+    ----------
+    *args : Any
+        Additional positional arguments.
+    vlm_type : {"litellm", "transformers"}, optional
+        VLM backend. Default is "litellm".
+    model_name : str, optional
+        Model name. Default is "gpt-4o".
+    structured_output : bool, optional
+        Use structured generation. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is False.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    **kwargs : Any
+        Additional arguments.
     """
 
     scores: List[float]
@@ -437,6 +513,27 @@ class TextScoreMetric(StatefulMetric):
 
     Uses VLM for OCR to extract text and compare with ground truth.
     Lower scores (edit distance) are better.
+
+    Parameters
+    ----------
+    *args : Any
+        Additional positional arguments.
+    vlm_type : {"litellm", "transformers"}, optional
+        VLM backend. Default is "litellm".
+    model_name : str, optional
+        Model name. Default is "gpt-4o".
+    structured_output : bool, optional
+        Use structured generation. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is False.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    **kwargs : Any
+        Additional arguments.
     """
 
     scores: List[float]
@@ -522,6 +619,27 @@ class VieScoreMetric(StatefulMetric):
     - Semantic score: How well image follows prompt
     - Quality score: Naturalness and artifacts
     - Overall: Geometric mean of semantic and quality
+
+    Parameters
+    ----------
+    *args : Any
+        Additional positional arguments.
+    vlm_type : {"litellm", "transformers"}, optional
+        VLM backend. Default is "litellm".
+    model_name : str, optional
+        Model name. Default is "gpt-4o".
+    structured_output : bool, optional
+        Use structured generation. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is False.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    **kwargs : Any
+        Additional arguments.
     """
 
     scores: List[float]
