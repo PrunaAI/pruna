@@ -141,6 +141,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+evaluation = [
+    "pydantic>=2.0.0",
+    "litellm>=1.0.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.20.0",
+]
+
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
