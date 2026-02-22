@@ -141,7 +141,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-evaluation = []
+evaluation = [
+    "image-reward"
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",

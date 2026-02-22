@@ -85,12 +85,7 @@ class ImageRewardMetric(StatefulMetric):
         self.model_name = model_name
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
 
-        # Import ImageReward lazily
-        try:
-            import ImageReward as ImageRewardModule
-        except ImportError:
-            pruna_logger.error("ImageReward is not installed. Install with: pip install image-reward")
-            raise
+import ImageReward as ImageRewardModule
 
         self.model = ImageRewardModule.load(self.model_name, device=str(self.device))
         self.add_state("scores", [])
