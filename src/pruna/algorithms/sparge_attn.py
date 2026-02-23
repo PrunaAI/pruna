@@ -14,7 +14,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Callable
+import inspect
 
 import torch
 from aenum import extend_enum
@@ -28,6 +29,7 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 from pruna.config.target_modules import TARGET_MODULES_TYPE, TargetModules, map_targeted_nn_roots
+from pruna.config.hyperparameters import TensorHyperparameter
 
 
 class SpargeAttn(PrunaAlgorithmBase):
@@ -119,7 +121,12 @@ class SpargeAttn(PrunaAlgorithmBase):
         # register the sparge_attn operation with torch ops to make it compatible with full-graph compilation
         register_pruna_sparge_attn_op()
 
-        register_custom_backend(self.import_algorithm_packages())
+        # Extract sparge-specific kwargs from smash config
+        sparge_config_kwargs = {
+            "mask_id": smash_config.get("mask", None),
+        }
+
+        register_custom_backend(self.import_algorithm_packages(), sparge_config_kwargs)
 
         target_modules = smash_config["target_modules"]
 
@@ -230,6 +237,7 @@ class SpargeAttn(PrunaAlgorithmBase):
         """
         return [
             TargetModules(name="target_modules", default_value=None),
+            TensorHyperparameter(name="mask", default_value=None),
         ]
 
     def get_model_dependent_hyperparameter_defaults(
@@ -261,7 +269,7 @@ class SpargeAttn(PrunaAlgorithmBase):
         return {"include": include, "exclude": exclude}
 
 
-def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
+def register_custom_backend(imported_packages: Dict[str, Any], config_kwargs: Dict[str, Any] | None = None) -> None:
     """
     Register the attention backend for sparge_attn by mimicing the native backend.
 
@@ -271,7 +279,10 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
     ----------
     imported_packages : Dict[str, Any]
         The imported packages.
+    config_kwargs : Dict[str, Any] | None
+        The configuration kwargs.
     """
+    config_kwargs = config_kwargs or {}
 
     attention_backend_registry = imported_packages["_AttentionBackendRegistry"]
     _check_device = imported_packages["_check_device"]
@@ -303,7 +314,7 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
             # unsupported by sparge_attn but we catch them to reroute to native attention if necessary
             enable_gqa: bool = False,
         ) -> torch.Tensor:
-            attention_kwargs = attention_kwargs or {}
+            attention_kwargs = {**config_kwargs, **(attention_kwargs or {})}
 
             # dtype handling: SpargeAttn supports all dtype as casting is handled in the actual implementation
 
@@ -339,6 +350,8 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                 "pvthreshd",
                 "attention_sink",
                 "tensor_layout",
+                # block-sparse mode (explicit mask / id)
+                "mask_id",
             }
             for kw_name in attention_kwargs.keys():
                 if kw_name not in allowed_kwargs:
@@ -395,35 +408,80 @@ def register_pruna_sparge_attn_op() -> None:
         topk: float = 0.5,
         pvthreshd: int = 50,
         attention_sink: bool = False,
+        mask_id: Optional[torch.Tensor] = None,
         # We choose NHD to be consistent with the native backend
         tensor_layout: str = "NHD",
         # We ignore the output_dtype argument as it is not used in the actual implementation
         # The output dtype is float16 if q.dtype = float32 or float16, otherwise it is bfloat16
     ) -> torch.Tensor:
+
         # Local import to allow lazy package loading.
         # This allows the algorithm module to be importable without the spargeattn package to be installed.
         # Use importlib to avoid static import warnings when `spas_sage_attn` isn't installed.
         import importlib
 
         spas_sage_attn = importlib.import_module("spas_sage_attn")
-        spas_sage2_attn_meansim_topk_cuda = getattr(spas_sage_attn, "spas_sage_attn_meansim_topk_cuda")
 
-        out = spas_sage2_attn_meansim_topk_cuda(
-            q,
-            k,
-            v,
-            attn_mask=attn_mask,
-            dropout_p=dropout_p,
-            is_causal=is_causal,
-            scale=scale,
-            smooth_k=smooth_k,
-            simthreshd1=simthreshd1,
-            cdfthreshd=cdfthreshd,
-            topk=topk,
-            pvthreshd=pvthreshd,
-            attention_sink=attention_sink,
-            tensor_layout=tensor_layout,
-        )
+        def _filter_kwargs(fn: Callable[..., Any], kwargs: Dict[str, Any]) -> Dict[str, Any]:
+            """
+            Filter kwargs to only those accepted by fn.
+            This makes it safe to call multiple SpargeAttn entrypoints with differing signatures.
+            """
+            sig = inspect.signature(fn)
+            accepted = set(sig.parameters.keys())
+            return {k: v for k, v in kwargs.items() if k in accepted}
+
+        # Select implementation based on kwargs:
+        # - If mask_id is provided: use explicit block-sparse kernel.
+        # - Else if topk-mode is requested (cdfthreshd is None): use topk API.
+        # - Else: use CDF-based meansim API.
+        if mask_id is not None:
+            if is_causal:
+                raise ValueError("block_sparse_sage2_attn_cuda does not support is_causal=True; provide an explicit causal mask_id instead or reroute to native attention.")
+            spas_attn_fn = getattr(spas_sage_attn, "block_sparse_sage2_attn_cuda")
+            call_kwargs = {
+                "mask_id": mask_id,
+                "dropout_p": dropout_p,
+                "scale": scale,
+                "smooth_k": smooth_k,
+                "pvthreshd": pvthreshd,
+                "attention_sink": attention_sink,
+                "tensor_layout": tensor_layout,
+            }
+            pruna_logger.debug(f"Calling block_sparse_sage2_attn_cuda with kwargs: {call_kwargs}")
+        else:
+            if cdfthreshd is None:
+                spas_attn_fn = getattr(spas_sage_attn, "spas_sage2_attn_meansim_topk_cuda")
+                call_kwargs = {
+                    "attn_mask": attn_mask,
+                    "dropout_p": dropout_p,
+                    "is_causal": is_causal,
+                    "scale": scale,
+                    "smooth_k": smooth_k,
+                    "simthreshd1": simthreshd1,
+                    "cdfthreshd": None,
+                    "topk": topk,
+                    "pvthreshd": pvthreshd,
+                    "attention_sink": attention_sink,
+                    "tensor_layout": tensor_layout,
+                }
+                pruna_logger.debug(f"Calling sparsesage2_attn_meansim_topk_cuda with kwargs: {call_kwargs}")
+            else:
+                spas_attn_fn = getattr(spas_sage_attn, "spas_sage2_attn_meansim_cuda")
+                call_kwargs = {
+                    "attn_mask": attn_mask,
+                    "dropout_p": dropout_p,
+                    "is_causal": is_causal,
+                    "scale": scale,
+                    "smooth_k": smooth_k,
+                    "simthreshd1": simthreshd1,
+                    "cdfthreshd": cdfthreshd,
+                    "pvthreshd": pvthreshd,
+                    "attention_sink": attention_sink,
+                    "tensor_layout": tensor_layout,
+                }
+                pruna_logger.debug(f"Calling sparsesage2_attn_meansim_cuda with kwargs: {call_kwargs}")
+        out = spas_attn_fn(q, k, v, **_filter_kwargs(spas_attn_fn, call_kwargs))
         return out
 
     @torch.library.register_fake("sparge_attn_pruna::_sparge_attn_forward")
@@ -441,6 +499,7 @@ def register_pruna_sparge_attn_op() -> None:
         topk: float = 0.5,
         pvthreshd: int = 50,
         attention_sink: bool = False,
+        mask_id: Optional[torch.Tensor] = None,
         tensor_layout: str = "NHD",
     ) -> torch.Tensor:
         return torch.empty_like(q)
