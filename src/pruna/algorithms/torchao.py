@@ -339,8 +339,8 @@ class Torchao(PrunaAlgorithmBase):
             int4dq=Int8DynamicActivationInt4WeightConfig(),
             int4wo=Int4WeightOnlyConfig(),
             int8dq=Int8DynamicActivationInt8WeightConfig(),
-            int8wo=Int8WeightOnlyConfig,
-            fp8wo=Float8WeightOnlyConfig,
+            int8wo=Int8WeightOnlyConfig(),
+            fp8wo=Float8WeightOnlyConfig(),
             fp8dq=Float8DynamicActivationFloat8WeightConfig(),
             fp8dqrow=Float8DynamicActivationFloat8WeightConfig(
                 activation_dtype=torch.float8_e4m3fn,
