@@ -27,10 +27,10 @@ from torch.overrides import TorchFunctionMode
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
+from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
-from pruna.config.hyperparameters import Boolean
 
 
 class FlashAttn3(PrunaAlgorithmBase):
@@ -154,7 +154,6 @@ class FlashAttn3(PrunaAlgorithmBase):
                 }
             )
         return packages
-    
 
     def get_hyperparameters(self) -> list:
         """
@@ -207,7 +206,8 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
     if enum_key not in attention_backend_name.__members__:
 
         # Pick the right custom op based on use_fp8
-        _op_fn = torch.ops.flash_attn_pruna._flash_attn_forward_fp8 if use_fp8 else torch.ops.flash_attn_pruna._flash_attn_forward
+        _ops = torch.ops.flash_attn_pruna
+        _op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
 
         @attention_backend_registry.register(
             backend_name,
@@ -319,7 +319,8 @@ class FlashAttention3Context(TorchFunctionMode):
 def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None, use_fp8=False):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-    op_fn = torch.ops.flash_attn_pruna._flash_attn_forward_fp8 if use_fp8 else torch.ops.flash_attn_pruna._flash_attn_forward
+    _ops = torch.ops.flash_attn_pruna
+    op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
     out, _ = op_fn(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
@@ -397,8 +398,9 @@ def register_pruna_flash_attn_op(kernel_mod: Any, use_fp8: bool = False) -> None
         causal: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if use_fp8:
-            # FA3 requires descale shape (batch_size, num_heads_k) for all three, as kernel expects per tensor quantization
-            descale_shape = (q.shape[0], k.shape[2]) # (B, H) as input format = (B, N, H, D) 
+            # FA3 requires descale shape (batch_size, num_heads_k) for all three,
+            # as kernel expects per tensor quantization
+            descale_shape = (q.shape[0], k.shape[2])  # (B, H) as input format = (B, N, H, D)
             q_fp8, descale_q = _quantize_fp8(q, descale_shape)
             k_fp8, descale_k = _quantize_fp8(k, descale_shape)
             v_fp8, descale_v = _quantize_fp8(v, descale_shape)
