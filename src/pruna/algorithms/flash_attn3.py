@@ -271,6 +271,8 @@ class FlashAttention3Context(TorchFunctionMode):
     ----------
     kernel : Any
         The kernel to use for the flash attention 3.
+    use_fp8 : bool
+        Whether to quantize Q, K, V to FP8 before the attention computation.
     """
 
     def __init__(self, kernel: Any, use_fp8: bool = False):
