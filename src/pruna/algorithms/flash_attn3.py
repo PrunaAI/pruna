@@ -30,6 +30,7 @@ from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
+from pruna.config.hyperparameters import Boolean
 
 
 class FlashAttn3(PrunaAlgorithmBase):
@@ -96,14 +97,15 @@ class FlashAttn3(PrunaAlgorithmBase):
             The wrapped model.
         """
         imported_packages = self.import_algorithm_packages()
+        use_fp8 = smash_config["fp8"]
 
         # register the flash attention 3 operation with torch ops to make it compatible with full-graph compilation
-        register_pruna_flash_attn_op(imported_packages["flash_attention_3"])
+        register_pruna_flash_attn_op(imported_packages["flash_attention_3"], use_fp8=use_fp8)
 
         # in the new version of diffusers, we can use the modular attention backend to inject flash_attn3
         if Version(diffusers_version) >= Version("0.35.0.dev0"):
             # register our "custom" attention function as a backend
-            register_custom_backend(imported_packages)
+            backend_name = register_custom_backend(imported_packages, use_fp8=use_fp8)
 
             # replace in all compatible components
             for component in model.components.values():
@@ -111,11 +113,11 @@ class FlashAttn3(PrunaAlgorithmBase):
                     torch.bfloat16,
                     torch.float16,
                 ]:
-                    component.set_attention_backend("flash_attn3_pruna")
+                    component.set_attention_backend(backend_name)
 
         else:
             # wrap the model generate function to replace attention computations with flash_attn3 where possible
-            wrap_pipeline_call(model, imported_packages)
+            wrap_pipeline_call(model, imported_packages, use_fp8=use_fp8)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -152,9 +154,24 @@ class FlashAttn3(PrunaAlgorithmBase):
                 }
             )
         return packages
+    
+
+    def get_hyperparameters(self) -> list:
+        """
+        Get the list of configurable hyperparameters for this algorithm.
+
+        Returns
+        -------
+        list
+            A list of hyperparameter objects (e.g., Boolean, TargetModules) used by the
+            configuration system.
+        """
+        return [
+                Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
+        ]
 
 
-def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
+def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = False) -> str:
     """
     Register the attention backend for flash_attn3 by mimicing the native backend.
 
@@ -164,6 +181,13 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
     ----------
     imported_packages : Dict[str, Any]
         The imported packages.
+    use_fp8 : bool
+        Whether to use FP8 quantization in this backend instance.
+
+    Returns
+    -------
+    str
+        The registered backend name.
     """
     attention_backend_registry = imported_packages["_AttentionBackendRegistry"]
     _check_device = imported_packages["_check_device"]
@@ -177,10 +201,16 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
             "The current active attention backend is not native. This might lead to unexpected behavior."
         )
 
-    if "FLASH_ATTN3_PRUNA" not in attention_backend_name.__members__:
+    backend_name = "flash_attn3_pruna_fp8" if use_fp8 else "flash_attn3_pruna"
+    enum_key = backend_name.upper()
+
+    if enum_key not in attention_backend_name.__members__:
+
+        # Pick the right custom op based on use_fp8
+        _op_fn = torch.ops.flash_attn_pruna._flash_attn_forward_fp8 if use_fp8 else torch.ops.flash_attn_pruna._flash_attn_forward
 
         @attention_backend_registry.register(
-            "flash_attn3_pruna",
+            backend_name,
             constraints=[_check_device, _check_shape],
         )
         def _flash_attention_3(
@@ -221,16 +251,23 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                     enable_gqa=enable_gqa,
                 )
             else:
+<<<<<<< HEAD
                 out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(
                     q=query,  # type: ignore
                     k=key,  # type: ignore
                     v=value,  # type: ignore
                     softmax_scale=scale,  # type: ignore
                     causal=is_causal,  # type: ignore
+=======
+                out, _, *_ = _op_fn(
+                    q=query, k=key, v=value, softmax_scale=scale, causal=is_causal
+>>>>>>> c6f343e (Initial commit: Add fp8 quantization to fa3 as hyperparameter)
                 )
                 return out
 
-        extend_enum(attention_backend_name, "FLASH_ATTN3_PRUNA", "flash_attn3_pruna")
+        extend_enum(attention_backend_name, enum_key, backend_name)
+
+    return backend_name
 
 
 class FlashAttention3Context(TorchFunctionMode):
@@ -245,9 +282,10 @@ class FlashAttention3Context(TorchFunctionMode):
         The kernel to use for the flash attention 3.
     """
 
-    def __init__(self, kernel: Any):
+    def __init__(self, kernel: Any, use_fp8: bool = False):
         super().__init__()
         self.kernel = kernel
+        self.use_fp8 = use_fp8
 
     def __torch_function__(self, func, types, args=(), kwargs=None):  # noqa: D105
         kwargs = {} if kwargs is None else kwargs
@@ -280,22 +318,27 @@ class FlashAttention3Context(TorchFunctionMode):
                 kwargs.pop("dropout_p", None)
                 kwargs.pop("enable_gqa", None)
                 kwargs["softmax_scale"] = kwargs.pop("scale", None)
-                return _flash_attention3(*args, **kwargs, kernel=self.kernel)
+                return _flash_attention3(*args, **kwargs, kernel=self.kernel, use_fp8=self.use_fp8)
             else:
                 return func(*args, **kwargs)
         else:
             return func(*args, **kwargs)
 
 
-def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None):
+def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None, use_fp8=False):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
+<<<<<<< HEAD
     out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)  # type: ignore
+=======
+    op_fn = torch.ops.flash_attn_pruna._flash_attn_forward_fp8 if use_fp8 else torch.ops.flash_attn_pruna._flash_attn_forward
+    out, _ = op_fn(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
+>>>>>>> c6f343e (Initial commit: Add fp8 quantization to fa3 as hyperparameter)
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
 
 
-def wrap_pipeline_call(model: Any, imported_packages: Dict[str, Any]) -> None:
+def wrap_pipeline_call(model: Any, imported_packages: Dict[str, Any], use_fp8: bool = False) -> None:
     """
     Wrap the model generate function to replace attention computations with flash_attn3 where possible.
 
@@ -307,18 +350,44 @@ def wrap_pipeline_call(model: Any, imported_packages: Dict[str, Any]) -> None:
         The model to wrap.
     imported_packages : Dict[str, Any]
         The imported packages.
+    use_fp8 : bool
+        Whether to quantize Q, K, V to FP8 before the attention computation.
     """
     original_forward = model.__call__
 
     @functools.wraps(original_forward)
     def new_forward(*args, original_forward=original_forward, **kwargs):
-        with FlashAttention3Context(kernel=imported_packages["flash_attention_3"]):
+        with FlashAttention3Context(kernel=imported_packages["flash_attention_3"], use_fp8=use_fp8):
             return original_forward(*args, **kwargs)
 
     model.__call__ = new_forward  # type: ignore
 
 
-def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
+def _quantize_fp8(t: torch.Tensor, descale_shape: Tuple[int, int]) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Per-tensor absmax quantization to FP8 E4M3.
+
+    Parameters
+    ----------
+    t : torch.Tensor
+        The input tensor (BF16 or FP16), shape (B, S, H, D).
+    descale_shape : Tuple[int, int]
+        The required shape for the descale tensor, typically (batch_size, num_heads_k) -> per tensor quantization.
+
+    Returns
+    -------
+    Tuple[torch.Tensor, torch.Tensor]
+        The FP8 tensor and the descale factor with the requested shape (float32).
+    """
+    amax = t.abs().amax()
+    # E4M3 max representable value is 448.0
+    scale = (448.0 / amax.clamp(min=1e-12))
+    t_fp8 = (t * scale).to(torch.float8_e4m3fn)
+    descale = torch.full(descale_shape, 1.0 / scale.item(), dtype=torch.float32, device=t.device)
+    return t_fp8, descale
+
+
+def register_pruna_flash_attn_op(kernel_mod: Any, use_fp8: bool = False) -> None:
     """
     Register the flash attention 3 operation with torch ops to make it compatible with fullgraph compilation.
 
@@ -326,10 +395,13 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
     ----------
     kernel_mod : Any
         The flash attention 3 kernel module.
+    use_fp8 : bool
+        Whether to quantize Q, K, V to FP8 (E4M3) before the attention computation.
     """
     flash_attn_cuda = kernel_mod.flash_attn_func
+    op_name = "flash_attn_pruna::_flash_attn_forward_fp8" if use_fp8 else "flash_attn_pruna::_flash_attn_forward"
 
-    @torch.library.custom_op("flash_attn_pruna::_flash_attn_forward", mutates_args=(), device_types="cuda")
+    @torch.library.custom_op(op_name, mutates_args=(), device_types="cuda")
     def _flash_attn_forward(
         q: torch.Tensor,
         k: torch.Tensor,
@@ -337,10 +409,26 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
         softmax_scale: float | None = None,
         causal: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        out, lse = flash_attn_cuda(q, k, v, softmax_scale=softmax_scale or None, causal=causal, deterministic=False)
+        if use_fp8:
+            # FA3 requires descale shape (batch_size, num_heads_k) for all three, as kernel expects per tensor quantization
+            descale_shape = (q.shape[0], k.shape[2]) # (B, H) as input format = (B, N, H, D) 
+            q_fp8, descale_q = _quantize_fp8(q, descale_shape)
+            k_fp8, descale_k = _quantize_fp8(k, descale_shape)
+            v_fp8, descale_v = _quantize_fp8(v, descale_shape)
+            out, lse = flash_attn_cuda(
+                q_fp8, k_fp8, v_fp8,
+                softmax_scale=softmax_scale or None,
+                causal=causal,
+                deterministic=False,
+                q_descale=descale_q,
+                k_descale=descale_k,
+                v_descale=descale_v,
+            )
+        else:
+            out, lse = flash_attn_cuda(q, k, v, softmax_scale=softmax_scale or None, causal=causal, deterministic=False)
         return out, lse.permute(0, 2, 1)  # (B,H,S) → (B,S,H)
 
-    @torch.library.register_fake("flash_attn_pruna::_flash_attn_forward")
+    @torch.library.register_fake(op_name)
     def _flash_attn_forward_fake(
         q: torch.Tensor,
         k: torch.Tensor,
