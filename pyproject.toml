@@ -153,6 +153,7 @@ dependencies = [
     "peft>=0.18.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
+    "realesrgan"
 ]
 
 [project.optional-dependencies]
