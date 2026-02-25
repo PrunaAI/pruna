@@ -128,4 +128,4 @@ jobs:
       - name: Run tests with pytest-rerunfailures
         run: |
           echo "Running tests with up to 3 reruns on failure using $PYTEST_WORKERS workers..."
-          uv run pytest -n $PYTEST_WORKERS -m "cpu and not slow and not high_cpu" --reruns 3 --reruns-delay 10 --maxfail=1
+          uv run pytest -n $PYTEST_WORKERS -m "not (slow or style or high_cpu or cuda or distributed)" --reruns 3 --reruns-delay 10 --maxfail=1
