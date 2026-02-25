@@ -50,8 +50,21 @@ class DeepCache(PrunaAlgorithmBase):
         "diffusers_int8",
         "quanto",
         "sage_attn",
+        "hyper",
+        "padding_pruning",
         ]
-    compatible_after: Iterable[str] = ["stable_fast", "torch_compile"]
+    compatible_after: Iterable[str] = [
+        "stable_fast",
+        "torch_compile",
+        "img2img_denoise",
+        "realesrgan_upscale",
+        "text_to_image_distillation_inplace_perp",
+        "text_to_image_distillation_lora",
+        "text_to_image_distillation_perp",
+        "text_to_image_inplace_perp",
+        "text_to_image_lora",
+        "text_to_image_perp",
+    ]
 
     def get_hyperparameters(self) -> list:
         """

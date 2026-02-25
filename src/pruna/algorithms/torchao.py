@@ -93,8 +93,15 @@ class Torchao(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["qkv_diffusers", "torch_structured"]
-    compatible_after: Iterable[str] = ["flash_attn3", "fora", "torch_compile", "sage_attn"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "torch_structured", "padding_pruning"]
+    compatible_after: Iterable[str] = [
+        "flash_attn3",
+        "fora",
+        "torch_compile",
+        "sage_attn",
+        "img2img_denoise",
+        "realesrgan_upscale",
+    ]
     disjointly_compatible_before: Iterable[str] = ["hqq", "hqq_diffusers"]
     disjointly_compatible_after: Iterable[str] = []
 

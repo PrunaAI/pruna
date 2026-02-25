@@ -51,6 +51,9 @@ class QKVFusing(PrunaAlgorithmBase):
         "fora",
         "torch_compile",
         "ring_attn",
+        "img2img_denoise",
+        "padding_pruning",
+        "realesrgan_upscale",
     ]
 
     def model_check_fn(self, model: Any) -> bool:

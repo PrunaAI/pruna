@@ -40,7 +40,8 @@ class StableFast(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["half", "deepcache", "fora"]
+    compatible_before: Iterable[str] = ["half", "deepcache", "fora", "hyper", "padding_pruning"]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
     required_install: str = "``pip install pruna[stable-fast]``"
 
     def model_check_fn(self, model: Any) -> bool:

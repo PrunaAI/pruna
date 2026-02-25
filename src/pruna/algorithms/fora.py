@@ -50,9 +50,11 @@ class FORA(PrunaAlgorithmBase):
         "hqq_diffusers",
         "torchao",
         "flash_attn3",
-        "sage_attn"
+        "sage_attn",
+        "hyper",
+        "padding_pruning",
     ]
-    compatible_after: Iterable[str] = ["stable_fast", "torch_compile"]
+    compatible_after: Iterable[str] = ["stable_fast", "torch_compile", "img2img_denoise", "realesrgan_upscale"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -80,9 +82,7 @@ class FORA(PrunaAlgorithmBase):
                 "backbone_calls_per_step",
                 sequence=range(1, 4),
                 default_value=1,
-                meta=dict(
-                    desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."
-                ),
+                meta=dict(desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."),
             ),
         ]
 

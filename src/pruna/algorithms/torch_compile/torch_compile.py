@@ -71,7 +71,20 @@ class TorchCompile(PrunaAlgorithmBase):
         "deepcache",
         "fora",
         "sage_attn",
+        "hyper",
+        "padding_pruning",
+        "ring_attn",
+        "text_to_image_distillation_inplace_perp",
+        "text_to_image_distillation_lora",
+        "text_to_image_distillation_perp",
+        "text_to_image_inplace_perp",
+        "text_to_image_lora",
+        "text_to_image_perp",
+        "text_to_text_inplace_perp",
+        "text_to_text_lora",
+        "text_to_text_perp",
     ]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
 
     def get_hyperparameters(self) -> list:
         """

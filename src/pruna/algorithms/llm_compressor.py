@@ -52,7 +52,7 @@ class LLMCompressor(PrunaAlgorithmBase):
     dataset_required: bool = True
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = []
-    compatible_after: Iterable[str] = []
+    compatible_after: Iterable[str] = ["sage_attn"]
 
     def get_hyperparameters(self) -> list:
         """

@@ -51,7 +51,7 @@ class FlashAttn3(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["torchao"]
+    compatible_before: Iterable[str] = ["torchao", "padding_pruning"]
     compatible_after: Iterable[str] = ["fora", "torch_compile"]
 
     def model_check_fn(self, model: Any) -> bool:

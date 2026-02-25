@@ -57,7 +57,8 @@ class FasterCache(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_before: Iterable[str] = ["hqq_diffusers", "diffusers_int8", "sage_attn"]
+    compatible_before: Iterable[str] = ["hqq_diffusers", "diffusers_int8", "sage_attn", "hyper", "padding_pruning"]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
 
     def get_hyperparameters(self) -> list:
         """
