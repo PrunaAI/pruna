@@ -77,6 +77,13 @@ url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
 [tool.uv]
 index-strategy = "unsafe-best-match"
 
+conflicts = [
+    [
+        { extra = "awq" },
+        { extra = "vbench" },
+    ]
+]
+
 [tool.uv.sources]
 gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
