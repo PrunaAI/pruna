@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
-from typing import Any, List, Literal, Tuple
+from typing import Any, Hashable, List, Literal, Mapping, Tuple, cast
 
 import pytorch_lightning as pl
 import torch
@@ -86,31 +86,37 @@ class TextToImageFinetuner(PrunaFinetuner):
                 lower=0,
                 upper=4096,
                 default_value=numeric_defaults["training_batch_size"],
-                meta=dict(desc="Batch size for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Batch size for finetuning.")),
             ),
             UniformIntegerHyperparameter(
                 "gradient_accumulation_steps",
                 lower=1,
                 upper=1024,
                 default_value=numeric_defaults["gradient_accumulation_steps"],
-                meta=dict(desc="Number of gradient accumulation steps for finetuning."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Number of gradient accumulation steps for finetuning."),
+                ),
             ),
             UniformIntegerHyperparameter(
                 "num_epochs",
                 lower=0,
                 upper=4096,
                 default_value=numeric_defaults["num_epochs"],
-                meta=dict(desc="Number of epochs for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Number of epochs for finetuning.")),
             ),
             UniformFloatHyperparameter(
                 "validate_every_n_epoch",
                 lower=0.0,
                 upper=4096.0,
                 default_value=numeric_defaults["validate_every_n_epoch"],
-                meta=dict(
-                    desc="Number of epochs between each round of validation and model checkpointing. "
-                    "If the value is between 0 and 1, validation will be performed multiple times per epoch, "
-                    "e.g. 1/8 will result in 8 validations per epoch."
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(
+                        desc="Number of epochs between each round of validation and model checkpointing. "
+                        "If the value is between 0 and 1, validation will be performed multiple times per epoch, "
+                        "e.g. 1/8 will result in 8 validations per epoch."
+                    ),
                 ),
             ),
             UniformFloatHyperparameter(
@@ -118,7 +124,7 @@ class TextToImageFinetuner(PrunaFinetuner):
                 lower=0.0,
                 upper=1.0,
                 default_value=numeric_defaults["learning_rate"],
-                meta=dict(desc="Learning rate for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Learning rate for finetuning.")),
             ),
             Constant("weight_decay", numeric_defaults["weight_decay"]),
             # report_to: for consistency with text-to-text-lora but wandb and tensorboard are not supported yet
@@ -126,13 +132,16 @@ class TextToImageFinetuner(PrunaFinetuner):
             Boolean(
                 "use_cpu_offloading",
                 default=False,
-                meta=dict(desc="Whether to use CPU offloading for finetuning."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Whether to use CPU offloading for finetuning."),
+                ),
             ),  # necessary for Flux in float16 on L40S GPU (48gb VRAM)
             CategoricalHyperparameter(
                 "optimizer",
                 choices=["AdamW8bit", "AdamW", "Adam"],
                 default_value=string_defaults["optimizer"],
-                meta=dict(desc="Which optimizer to use for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Which optimizer to use for finetuning.")),
             ),
         ]
 

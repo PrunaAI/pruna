@@ -22,7 +22,9 @@ def test_energy_consumed_metric(model_fixture: tuple[Any, SmashConfig], device: 
     metric = EnergyConsumedMetric(n_iterations=5, n_warmup_iterations=5, device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, device)
-    results = metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    results = metric.compute(pruna_model, test_dl)
     assert results.result >= 0  # Assuming energy consumption should be non-negative
 
 @pytest.mark.parametrize(
@@ -39,7 +41,9 @@ def test_co2_emissions_metric(model_fixture: tuple[Any, SmashConfig], device: st
     metric = CO2EmissionsMetric(n_iterations=5, n_warmup_iterations=5, device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, device)
-    results = metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    results = metric.compute(pruna_model, test_dl)
     assert results.result >= 0  # Assuming CO2 emissions should be non-negative
 
 

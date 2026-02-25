@@ -14,7 +14,7 @@
 
 import inspect
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Hashable, Mapping, cast
 
 import torch
 from ConfigSpace import OrdinalHyperparameter
@@ -70,7 +70,7 @@ class TorchDynamic(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=["quint8", "qint8"],
                 default_value="qint8",
-                meta=dict(desc="Tensor type to use for quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Tensor type to use for quantization.")),
             ),
         ]
 

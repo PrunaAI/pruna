@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Type, cast
+from typing import Any, Dict, Hashable, Mapping, Type, cast
 
 import torch
 import torch.nn as nn
@@ -92,27 +92,30 @@ class HQQDiffusers(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[2, 4, 8],
                 default_value=8,
-                meta=dict(desc="Number of bits to use for quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Number of bits to use for quantization.")),
             ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[8, 16, 32, 64, 128],
                 default_value=64,
-                meta=dict(desc="Group size for quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Group size for quantization.")),
             ),
             OrdinalHyperparameter(
                 "backend",
                 sequence=["gemlite", "bitblas", "torchao_int4", "marlin"],
                 default_value="torchao_int4",
-                meta=dict(desc="Backend to use for quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Backend to use for quantization.")),
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
-                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
-                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(
+                        desc="Precise choices of which modules to quantize, "
+                        "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
+                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                    ),
                 ),
             ),
         ]

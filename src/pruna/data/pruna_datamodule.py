@@ -312,9 +312,9 @@ class PrunaDataModule(LightningDataModule):
 
         # when loading a dataset with streaming=True, resulting in Iterable, we can not specify the shuffle option
         if isinstance(dataset, IterableDataset):
-            return DataLoader(dataset, collate_fn=collate_fn, **combined_dataloader_args)
+            return DataLoader(dataset, collate_fn=collate_fn, **combined_dataloader_args)  # type: ignore[arg-type]
         else:
-            return DataLoader(dataset, shuffle=shuffle, collate_fn=collate_fn, **combined_dataloader_args)
+            return DataLoader(dataset, shuffle=shuffle, collate_fn=collate_fn, **combined_dataloader_args)  # type: ignore[arg-type]
 
 
 def get_collate_fn(collate_fn_name: str, collate_fn_args: dict) -> Callable:

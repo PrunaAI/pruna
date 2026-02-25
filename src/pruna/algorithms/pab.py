@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Hashable, Mapping, Optional, Tuple, cast
 
 from ConfigSpace import OrdinalHyperparameter
 
@@ -70,9 +70,12 @@ class PAB(PrunaAlgorithmBase):
                 "interval",
                 sequence=[1, 2, 3, 4, 5],
                 default_value=2,
-                meta=dict(
-                    desc="Interval at which to cache spatial attention blocks - 1 disables caching."
-                    "Higher is faster but might degrade quality."
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(
+                        desc="Interval at which to cache spatial attention blocks - 1 disables caching."
+                        "Higher is faster but might degrade quality."
+                    ),
                 ),
             )
         ]

@@ -10,11 +10,13 @@ def restrict_recovery_time(smash_config: SmashConfig, algorithm_name: str) -> No
     smash_config[f"{algorithm_name}_training_batch_size"] = 1
     smash_config[f"{algorithm_name}_num_epochs"] = 1
     # restrict the number of train and validation samples in the dataset
+    assert smash_config.data is not None
     smash_config.data.limit_datasets((2, 1, 1))  # 2 train, 1 val, 1 test
 
 
 def replace_datamodule_with_distillation_datamodule(smash_config: SmashConfig, model: Any) -> None:
     """Create a distillation datamodule from the model and replace the datamodule in the smash config."""
+    assert smash_config.data is not None
     cache_dir = Path(smash_config.cache_dir) / f"{model.__class__.__name__.lower()}_distillation"
     distillation_data = DiffusionDistillationDataModule(
         pipeline=model,

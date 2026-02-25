@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Hashable, List, Mapping, Optional, Tuple, Union, cast
 
 import torch
 import torch.nn as nn
@@ -83,38 +83,56 @@ class TorchStructured(PrunaAlgorithmBase):
                     "HessianImportance",
                 ],
                 default_value="MagnitudeImportance",
-                meta=dict(desc="Importance criterion for pruning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Importance criterion for pruning.")),
             ),
             UniformIntegerHyperparameter(
                 name="calibration_samples",
                 lower=1,
                 upper=256,
                 default_value=64,
-                meta=dict(desc="Number of calibration samples for importance computation."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Number of calibration samples for importance computation."),
+                ),
             ),
-            Boolean("prune_head_dims", meta=dict(desc="Whether to prune head dimensions.")),
-            Boolean("prune_num_heads", meta=dict(desc="Whether to prune number of heads.")),
-            Boolean("global_pruning", meta=dict(desc="Whether to perform global pruning.")),
+            Boolean(
+                "prune_head_dims",
+                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to prune head dimensions.")),
+            ),
+            Boolean(
+                "prune_num_heads",
+                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to prune number of heads.")),
+            ),
+            Boolean(
+                "global_pruning",
+                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to perform global pruning.")),
+            ),
             UniformFloatHyperparameter(
                 "sparsity",
                 lower=0.0,
                 upper=1.0,
                 default_value=0.1,
-                meta=dict(desc="Sparsity level up to which to prune."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Sparsity level up to which to prune.")),
             ),
             UniformFloatHyperparameter(
                 "head_sparsity",
                 lower=0.0,
                 upper=1.0,
                 default_value=0.0,
-                meta=dict(desc="Sparsity level up to which to prune heads."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Sparsity level up to which to prune heads."),
+                ),
             ),
             UniformIntegerHyperparameter(
                 name="it_steps",
                 lower=1,
                 upper=10,
                 default_value=1,
-                meta=dict(desc="Number of iterations for pruning."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Number of iterations for pruning."),
+                ),
             ),
         ]
 

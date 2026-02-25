@@ -16,9 +16,9 @@ import urllib.request
 import zipfile
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, cast
 
-from datasets import Dataset, config, load_dataset
+from datasets import Dataset, IterableDataset, config, load_dataset
 from PIL import Image
 
 from pruna.data.utils import split_train_into_train_val_test, split_val_into_val_test
@@ -62,6 +62,7 @@ def setup_laion256_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         The LAION256 dataset.
     """
     dataset = load_dataset("nannullna/laion_subset")["artwork"]  # type: ignore[index]
+    dataset = cast(Dataset | IterableDataset, dataset)
     return split_train_into_train_val_test(dataset, seed)
 
 

@@ -14,7 +14,7 @@
 
 import tempfile
 from collections.abc import Iterable
-from typing import Any, Dict
+from typing import Any, Dict, Hashable, Mapping, cast
 
 from ConfigSpace import OrdinalHyperparameter
 
@@ -65,18 +65,18 @@ class GPTQ(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[2, 3, 4, 8],
                 default_value=4,
-                meta=dict(desc="Sets the number of bits to use for weight quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Sets the number of bits to use for weight quantization.")),
             ),
             Boolean(
                 "use_exllama",
                 default=False,
-                meta=dict(desc="Whether to use exllama for quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to use exllama for quantization.")),
             ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[64, 128, 256],
                 default_value=128,
-                meta=dict(desc="Group size for quantization."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Group size for quantization.")),
             ),
         ]
 

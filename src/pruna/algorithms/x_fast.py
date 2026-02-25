@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional, Tuple, Union, cast
 
 import torch
 from ConfigSpace import Constant
@@ -61,7 +61,11 @@ class XFast(PrunaAlgorithmBase):
         """
         return [
             Constant("fn_to_compile", value="forward"),
-            Boolean("xformers", default=True, meta=dict(desc="Whether to use xformers for faster inference.")),
+            Boolean(
+                "xformers",
+                default=True,
+                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to use xformers for faster inference.")),
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:

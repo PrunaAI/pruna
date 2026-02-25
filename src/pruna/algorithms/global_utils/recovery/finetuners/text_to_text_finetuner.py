@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import tempfile
-from typing import Iterator, Optional
+from typing import Any, Hashable, Iterator, Mapping, Optional, cast
 
 import torch
 from ConfigSpace import (
@@ -76,41 +76,47 @@ class TextToTextFinetuner(PrunaFinetuner):
                 lower=1,
                 upper=4096,
                 default_value=numeric_defaults["training_batch_size"],
-                meta=dict(desc="Batch size for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Batch size for finetuning.")),
             ),
             UniformIntegerHyperparameter(
                 "gradient_accumulation_steps",
                 lower=1,
                 upper=1024,
                 default_value=numeric_defaults["gradient_accumulation_steps"],
-                meta=dict(desc="Number of gradient accumulation steps for finetuning."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Number of gradient accumulation steps for finetuning."),
+                ),
             ),
             UniformFloatHyperparameter(
                 "num_epochs",
                 lower=0.0,
                 upper=4096.0,
                 default_value=numeric_defaults["num_epochs"],
-                meta=dict(desc="Number of epochs for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Number of epochs for finetuning.")),
             ),
             UniformFloatHyperparameter(
                 "learning_rate",
                 lower=0.0,
                 upper=1.0,
                 default_value=numeric_defaults["learning_rate"],
-                meta=dict(desc="Learning rate for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Learning rate for finetuning.")),
             ),
             Constant("dataset_text_field", string_defaults["dataset_text_field"]),
             CategoricalHyperparameter(
                 "report_to",
                 choices=["none", "wandb", "tensorboard"],
                 default_value=string_defaults["report_to"],
-                meta=dict(desc="Where to report the finetuning results."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Where to report the finetuning results."),
+                ),
             ),
             CategoricalHyperparameter(
                 "optimizer",
                 choices=["AdamW", "AdamW8bit", "PagedAdamW8bit"],
                 default_value=string_defaults["optimizer"],
-                meta=dict(desc="Which optimizer to use for finetuning."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Which optimizer to use for finetuning.")),
             ),
         ]
 

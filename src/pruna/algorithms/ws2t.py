@@ -16,7 +16,7 @@ from __future__ import annotations
 import shutil
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Hashable, List, Mapping, Union, cast
 
 from tokenizers import Tokenizer
 from transformers import (
@@ -65,7 +65,12 @@ class WS2T(PrunaAlgorithmBase):
         list
             The hyperparameters.
         """
-        return [Boolean("int8", meta=dict(desc="Whether to quantize to int8 for inference."))]
+        return [
+            Boolean(
+                "int8",
+                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to quantize to int8 for inference.")),
+            )
+        ]
 
     def model_check_fn(self, model: Any) -> bool:
         """

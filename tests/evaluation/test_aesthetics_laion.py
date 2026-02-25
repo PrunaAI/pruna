@@ -1,6 +1,8 @@
 import requests
 from PIL import Image
 from io import BytesIO
+from typing import Literal, cast
+
 import torch
 import numpy as np
 
@@ -8,6 +10,10 @@ import pytest
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
+
+_ClipModel = Literal[
+    "openai/clip-vit-large-patch14", "openai/clip-vit-base-patch32", "openai/clip-vit-base-patch16"
+]
 
 
 @pytest.mark.parametrize(
@@ -24,7 +30,7 @@ def test_aesthetic_laion(device: str, clip_model: str) -> None:
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(2)
 
-    metric = AestheticLAION(model_name_or_path=clip_model, device=device)
+    metric = AestheticLAION(model_name_or_path=cast(_ClipModel, clip_model), device=device)
     for x, gt in data_module.test_dataloader():
         metric.update(x, gt, gt)
 
@@ -44,7 +50,7 @@ def test_metric_aesthetic_laion_ipynb_sample() -> None:
     response = requests.get("https://thumbs.dreamstime.com/b/lovely-cat-as-domestic-animal-view-pictures-182393057.jpg")
     img = np.array(Image.open(BytesIO(response.content)).convert("RGB"))
     img = torch.from_numpy(img).permute(2, 0, 1).contiguous().unsqueeze(0)
-    metric.update("lovely cat as domestic animal view pictures", img, img)
+    metric.update(["lovely cat as domestic animal view pictures"], img, img)
     score = metric.compute()
     assert abs(score.result - 5.05) < 1e-2
 
@@ -58,4 +64,4 @@ def test_metric_aesthetic_laion_invalid_params() -> None:
     The Hugging Face model, however, gives 5.049.
     """
     with pytest.raises(ValueError, match=r"Model invalid/path-to-model does not exist."):
-        AestheticLAION(model_name_or_path="invalid/path-to-model", device="cpu")
+        AestheticLAION(model_name_or_path=cast(_ClipModel, "invalid/path-to-model"), device="cpu")

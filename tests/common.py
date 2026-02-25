@@ -40,7 +40,7 @@ def device_parametrized(cls: Any) -> Any:
 def get_instances_from_module(module: Any) -> list[tuple[Any, str]]:
     """Get all tester instances from a module and expand their model parametrizations."""
 
-    def process_fn(cls: Any, model: str) -> dict[str, Any]:
+    def process_fn(cls: Any, model: str) -> list[Any]:
         return [cls(), model]
 
     return collect_tester_instances(module, process_fn, "models")
@@ -49,7 +49,7 @@ def get_instances_from_module(module: Any) -> list[tuple[Any, str]]:
 def get_negative_examples_from_module(module: Any) -> list[tuple[Any, str]]:
     """Get all negative examples from a module."""
 
-    def process_fn(cls: Any, model: str) -> dict[str, Any]:
+    def process_fn(cls: Any, model: str) -> list[Any]:
         return [cls.get_algorithm_name(), model]
 
     return collect_tester_instances(module, process_fn, "reject_models")
@@ -259,7 +259,7 @@ def get_all_imports(package: str) -> list[str]:
 def run_script_successfully(script_file: Path) -> None:
     """Run the script and return the result."""
     result = subprocess.run(["python", str(script_file)], capture_output=True, text=True)
-    run_ruff_linting(script_file)
+    run_ruff_linting(str(script_file))
     script_file.unlink()
 
     max_err_len = 300

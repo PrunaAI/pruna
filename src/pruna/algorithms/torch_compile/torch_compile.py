@@ -15,7 +15,7 @@
 import contextlib
 import os
 from collections.abc import Iterable
-from typing import Any, Callable
+from typing import Any, Callable, Hashable, Mapping, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
@@ -100,47 +100,62 @@ class TorchCompile(PrunaAlgorithmBase):
                 "mode",
                 choices=["default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"],
                 default_value="default",
-                meta=dict(desc="Compilation mode."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Compilation mode.")),
             ),
             CategoricalHyperparameter(
                 "backend",
                 choices=["inductor", "cudagraphs", "onnxrt", "tvm", "openvino", "openxla"],
                 default_value="inductor",
-                meta=dict(desc="Compilation backend."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Compilation backend.")),
             ),
             Boolean(
                 "fullgraph",
                 default=False,
-                meta=dict(desc="Whether to discover compilable subgraphs or compile the full input graph."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Whether to discover compilable subgraphs or compile the full input graph."),
+                ),
             ),
             CategoricalHyperparameter(
                 "dynamic",
                 choices=[None, True, False],
                 default_value=None,
-                meta=dict(desc="Whether to use dynamic shape tracing or not."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Whether to use dynamic shape tracing or not."),
+                ),
             ),
             OrdinalHyperparameter(
                 "max_kv_cache_size",
                 sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
                 default_value=400,
-                meta=dict(desc="The maximum number of new tokens to generate, for LLMs."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="The maximum number of new tokens to generate, for LLMs."),
+                ),
             ),
             OrdinalHyperparameter(
                 "seqlen_manual_cuda_graph",
                 sequence=[100, 200, 400, 512, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400],
                 default_value=100,
-                meta=dict(
-                    desc="The sequence length to use for manual CUDA graph capture, for LLMs. "
-                    "We recommend to use a smaller value than max_kv_cache_size to avoid "
-                    "CUDA graph capture overhead."
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(
+                        desc="The sequence length to use for manual CUDA graph capture, for LLMs. "
+                        "We recommend to use a smaller value than max_kv_cache_size to avoid "
+                        "CUDA graph capture overhead."
+                    ),
                 ),
             ),
             Boolean(
                 "make_portable",
-                meta=dict(
-                    desc=(
-                        "Whether to make the model compiled model portable or not, "
-                        "and significantly reduce the warmup time of the model on a different machine."
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(
+                        desc=(
+                            "Whether to make the model compiled model portable or not, "
+                            "and significantly reduce the warmup time of the model on a different machine."
+                        ),
                     ),
                 ),
             ),
@@ -148,14 +163,17 @@ class TorchCompile(PrunaAlgorithmBase):
                 "target",
                 default_value="model",
                 sequence=["model", "module_list"],
-                meta=dict(
-                    desc=(
-                        "Whether to compile the model itself or the module list. "
-                        "Compiling the model itself has a longer warmup and could fail "
-                        "in case of graphbreaks but could lead to slightly faster compilation. "
-                        "Whereas compiling the module list has a shorter warmup and is more "
-                        "robust to graphbreaks but could be slightly slower."
-                    )
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(
+                        desc=(
+                            "Whether to compile the model itself or the module list. "
+                            "Compiling the model itself has a longer warmup and could fail "
+                            "in case of graphbreaks but could lead to slightly faster compilation. "
+                            "Whereas compiling the module list has a shorter warmup and is more "
+                            "robust to graphbreaks but could be slightly slower."
+                        ),
+                    ),
                 ),
             ),
         ]

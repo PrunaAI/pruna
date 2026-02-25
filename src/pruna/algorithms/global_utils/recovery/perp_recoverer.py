@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import Any, Dict, Hashable, Mapping, cast
 
 import torch
 from ConfigSpace import Constant
@@ -119,7 +119,7 @@ class PERPRecoverer(PrunaAlgorithmBase):
             Constant(  # set to constant, waiting for user-defined non-optimized hyperparameters
                 "seed",
                 seed,
-                meta=dict(desc="Random seed used for reproducibility."),
+                meta=cast(Mapping[Hashable, Any], dict(desc="Random seed used for reproducibility.")),
             )
         )
 

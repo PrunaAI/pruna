@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Iterable
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional, Tuple, cast
 
 from ConfigSpace import OrdinalHyperparameter
 
@@ -70,19 +70,26 @@ class FORA(PrunaAlgorithmBase):
                 "interval",
                 sequence=range(1, 6),
                 default_value=2,
-                meta=dict(desc="Interval at which the outputs are computed. Higher is faster, but reduces quality."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="Interval at which the outputs are computed. Higher is faster, but reduces quality."),
+                ),
             ),
             OrdinalHyperparameter(
                 "start_step",
                 sequence=range(11),
                 default_value=2,
-                meta=dict(desc="How many steps to wait before starting to cache."),
+                meta=cast(
+                    Mapping[Hashable, Any],
+                    dict(desc="How many steps to wait before starting to cache."),
+                ),
             ),
             OrdinalHyperparameter(
                 "backbone_calls_per_step",
                 sequence=range(1, 4),
                 default_value=1,
-                meta=dict(desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."),
+                meta={"desc":"Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."}
+                
             ),
         ]
 
