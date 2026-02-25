@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import contextlib
 from types import ModuleType
-from typing import Union
+from typing import Any,Union
 
 import torch
 import torch.distributed as dist
@@ -107,7 +107,13 @@ class RingDistributedContext(TorchFunctionMode):
         self.pg = device_mesh
         self.smash_config = smash_config
 
-    def __torch_function__(self, func, types, args=(), kwargs=None):
+    def __torch_function__(
+        self,
+        func: Any,
+        types: tuple[type, ...],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+    ) -> Any:
         """
         Intercept the scaled_dot_product_attention function and route it through the ring implementation.
 

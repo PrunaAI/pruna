@@ -33,7 +33,7 @@ class StableFast(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "stable_fast"
-    group_tags: list[str] = [tags.COMPILER]
+    group_tags: list[tags] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
     tokenizer_required: bool = False

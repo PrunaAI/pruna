@@ -27,6 +27,7 @@ from ConfigSpace import OrdinalHyperparameter
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
     WhisperConfig,
+    PretrainedConfig,
 )
 from transformers.modeling_utils import PreTrainedModel
 from transformers.processing_utils import ProcessorMixin
@@ -63,7 +64,7 @@ class CTranslate(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "c_translate"
-    group_tags: list[str] = [tags.COMPILER]
+    group_tags: list[tags] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True
@@ -345,6 +346,7 @@ class GeneratorWrapper:
         self.output_dir = output_dir
         self.task = "generation"
         self.tokenizer = tokenizer
+        self.config: PretrainedConfig | None = None
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -416,6 +418,7 @@ class TranslatorWrapper:
         self.output_dir = output_dir
         self.task = "translation"
         self.tokenizer = tokenizer
+        self.config: PretrainedConfig | None = None
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -499,6 +502,7 @@ class WhisperWrapper:
         self.processor = processor
         self.language = None
         self.prompt = None
+        self.config: PretrainedConfig | None = None
 
     def __getattr__(self, name: str) -> Any:
         """

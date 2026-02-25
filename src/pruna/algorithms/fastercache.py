@@ -47,7 +47,7 @@ class FasterCache(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fastercache"
-    group_tags: list[str] = [tags.CACHER]
+    group_tags: list[tags] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/Vchitect/FasterCache",

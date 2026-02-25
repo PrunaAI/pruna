@@ -40,7 +40,7 @@ class IFW(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "ifw"
-    group_tags: list[str] = [tags.BATCHER]
+    group_tags: list[tags] = [tags.BATCHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/transformers"}
     tokenizer_required: bool = True

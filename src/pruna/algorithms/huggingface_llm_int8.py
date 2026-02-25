@@ -50,7 +50,7 @@ class LLMInt8(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "llm_int8"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
     tokenizer_required: bool = False
     processor_required: bool = False

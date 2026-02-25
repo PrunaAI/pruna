@@ -22,7 +22,6 @@ author = "- Pruna AI GmbH"
 [tool.ty.rules]
 # Ignore rules that are stricter than mypy for transition period
 unresolved-import = "ignore"
-invalid-assignment = "ignore"  # mypy is more permissive with Any assignments
 call-non-callable = "ignore"   # mypy allows more dynamic method calls
 index-out-of-bounds = "ignore" # mypy is more permissive with tuple indexing
 unresolved-attribute = "ignore" # mypy is more permissive with module attributes

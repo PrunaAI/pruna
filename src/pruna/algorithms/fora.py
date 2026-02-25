@@ -25,6 +25,7 @@ from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_flux_pipeline
 from pruna.engine.save import SAVE_FUNCTIONS
+from wandb.env import TAGS
 
 
 class FORA(PrunaAlgorithmBase):
@@ -37,7 +38,7 @@ class FORA(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fora"
-    group_tags: list[str] = [tags.CACHER]
+    group_tags: list[tags] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False

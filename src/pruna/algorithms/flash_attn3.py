@@ -41,7 +41,7 @@ class FlashAttn3(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "flash_attn3"
-    group_tags: list[str] = [tags.KERNEL]
+    group_tags: list[tags] = [tags.KERNEL]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/Dao-AILab/flash-attention",

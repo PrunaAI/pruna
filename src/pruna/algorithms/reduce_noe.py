@@ -39,7 +39,7 @@ class ReduceNOE(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "reduce_noe"
-    group_tags: list[str] = [tags.PRUNER]
+    group_tags: list[tags] = [tags.PRUNER]
     references: dict[str, str] = {}
     tokenizer_required: bool = False
     processor_required: bool = False

@@ -52,7 +52,7 @@ class HQQ(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "hqq"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",

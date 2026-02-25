@@ -42,7 +42,7 @@ class Quanto(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "quanto"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False

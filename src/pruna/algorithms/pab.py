@@ -43,7 +43,7 @@ class PAB(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "pab"
-    group_tags: list[str] = [tags.CACHER]
+    group_tags: list[tags] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2408.12588",

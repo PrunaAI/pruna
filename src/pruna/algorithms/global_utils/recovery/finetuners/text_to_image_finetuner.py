@@ -22,10 +22,11 @@ import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.utilities.seed import isolate_rng
 
+AdamW8bit: type[Any] | None = None
 try:
-    from bitsandbytes.optim import AdamW8bit  # type: ignore[import-untyped]
+    from bitsandbytes.optim import AdamW8bit
 except ImportError:
-    AdamW8bit = None
+    pass
 
 from ConfigSpace import (
     CategoricalHyperparameter,
