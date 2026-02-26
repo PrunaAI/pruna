@@ -50,6 +50,11 @@ from pruna.data.datasets.text_to_image import (
 )
 from pruna.data.datasets.text_to_video import setup_vbench_dataset
 
+BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
+    "PartiPrompts": ("Animals", ["Category", "Challenge"]),
+    "OneIG": ("Text_Rendering", ["subset", "category"]),
+}
+
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "COCO": (setup_coco_dataset, "image_generation_collate", {"img_size": 512}),
     "LAION256": (setup_laion256_dataset, "image_generation_collate", {"img_size": 512}),
@@ -228,7 +233,14 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         ),
         metrics=["accuracy"],
         task_type="text_to_image",
-        subsets=["text_rendering", "anime_alignment", "portrait_alignment", "object_alignment"],
+        subsets=[
+            "Text_Rendering",
+            "Anime_Stylization",
+            "Portrait",
+            "General_Object",
+            "Knowledge_Reasoning",
+            "Multilingualism",
+        ],
     ),
 }
 
