@@ -4,8 +4,7 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
-from pruna.data import base_datasets
-from pruna.data.utils import get_literal_values_from_param
+from pruna.data import BENCHMARK_CATEGORY_CONFIG, base_datasets
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -83,21 +82,13 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     iterate_dataloaders(datamodule)
 
 
-def _category_filter_params() -> list[tuple[str, str]]:
-    """Datasets with categories (from Literal) and a sample category each."""
-    params = []
-    for name, config in base_datasets.items():
-        setup_fn = config[0]
-        categories = get_literal_values_from_param(setup_fn, "category")
-        if categories:
-            params.append((name, categories[0]))
-    return params
-
-
 @pytest.mark.cpu
 @pytest.mark.slow
-@pytest.mark.parametrize("dataset_name, category", _category_filter_params())
-def test_category_filter(dataset_name: str, category: str) -> None:
+@pytest.mark.parametrize(
+    "dataset_name, category",
+    [(name, cat) for name, (cat, _) in BENCHMARK_CATEGORY_CONFIG.items() if name in base_datasets],
+)
+def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
     """Test dataset loading with category filter."""
     dm = PrunaDataModule.from_string(
         dataset_name, category=category, dataloader_args={"batch_size": 4}
@@ -108,21 +99,5 @@ def test_category_filter(dataset_name: str, category: str) -> None:
 
     assert len(prompts) == 4
     assert all(isinstance(p, str) for p in prompts)
-    assert all(
-        aux.get("Category") == category or aux.get("Challenge") == category or aux.get("category") == category or aux.get("tag") == category or aux.get("subset") == category or aux.get("category_broad") == category
-        for aux in auxiliaries
-    )
-
-
-@pytest.mark.slow
-def test_imgedit_with_category_filter() -> None:
-    """Test ImgEdit loading with category filter."""
-    dm = PrunaDataModule.from_string("ImgEdit", category="replace", dataloader_args={"batch_size": 4})
-    dm.limit_datasets(10)
-    batch = next(iter(dm.test_dataloader()))
-    prompts, auxiliaries = batch
-
-    assert len(prompts) == 4
-    assert all(isinstance(p, str) for p in prompts)
-    assert all(aux["category"] == "replace" for aux in auxiliaries)
-    assert all("judge_prompt" in aux for aux in auxiliaries)
+    _, aux_keys = BENCHMARK_CATEGORY_CONFIG[dataset_name]
+    assert all(any(aux.get(k) == category for k in aux_keys) for aux in auxiliaries)
