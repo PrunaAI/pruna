@@ -12,11 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
+from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
+from pruna.data.utils import define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
+
+PartiCategory = Literal[
+    "Abstract",
+    "Animals",
+    "Artifacts",
+    "Arts",
+    "Food & Beverage",
+    "Illustrations",
+    "Indoor Scenes",
+    "Outdoor Scenes",
+    "People",
+    "Produce & Plants",
+    "Vehicles",
+    "World Knowledge",
+    "Basic",
+    "Complex",
+    "Fine-grained Detail",
+    "Imagination",
+    "Linguistic Structures",
+    "Perspective",
+    "Properties & Positioning",
+    "Quantity",
+    "Simple Detail",
+    "Style & Format",
+    "Writing & Symbols",
+]
 
 
 def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
@@ -43,8 +70,10 @@ def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
 
 def setup_parti_prompts_dataset(
     seed: int,
-    category: str | None = None,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: PartiCategory | list[PartiCategory] | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the Parti Prompts dataset.
@@ -55,14 +84,14 @@ def setup_parti_prompts_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
-        Filter by Category or Challenge. Available categories: Abstract, Animals, Artifacts,
-        Arts, Food & Beverage, Illustrations, Indoor Scenes, Outdoor Scenes, People,
-        Produce & Plants, Vehicles, World Knowledge. Available challenges: Basic, Complex,
-        Fine-grained Detail, Imagination, Linguistic Structures, Perspective,
-        Properties & Positioning, Quantity, Simple Detail, Style & Format, Writing & Symbols.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        The sample size to use for the train dataset (unused; train/val are dummy).
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : PartiCategory | list[PartiCategory] | None
+        Filter by Category or Challenge.
 
     Returns
     -------
@@ -72,13 +101,11 @@ def setup_parti_prompts_dataset(
     ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
 
     if category is not None:
-        ds = ds.filter(lambda x: x["Category"] == category or x["Challenge"] == category)
+        categories = [category] if not isinstance(category, list) else category
+        ds = ds.filter(lambda x: x["Category"] in categories or x["Challenge"] in categories)
 
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
-
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
 
     if len(ds) == 0:

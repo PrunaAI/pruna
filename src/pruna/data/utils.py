@@ -14,8 +14,9 @@
 
 from __future__ import annotations
 
+import inspect
 import random
-from typing import Any, Tuple, Union
+from typing import Any, Callable, Literal, Tuple, Union, get_args, get_origin
 
 import torch
 from datasets import Dataset
@@ -36,6 +37,30 @@ class TokenizerMissingError(Exception):
 
     def __init__(self, message: str = "Tokenizer is missing. Please provide a valid tokenizer.") -> None:
         super().__init__(message)
+
+
+def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> list[str] | None:
+    """Extract Literal values from a function parameter's type annotation (handles Union)."""
+    unwrapped = getattr(func, "func", func)
+    sig = inspect.signature(unwrapped)
+    if param_name not in sig.parameters:
+        return None
+    ann = sig.parameters[param_name].annotation
+    if ann is inspect.Parameter.empty:
+        return None
+
+    def extract(ann: Any) -> list[str] | None:
+        if ann is None or ann is type(None):
+            return None
+        if get_origin(ann) is Literal:
+            args = get_args(ann)
+            return list(args) if args and all(isinstance(a, str) for a in args) else None
+        for arg in get_args(ann) or ():
+            if (r := extract(arg)) is not None:
+                return r
+        return None
+
+    return extract(ann)
 
 
 def split_train_into_train_val_test(dataset: Dataset, seed: int) -> Tuple[Dataset, Dataset, Dataset]:

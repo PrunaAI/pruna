@@ -1,12 +1,18 @@
+from pathlib import Path
+from typing import Any
+from unittest.mock import patch
+import tempfile
+
 import pytest
 import torch
-from pathlib import Path
 from huggingface_hub import snapshot_download
 
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.load import LOAD_FUNCTIONS, filter_load_kwargs, load_diffusers_model, load_transformers_model
 from pruna.config.smash_config import SmashConfig
-
+from pruna.algorithms.base.registry import AlgorithmRegistry
+from pruna.engine.save import SAVE_FUNCTIONS
+from pruna import smash
 
 @pytest.mark.parametrize(
     "model_name, expected_output, should_raise",
@@ -116,3 +122,36 @@ def test_load_transformers_model_without_smash_config(model_id: str) -> None:
     download_directory = snapshot_download(model_id)
     model = load_transformers_model(download_directory)
     assert model is not None
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    "model_fixture", ("resnet_18",),
+    indirect=["model_fixture"],
+)
+def test_resmash(model_fixture: tuple[Any, SmashConfig]) -> None:
+    model, smash_config = model_fixture
+
+    # this test assumes torch_structured is defining a custom save function and torch_compile is reapplied to trigger partial resmash
+    assert AlgorithmRegistry["torch_structured"].save_fn not in [SAVE_FUNCTIONS.reapply, SAVE_FUNCTIONS.save_before_apply]
+    assert AlgorithmRegistry["torch_compile"].save_fn is SAVE_FUNCTIONS.save_before_apply
+    smash_config.add(["torch_structured", "torch_compile"])
+
+    smashed_model = smash(model, smash_config=smash_config)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        smashed_model.save_pretrained(temp_dir)
+
+        def assert_torch_compile_no_torch_structured(model: Any, smash_config: SmashConfig) -> Any:
+            """Monkey patch smash function at the end of resmash to compare the subset of algorithms that are reapplied"""
+            is_torch_structured_skipped = isinstance(smash_config["torch_structured"], bool) and not smash_config["torch_structured"]
+            is_torch_compile_reapplied = isinstance(smash_config["torch_compile"], bool) and smash_config["torch_compile"]
+            assert is_torch_structured_skipped, "torch_structured was expected to be skipped when resmashing, but was activated in the smash config."
+            assert is_torch_compile_reapplied, "torch_compile was expected to be reapplied when resmashing, but was not activated in the smash config."
+            model.__has_been_monkeypatch_loaded = True
+            return model
+
+        with patch("pruna.smash.smash", assert_torch_compile_no_torch_structured):
+            # load model with monkey patch tests and confirm that the monkey patch was applied
+            loaded_model = PrunaModel.from_pretrained(temp_dir)
+            is_test_monkeypatch_applied = getattr(loaded_model, "__has_been_monkeypatch_loaded", False)
+            assert is_test_monkeypatch_applied, "Monkey patch was not applied, test did not run as expected."
