@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections.abc import Iterable
-from typing import Any, Dict, Hashable, Mapping, cast
+from typing import Any, Dict
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -63,7 +63,7 @@ class IFW(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[16, 32],
                 default_value=16,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Sets the number of bits to use for weight quantization.")),
+                meta={"desc": "Sets the number of bits to use for weight quantization."},
             ),
             Constant(name="chunk_length", value=30),
         ]

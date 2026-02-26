@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import tempfile
-from typing import Any, Hashable, Iterator, Mapping, Optional, cast
+from typing import Iterator, Optional
 
 import torch
 from ConfigSpace import (
@@ -76,47 +76,41 @@ class TextToTextFinetuner(PrunaFinetuner):
                 lower=1,
                 upper=4096,
                 default_value=numeric_defaults["training_batch_size"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Batch size for finetuning.")),
+                meta={"desc": "Batch size for finetuning."},
             ),
             UniformIntegerHyperparameter(
                 "gradient_accumulation_steps",
                 lower=1,
                 upper=1024,
                 default_value=numeric_defaults["gradient_accumulation_steps"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Number of gradient accumulation steps for finetuning."),
-                ),
+                meta={"desc": "Number of gradient accumulation steps for finetuning."},
             ),
             UniformFloatHyperparameter(
                 "num_epochs",
                 lower=0.0,
                 upper=4096.0,
                 default_value=numeric_defaults["num_epochs"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Number of epochs for finetuning.")),
+                meta={"desc": "Number of epochs for finetuning."},
             ),
             UniformFloatHyperparameter(
                 "learning_rate",
                 lower=0.0,
                 upper=1.0,
                 default_value=numeric_defaults["learning_rate"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Learning rate for finetuning.")),
+                meta={"desc": "Learning rate for finetuning."},
             ),
             Constant("dataset_text_field", string_defaults["dataset_text_field"]),
             CategoricalHyperparameter(
                 "report_to",
                 choices=["none", "wandb", "tensorboard"],
                 default_value=string_defaults["report_to"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Where to report the finetuning results."),
-                ),
+                meta={"desc": "Where to report the finetuning results."},
             ),
             CategoricalHyperparameter(
                 "optimizer",
                 choices=["AdamW", "AdamW8bit", "PagedAdamW8bit"],
                 default_value=string_defaults["optimizer"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Which optimizer to use for finetuning.")),
+                meta={"desc": "Which optimizer to use for finetuning."},
             ),
         ]
 
@@ -250,8 +244,7 @@ class TextToTextFinetuner(PrunaFinetuner):
             else:
                 pruna_logger.error(_INCOMPATIBLE_DATASET_MSG)
                 raise ValueError(
-                    f"Expected a HuggingFace dataset with text or input_ids fields "
-                    f"for LoRA recovery but got: {dataset}"
+                    f"Expected a HuggingFace dataset with text or input_ids fields for LoRA recovery but got: {dataset}"
                 )
 
         # Handle PyTorch Dataset
@@ -268,10 +261,12 @@ class TextToTextFinetuner(PrunaFinetuner):
                             input_ids = torch.tensor(input_ids)
                         attention_mask = torch.ones_like(input_ids)
                         yield {"input_ids": input_ids, "attention_mask": attention_mask}
+
                 return Dataset.from_generator(data_generator), None
             elif isinstance(first_sample, (tuple, list)) and len(first_sample) == 1:
                 # Tuple/list with single element - already in extended format
                 if isinstance(first_sample[0], torch.Tensor):
+
                     def data_generator() -> Iterator[dict[str, torch.Tensor]]:
                         for idx in range(len(dataset)):  # type: ignore[arg-type]
                             sample = dataset[idx]
@@ -280,6 +275,7 @@ class TextToTextFinetuner(PrunaFinetuner):
                                 input_ids = torch.tensor(input_ids)
                             attention_mask = torch.ones_like(input_ids)
                             yield {"input_ids": input_ids, "attention_mask": attention_mask}
+
                     return Dataset.from_generator(data_generator), None
 
             # Check if in (input, label) format for next token prediction
@@ -301,6 +297,7 @@ class TextToTextFinetuner(PrunaFinetuner):
                             input_ids = torch.cat((data_input, label[..., -1:]))
                             attention_mask = torch.ones_like(input_ids)
                             yield {"input_ids": input_ids, "attention_mask": attention_mask}
+
                     return Dataset.from_generator(data_generator), None
 
             # If we get here, the torch dataset format is not recognized

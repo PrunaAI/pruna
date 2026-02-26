@@ -18,7 +18,7 @@ import contextlib
 import functools
 from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Hashable, List, Mapping, Optional, Union, cast
+from typing import Any, List, Optional, Union
 
 import torch
 import torch.distributed as dist
@@ -79,15 +79,12 @@ class RingAttn(PrunaAlgorithmBase):
             Boolean(
                 "convert_to_f32",
                 default=True,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Allowing intermediate computations in the attention mechanism to be upcast to 32-bit."),
-                ),
+                meta={"desc": "Allowing intermediate computations in the attention mechanism to be upcast to 32-bit."},
             ),
             CategoricalHyperparameter(
                 "rotate_method",
                 default_value="ALL_TO_ALL",
-                meta=cast(Mapping[Hashable, Any], dict(desc="The method to use for rotating the computations.")),
+                meta={"desc": "The method to use for rotating the computations."},
                 choices=["ALL_TO_ALL", "ALL_GATHER"],
             ),
         ]

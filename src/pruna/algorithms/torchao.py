@@ -17,7 +17,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Iterable
 from functools import partial
-from typing import Any, Dict, Hashable, Mapping, cast
+from typing import Any, Dict, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter
@@ -119,38 +119,29 @@ class Torchao(PrunaAlgorithmBase):
                 "quant_type",
                 choices=["int4dq", "int4wo", "int8dq", "int8wo", "fp8wo", "fp8dq", "fp8dqrow"],
                 default_value="int8dq",
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc=(
-                            "Quantization type: prefix selects data format (int4/int8/fp8); "
-                            "`wo` quantizes only the weights (activations remain in full precision); "
-                            "`dq` fully quantizes and dequantizes both weights and activations; "
-                            "`dqrow` also does full quantize-dequantize but computes a separate scale for each row"
-                        ),
-                    ),
-                ),
+                meta={
+                    "desc": (
+                        "Quantization type: prefix selects data format (int4/int8/fp8); "
+                        "`wo` quantizes only the weights (activations remain in full precision); "
+                        "`dq` fully quantizes and dequantizes both weights and activations; "
+                        "`dqrow` also does full quantize-dequantize but computes a separate scale for each row"
+                    )
+                },
             ),
             CategoricalHyperparameter(
                 "excluded_modules",
                 choices=["none", "norm", "embedding", "norm+embedding"],
                 default_value="none",
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Which types of modules to omit when applying quantization."),
-                ),
+                meta={"desc": "Which types of modules to omit when applying quantization."},
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc="Precise choices of which modules to quantize, "
-                        "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
-                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                    ),
-                ),
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
+                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                },
             ),
         ]
 

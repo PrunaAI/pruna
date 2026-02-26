@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
-from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from ConfigSpace import Constant
@@ -44,10 +44,7 @@ class XFast(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: list[str | AlgorithmTag] = [
-        "quanto",
-        "half"
-    ]
+    compatible_before: list[str | AlgorithmTag] = ["quanto", "half"]
     required_install: str = "``pip install pruna[stable-fast]``"
 
     def get_hyperparameters(self) -> list:
@@ -64,7 +61,7 @@ class XFast(PrunaAlgorithmBase):
             Boolean(
                 "xformers",
                 default=True,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to use xformers for faster inference.")),
+                meta={"desc": "Whether to use xformers for faster inference."},
             ),
         ]
 

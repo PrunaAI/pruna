@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict, Hashable, Mapping, cast
+from typing import Any, Dict, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter
@@ -68,10 +68,7 @@ class LLMCompressor(PrunaAlgorithmBase):
                 "quant_scheme",
                 choices=["W4A16", "W4A16_ASYM"],
                 default_value="W4A16",
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Quantization scheme to use. Use symmetric quantization to avoid decompression issues."),
-                ),
+                meta={"desc": "Quantization scheme to use. Use symmetric quantization to avoid decompression issues."},
             ),
             CategoricalHyperparameter(
                 "calibration_pipeline",
@@ -82,14 +79,9 @@ class LLMCompressor(PrunaAlgorithmBase):
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc="Precise choices of which modules to quantize, "
+                meta={"desc": "Precise choices of which modules to quantize, "
                         "e.g. {include: ['model.*']} to quantize only the language model in a pipeline. "
-                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                    ),
-                ),
+                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."},
             ),
         ]
 

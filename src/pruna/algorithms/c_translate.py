@@ -19,7 +19,7 @@ import sys
 from argparse import Namespace
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Hashable, List, Mapping, cast
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import torch
 import transformers
@@ -98,7 +98,7 @@ class CTranslate(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[8, 16],
                 default_value=16,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Sets the number of bits to use for weight quantization.")),
+                meta={"desc": "Sets the number of bits to use for weight quantization."},
             ),
         ]
 

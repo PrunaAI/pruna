@@ -18,7 +18,7 @@ import contextlib
 import functools
 import pathlib
 import random
-from typing import Any, Hashable, List, Literal, Mapping, cast
+from typing import Any, List, Literal
 
 import pytorch_lightning as pl
 import torch
@@ -95,48 +95,39 @@ class TextToImageDistiller(PrunaFinetuner):
                 lower=0,
                 upper=4096,
                 default_value=numeric_defaults["training_batch_size"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Number of steps from each diffusion process to use for distillation."),
-                ),
+                meta={"desc": "Number of steps from each diffusion process to use for distillation."},
             ),
             UniformIntegerHyperparameter(
                 "gradient_accumulation_steps",
                 lower=1,
                 upper=1024,
                 default_value=numeric_defaults["gradient_accumulation_steps"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Number of captions processed to estimate each gradient step."),
-                ),
+                meta={"desc": "Number of captions processed to estimate each gradient step."},
             ),
             UniformIntegerHyperparameter(
                 "num_epochs",
                 lower=0,
                 upper=4096,
                 default_value=numeric_defaults["num_epochs"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Number of epochs for distillation.")),
+                meta={"desc": "Number of epochs for distillation."},
             ),
             UniformFloatHyperparameter(
                 "validate_every_n_epoch",
                 lower=0.0,
                 upper=4096.0,
                 default_value=numeric_defaults["validate_every_n_epoch"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc="Number of epochs between each round of validation and model checkpointing. "
-                        "If the value is between 0 and 1, validation will be performed multiple times per epoch, "
-                        "e.g. 1/8 will result in 8 validations per epoch."
-                    ),
-                ),
+                meta={
+                    "desc": "Number of epochs between each round of validation and model checkpointing. "
+                    "If the value is between 0 and 1, validation will be performed multiple times per epoch, "
+                    "e.g. 1/8 will result in 8 validations per epoch."
+                },
             ),
             UniformFloatHyperparameter(
                 "learning_rate",
                 lower=0.0,
                 upper=1.0,
                 default_value=numeric_defaults["learning_rate"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Learning rate for distillation.")),
+                meta={"desc": "Learning rate for distillation."},
             ),
             Constant("weight_decay", numeric_defaults["weight_decay"]),
             # report_to: for consistency with text-to-text-lora but wandb and tensorboard are not supported yet
@@ -144,36 +135,27 @@ class TextToImageDistiller(PrunaFinetuner):
             Boolean(
                 "use_cpu_offloading",
                 default=False,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Whether to use CPU offloading for distillation."),
-                ),
+                meta={"desc": "Whether to use CPU offloading for distillation."},
             ),
             CategoricalHyperparameter(
                 "optimizer",
                 choices=["AdamW8bit", "AdamW", "Adam"],
                 default_value=string_defaults["optimizer"],
-                meta=cast(Mapping[Hashable, Any], dict(desc="Which optimizer to use for distillation.")),
+                meta={"desc": "Which optimizer to use for distillation."},
             ),
             UniformFloatHyperparameter(
                 "lr_decay",
                 lower=0.0,
                 upper=1.0,
                 default_value=numeric_defaults["lr_decay"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Learning rate decay, applied at each epoch."),
-                ),
+                meta={"desc": "Learning rate decay, applied at each epoch."},
             ),
             UniformIntegerHyperparameter(
                 "warmup_steps",
                 lower=0,
                 upper=2**14,
                 default_value=numeric_defaults["warmup_steps"],
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Number of warmup steps for the learning rate scheduler."),
-                ),
+                meta={"desc": "Number of warmup steps for the learning rate scheduler."},
             ),
         ]
 

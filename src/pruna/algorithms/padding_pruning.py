@@ -17,7 +17,7 @@ from __future__ import annotations
 import functools
 import inspect
 from collections.abc import Iterable
-from typing import Any, Hashable, Mapping, cast
+from typing import Any
 
 from ConfigSpace import OrdinalHyperparameter
 
@@ -70,10 +70,7 @@ class PaddingPruner(PrunaAlgorithmBase):
                 "min_sequence_length",
                 sequence=[32, 64, 128, 256],
                 default_value=64,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Minimum sequence length used to embed a prompt."),
-                ),
+                meta={"desc": "Minimum sequence length used to embed a prompt."},
             ),
         ]
 

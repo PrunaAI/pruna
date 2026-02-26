@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Hashable, Mapping, cast
+from typing import Any
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
@@ -73,33 +73,30 @@ class LoraAdapter(PrunaAdapter):
                     "r",
                     sequence=[4, 8, 16, 32, 64, 128],
                     default_value=default_hyperparameters["r"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Rank of the LoRA layers.")),
+                    meta={"desc": "Rank of the LoRA layers."},
                 ),
                 OrdinalHyperparameter(
                     "alpha_r_ratio",
                     sequence=[0.5, 1.0, 2.0],
                     default_value=default_hyperparameters["alpha_r_ratio"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Alpha/Rank ratio of the LoRA layers.")),
+                    meta={"desc": "Alpha/Rank ratio of the LoRA layers."},
                 ),
                 CategoricalHyperparameter(
                     "target_modules",
                     choices=[None, "all-linear"],
                     default_value=default_hyperparameters["target_modules"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Target modules for the LoRA layers.")),
+                    meta={"desc": "Target modules for the LoRA layers."},
                 ),
                 Constant(
                     "dropout",
                     default_hyperparameters["dropout"],
-                    meta=cast(
-                        Mapping[Hashable, Any],
-                        dict(desc="Dropout rate of the LoRA layers during training."),
-                    ),
+                    meta={"desc": "Dropout rate of the LoRA layers during training."},
                 ),
                 CategoricalHyperparameter(
                     "variant",
                     choices=["lora", "pissa"],
                     default_value=default_hyperparameters["variant"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Variant of the LoRA adapter.")),
+                    meta={"desc": "Variant of the LoRA adapter."},
                 ),
             ]
 
@@ -119,13 +116,13 @@ class LoraAdapter(PrunaAdapter):
                     "r",
                     sequence=[4, 8, 16, 32, 64, 128],
                     default_value=default_hyperparameters["r"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Rank of the LoRA layers.")),
+                    meta={"desc": "Rank of the LoRA layers."},
                 ),
                 OrdinalHyperparameter(
                     "alpha_r_ratio",
                     sequence=[0.5, 1.0, 2.0],
                     default_value=default_hyperparameters["alpha_r_ratio"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Alpha/Rank ratio of the LoRA layers.")),
+                    meta={"desc": "Alpha/Rank ratio of the LoRA layers."},
                 ),
                 Constant(
                     "target_modules", default_hyperparameters["target_modules"]
@@ -135,7 +132,7 @@ class LoraAdapter(PrunaAdapter):
                     "variant",
                     choices=["lora", "pissa"],
                     default_value=default_hyperparameters["variant"],
-                    meta=cast(Mapping[Hashable, Any], dict(desc="Variant of the LoRA adapter.")),
+                    meta={"desc": "Variant of the LoRA adapter."},
                 ),
             ]
         else:

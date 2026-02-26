@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Hashable, Mapping, cast
+from typing import Any
 
 import torch
 from ConfigSpace import UniformFloatHyperparameter
@@ -97,10 +97,7 @@ class Img2ImgDenoise(PrunaAlgorithmBase):
                 upper=1.0,
                 default_value=0.02,
                 log=False,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Strength of the denoising/refinement. Lower values mean less change/more refinement."),
-                ),
+                meta={"desc": "Strength of the denoising/refinement. Lower values mean less change/more refinement."},
             ),
         ]
 

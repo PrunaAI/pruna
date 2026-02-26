@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections.abc import Iterable
-from typing import Any, Hashable, Mapping, cast
+from typing import Any
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter
@@ -57,7 +57,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
                 "pruning_method",
                 choices=["random", "l1"],
                 default_value="l1",
-                meta=cast(Mapping[Hashable, Any], dict(desc="Pruning method to use.")),
+                meta={"desc": "Pruning method to use."},
             ),
             UniformFloatHyperparameter(
                 "sparsity",
@@ -65,7 +65,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
                 upper=1.0,
                 log=False,
                 default_value=0.1,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Sparsity level up to which to prune.")),
+                meta={"desc": "Sparsity level up to which to prune."},
             ),
         ]
 

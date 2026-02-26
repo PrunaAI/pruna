@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict, Hashable, Mapping, cast
+from typing import Any, Dict, cast
 
 import torch
 from ConfigSpace import Constant, OrdinalHyperparameter
@@ -79,26 +79,23 @@ class Quanto(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=["qint2", "qint4", "qint8", "qfloat8"],
                 default_value="qfloat8",
-                meta=cast(Mapping[Hashable, Any], dict(desc="Tensor type to use for quantization.")),
+                meta={"desc": "Tensor type to use for quantization."},
             ),
             Constant("act_bits", value=None),
             Boolean(
                 "calibrate",
                 default=True,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to calibrate the model.")),
+                meta={"desc": "Whether to calibrate the model."},
             ),
             Constant(name="calibration_samples", value=64),
             TargetModules(
                 name="target_modules",
                 default_value=None,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc="Precise choices of which modules to quantize, "
-                        "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
-                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                    ),
-                ),
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
+                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                },
             ),
         ]
 

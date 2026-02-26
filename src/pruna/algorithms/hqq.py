@@ -17,7 +17,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 from collections.abc import Iterable
-from typing import Any, Dict, Hashable, Mapping, Type, cast
+from typing import Any, Dict, Type, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter, Constant, OrdinalHyperparameter
@@ -81,45 +81,39 @@ class HQQ(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[2, 4, 8],
                 default_value=8,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Number of bits to use for quantization.")),
+                meta={"desc": "Number of bits to use for quantization."},
             ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[8, 16, 32, 64, 128],
                 default_value=64,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Group size for quantization.")),
+                meta={"desc": "Group size for quantization."},
             ),
             Constant("backend", value="torchao_int4"),
             CategoricalHyperparameter(
                 "compute_dtype",
                 choices=["torch.bfloat16", "torch.float16"],
                 default_value="torch.float16",
-                meta=cast(Mapping[Hashable, Any], dict(desc="Compute dtype for quantization.")),
+                meta={"desc": "Compute dtype for quantization."},
             ),
             Boolean(
                 "use_torchao_kernels",
                 default=True,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Whether to use the torchaoint4 kernels for inference.")),
+                meta={"desc": "Whether to use the torchaoint4 kernels for inference."},
             ),
             Boolean(
                 "force_hf_implementation",
                 default=False,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
-                ),
+                meta={"desc": "Whether or not to bypass the HQQ quantization and use the generic HF quantization."},
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc="Precise choices of which modules to quantize, "
-                        "e.g. {include: ['model.*']} to quantize the whole language model in a pipeline. "
-                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                    ),
-                ),
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
+                    "e.g. {include: ['model.*']} to quantize the whole language model in a pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                },
             ),
         ]
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import tempfile
 from collections.abc import Iterable
-from typing import Any, Hashable, Mapping, cast
+from typing import Any, cast
 
 import diffusers
 import torch.nn as nn
@@ -87,7 +87,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[4, 8],
                 default_value=8,
-                meta=cast(Mapping[Hashable, Any], dict(desc="Number of bits to use for quantization.")),
+                meta={"desc": "Number of bits to use for quantization."},
             ),
             Boolean("double_quant", meta=dict(desc="Whether to enable double quantization.")),
             Boolean("enable_fp32_cpu_offload", meta=dict(desc="Whether to enable fp32 cpu offload.")),
@@ -98,19 +98,16 @@ class DiffusersInt8(PrunaAlgorithmBase):
                 "quant_type",
                 choices=["fp4", "nf4"],
                 default_value="fp4",
-                meta=cast(Mapping[Hashable, Any], dict(desc="Quantization type to use.")),
+                meta={"desc": "Quantization type to use."},
             ),
             TargetModules(
                 name="target_modules",
                 default_value=None,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(
-                        desc="Precise choices of which modules to quantize, "
-                        "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
-                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                    ),
-                ),
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
+                    "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
+                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
+                },
             ),
         ]
 
