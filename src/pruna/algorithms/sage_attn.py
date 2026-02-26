@@ -19,7 +19,6 @@ from typing import Any, List
 
 import torch
 from diffusers import DiffusionPipeline
-from typing_extensions import cast
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
