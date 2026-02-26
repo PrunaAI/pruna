@@ -16,7 +16,7 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset
+from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
 
 PartiCategory = Literal[
@@ -107,8 +107,7 @@ def setup_parti_prompts_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
-    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
@@ -154,24 +153,18 @@ def setup_oneig_text_rendering_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The OneIG Text Rendering dataset (dummy train, dummy val, test).
     """
-    import csv
-    import io
+    ds = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
+    ds = ds.filter(lambda x: x.get("category", "") in ("Text_Rendering", "Text Rendering"))
 
-    import requests
+    def to_record(row: dict) -> dict:
+        prompt = row.get("prompt_en", row.get("prompt", ""))
+        return {
+            "text": prompt,
+            "text_content": row.get("class", ""),
+        }
 
-    url = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/main/benchmark/text_rendering.csv"
-    response = requests.get(url)
-    reader = csv.DictReader(io.StringIO(response.text))
-
-    records = []
-    for row in reader:
-        records.append({
-            "text": row.get("prompt", ""),
-            "text_content": row.get("text_content", row.get("text", "")),
-        })
-
-    ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
+    records = [to_record(dict(row)) for row in ds]
+    ds = Dataset.from_list(records).shuffle(seed=seed)
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
@@ -211,13 +204,18 @@ def setup_oneig_alignment_dataset(
 
     import requests
 
-    ds = load_dataset("OneIG-Bench/OneIG-Bench")["test"]  # type: ignore[index]
+    ds = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
 
+    questions_by_id: dict[str, dict] = {}
     url = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/main/benchmark/alignment_questions.json"
     response = requests.get(url)
-    questions_data = json.loads(response.text)
-
-    questions_by_id = {q["id"]: q for q in questions_data}
+    if response.status_code == 200:
+        try:
+            data = json.loads(response.text)
+            items = data if isinstance(data, list) else [data]
+            questions_by_id = {q["id"]: q for q in items if isinstance(q, dict) and "id" in q}
+        except Exception:
+            pass
 
     records = []
     for row in ds:
@@ -232,7 +230,7 @@ def setup_oneig_alignment_dataset(
 
         q_info = questions_by_id.get(row_id, {})
         records.append({
-            "text": row.get("prompt", ""),
+            "text": row.get("prompt_en", row.get("prompt", "")),
             "category": row_category,
             "questions": q_info.get("questions", []),
             "dependencies": q_info.get("dependencies", []),
@@ -248,13 +246,15 @@ def setup_oneig_alignment_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
-DPG_CATEGORIES = ["entity", "attribute", "relation", "global", "other"]
+DPGCategory = Literal["entity", "attribute", "relation", "global", "other"]
 
 
 def setup_dpg_dataset(
     seed: int,
-    category: str | None = None,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: DPGCategory | list[DPGCategory] | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the DPG (Descriptive Prompt Generation) benchmark dataset.
@@ -265,10 +265,14 @@ def setup_dpg_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : DPGCategory | list[DPGCategory] | None
         Filter by category. Available: entity, attribute, relation, global, other.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
 
     Returns
     -------
@@ -277,34 +281,34 @@ def setup_dpg_dataset(
     """
     import csv
     import io
+    from collections import defaultdict
 
     import requests
 
-    url = "https://raw.githubusercontent.com/TencentQQGYLab/ELLA/main/dpg_bench/prompts.csv"
+    url = "https://raw.githubusercontent.com/TencentQQGYLab/ELLA/main/dpg_bench/dpg_bench.csv"
     response = requests.get(url)
     reader = csv.DictReader(io.StringIO(response.text))
 
-    records = []
+    categories = [category] if category is not None and not isinstance(category, list) else category
+    grouped: dict[tuple[str, str], list[str]] = defaultdict(list)
     for row in reader:
-        row_category = row.get("category", row.get("category_broad", ""))
+        row_category = row.get("category_broad", row.get("category", ""))
 
-        if category is not None:
-            if category not in DPG_CATEGORIES:
-                raise ValueError(f"Invalid category: {category}. Must be one of {DPG_CATEGORIES}")
-            if row_category != category:
+        if categories is not None:
+            if row_category not in categories:
                 continue
 
-        records.append({
-            "text": row.get("prompt", ""),
-            "category_broad": row_category,
-            "questions": row.get("questions", "").split("|") if row.get("questions") else [],
-        })
+        key = (row.get("text", ""), row_category)
+        q = row.get("question_natural_language", "")
+        if q and q not in grouped[key]:
+            grouped[key].append(q)
+
+    records = [
+        {"text": text, "category_broad": cat, "questions": qs}
+        for (text, cat), qs in grouped.items()
+    ]
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
-
-    pruna_logger.info("DPG is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "DPG")
