@@ -16,6 +16,7 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
+from pruna.data.utils import define_sample_size_for_dataset, stratify_dataset
 from pruna.logging.logger import pruna_logger
 
 PartiCategory = Literal[
@@ -69,8 +70,10 @@ def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
 
 def setup_parti_prompts_dataset(
     seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
     category: PartiCategory | list[PartiCategory] | None = None,
-    num_samples: int | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the Parti Prompts dataset.
@@ -81,10 +84,14 @@ def setup_parti_prompts_dataset(
     ----------
     seed : int
         The seed to use.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        The sample size to use for the train dataset (unused; train/val are dummy).
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
     category : PartiCategory | list[PartiCategory] | None
         Filter by Category or Challenge.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
 
     Returns
     -------
@@ -103,9 +110,8 @@ def setup_parti_prompts_dataset(
                 lambda x: x["Category"] == category or x["Challenge"] == category
             )
 
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
-
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = stratify_dataset(ds, test_sample_size, seed)
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
