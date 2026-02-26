@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Literal, Tuple
+from typing import Literal, Tuple, get_args
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset
+from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
+
+HPSCategory = Literal["anime", "concept-art", "paintings", "photo"]
 
 PartiCategory = Literal[
     "Abstract",
@@ -107,14 +109,15 @@ def setup_parti_prompts_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
-    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
 
 
 def setup_hps_dataset(
     seed: int,
-    category: str | None = None,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: HPSCategory | list[HPSCategory] | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the HPS (Human Preference Score) benchmark dataset.
@@ -125,10 +128,14 @@ def setup_hps_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
-        Filter by category. Available categories: anime, concept-art, paintings, photo.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : HPSCategory | list[HPSCategory] | None
+        Filter by category. Available: anime, concept-art, paintings, photo.
 
     Returns
     -------
@@ -139,13 +146,12 @@ def setup_hps_dataset(
 
     from huggingface_hub import hf_hub_download
 
-    hps_categories = ["anime", "concept-art", "paintings", "photo"]
-    categories_to_load = [category] if category else hps_categories
+    categories_to_load = list(get_args(HPSCategory)) if category is None else (
+        [category] if not isinstance(category, list) else category
+    )
 
     all_prompts = []
     for cat in categories_to_load:
-        if cat not in hps_categories:
-            raise ValueError(f"Invalid category: {cat}. Must be one of {hps_categories}")
         file_path = hf_hub_download("zhwang/HPDv2", f"{cat}.json", subfolder="benchmark", repo_type="dataset")
         with open(file_path, "r", encoding="utf-8") as f:
             prompts = json.load(f)
@@ -153,13 +159,9 @@ def setup_hps_dataset(
                 all_prompts.append({"text": prompt, "category": cat})
 
     ds = Dataset.from_list(all_prompts)
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
-
-    pruna_logger.info("HPS is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "HPS")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
