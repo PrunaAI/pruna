@@ -152,7 +152,6 @@ class PrunaDataModule(LightningDataModule):
             Any additional arguments for the dataloader.
         seed : int
             The seed to use.
-
         category : str | list[str] | None
             The category of the dataset.
 
@@ -161,7 +160,7 @@ class PrunaDataModule(LightningDataModule):
         PrunaDataModule
             The PrunaDataModule.
         """
-        setup_fn, collate_fn_name, default_collate_fn_args = base_datasets[dataset_name]
+        setup_fn, collate_fn_name, default_collate_fn_args = base_datasets[dataset_name][:3]
 
         # use default collate_fn_args and override with user-provided ones
         default_collate_fn_args.update(collate_fn_args)
