@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
+from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
 from pruna.logging.logger import pruna_logger
 
-PARTI_PROMPTS_CATEGORIES: list[str] = [
+PartiCategory = Literal[
     "Abstract",
     "Animals",
     "Artifacts",
@@ -69,7 +69,7 @@ def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
 
 def setup_parti_prompts_dataset(
     seed: int,
-    category: str | None = None,
+    category: PartiCategory | list[PartiCategory] | None = None,
     num_samples: int | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
@@ -81,8 +81,8 @@ def setup_parti_prompts_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
-        Filter by Category or Challenge. See PARTI_PROMPTS_CATEGORIES for available values.
+    category : PartiCategory | list[PartiCategory] | None
+        Filter by Category or Challenge.
     num_samples : int | None
         Maximum number of samples to return. If None, returns all samples.
 
