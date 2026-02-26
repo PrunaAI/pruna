@@ -64,6 +64,12 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Optimize your ``diffusion`` model with ``hqq_diffusers`` ``quantization`` in 8 bits.
 
+   .. grid-item-card:: Compress and Evaluate Flux2 Image Generation (Klein 4B)
+      :text-align: center
+      :link: ./flux2klein4b_tutorial.ipynb
+
+      Optimize Flux2 Klein 4B with FORA ``cacher``, ``torchao`` fp8 ``quantizer``, and ``torch_compile`` ``compiler``; compare baseline vs optimized latency.
+
    .. grid-item-card:: Make Stable Diffusion 3x Faster with DeepCache
       :text-align: center
       :link: ./sd_deepcache.ipynb

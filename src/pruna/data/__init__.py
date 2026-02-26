@@ -100,7 +100,11 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         {"img_size": 224},
     ),
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
-    "PartiPrompts": (setup_parti_prompts_dataset, "prompt_with_auxiliaries_collate", {}),
+    "PartiPrompts": (
+        setup_parti_prompts_dataset,
+        "prompt_with_auxiliaries_collate",
+        {},
+    ),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
     "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
     "GEditBench": (setup_gedit_dataset, "prompt_with_auxiliaries_collate", {}),
