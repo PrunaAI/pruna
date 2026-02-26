@@ -18,6 +18,32 @@ from datasets import Dataset, load_dataset
 
 from pruna.logging.logger import pruna_logger
 
+PARTI_PROMPTS_CATEGORIES: list[str] = [
+    "Abstract",
+    "Animals",
+    "Artifacts",
+    "Arts",
+    "Food & Beverage",
+    "Illustrations",
+    "Indoor Scenes",
+    "Outdoor Scenes",
+    "People",
+    "Produce & Plants",
+    "Vehicles",
+    "World Knowledge",
+    "Basic",
+    "Complex",
+    "Fine-grained Detail",
+    "Imagination",
+    "Linguistic Structures",
+    "Perspective",
+    "Properties & Positioning",
+    "Quantity",
+    "Simple Detail",
+    "Style & Format",
+    "Writing & Symbols",
+]
+
 
 def setup_drawbench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
@@ -56,11 +82,7 @@ def setup_parti_prompts_dataset(
     seed : int
         The seed to use.
     category : str | None
-        Filter by Category or Challenge. Available categories: Abstract, Animals, Artifacts,
-        Arts, Food & Beverage, Illustrations, Indoor Scenes, Outdoor Scenes, People,
-        Produce & Plants, Vehicles, World Knowledge. Available challenges: Basic, Complex,
-        Fine-grained Detail, Imagination, Linguistic Structures, Perspective,
-        Properties & Positioning, Quantity, Simple Detail, Style & Format, Writing & Symbols.
+        Filter by Category or Challenge. See PARTI_PROMPTS_CATEGORIES for available values.
     num_samples : int | None
         Maximum number of samples to return. If None, returns all samples.
 
@@ -80,8 +102,6 @@ def setup_parti_prompts_dataset(
             ds = ds.filter(
                 lambda x: x["Category"] == category or x["Challenge"] == category
             )
-
-    # Note: Not shuffling since these are test-only datasets
 
     if num_samples is not None:
         ds = ds.select(range(min(num_samples, len(ds))))
