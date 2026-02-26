@@ -16,8 +16,10 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset
+from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
+
+GenEvalCategory = Literal["single_object", "two_object", "counting", "colors", "position", "color_attr"]
 
 PartiCategory = Literal[
     "Abstract",
@@ -107,11 +109,7 @@ def setup_parti_prompts_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
-    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
-
-
-GENEVAL_CATEGORIES = ["single_object", "two_object", "counting", "colors", "position", "color_attr"]
+    return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
 
 
 def _generate_geneval_question(entry: dict) -> list[str]:
@@ -141,8 +139,10 @@ def _generate_geneval_question(entry: dict) -> list[str]:
 
 def setup_geneval_dataset(
     seed: int,
-    category: str | None = None,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: GenEvalCategory | list[GenEvalCategory] | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the GenEval benchmark dataset.
@@ -153,10 +153,14 @@ def setup_geneval_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : GenEvalCategory | list[GenEvalCategory] | None
         Filter by category. Available: single_object, two_object, counting, colors, position, color_attr.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
 
     Returns
     -------
@@ -172,9 +176,8 @@ def setup_geneval_dataset(
     data = [json.loads(line) for line in response.text.splitlines()]
 
     if category is not None:
-        if category not in GENEVAL_CATEGORIES:
-            raise ValueError(f"Invalid category: {category}. Must be one of {GENEVAL_CATEGORIES}")
-        data = [entry for entry in data if entry.get("tag") == category]
+        categories = [category] if not isinstance(category, list) else category
+        data = [entry for entry in data if entry.get("tag") in categories]
 
     records = []
     for entry in data:
@@ -187,13 +190,9 @@ def setup_geneval_dataset(
         })
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
-
-    pruna_logger.info("GenEval is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "GenEval")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
