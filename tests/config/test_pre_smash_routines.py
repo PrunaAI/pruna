@@ -254,36 +254,98 @@ class TestCheckAlgorithmCrossCompatibility:
 
     def test_cross_compatibility_success(self):
         """Test successful algorithm cross-compatibility check."""
+        model = None
+        
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
         
         mock_algorithm1 = Mock()
-        mock_algorithm1.get_incompatible_algorithms.return_value = []
+        mock_algorithm1.get_compatible_algorithms.return_value = ["algorithm2"]
         
         mock_algorithm2 = Mock()
-        mock_algorithm2.get_incompatible_algorithms.return_value = []
+        mock_algorithm2.get_compatible_algorithms.return_value = ["algorithm1"]
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            check_algorithm_cross_compatibility(smash_config)
+            check_algorithm_cross_compatibility(model, smash_config)
 
     def test_cross_compatibility_incompatible_algorithms(self):
         """Test algorithm cross-compatibility failure for incompatible algorithms. Should raise ValueError when algorithms are incompatible."""
+        model = None
+    
         smash_config = Mock()
         smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
         
         mock_algorithm1 = Mock()
-        mock_algorithm1.get_incompatible_algorithms.return_value = []
+        mock_algorithm1.get_compatible_algorithms.return_value = ["algorithm2"]
+        mock_algorithm1.get_disjointly_compatible_algorithms.return_value = []
         
         mock_algorithm2 = Mock()
-        mock_algorithm2.get_incompatible_algorithms.return_value = ["algorithm1"]
+        mock_algorithm2.get_compatible_algorithms.return_value = []
+        mock_algorithm2.get_disjointly_compatible_algorithms.return_value = []
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
             with pytest.raises(ValueError, match="Algorithm algorithm1 is incompatible with algorithm2"):
-                check_algorithm_cross_compatibility(smash_config)
+                check_algorithm_cross_compatibility(model, smash_config)
+
+    def test_cross_compatibility_disjointly_compatible_algorithms(self):
+        """Test algorithm cross-compatibility success for disjointly compatible algorithms."""
+        model = torch.nn.ModuleDict({"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1)})
+    
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1"]},
+            "algorithm2_target_modules": {"include": ["layer2"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+        
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_compatible_algorithms.return_value = []
+        mock_algorithm1.get_disjointly_compatible_algorithms.return_value = ["algorithm2"]
+        mock_algorithm1.get_model_dependent_hyperparameter_defaults.return_value = {"target_modules": {"include": ["layer1"], "exclude": []}}
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_compatible_algorithms.return_value = []
+        mock_algorithm2.get_disjointly_compatible_algorithms.return_value = ["algorithm1"]
+        mock_algorithm2.get_model_dependent_hyperparameter_defaults.return_value = {"target_modules": {"include": ["layer2"], "exclude": []}}
+        
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            check_algorithm_cross_compatibility(model, smash_config)
+
+    def test_cross_compatibility_disjointly_compatible_algorithms_incompatible_target_modules(self):
+        """Test algorithm cross-compatibility failure for disjointly compatible algorithms with incompatible target modules."""
+        model = torch.nn.ModuleDict({"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1)})
+    
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1", "layer2"]},
+            "algorithm2_target_modules": {"include": ["layer1"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+        
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_compatible_algorithms.return_value = []
+        mock_algorithm1.get_disjointly_compatible_algorithms.return_value = ["algorithm2"]
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_compatible_algorithms.return_value = []
+        mock_algorithm2.get_disjointly_compatible_algorithms.return_value = ["algorithm1"]
+
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            expected_error_regex = "Incompatible target modules: Algorithms 'algorithm1' and 'algorithm2' can only *"
+            with pytest.raises(ValueError, match=expected_error_regex):
+                check_algorithm_cross_compatibility(model, smash_config)
 
 @pytest.mark.cpu
 class TestDetermineAlgorithmOrder:
@@ -291,6 +353,7 @@ class TestDetermineAlgorithmOrder:
 
     def test_determine_algorithm_order_success(self):
         """Test successful algorithm order determination. Should return topologically sorted algorithm order."""
+        model = None
         smash_config = Mock(_algorithm_order=None)
         
         mock_graph = nx.DiGraph()
@@ -298,11 +361,12 @@ class TestDetermineAlgorithmOrder:
         mock_graph.add_edge("algorithm1", "algorithm2")
         
         with patch("pruna.config.pre_smash_routines.construct_algorithm_directed_graph", return_value=mock_graph):
-            order = determine_algorithm_order(smash_config)
+            order = determine_algorithm_order(model, smash_config)
             assert order == ["algorithm1", "algorithm2"]
 
     def test_determine_algorithm_order_cyclic_dependency(self):
         """Test algorithm order determination with cyclic dependencies. Should raise NetworkXUnfeasible for cyclic dependencies."""
+        model = None
         smash_config = Mock(_algorithm_order=None)
         
         mock_graph = nx.DiGraph()
@@ -313,7 +377,7 @@ class TestDetermineAlgorithmOrder:
         
         with patch("pruna.config.pre_smash_routines.construct_algorithm_directed_graph", return_value=mock_graph):
             with pytest.raises(ValueError, match="Cycle detected in the algorithm order, the current algorithm configuration is not possible."):
-                determine_algorithm_order(smash_config)
+                determine_algorithm_order(model, smash_config)
 
 @pytest.mark.cpu
 class TestConstructAlgorithmDirectedGraph:
@@ -327,15 +391,19 @@ class TestConstructAlgorithmDirectedGraph:
         mock_algorithm1 = Mock()
         mock_algorithm1.get_algorithms_to_run_before.return_value = []
         mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithm2 = Mock()
         mock_algorithm2.get_algorithms_to_run_before.return_value = []
         mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            graph = construct_algorithm_directed_graph(smash_config)
+            graph = construct_algorithm_directed_graph(None, smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
             assert len(graph.edges()) == 0
@@ -348,15 +416,19 @@ class TestConstructAlgorithmDirectedGraph:
         mock_algorithm1 = Mock()
         mock_algorithm1.get_algorithms_to_run_before.return_value = []
         mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithm2 = Mock()
         mock_algorithm2.get_algorithms_to_run_before.return_value = ["algorithm1"]
         mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            graph = construct_algorithm_directed_graph(smash_config)
+            graph = construct_algorithm_directed_graph(None, smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
             assert ("algorithm1", "algorithm2") in graph.edges()
@@ -369,15 +441,19 @@ class TestConstructAlgorithmDirectedGraph:
         mock_algorithm1 = Mock()
         mock_algorithm1.get_algorithms_to_run_before.return_value = []
         mock_algorithm1.get_algorithms_to_run_after.return_value = []
-        
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
+
         mock_algorithm2 = Mock()
         mock_algorithm2.get_algorithms_to_run_before.return_value = []
         mock_algorithm2.get_algorithms_to_run_after.return_value = ["algorithm1"]
-        
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
+
         mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            graph = construct_algorithm_directed_graph(smash_config)
+            graph = construct_algorithm_directed_graph(None, smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
             assert ("algorithm2", "algorithm1") in graph.edges()
@@ -390,14 +466,20 @@ class TestConstructAlgorithmDirectedGraph:
         mock_algorithm1 = Mock()
         mock_algorithm1.get_algorithms_to_run_before.return_value = []
         mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithm2 = Mock()
         mock_algorithm2.get_algorithms_to_run_before.return_value = ["algorithm1"]
         mock_algorithm2.get_algorithms_to_run_after.return_value = ["algorithm3"]
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithm3 = Mock()
         mock_algorithm3.get_algorithms_to_run_before.return_value = []
         mock_algorithm3.get_algorithms_to_run_after.return_value = []
+        mock_algorithm3.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm3.get_algorithms_to_run_after_disjointly.return_value = []
         
         mock_algorithms = {
             "algorithm1": mock_algorithm1,
@@ -406,8 +488,185 @@ class TestConstructAlgorithmDirectedGraph:
         }
         
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
-            graph = construct_algorithm_directed_graph(smash_config)
+            graph = construct_algorithm_directed_graph(None, smash_config)
             
             assert set(graph.nodes()) == {"algorithm1", "algorithm2", "algorithm3"}
             assert ("algorithm1", "algorithm2") in graph.edges()
             assert ("algorithm2", "algorithm3") in graph.edges()
+    
+    def test_construct_graph_with_required_before_disjointly(self):
+        """Test graph construction with required_before_disjointly dependencies. Should create graph with edges for required_before_disjointly dependencies."""
+        model = torch.nn.ModuleDict({"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1)})
+        
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1"]},
+            "algorithm2_target_modules": {"include": ["layer2"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = ["algorithm1"]
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            graph = construct_algorithm_directed_graph(model, smash_config)
+            
+            assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
+            assert ("algorithm1", "algorithm2") in graph.edges()
+
+    def test_construct_graph_with_required_after_disjointly(self):
+        """Test graph construction with required_after_disjointly dependencies. Should create graph with edges for required_after_disjointly dependencies."""
+        model = torch.nn.ModuleDict({"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1)})
+        
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1"]},
+            "algorithm2_target_modules": {"include": ["layer2"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = ["algorithm1"]
+        
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            graph = construct_algorithm_directed_graph(model, smash_config)
+            
+            assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
+            assert ("algorithm2", "algorithm1") in graph.edges()
+
+    def test_construct_graph_with_required_before_disjointly_non_disjoint(self):
+        """Test graph construction with required_before_disjointly dependencies with non-disjoint target modules. Should create graph with nodes but no edges."""
+        model = torch.nn.ModuleDict({"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1)})
+        
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1", "layer2"]},
+            "algorithm2_target_modules": {"include": ["layer1"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+        
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = ["algorithm1"]
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            graph = construct_algorithm_directed_graph(model, smash_config)
+            
+            assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
+            assert len(graph.edges()) == 0
+
+    def test_construct_graph_with_required_after_disjointly_non_disjoint(self):
+        """Test graph construction with required_after_disjointly dependencies with non-disjoint target modules. Should create graph with nodes but no edges."""
+        model = torch.nn.ModuleDict({"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1)})
+        
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1", "layer2"]},
+            "algorithm2_target_modules": {"include": ["layer1"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+        
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = ["algorithm1"]
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            graph = construct_algorithm_directed_graph(model, smash_config)
+            
+            assert set(graph.nodes()) == {"algorithm1", "algorithm2"}
+            assert len(graph.edges()) == 0
+    
+    def test_construct_graph_complex_disjoint_dependencies(self):
+        """Test graph construction with complex disjoint and non-disjoint dependencies. Should create graph with edges for complex disjointly dependencies."""
+        model = torch.nn.ModuleDict(
+            {"layer1": torch.nn.Linear(1, 1), "layer2": torch.nn.Linear(1, 1), "layer3": torch.nn.Linear(1, 1)}
+        )
+        
+        smash_config = MagicMock()
+        smash_config.get_active_algorithms.return_value = ["algorithm1", "algorithm2", "algorithm3"]
+        config = {
+            "algorithm1_target_modules": {"include": ["layer1"]},
+            "algorithm2_target_modules": {"include": ["layer2", "layer3"]},
+            "algorithm3_target_modules": {"include": ["layer3"]},
+        }
+        smash_config.__contains__.side_effect = lambda key: key in config
+        smash_config.__getitem__.side_effect = lambda key: config[key]
+
+        mock_algorithm1 = Mock()
+        mock_algorithm1.get_algorithms_to_run_before.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after.return_value = []
+        mock_algorithm1.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm1.get_algorithms_to_run_after_disjointly.return_value = ["algorithm3"]  # satisfied
+        
+        mock_algorithm2 = Mock()
+        mock_algorithm2.get_algorithms_to_run_before.return_value = []
+        mock_algorithm2.get_algorithms_to_run_after.return_value = []
+        mock_algorithm2.get_algorithms_to_run_before_disjointly.return_value = ["algorithm1"]  # satisfied
+        mock_algorithm2.get_algorithms_to_run_after_disjointly.return_value = []
+        
+        mock_algorithm3 = Mock()
+        mock_algorithm3.get_algorithms_to_run_before.return_value = ["algorithm2"]
+        mock_algorithm3.get_algorithms_to_run_after.return_value = []
+        mock_algorithm3.get_algorithms_to_run_before_disjointly.return_value = []
+        mock_algorithm3.get_algorithms_to_run_after_disjointly.return_value = ["algorithm2"]  # non-disjoint so ignored
+
+        mock_algorithms = {"algorithm1": mock_algorithm1, "algorithm2": mock_algorithm2, "algorithm3": mock_algorithm3}
+        
+        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", mock_algorithms):
+            graph = construct_algorithm_directed_graph(model, smash_config)
+            
+            assert set(graph.nodes()) == {"algorithm1", "algorithm2", "algorithm3"}
+            assert ("algorithm1", "algorithm3") in graph.edges()
+            assert ("algorithm1", "algorithm2") in graph.edges()
+            assert ("algorithm2", "algorithm3") in graph.edges()
+            assert len(graph.edges()) == 3

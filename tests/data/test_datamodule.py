@@ -4,6 +4,8 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
+from pruna.data import base_datasets
+from pruna.data.utils import get_literal_values_from_param
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -85,11 +87,24 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
 
 
 
+def _category_filter_params() -> list[tuple[str, str]]:
+    """Datasets with categories (from Literal) and a sample category each."""
+    params = []
+    for name, config in base_datasets.items():
+        setup_fn = config[0]
+        categories = get_literal_values_from_param(setup_fn, "category")
+        if categories:
+            params.append((name, categories[0]))
+    return params
+
+
+@pytest.mark.cpu
 @pytest.mark.slow
-def test_parti_prompts_with_category_filter():
-    """Test PartiPrompts loading with category filter."""
+@pytest.mark.parametrize("dataset_name, category", _category_filter_params())
+def test_category_filter(dataset_name: str, category: str) -> None:
+    """Test dataset loading with category filter."""
     dm = PrunaDataModule.from_string(
-        "PartiPrompts", category="Animals", dataloader_args={"batch_size": 4}
+        dataset_name, category=category, dataloader_args={"batch_size": 4}
     )
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
@@ -97,11 +112,14 @@ def test_parti_prompts_with_category_filter():
 
     assert len(prompts) == 4
     assert all(isinstance(p, str) for p in prompts)
-    assert all(aux["Category"] == "Animals" for aux in auxiliaries)
+    assert all(
+        aux.get("Category") == category or aux.get("Challenge") == category or aux.get("category") == category or aux.get("tag") == category or aux.get("subset") == category or aux.get("category_broad") == category
+        for aux in auxiliaries
+    )
 
 
 @pytest.mark.slow
-def test_oneig_text_rendering_auxiliaries():
+def test_oneig_text_rendering_auxiliaries() -> None:
     """Test OneIGTextRendering loading with auxiliaries."""
     dm = PrunaDataModule.from_string(
         "OneIGTextRendering", dataloader_args={"batch_size": 4}
@@ -116,7 +134,7 @@ def test_oneig_text_rendering_auxiliaries():
 
 
 @pytest.mark.slow
-def test_oneig_alignment_with_category_filter():
+def test_oneig_alignment_with_category_filter() -> None:
     """Test OneIGAlignment loading with category filter."""
     dm = PrunaDataModule.from_string(
         "OneIGAlignment", category="Portrait", dataloader_args={"batch_size": 4}
@@ -132,7 +150,7 @@ def test_oneig_alignment_with_category_filter():
 
 
 @pytest.mark.slow
-def test_dpg_with_category_filter():
+def test_dpg_with_category_filter() -> None:
     """Test DPG loading with category filter."""
     dm = PrunaDataModule.from_string(
         "DPG", category="entity", dataloader_args={"batch_size": 4}
