@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import torch
 from ConfigSpace import CategoricalHyperparameter
@@ -99,23 +99,24 @@ class LLMCompressor(PrunaAlgorithmBase):
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfigPrefixWrapper
-    ) -> TARGET_MODULES_TYPE:
+    ) -> dict[str, Any]:
         """
-        Get the default hyperparameters for the model.
+        Provide default `target_modules` using `target_backbone` to target the model backbone.
 
         Parameters
         ----------
         model : Any
-            The model to get the default hyperparameters from.
+            The model to derive defaults from.
         smash_config : SmashConfigPrefixWrapper
-            The configuration for the quantization.
+            The algorithm-prefixed configuration.
 
         Returns
         -------
-        TARGET_MODULES_TYPE
-            The default hyperparameters for the model.
+        dict[str, Any]
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
         """
-        return target_backbone(model)
+        target_modules: TARGET_MODULES_TYPE = target_backbone(model)
+        return {"target_modules": target_modules}
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -139,10 +140,10 @@ class LLMCompressor(PrunaAlgorithmBase):
         # For text generation models, provide the tokenizer as processor to avoid AutoProcessor errors
         processor = smash_config.tokenizer if smash_config.tokenizer is not None else "bert-base-uncased"
 
-        if smash_config["target_modules"] is None:
-            target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-        else:
-            target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
+        if target_modules is None:
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         def quantize_language_model(
             attr_name: str | None, language_model: torch.nn.Module, subpaths: list[str]
