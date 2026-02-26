@@ -152,7 +152,6 @@ class PrunaDataModule(LightningDataModule):
             Any additional arguments for the dataloader.
         seed : int
             The seed to use.
-
         category : str | list[str] | None
             The category of the dataset.
 

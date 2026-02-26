@@ -40,7 +40,9 @@ ADDITIONAL_ARGS = [
     "device_map",
     "cache_dir",
     "save_fns",
+    "save_artifacts_fns",
     "load_fns",
+    "load_artifacts_fns",
     "reapply_after_load",
 ]
 
@@ -86,6 +88,8 @@ class SmashConfig:
 
         self.save_fns: list[str] = []
         self.load_fns: list[str] = []
+        self.save_artifacts_fns: list[str] = []
+        self.load_artifacts_fns: list[str] = []
         self.reapply_after_load: dict[str, str | None] = {}
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
@@ -350,6 +354,8 @@ class SmashConfig:
         # flush also saving / load functionality associated with a specific configuration
         self.save_fns = []
         self.load_fns = []
+        self.save_artifacts_fns = []
+        self.load_artifacts_fns = []
         self.reapply_after_load = {}
 
         # reset potentially previously used cache directory
@@ -549,6 +555,18 @@ class SmashConfig:
             # config space internally holds numpy types
             # we convert this to native python types for printing and handing arguments to pruna algorithms
             return convert_numpy_types(return_value)
+
+    def __contains__(self, name: str) -> bool:
+        """
+        Check if a configuration key exists in the SmashConfig.
+
+        This supports both additional arguments (like 'batch_size', 'device', etc.)
+        and any hyperparameter name present in the underlying ConfigSpace configuration,
+        such as per-algorithm keys like '{algorithm_name}_target_modules'.
+        """
+        if name in ADDITIONAL_ARGS:
+            return True
+        return name in self._configuration
 
     def __setitem__(self, name: str, value: Any) -> None:
         """
