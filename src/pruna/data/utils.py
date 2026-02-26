@@ -242,6 +242,35 @@ def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42) -> Data
     return dataset
 
 
+def _prepare_test_only_prompt_dataset(
+    ds: Dataset,
+    seed: int,
+    dataset_name: str,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Shared tail for test-only prompt datasets: shuffle, return dummy train/val + test.
+
+    All benchmark datasets use this.
+
+    Parameters
+    ----------
+    ds : Dataset
+        The dataset to prepare.
+    seed : int
+        The seed for shuffling.
+    dataset_name : str
+        Name for logging.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test datasets.
+    """
+    ds = ds.shuffle(seed=seed)
+    pruna_logger.info(f"{dataset_name} is a test-only dataset. Do not use it for training or validation.")
+    return ds.select([0]), ds.select([0]), ds
+
+
 def define_sample_size_for_dataset(dataset: Dataset, fraction: float, sample_size: int | None = None) -> int:
     """
     Define the sample size for the dataset.

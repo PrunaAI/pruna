@@ -16,7 +16,7 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset
+from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
 
 PartiCategory = Literal[
@@ -107,8 +107,7 @@ def setup_parti_prompts_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
-    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
