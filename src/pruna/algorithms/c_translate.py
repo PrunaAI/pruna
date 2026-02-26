@@ -26,8 +26,8 @@ import transformers
 from ConfigSpace import OrdinalHyperparameter
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
-    WhisperConfig,
     PretrainedConfig,
+    WhisperConfig,
 )
 from transformers.modeling_utils import PreTrainedModel
 from transformers.processing_utils import ProcessorMixin
