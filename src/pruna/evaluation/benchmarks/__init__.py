@@ -44,6 +44,7 @@ class Benchmark:
     subsets: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        """Populate subsets from base_datasets when a matching lookup key exists."""
         lookup_key = self.name.replace(" ", "")
         if lookup_key in base_datasets:
             self.subsets = base_datasets[lookup_key][3]
