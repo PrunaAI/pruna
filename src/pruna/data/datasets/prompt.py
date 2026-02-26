@@ -16,7 +16,7 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset
+from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
 
 PartiCategory = Literal[
@@ -107,13 +107,14 @@ def setup_parti_prompts_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
-    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
 
 
 def setup_long_text_bench_dataset(
     seed: int,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the Long Text Bench dataset.
@@ -124,8 +125,12 @@ def setup_long_text_bench_dataset(
     ----------
     seed : int
         The seed to use.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all 160 samples.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
 
     Returns
     -------
@@ -135,13 +140,9 @@ def setup_long_text_bench_dataset(
     ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("text", "text_content")
     ds = ds.rename_column("prompt", "text")
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
-
-    pruna_logger.info("LongTextBench is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "LongTextBench")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
