@@ -16,7 +16,7 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset, stratify_dataset
+from pruna.data.utils import define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
 
 PartiCategory = Literal[
@@ -101,17 +101,11 @@ def setup_parti_prompts_dataset(
     ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
 
     if category is not None:
-        if isinstance(category, list):
-            ds = ds.filter(
-                lambda x: x["Category"] in category or x["Challenge"] in category
-            )
-        else:
-            ds = ds.filter(
-                lambda x: x["Category"] == category or x["Challenge"] == category
-            )
+        categories = [category] if not isinstance(category, list) else category
+        ds = ds.filter(lambda x: x["Category"] in categories or x["Challenge"] in categories)
 
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
-    ds = stratify_dataset(ds, test_sample_size, seed)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
