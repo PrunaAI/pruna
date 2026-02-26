@@ -434,7 +434,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         # load the pipeline with a fake model on meta device
         with (model_path / PIPELINE_INFO_FILE_NAME).open("r") as f:
             task = json.load(f)["task"]
-        pipe = pipeline(task=task, model=model_path, model_kwargs={"device_map": "meta"})
+        pipe = pipeline(task=task, model=str(model_path), model_kwargs={"device_map": "meta"})
         # load the quantized model
         pipe.model = load_quantized_model(model_path)
         move_to_device(pipe, smash_config.device)
