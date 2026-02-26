@@ -44,11 +44,15 @@ class Benchmark:
     task_type: str
     subsets: list[str] = field(default_factory=list)
 
+    @property
+    def lookup_key(self) -> str:
+        """Key for base_datasets lookup (name with spaces removed)."""
+        return self.name.replace(" ", "")
+
     def __post_init__(self) -> None:
         """Populate subsets from setup function's Literal when a matching lookup key exists."""
-        lookup_key = self.name.replace(" ", "")
-        if lookup_key in base_datasets:
-            setup_fn = base_datasets[lookup_key][0]
+        if self.lookup_key in base_datasets:
+            setup_fn = base_datasets[self.lookup_key][0]
             literal_values = get_literal_values_from_param(setup_fn, "category")
             self.subsets = literal_values if literal_values is not None else []
 
@@ -117,12 +121,11 @@ class BenchmarkRegistry:
                 f"Benchmark '{name}' references metrics not in MetricRegistry: {missing}. "
                 f"Available metrics: {list(MetricRegistry._registry.keys())}"
             )
-        lookup_key = benchmark.name.replace(" ", "")
-        if lookup_key not in base_datasets:
+        if benchmark.lookup_key not in base_datasets:
             available = ", ".join(base_datasets.keys())
             raise ValueError(
                 f"Benchmark '{name}' name '{benchmark.name}' does not align with base_datasets. "
-                f"Expected lookup key '{lookup_key}'. Available: {available}"
+                f"Expected lookup key '{benchmark.lookup_key}'. Available: {available}"
             )
 
     @classmethod
@@ -151,10 +154,10 @@ class BenchmarkRegistry:
         """
         lookup_key = name.replace(" ", "")
         for benchmark in cls._registry:
-            if benchmark.name.replace(" ", "") == lookup_key:
+            if benchmark.lookup_key == lookup_key:
                 cls._validate(lookup_key, benchmark)
                 return benchmark
-        available = ", ".join(b.name.replace(" ", "") for b in cls._registry)
+        available = ", ".join(b.lookup_key for b in cls._registry)
         raise KeyError(f"Benchmark '{name}' not found. Available: {available}")
 
     @classmethod
@@ -174,9 +177,9 @@ class BenchmarkRegistry:
             List of benchmark names.
         """
         if task_type is None:
-            return [b.name.replace(" ", "") for b in cls._registry]
-        return [b.name.replace(" ", "") for b in cls._registry if b.task_type == task_type]
+            return [b.lookup_key for b in cls._registry]
+        return [b.lookup_key for b in cls._registry if b.task_type == task_type]
 
 
 for _benchmark in BenchmarkRegistry._registry:
-    BenchmarkRegistry._validate(_benchmark.name.replace(" ", ""), _benchmark)
+    BenchmarkRegistry._validate(_benchmark.lookup_key, _benchmark)
