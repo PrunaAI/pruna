@@ -15,6 +15,7 @@
 from dataclasses import dataclass, field
 
 from pruna.data import base_datasets
+from pruna.data.utils import get_literal_values_from_param
 from pruna.evaluation.metrics import MetricRegistry
 
 
@@ -44,10 +45,12 @@ class Benchmark:
     subsets: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        """Populate subsets from base_datasets when a matching lookup key exists."""
+        """Populate subsets from setup function's Literal when a matching lookup key exists."""
         lookup_key = self.name.replace(" ", "")
         if lookup_key in base_datasets:
-            self.subsets = base_datasets[lookup_key][3]
+            setup_fn = base_datasets[lookup_key][0]
+            literal_values = get_literal_values_from_param(setup_fn, "category")
+            self.subsets = literal_values if literal_values is not None else []
 
 
 class BenchmarkRegistry:

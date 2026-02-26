@@ -68,7 +68,7 @@ with the matching collate function and any defaults (e.g. the default image size
 
 .. code-block:: python
 
-    base_datasets["NewDataset"] = (setup_new_dataset, "text_generation_collate", {}, [])
+    base_datasets["NewDataset"] = (setup_new_dataset, "text_generation_collate", {})
 
 Ensure the dataset follows the expected format specified in the :ref:`collate function <customize-dataset>`.
 The collate function aggregates several samples into a batch and converts them to the expected format.

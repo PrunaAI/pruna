@@ -5,6 +5,7 @@ import torch
 from transformers import AutoTokenizer
 
 from pruna.data import base_datasets
+from pruna.data.utils import get_literal_values_from_param
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
 
@@ -84,10 +85,11 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
 
 
 def _category_filter_params() -> list[tuple[str, str]]:
-    """Datasets with categories and a sample category each."""
+    """Datasets with categories (from Literal) and a sample category each."""
     params = []
     for name, config in base_datasets.items():
-        categories = config[3]
+        setup_fn = config[0]
+        categories = get_literal_values_from_param(setup_fn, "category")
         if categories:
             params.append((name, categories[0]))
     return params
