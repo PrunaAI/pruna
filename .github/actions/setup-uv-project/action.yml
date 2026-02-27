@@ -11,5 +11,13 @@ runs:
         enable-cache: true
         github-token: ${{ github.token }}
 
+    - name: Cache uv virtual environment
+      uses: actions/cache@v5
+      with:
+        path: .venv
+        key: uv-venv-${{ runner.os }}-${{ matrix.python-version || '3.11' }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
+        restore-keys: |
+          uv-venv-${{ runner.os }}-${{ matrix.python-version || '3.11' }}-
+
     - shell: bash
       run: uv sync --extra dev
