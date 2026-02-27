@@ -16,7 +16,7 @@ from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
-from pruna.data.utils import define_sample_size_for_dataset
+from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
 
 PartiCategory = Literal[
@@ -107,12 +107,7 @@ def setup_parti_prompts_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
-
-    if len(ds) == 0:
-        raise ValueError(f"No samples found for category '{category}'.")
-
-    pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
@@ -137,13 +132,15 @@ def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     return ds.select([0]), ds.select([0]), ds
 
 
-IMGEDIT_CATEGORIES = ["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"]
+ImgEditCategory = Literal["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"]
 
 
 def setup_imgedit_dataset(
     seed: int,
-    category: str | None = None,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: ImgEditCategory | list[ImgEditCategory] | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the ImgEdit benchmark dataset for image editing evaluation.
@@ -154,11 +151,15 @@ def setup_imgedit_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : ImgEditCategory | list[ImgEditCategory] | None
         Filter by edit type. Available: replace, add, remove, adjust, extract, style,
         background, compose. If None, returns all categories.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
 
     Returns
     -------
@@ -169,20 +170,18 @@ def setup_imgedit_dataset(
 
     import requests
 
-    if category is not None and category not in IMGEDIT_CATEGORIES:
-        raise ValueError(f"Invalid category: {category}. Must be one of {IMGEDIT_CATEGORIES}")
-
     instructions_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/b3eb8e74d7cd1fd0ce5341eaf9254744a8ab4c0b/Benchmark/Basic/basic_edit.json"
     judge_prompts_url = "https://raw.githubusercontent.com/PKU-YuanGroup/ImgEdit/c14480ac5e7b622e08cd8c46f96624a48eb9ab46/Benchmark/Basic/prompts.json"
 
     instructions = json.loads(requests.get(instructions_url).text)
     judge_prompts = json.loads(requests.get(judge_prompts_url).text)
 
+    categories = [category] if category is not None and not isinstance(category, list) else category
     records = []
     for _, instruction in instructions.items():
         edit_type = instruction.get("edit_type", "")
 
-        if category is not None and edit_type != category:
+        if categories is not None and edit_type not in categories:
             continue
 
         records.append(
@@ -195,19 +194,16 @@ def setup_imgedit_dataset(
         )
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
 
     if len(ds) == 0:
         raise ValueError(f"No samples found for category '{category}'.")
 
-    pruna_logger.info("ImgEdit is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "ImgEdit")
 
 
-GEDIT_CATEGORIES = [
+GEditBenchCategory = Literal[
     "background_change",
     "color_alter",
     "material_alter",
@@ -224,8 +220,10 @@ GEDIT_CATEGORIES = [
 
 def setup_gedit_dataset(
     seed: int,
-    category: str | None = None,
-    num_samples: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: GEditBenchCategory | list[GEditBenchCategory] | None = None,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the GEditBench dataset for image editing evaluation.
@@ -236,21 +234,22 @@ def setup_gedit_dataset(
     ----------
     seed : int
         The seed to use.
-    category : str | None
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : GEditBenchCategory | list[GEditBenchCategory] | None
         Filter by task type. Available: background_change, color_alter, material_alter,
         motion_change, ps_human, style_change, subject_add, subject_remove, subject_replace,
         text_change, tone_transfer. If None, returns all categories.
-    num_samples : int | None
-        Maximum number of samples to return. If None, returns all samples.
 
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
         The GEditBench dataset (dummy train, dummy val, test).
     """
-    if category is not None and category not in GEDIT_CATEGORIES:
-        raise ValueError(f"Invalid category: {category}. Must be one of {GEDIT_CATEGORIES}")
-
     task_type_map = {
         "subject_add": "subject-add",
         "subject_remove": "subject-remove",
@@ -260,9 +259,10 @@ def setup_gedit_dataset(
     ds = load_dataset("stepfun-ai/GEdit-Bench")["train"]  # type: ignore[index]
     ds = ds.filter(lambda x: x["instruction_language"] == "en")
 
-    if category is not None:
-        hf_task_type = task_type_map.get(category, category)
-        ds = ds.filter(lambda x, tt=hf_task_type: x["task_type"] == tt)
+    categories = [category] if category is not None and not isinstance(category, list) else category
+    if categories is not None:
+        hf_types = [task_type_map.get(c, c) for c in categories]
+        ds = ds.filter(lambda x: x["task_type"] in hf_types)
 
     records = []
     for row in ds:
@@ -276,13 +276,10 @@ def setup_gedit_dataset(
         )
 
     ds = Dataset.from_list(records)
-    ds = ds.shuffle(seed=seed)
-
-    if num_samples is not None:
-        ds = ds.select(range(min(num_samples, len(ds))))
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
 
     if len(ds) == 0:
         raise ValueError(f"No samples found for category '{category}'.")
 
-    pruna_logger.info("GEditBench is a test-only dataset. Do not use it for training or validation.")
-    return ds.select([0]), ds.select([0]), ds
+    return _prepare_test_only_prompt_dataset(ds, seed, "GEditBench")

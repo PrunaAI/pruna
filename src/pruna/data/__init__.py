@@ -51,6 +51,12 @@ from pruna.data.datasets.text_to_image import (
 )
 from pruna.data.datasets.text_to_video import setup_vbench_dataset
 
+BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
+    "PartiPrompts": ("Animals", ["Category", "Challenge"]),
+    "ImgEdit": ("replace", ["category"]),
+    "GEditBench": ("background_change", ["category"]),
+}
+
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "COCO": (setup_coco_dataset, "image_generation_collate", {"img_size": 512}),
     "LAION256": (setup_laion256_dataset, "image_generation_collate", {"img_size": 512}),
