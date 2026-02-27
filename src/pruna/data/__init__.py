@@ -32,6 +32,7 @@ from pruna.data.datasets.prompt import (
     setup_geneval_dataset,
     setup_hps_dataset,
     setup_long_text_bench_dataset,
+    setup_oneig_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -56,6 +57,7 @@ BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "PartiPrompts": ("Animals", ["Category", "Challenge"]),
     "GenEval": ("counting", ["tag"]),
     "HPS": ("anime", ["category"]),
+    "OneIG": ("Text_Rendering", ["subset", "category"]),
 }
 
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
@@ -116,6 +118,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
     "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
     "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -256,6 +259,26 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             # "text_score" not supported in Pruna
         ],
         task_type="text_to_image",
+    ),
+    "OneIG": BenchmarkInfo(
+        name="oneig",
+        display_name="OneIG",
+        description=(
+            "Comprehensive benchmark for text rendering and image-text alignment "
+            "evaluation across anime, portrait, and object generation."
+        ),
+        metrics=[
+            # "alignment_score", "text_score" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=[
+            "Text_Rendering",
+            "Anime_Stylization",
+            "Portrait",
+            "General_Object",
+            "Knowledge_Reasoning",
+            "Multilingualism",
+        ],
     ),
     "COCO": BenchmarkInfo(
         name="coco",

@@ -48,6 +48,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("GenEval", dict(), marks=pytest.mark.slow),
         pytest.param("HPS", dict(), marks=pytest.mark.slow),
         pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIG", dict(), marks=pytest.mark.slow),
     ],
 )
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
