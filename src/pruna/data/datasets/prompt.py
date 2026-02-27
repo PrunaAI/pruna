@@ -250,6 +250,41 @@ def setup_hps_dataset(
     return _prepare_test_only_prompt_dataset(ds, seed, "HPS")
 
 
+def setup_long_text_bench_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the Long Text Bench dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The Long Text Bench dataset (dummy train, dummy val, test).
+    """
+    ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
+    ds = ds.rename_column("text", "text_content")
+    ds = ds.rename_column("prompt", "text")
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "LongTextBench")
+
+
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the GenAI Bench dataset.
