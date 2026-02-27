@@ -244,7 +244,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         display_name="OneIG Text Rendering",
         description="Evaluates text rendering quality in generated images using OCR-based metrics.",
         metrics=[
-            # "text_score" not supported in Pruna (≠ accuracy)
+            # "text_score" not supported in Pruna
         ],
         task_type="text_to_image",
     ),
@@ -253,7 +253,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         display_name="OneIG Alignment",
         description="Evaluates image-text alignment for anime, human, and object generation with VQA-based questions.",
         metrics=[
-            # "alignment_score" not supported in Pruna (≠ accuracy)
+            # "alignment_score" not supported in Pruna
         ],
         task_type="text_to_image",
         subsets=["Anime_Stylization", "Portrait", "General_Object"],
@@ -266,7 +266,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             "across entity, attribute, relation, and global aspects."
         ),
         metrics=[
-            # "qa_accuracy" not supported in Pruna (≠ accuracy)
+            # "qa_accuracy" not supported in Pruna
         ],
         task_type="text_to_image",
         subsets=["entity", "attribute", "relation", "global", "other"],
