@@ -237,8 +237,6 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             "multiple generative model outputs to align evaluation with actual human preferences."
         ),
         metrics=[
-            "clip_score",
-            "clipiqa",
             # "hps" not supported in Pruna
         ],
         task_type="text_to_image",

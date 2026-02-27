@@ -75,6 +75,7 @@ These tutorials will guide you through the process of using |pruna| to optimize 
       :link: ./sd_deepcache.ipynb
 
       Optimize your ``diffusion`` model with ``deepcache`` ``caching``.
+
    .. grid-item-card:: Optimize and Deploy Sana diffusers with Pruna and Hugging Face
       :text-align: center
       :link: ./deploying_sana_tutorial.ipynb
@@ -87,6 +88,36 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Learn how to use the ``target_modules`` parameter to target specific modules in your model.
 
+   .. grid-item-card:: Blazingly Fast Computer Vision
+      :text-align: center
+      :link: ./computer_vision.ipynb
+
+      Optimize any ``computer vision`` model with ``x_fast`` ``compilation``.
+
+   .. grid-item-card:: Recover Quality after Quantization
+      :text-align: center
+      :link: ./recovery.ipynb
+
+      Recover quality using ``text_to_image_perp`` after ``diffusers_int8`` ``quantization``.
+
+   .. grid-item-card:: Distribute across GPUs with Ring Attention
+      :text-align: center
+      :link: ./ring_attn.ipynb
+
+      Distribute your ``Flux`` model across multiple GPUs with ``ring_attn`` and ``torch_compile``.
+
+   .. grid-item-card:: Reducing Warm-up Time for Compilation
+      :text-align: center
+      :link: ./portable_compilation.ipynb
+
+      Reduce warm-up time significantly when re-loading a ``torch_compile`` compiled model on a new machine.
+
+   .. grid-item-card:: Quantize and Speedup any LLM
+      :text-align: center
+      :link: ./llm_quantization_compilation_acceleration.ipynb
+
+      Optimize latency and memory footprint of any LLM with ``hqq`` ``quantization`` and ``torch_compile`` ``compilation``.
+
 .. toctree::
    :hidden:
    :maxdepth: 1
@@ -94,3 +125,4 @@ These tutorials will guide you through the process of using |pruna| to optimize 
    :glob:
 
    ./*
+
