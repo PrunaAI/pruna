@@ -72,19 +72,34 @@ class BenchmarkRegistry:
                 "ranging from basic to complex, enabling comprehensive assessment of model capabilities "
                 "across different domains and difficulty levels."
             ),
-            metrics=["arniqa", "clip_score", "clipiqa", "sharpness"],
+            metrics=[
+                "arniqa",
+                "clip_score",
+                "clipiqa",
+                "sharpness",
+            ],
             task_type="text_to_image",
         ),
         Benchmark(
             name="DrawBench",
             description="A comprehensive benchmark for evaluating text-to-image generation models.",
-            metrics=["clip_score", "clipiqa", "sharpness"],
+            metrics=[
+                "clip_score",
+                "clipiqa",
+                "sharpness",
+                # "image_reward" not supported in Pruna
+            ],
             task_type="text_to_image",
         ),
         Benchmark(
             name="GenAI Bench",
             description="A benchmark for evaluating generative AI models.",
-            metrics=["clip_score", "clipiqa", "sharpness"],
+            metrics=[
+                "clip_score",
+                "clipiqa",
+                "sharpness",
+                # "vqa" not supported in Pruna
+            ],
             task_type="text_to_image",
         ),
         Benchmark(
