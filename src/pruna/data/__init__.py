@@ -34,6 +34,7 @@ from pruna.data.datasets.prompt import (
     setup_hps_dataset,
     setup_long_text_bench_dataset,
     setup_oneig_alignment_dataset,
+    setup_oneig_dataset,
     setup_oneig_text_rendering_dataset,
     setup_parti_prompts_dataset,
 )
@@ -59,6 +60,7 @@ BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "PartiPrompts": ("Animals", ["Category", "Challenge"]),
     "GenEval": ("counting", ["tag"]),
     "HPS": ("anime", ["category"]),
+    "OneIG": ("Text_Rendering", ["subset", "category"]),
     "DPG": ("entity", ["category_broad"]),
     "OneIGAlignment": ("Portrait", ["category"]),
 }
@@ -121,6 +123,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
     "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
     "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIGAlignment": (setup_oneig_alignment_dataset, "prompt_with_auxiliaries_collate", {}),
     "DPG": (setup_dpg_dataset, "prompt_with_auxiliaries_collate", {}),
@@ -264,6 +267,26 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             # "text_score" not supported in Pruna
         ],
         task_type="text_to_image",
+    ),
+    "OneIG": BenchmarkInfo(
+        name="oneig",
+        display_name="OneIG",
+        description=(
+            "Comprehensive benchmark for text rendering and image-text alignment "
+            "evaluation across anime, portrait, and object generation."
+        ),
+        metrics=[
+            # "alignment_score", "text_score" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=[
+            "Text_Rendering",
+            "Anime_Stylization",
+            "Portrait",
+            "General_Object",
+            "Knowledge_Reasoning",
+            "Multilingualism",
+        ],
     ),
     "OneIGTextRendering": BenchmarkInfo(
         name="oneig_text_rendering",

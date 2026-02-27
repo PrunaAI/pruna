@@ -48,6 +48,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("GenEval", dict(), marks=pytest.mark.slow),
         pytest.param("HPS", dict(), marks=pytest.mark.slow),
         pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIG", dict(), marks=pytest.mark.slow),
         pytest.param("OneIGTextRendering", dict(), marks=pytest.mark.slow),
         pytest.param("OneIGAlignment", dict(), marks=pytest.mark.slow),
         pytest.param("DPG", dict(), marks=pytest.mark.slow),
@@ -111,17 +112,10 @@ def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
 
 
 @pytest.mark.slow
-<<<<<<< HEAD
-def test_oneig_text_rendering_auxiliaries() -> None:
-    """Test OneIGTextRendering loading with auxiliaries."""
-    dm = PrunaDataModule.from_string(
-        "OneIGTextRendering", dataloader_args={"batch_size": 4}
-=======
 def test_long_text_bench_auxiliaries() -> None:
     """Test LongTextBench loading with auxiliaries."""
     dm = PrunaDataModule.from_string(
         "LongTextBench", dataloader_args={"batch_size": 4}
->>>>>>> origin/feat/add-partiprompts-benchmark-to-pruna
     )
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
