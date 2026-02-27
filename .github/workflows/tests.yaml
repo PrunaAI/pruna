@@ -3,6 +3,7 @@ name: Code Quality & Tests
 permissions:
   contents: read
   pull-requests: read
+  actions: write
 
 on:
   push:
@@ -63,6 +64,7 @@ jobs:
         run: echo "success=true" >> $GITHUB_OUTPUT
 
   test:
+    needs: linting
     runs-on: pruna-cpu
 
     strategy:
