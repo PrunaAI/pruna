@@ -31,7 +31,9 @@ from pruna.data.datasets.prompt import (
     setup_gedit_dataset,
     setup_genai_bench_dataset,
     setup_geneval_dataset,
+    setup_hps_dataset,
     setup_imgedit_dataset,
+    setup_long_text_bench_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -55,6 +57,7 @@ from pruna.data.datasets.text_to_video import setup_vbench_dataset
 BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "PartiPrompts": ("Animals", ["Category", "Challenge"]),
     "GenEval": ("counting", ["tag"]),
+    "HPS": ("anime", ["category"]),
     "ImgEdit": ("replace", ["category"]),
     "GEditBench": ("background_change", ["category"]),
 }
@@ -115,7 +118,9 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     ),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
     "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
+    "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
     "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
     "GEditBench": (setup_gedit_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
@@ -231,6 +236,32 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         ],
         task_type="text_to_image",
         subsets=["single_object", "two_object", "counting", "colors", "position", "color_attr"],
+    ),
+    "HPS": BenchmarkInfo(
+        name="hps",
+        display_name="HPS",
+        description=(
+            "Large-scale human preference annotations with 798k pairwise comparisons across "
+            "multiple generative model outputs to align evaluation with actual human preferences."
+        ),
+        metrics=[
+            # "hps" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=["anime", "concept-art", "paintings", "photo"],
+    ),
+    "LongTextBench": BenchmarkInfo(
+        name="long_text_bench",
+        display_name="Long Text Bench",
+        description=(
+            "Extended detail-rich prompts averaging 284.89 tokens with evaluation dimensions of "
+            "character attributes, structured locations, scene attributes, and spatial relationships "
+            "to test compositional reasoning under long prompt complexity."
+        ),
+        metrics=[
+            # "text_score" not supported in Pruna
+        ],
+        task_type="text_to_image",
     ),
     "ImgEdit": BenchmarkInfo(
         name="imgedit",

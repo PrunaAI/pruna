@@ -46,7 +46,9 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
         pytest.param("GenEval", dict(), marks=pytest.mark.slow),
+        pytest.param("HPS", dict(), marks=pytest.mark.slow),
         pytest.param("ImgEdit", dict(), marks=pytest.mark.slow),
+        pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
         pytest.param("GEditBench", dict(), marks=pytest.mark.slow),
     ],
 )
@@ -84,6 +86,10 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     iterate_dataloaders(datamodule)
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/feat/add-partiprompts-benchmark-to-pruna
 @pytest.mark.cpu
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -103,3 +109,18 @@ def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
     assert all(isinstance(p, str) for p in prompts)
     _, aux_keys = BENCHMARK_CATEGORY_CONFIG[dataset_name]
     assert all(any(aux.get(k) == category for k in aux_keys) for aux in auxiliaries)
+
+
+@pytest.mark.slow
+def test_long_text_bench_auxiliaries() -> None:
+    """Test LongTextBench loading with auxiliaries."""
+    dm = PrunaDataModule.from_string(
+        "LongTextBench", dataloader_args={"batch_size": 4}
+    )
+    dm.limit_datasets(10)
+    batch = next(iter(dm.test_dataloader()))
+    prompts, auxiliaries = batch
+
+    assert len(prompts) == 4
+    assert all(isinstance(p, str) for p in prompts)
+    assert all("text_content" in aux for aux in auxiliaries)
