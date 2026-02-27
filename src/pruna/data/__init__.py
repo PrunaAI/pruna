@@ -30,6 +30,7 @@ from pruna.data.datasets.prompt import (
     setup_dpg_dataset,
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
+    setup_geneval_dataset,
     setup_oneig_alignment_dataset,
     setup_oneig_text_rendering_dataset,
     setup_parti_prompts_dataset,
@@ -54,6 +55,7 @@ from pruna.data.datasets.text_to_video import setup_vbench_dataset
 
 BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "PartiPrompts": ("Animals", ["Category", "Challenge"]),
+    "GenEval": ("counting", ["tag"]),
     "DPG": ("entity", ["category_broad"]),
     "OneIGAlignment": ("Portrait", ["category"]),
 }
@@ -113,6 +115,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         {},
     ),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIGAlignment": (setup_oneig_alignment_dataset, "prompt_with_auxiliaries_collate", {}),
     "DPG": (setup_dpg_dataset, "prompt_with_auxiliaries_collate", {}),
@@ -218,26 +221,18 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         metrics=["clip_score"],
         task_type="text_to_video",
     ),
-    "COCO": BenchmarkInfo(
-        name="coco",
-        display_name="COCO",
-        description="Microsoft COCO dataset for image generation evaluation with real image-caption pairs.",
-        metrics=["fid", "clip_score", "clipiqa"],
+    "GenEval": BenchmarkInfo(
+        name="geneval",
+        display_name="GenEval",
+        description=(
+            "Fine-grained compositional evaluation across object co-occurrence, positioning, "
+            "counting, and color binding to identify specific failure modes in text-to-image alignment."
+        ),
+        metrics=[
+            # "qa_accuracy" not supported in Pruna
+        ],
         task_type="text_to_image",
-    ),
-    "ImageNet": BenchmarkInfo(
-        name="imagenet",
-        display_name="ImageNet",
-        description="Large-scale image classification benchmark with 1000 classes.",
-        metrics=["accuracy"],
-        task_type="image_classification",
-    ),
-    "WikiText": BenchmarkInfo(
-        name="wikitext",
-        display_name="WikiText",
-        description="Language modeling benchmark based on Wikipedia articles.",
-        metrics=["perplexity"],
-        task_type="text_generation",
+        subsets=["single_object", "two_object", "counting", "colors", "position", "color_attr"],
     ),
     "OneIGTextRendering": BenchmarkInfo(
         name="oneig_text_rendering",
@@ -270,6 +265,27 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         ],
         task_type="text_to_image",
         subsets=["entity", "attribute", "relation", "global", "other"],
+    ),
+    "COCO": BenchmarkInfo(
+        name="coco",
+        display_name="COCO",
+        description="Microsoft COCO dataset for image generation evaluation with real image-caption pairs.",
+        metrics=["fid", "clip_score", "clipiqa"],
+        task_type="text_to_image",
+    ),
+    "ImageNet": BenchmarkInfo(
+        name="imagenet",
+        display_name="ImageNet",
+        description="Large-scale image classification benchmark with 1000 classes.",
+        metrics=["accuracy"],
+        task_type="image_classification",
+    ),
+    "WikiText": BenchmarkInfo(
+        name="wikitext",
+        display_name="WikiText",
+        description="Language modeling benchmark based on Wikipedia articles.",
+        metrics=["perplexity"],
+        task_type="text_generation",
     ),
 }
 
