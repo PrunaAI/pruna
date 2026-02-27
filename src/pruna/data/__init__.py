@@ -186,14 +186,24 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         name="drawbench",
         display_name="DrawBench",
         description="A comprehensive benchmark for evaluating text-to-image generation models.",
-        metrics=["clip_score", "clipiqa", "sharpness"],
+        metrics=[
+            "clip_score",
+            "clipiqa",
+            "sharpness",
+            # "image_reward" not supported in Pruna
+        ],
         task_type="text_to_image",
     ),
     "GenAIBench": BenchmarkInfo(
         name="genai_bench",
         display_name="GenAI Bench",
         description="A benchmark for evaluating generative AI models.",
-        metrics=["clip_score", "clipiqa", "sharpness"],
+        metrics=[
+            "clip_score",
+            "clipiqa",
+            "sharpness",
+            # "vqa" not supported in Pruna
+        ],
         task_type="text_to_image",
     ),
     "VBench": BenchmarkInfo(
@@ -210,7 +220,11 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             "Large-scale human preference annotations with 798k pairwise comparisons across "
             "multiple generative model outputs to align evaluation with actual human preferences."
         ),
-        metrics=["clip_score", "clipiqa"],
+        metrics=[
+            "clip_score",
+            "clipiqa",
+            # "hps" not supported in Pruna
+        ],
         task_type="text_to_image",
         subsets=["anime", "concept-art", "paintings", "photo"],
     ),
