@@ -221,7 +221,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             "counting, and color binding to identify specific failure modes in text-to-image alignment."
         ),
         metrics=[
-            # "qa_accuracy" not supported in Pruna (≠ accuracy)
+            # "qa_accuracy" not supported in Pruna
         ],
         task_type="text_to_image",
         subsets=["single_object", "two_object", "counting", "colors", "position", "color_attr"],
