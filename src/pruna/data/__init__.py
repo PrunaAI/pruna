@@ -242,7 +242,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         display_name="ImgEdit",
         description="Image editing benchmark with 8 edit types for evaluating editing capabilities.",
         metrics=[
-            # "img_edit_score" not supported in Pruna (≠ accuracy)
+            # "img_edit_score" not supported in Pruna
         ],
         task_type="image_edit",
         subsets=["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"],
@@ -252,7 +252,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         display_name="GEdit Bench",
         description="Image editing benchmark with 11 task types for evaluating fine-grained editing capabilities.",
         metrics=[
-            # "viescore" not supported in Pruna (≠ accuracy)
+            # "viescore" not supported in Pruna
         ],
         task_type="image_edit",
         subsets=[
