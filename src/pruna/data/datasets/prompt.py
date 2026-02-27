@@ -19,6 +19,8 @@ from datasets import Dataset, load_dataset
 from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_size_for_dataset
 from pruna.logging.logger import pruna_logger
 
+GenEvalCategory = Literal["single_object", "two_object", "counting", "colors", "position", "color_attr"]
+
 PartiCategory = Literal[
     "Abstract",
     "Animals",
@@ -108,6 +110,91 @@ def setup_parti_prompts_dataset(
     ds = ds.select(range(min(test_sample_size, len(ds))))
     ds = ds.rename_column("Prompt", "text")
     return _prepare_test_only_prompt_dataset(ds, seed, "PartiPrompts")
+
+
+def _generate_geneval_question(entry: dict) -> list[str]:
+    """Generate evaluation questions from GenEval metadata."""
+    tag = entry.get("tag", "")
+    include = entry.get("include", [])
+    questions = []
+
+    for obj in include:
+        cls = obj.get("class", "")
+        if "color" in obj:
+            questions.append(f"Does the image contain a {obj['color']} {cls}?")
+        elif "count" in obj:
+            questions.append(f"Does the image contain exactly {obj['count']} {cls}(s)?")
+        else:
+            questions.append(f"Does the image contain a {cls}?")
+
+    if tag == "position" and len(include) >= 2:
+        a_cls = include[0].get("class", "")
+        b_cls = include[1].get("class", "")
+        pos = include[1].get("position")
+        if pos and pos[0]:
+            questions.append(f"Is the {b_cls} {pos[0]} the {a_cls}?")
+
+    return questions
+
+
+def setup_geneval_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: GenEvalCategory | list[GenEvalCategory] | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the GenEval benchmark dataset.
+
+    License: MIT
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : GenEvalCategory | list[GenEvalCategory] | None
+        Filter by category. Available: single_object, two_object, counting, colors, position, color_attr.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The GenEval dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    import requests
+
+    url = "https://raw.githubusercontent.com/djghosh13/geneval/d927da8e42fde2b1b5cd743da4df5ff83c1654ff/prompts/evaluation_metadata.jsonl"
+    response = requests.get(url)
+    data = [json.loads(line) for line in response.text.splitlines()]
+
+    if category is not None:
+        categories = [category] if not isinstance(category, list) else category
+        data = [entry for entry in data if entry.get("tag") in categories]
+
+    records = []
+    for entry in data:
+        questions = _generate_geneval_question(entry)
+        records.append(
+            {
+                "text": entry["prompt"],
+                "tag": entry.get("tag", ""),
+                "questions": questions,
+                "include": entry.get("include", []),
+            }
+        )
+
+    ds = Dataset.from_list(records)
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "GenEval")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
