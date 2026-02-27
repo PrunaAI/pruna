@@ -242,8 +242,17 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         metrics=["accuracy"],
         task_type="image_edit",
         subsets=[
-            "background_change", "color_alter", "material_alter", "motion_change", "ps_human",
-            "style_change", "subject_add", "subject_remove", "subject_replace", "text_change", "tone_transfer"
+            "background_change",
+            "color_alter",
+            "material_alter",
+            "motion_change",
+            "ps_human",
+            "style_change",
+            "subject_add",
+            "subject_remove",
+            "subject_replace",
+            "text_change",
+            "tone_transfer",
         ],
     ),
 }
