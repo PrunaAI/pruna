@@ -220,7 +220,7 @@ class DiffusionDistillationDataModule(PrunaDataModule):
         torch.save(sample, filepath)
 
 
-class DiffusionDistillationDataset(Dataset):
+class DiffusionDistillationDataset(Dataset[Tuple[str, torch.Tensor, torch.Tensor, int]]):
     """
     Dataset for distilling a diffusion pipeline, containing captions, latent inputs, latent outputs and seeds.
 
@@ -243,9 +243,9 @@ class DiffusionDistillationDataset(Dataset):
         """Return the number of samples in the dataset."""
         return len(self.filenames)
 
-    def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor, torch.Tensor, int]:
+    def __getitem__(self, index: int) -> Tuple[str, torch.Tensor, torch.Tensor, int]:
         """Get an item from the dataset."""
-        filepath = self.path / self.filenames[idx]
+        filepath = self.path / self.filenames[index]
         # This is the most generic way to load the data, but may cause a bottleneck because of continuous disk access
         # Loading the whole dataset into memory is often possible given the typically small size of distillation datasets
         # This can be explored if this is identified as a causing a latency bottleneck

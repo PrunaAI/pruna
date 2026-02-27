@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+from _pytest.outcomes import Skipped
 
 from pruna.algorithms.ring_attn.ring import RingAttn
 from pruna.engine.pruna_model import PrunaModel
@@ -46,7 +47,7 @@ class TestRingAttn(AlgorithmTesterBase):
 
     def execute_evaluation(self, model, datamodule, device):
         """Skip evaluation for distributed models as it's not fully supported."""
-        pytest.skip("Evaluation not supported for distributed ring_attn models")
+        raise Skipped("Evaluation not supported for distributed ring_attn models")
 
     @classmethod
     def execute_save(cls, smashed_model: PrunaModel):

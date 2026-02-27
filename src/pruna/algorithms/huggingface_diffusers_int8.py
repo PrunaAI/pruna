@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import operator
 import tempfile
 from collections.abc import Iterable
 from typing import Any, cast
@@ -180,7 +181,9 @@ class DiffusersInt8(PrunaAlgorithmBase):
             subpaths : list[str]
                 The subpaths of the working model to quantize.
             """
-            if not hasattr(working_model, "save_pretrained") or not callable(working_model.save_pretrained):
+            if not hasattr(working_model, "save_pretrained") or not callable(
+                getattr(working_model, "save_pretrained")
+            ):
                 raise ValueError(
                     "diffusers-int8 was applied to a module which didn't have a callable save_pretrained method."
                 )
@@ -200,7 +203,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
 
                 # save the latent model (to be quantized) in a temp directory
                 move_to_device(working_model, "cpu")
-                working_model.save_pretrained(temp_dir)
+                operator.methodcaller("save_pretrained", temp_dir)(working_model)
                 working_class = getattr(diffusers, type(working_model).__name__)
                 compute_dtype = determine_dtype(working_model)
 
