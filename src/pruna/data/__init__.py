@@ -32,6 +32,7 @@ from pruna.data.datasets.prompt import (
     setup_genai_bench_dataset,
     setup_geneval_dataset,
     setup_hps_dataset,
+    setup_imgedit_dataset,
     setup_long_text_bench_dataset,
     setup_oneig_alignment_dataset,
     setup_oneig_dataset,
@@ -60,6 +61,7 @@ BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "PartiPrompts": ("Animals", ["Category", "Challenge"]),
     "GenEval": ("counting", ["tag"]),
     "HPS": ("anime", ["category"]),
+    "ImgEdit": ("replace", ["category"]),
     "OneIG": ("Text_Rendering", ["subset", "category"]),
     "DPG": ("entity", ["category_broad"]),
     "OneIGAlignment": ("Portrait", ["category"]),
@@ -122,6 +124,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
     "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
     "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
+    "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
     "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
     "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
@@ -267,6 +270,16 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             # "text_score" not supported in Pruna
         ],
         task_type="text_to_image",
+    ),
+    "ImgEdit": BenchmarkInfo(
+        name="imgedit",
+        display_name="ImgEdit",
+        description="Image editing benchmark with 8 edit types for evaluating editing capabilities.",
+        metrics=[
+            # "img_edit_score" not supported in Pruna
+        ],
+        task_type="image_edit",
+        subsets=["replace", "add", "remove", "adjust", "extract", "style", "background", "compose"],
     ),
     "OneIG": BenchmarkInfo(
         name="oneig",

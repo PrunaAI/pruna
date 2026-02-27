@@ -47,6 +47,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
         pytest.param("GenEval", dict(), marks=pytest.mark.slow),
         pytest.param("HPS", dict(), marks=pytest.mark.slow),
+        pytest.param("ImgEdit", dict(), marks=pytest.mark.slow),
         pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
         pytest.param("OneIG", dict(), marks=pytest.mark.slow),
         pytest.param("OneIGTextRendering", dict(), marks=pytest.mark.slow),
@@ -57,12 +58,11 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
 def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> None:
     """Test the datamodule from a string."""
     # get tokenizer if available
-    tokenizer = collate_fn_args.get("tokenizer", None)
+    tokenizer = collate_fn_args.get("tokenizer")
 
     # get the datamodule from the string
     datamodule = PrunaDataModule.from_string(dataset_name, collate_fn_args=collate_fn_args, tokenizer=tokenizer)
     datamodule.limit_datasets(10)
-
 
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
@@ -87,7 +87,6 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_ar
     assert labels.dtype == torch.int64
     # iterate through the dataloaders
     iterate_dataloaders(datamodule)
-
 
 
 @pytest.mark.cpu
