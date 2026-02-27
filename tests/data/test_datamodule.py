@@ -46,6 +46,7 @@ def iterate_dataloaders(datamodule: PrunaDataModule) -> None:
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
         pytest.param("GenEval", dict(), marks=pytest.mark.slow),
+        pytest.param("HPS", dict(), marks=pytest.mark.slow),
         pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
     ],
 )
