@@ -72,7 +72,12 @@ class BenchmarkRegistry:
                 "ranging from basic to complex, enabling comprehensive assessment of model capabilities "
                 "across different domains and difficulty levels."
             ),
-            metrics=["arniqa", "clip_score", "clipiqa", "sharpness"],
+            metrics=[
+                "arniqa",
+                "clip_score",
+                "clipiqa",
+                "sharpness",
+            ],
             task_type="text_to_image",
         ),
         Benchmark(
