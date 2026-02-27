@@ -242,8 +242,7 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             "evaluation across anime, portrait, and object generation."
         ),
         metrics=[
-            "accuracy",
-            # "alignment_score", "text_score" not supported in Pruna (InferBench equivalents)
+            # "alignment_score", "text_score" not supported in Pruna (≠ accuracy)
         ],
         task_type="text_to_image",
         subsets=[
