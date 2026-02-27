@@ -182,12 +182,14 @@ def setup_geneval_dataset(
     records = []
     for entry in data:
         questions = _generate_geneval_question(entry)
-        records.append({
-            "text": entry["prompt"],
-            "tag": entry.get("tag", ""),
-            "questions": questions,
-            "include": entry.get("include", []),
-        })
+        records.append(
+            {
+                "text": entry["prompt"],
+                "tag": entry.get("tag", ""),
+                "questions": questions,
+                "include": entry.get("include", []),
+            }
+        )
 
     ds = Dataset.from_list(records)
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
