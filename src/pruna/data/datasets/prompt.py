@@ -404,9 +404,10 @@ def _load_oneig_alignment(seed: int, category: str | None = None, class_filter: 
 
     ds = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
 
+    questions_by_id: dict[str, dict] = {}
     url = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/main/benchmark/alignment_questions.json"
     response = requests.get(url)
-    questions_by_id = {}
+    questions_by_id: dict[str, dict] = {}
     if response.status_code == 200:
         try:
             questions_data = json.loads(response.text)
@@ -567,3 +568,95 @@ def setup_oneig_dataset(
         raise ValueError(f"No samples found for category '{category}'. Check that the category exists and has data.")
 
     return _prepare_test_only_prompt_dataset(ds, seed, "OneIG")
+
+
+def setup_oneig_text_rendering_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """Setup OneIG Text Rendering benchmark (subset of OneIG)."""
+    ds = _load_oneig_text_rendering(seed, None)
+    n = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(n, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "OneIGTextRendering")
+
+
+def setup_oneig_alignment_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: str | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """Setup OneIG Alignment benchmark (subset of OneIG)."""
+    ds = _load_oneig_alignment(seed, category=category, class_filter=None)
+    n = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(n, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "OneIGAlignment")
+
+
+DPGCategory = Literal["entity", "attribute", "relation", "global", "other"]
+
+
+def setup_dpg_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: DPGCategory | list[DPGCategory] | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the DPG (Descriptive Prompt Generation) benchmark dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : DPGCategory | list[DPGCategory] | None
+        Filter by category. Available: entity, attribute, relation, global, other.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The DPG dataset (dummy train, dummy val, test).
+    """
+    import csv
+    import io
+    from collections import defaultdict
+
+    import requests
+
+    url = "https://raw.githubusercontent.com/TencentQQGYLab/ELLA/main/dpg_bench/dpg_bench.csv"
+    response = requests.get(url)
+    reader = csv.DictReader(io.StringIO(response.text))
+
+    categories = [category] if category is not None and not isinstance(category, list) else category
+    grouped: dict[tuple[str, str], list[str]] = defaultdict(list)
+    for row in reader:
+        row_category = row.get("category_broad", row.get("category", ""))
+
+        if categories is not None:
+            if row_category not in categories:
+                continue
+
+        key = (row.get("text", ""), row_category)
+        q = row.get("question_natural_language", "")
+        if q and q not in grouped[key]:
+            grouped[key].append(q)
+
+    records = [{"text": text, "category_broad": cat, "questions": qs} for (text, cat), qs in grouped.items()]
+
+    ds = Dataset.from_list(records)
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "DPG")
