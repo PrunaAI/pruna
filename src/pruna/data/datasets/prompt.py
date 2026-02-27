@@ -146,8 +146,8 @@ def setup_hps_dataset(
 
     from huggingface_hub import hf_hub_download
 
-    categories_to_load = list(get_args(HPSCategory)) if category is None else (
-        [category] if not isinstance(category, list) else category
+    categories_to_load = (
+        list(get_args(HPSCategory)) if category is None else ([category] if not isinstance(category, list) else category)
     )
 
     all_prompts = []
