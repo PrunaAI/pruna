@@ -40,7 +40,21 @@ class TokenizerMissingError(Exception):
 
 
 def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> list[str] | None:
-    """Extract Literal values from a function parameter's type annotation (handles Union)."""
+    """
+    Extract Literal values from a function parameter's type annotation (handles Union).
+
+    Parameters
+    ----------
+    func : Callable[..., Any]
+        The function to inspect.
+    param_name : str
+        The parameter name to extract Literal values from.
+
+    Returns
+    -------
+    list[str] | None
+        List of string values if the parameter is a Literal type, None otherwise.
+    """
     unwrapped = getattr(func, "func", func)
     sig = inspect.signature(unwrapped)
     if param_name not in sig.parameters:
