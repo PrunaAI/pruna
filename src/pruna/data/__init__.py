@@ -29,6 +29,7 @@ from pruna.data.datasets.image import (
 from pruna.data.datasets.prompt import (
     setup_drawbench_dataset,
     setup_genai_bench_dataset,
+    setup_geneval_dataset,
     setup_hps_dataset,
     setup_parti_prompts_dataset,
 )
@@ -52,6 +53,7 @@ from pruna.data.datasets.text_to_video import setup_vbench_dataset
 
 BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "PartiPrompts": ("Animals", ["Category", "Challenge"]),
+    "GenEval": ("counting", ["tag"]),
     "HPS": ("anime", ["category"]),
 }
 
@@ -110,6 +112,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         {},
     ),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
     "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
@@ -212,6 +215,19 @@ benchmark_info: dict[str, BenchmarkInfo] = {
         description="A benchmark for evaluating video generation models.",
         metrics=["clip_score"],
         task_type="text_to_video",
+    ),
+    "GenEval": BenchmarkInfo(
+        name="geneval",
+        display_name="GenEval",
+        description=(
+            "Fine-grained compositional evaluation across object co-occurrence, positioning, "
+            "counting, and color binding to identify specific failure modes in text-to-image alignment."
+        ),
+        metrics=[
+            # "qa_accuracy" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=["single_object", "two_object", "counting", "colors", "position", "color_attr"],
     ),
     "HPS": BenchmarkInfo(
         name="hps",
