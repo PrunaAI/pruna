@@ -30,7 +30,7 @@ import base64
 import io
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Type, TypeVar
+from typing import Any, List, Literal, Optional, Type, TypeVar
 
 import torch
 from PIL import Image
@@ -39,6 +39,56 @@ from pydantic import BaseModel
 from pruna.logging.logger import pruna_logger
 
 T = TypeVar("T", bound=BaseModel)
+
+
+def get_vlm(
+    vlm: Optional[BaseVLM] = None,
+    vlm_type: Literal["litellm", "transformers"] = "litellm",
+    model_name: str = "gpt-4o",
+    device: Optional[str | torch.device] = None,
+    api_key: Optional[str] = None,
+    use_outlines: bool = False,
+    **vlm_kwargs: Any,
+) -> BaseVLM:
+    """
+    Create or return a VLM instance.
+
+    Parameters
+    ----------
+    vlm : BaseVLM | None
+        If provided, returned as-is. Otherwise a VLM is created.
+    vlm_type : {"litellm", "transformers"}
+        Backend when creating a VLM.
+    model_name : str
+        Model name for litellm or HuggingFace.
+    device : str | torch.device | None
+        Device for transformers VLM.
+    api_key : str | None
+        API key for litellm.
+    use_outlines : bool
+        Use outlines for transformers.
+    **vlm_kwargs : Any
+        Extra kwargs passed to LitellmVLM or TransformersVLM.
+        For TransformersVLM, use model_load_kwargs={"torch_dtype": torch.bfloat16}
+        to pass options to from_pretrained.
+
+    Returns
+    -------
+    BaseVLM
+        The VLM instance.
+    """
+    if vlm is not None:
+        return vlm
+    if vlm_type == "litellm":
+        return LitellmVLM(model_name=model_name, api_key=api_key, **vlm_kwargs)
+    model_load_kwargs = vlm_kwargs.pop("model_load_kwargs", {})
+    return TransformersVLM(
+        model_name=model_name,
+        device=device,
+        use_outlines=use_outlines,
+        model_load_kwargs=model_load_kwargs,
+        **vlm_kwargs,
+    )
 
 
 class BaseVLM(ABC):
@@ -226,7 +276,7 @@ class LitellmVLM(BaseVLM):
         """
         scores = []
         for image, question, answer in zip(images, questions, answers):
-            prompt = f"{question} Answer with just Yes or No."
+            prompt = f"{question} Please answer yes or no."
             response = self.generate([image], [prompt], **kwargs)[0].lower()
             score = 1.0 if answer.lower() in response else 0.0
             scores.append(score)
@@ -244,7 +294,7 @@ class TransformersVLM(BaseVLM):
     """
     VLM using HuggingFace Transformers for local inference.
 
-    Supports models like BLIP, LLaVA, etc.
+    Supports models like BLIP, LLaVA, SmolVLM, etc.
 
     Parameters
     ----------
@@ -254,8 +304,10 @@ class TransformersVLM(BaseVLM):
         Device for inference. Auto-detected if None.
     use_outlines : bool, optional
         Use outlines for constrained decoding. Default is False.
+    model_load_kwargs : dict, optional
+        Kwargs passed to from_pretrained (e.g. torch_dtype, attn_implementation).
     **kwargs : Any
-        Additional arguments passed to model generation.
+        Additional arguments passed to model.generate.
     """
 
     def __init__(
@@ -263,10 +315,12 @@ class TransformersVLM(BaseVLM):
         model_name: str = "Salesforce/blip2-opt-2.7b",
         device: Optional[str | torch.device] = None,
         use_outlines: bool = False,
+        model_load_kwargs: Optional[dict] = None,
         **kwargs: Any,
     ) -> None:
         self.model_name = model_name
         self.use_outlines = use_outlines
+        self.model_load_kwargs = model_load_kwargs or {}
         if device is None:
             if torch.cuda.is_available():
                 self.device = torch.device("cuda")
@@ -284,13 +338,13 @@ class TransformersVLM(BaseVLM):
         if self._model is not None:
             return
         try:
-            from transformers import AutoModelForVision2Seq, AutoProcessorForVision2Seq
+            from transformers import AutoModelForImageTextToText, AutoProcessor
         except ImportError:
             pruna_logger.error("transformers not installed. Install with: pip install transformers")
             raise
         pruna_logger.info(f"Loading VLM model: {self.model_name}")
-        self._processor = AutoProcessorForVision2Seq.from_pretrained(self.model_name)
-        self._model = AutoModelForVision2Seq.from_pretrained(self.model_name)
+        self._processor = AutoProcessor.from_pretrained(self.model_name)
+        self._model = AutoModelForImageTextToText.from_pretrained(self.model_name, **self.model_load_kwargs)
         self._model.to(self.device)
         self._model.eval()
 
@@ -323,18 +377,10 @@ class TransformersVLM(BaseVLM):
         self._load_model()
         results = []
         max_new_tokens = kwargs.get("max_new_tokens", 128)
-        # Try outlines if requested
         if self.use_outlines and response_format:
             results = self._generate_with_outlines(images, prompts, response_format, max_new_tokens)
         else:
-            # Standard generation
-            with torch.inference_mode():
-                for image, prompt in zip(images, prompts):
-                    inputs = self._processor(images=[image], text=prompt, return_tensors="pt")
-                    inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                    output = self._model.generate(**inputs, max_new_tokens=max_new_tokens, **self.extra_kwargs)
-                    response = self._processor.decode(output[0], skip_special_tokens=True)
-                    results.append(response)
+            results = self._generate_standard(images, prompts, max_new_tokens)
         return results
 
     def _generate_with_outlines(
@@ -363,16 +409,33 @@ class TransformersVLM(BaseVLM):
         with torch.inference_mode():
             for image, prompt in zip(images, prompts):
                 try:
-                    inputs = self._processor(images=[image], text=prompt, return_tensors="pt")
-                    inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                    # Generate with outlines
+                    inputs = self._prepare_inputs(image, prompt)
                     output = generator(**inputs, max_tokens=max_new_tokens)
-                    response = self._processor.decode(output[0], skip_special_tokens=True)
+                    response = self._decode_output(output[0])
                     results.append(response)
                 except Exception as e:
                     pruna_logger.warning(f"Outlines generation failed: {e}, using standard")
                     results.append("")
         return results
+
+    def _prepare_inputs(self, image: Image.Image, prompt: str) -> dict:
+        """Prepare model inputs, supporting both BLIP-style and chat-template processors."""
+        try:
+            inputs = self._processor(images=[image], text=prompt, return_tensors="pt")
+        except (ValueError, TypeError):
+            conversation = [
+                {"role": "user", "content": [{"type": "image", "image": image}, {"type": "text", "text": prompt}]}
+            ]
+            inputs = self._processor.apply_chat_template(
+                conversation, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
+            )
+        return {k: v.to(self.device) for k, v in inputs.items()}
+
+    def _decode_output(self, output_ids: torch.Tensor) -> str:
+        """Decode model output to text."""
+        if hasattr(self._processor, "batch_decode"):
+            return self._processor.batch_decode([output_ids], skip_special_tokens=True)[0]
+        return self._processor.decode(output_ids, skip_special_tokens=True)
 
     def _generate_standard(
         self,
@@ -384,10 +447,9 @@ class TransformersVLM(BaseVLM):
         results = []
         with torch.inference_mode():
             for image, prompt in zip(images, prompts):
-                inputs = self._processor(images=[image], text=prompt, return_tensors="pt")
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                inputs = self._prepare_inputs(image, prompt)
                 output = self._model.generate(**inputs, max_new_tokens=max_new_tokens, **self.extra_kwargs)
-                response = self._processor.decode(output[0], skip_special_tokens=True)
+                response = self._decode_output(output[0])
                 results.append(response)
         return results
 
@@ -419,7 +481,7 @@ class TransformersVLM(BaseVLM):
         """
         scores = []
         for image, question, answer in zip(images, questions, answers):
-            prompt = f"Question: {question} Answer:"
+            prompt = f"{question} Please answer yes or no."
             responses = self.generate([image], [prompt], **kwargs)
             response = responses[0].lower() if responses else ""
             score = 1.0 if answer.lower() in response else 0.0
