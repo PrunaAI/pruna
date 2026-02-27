@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Literal, Tuple
+from typing import Literal, Tuple, get_args
 
 from datasets import Dataset, load_dataset
 
@@ -20,6 +20,7 @@ from pruna.data.utils import _prepare_test_only_prompt_dataset, define_sample_si
 from pruna.logging.logger import pruna_logger
 
 GenEvalCategory = Literal["single_object", "two_object", "counting", "colors", "position", "color_attr"]
+HPSCategory = Literal["anime", "concept-art", "paintings", "photo"]
 
 PartiCategory = Literal[
     "Abstract",
@@ -195,6 +196,93 @@ def setup_geneval_dataset(
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
     ds = ds.select(range(min(test_sample_size, len(ds))))
     return _prepare_test_only_prompt_dataset(ds, seed, "GenEval")
+
+
+def setup_hps_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    category: HPSCategory | list[HPSCategory] | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the HPS (Human Preference Score) benchmark dataset.
+
+    License: MIT
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+    category : HPSCategory | list[HPSCategory] | None
+        Filter by category. Available: anime, concept-art, paintings, photo.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The HPS dataset (dummy train, dummy val, test).
+    """
+    import json
+
+    from huggingface_hub import hf_hub_download
+
+    categories_to_load = (
+        list(get_args(HPSCategory)) if category is None else ([category] if not isinstance(category, list) else category)
+    )
+
+    all_prompts = []
+    for cat in categories_to_load:
+        file_path = hf_hub_download("zhwang/HPDv2", f"{cat}.json", subfolder="benchmark", repo_type="dataset")
+        with open(file_path, "r", encoding="utf-8") as f:
+            prompts = json.load(f)
+            for prompt in prompts:
+                all_prompts.append({"text": prompt, "category": cat})
+
+    ds = Dataset.from_list(all_prompts)
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "HPS")
+
+
+def setup_long_text_bench_dataset(
+    seed: int,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Setup the Long Text Bench dataset.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int
+        The seed to use.
+    fraction : float
+        The fraction of the dataset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        The sample size to use for the test dataset.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        The Long Text Bench dataset (dummy train, dummy val, test).
+    """
+    ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
+    ds = ds.rename_column("text", "text_content")
+    ds = ds.rename_column("prompt", "text")
+    test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
+    ds = ds.select(range(min(test_sample_size, len(ds))))
+    return _prepare_test_only_prompt_dataset(ds, seed, "LongTextBench")
 
 
 def setup_genai_bench_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
