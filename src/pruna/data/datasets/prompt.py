@@ -229,12 +229,14 @@ def setup_oneig_alignment_dataset(
                 continue
 
         q_info = questions_by_id.get(row_id, {})
-        records.append({
-            "text": row.get("prompt_en", row.get("prompt", "")),
-            "category": row_category,
-            "questions": q_info.get("questions", []),
-            "dependencies": q_info.get("dependencies", []),
-        })
+        records.append(
+            {
+                "text": row.get("prompt_en", row.get("prompt", "")),
+                "category": row_category,
+                "questions": q_info.get("questions", []),
+                "dependencies": q_info.get("dependencies", []),
+            }
+        )
 
     ds = Dataset.from_list(records)
     ds = ds.shuffle(seed=seed)
@@ -303,10 +305,7 @@ def setup_dpg_dataset(
         if q and q not in grouped[key]:
             grouped[key].append(q)
 
-    records = [
-        {"text": text, "category_broad": cat, "questions": qs}
-        for (text, cat), qs in grouped.items()
-    ]
+    records = [{"text": text, "category_broad": cat, "questions": qs} for (text, cat), qs in grouped.items()]
 
     ds = Dataset.from_list(records)
     test_sample_size = define_sample_size_for_dataset(ds, fraction, test_sample_size)
