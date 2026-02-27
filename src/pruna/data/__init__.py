@@ -27,6 +27,7 @@ from pruna.data.datasets.image import (
     setup_mnist_dataset,
 )
 from pruna.data.datasets.prompt import (
+    setup_dpg_dataset,
     setup_drawbench_dataset,
     setup_gedit_dataset,
     setup_genai_bench_dataset,
@@ -34,6 +35,9 @@ from pruna.data.datasets.prompt import (
     setup_hps_dataset,
     setup_imgedit_dataset,
     setup_long_text_bench_dataset,
+    setup_oneig_alignment_dataset,
+    setup_oneig_dataset,
+    setup_oneig_text_rendering_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -60,6 +64,9 @@ BENCHMARK_CATEGORY_CONFIG: dict[str, tuple[str, list[str]]] = {
     "HPS": ("anime", ["category"]),
     "ImgEdit": ("replace", ["category"]),
     "GEditBench": ("background_change", ["category"]),
+    "OneIG": ("Text_Rendering", ["subset", "category"]),
+    "DPG": ("entity", ["category_broad"]),
+    "OneIGAlignment": ("Portrait", ["category"]),
 }
 
 base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
@@ -122,6 +129,10 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
     "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
     "GEditBench": (setup_gedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIGAlignment": (setup_oneig_alignment_dataset, "prompt_with_auxiliaries_collate", {}),
+    "DPG": (setup_dpg_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
@@ -294,6 +305,58 @@ benchmark_info: dict[str, BenchmarkInfo] = {
             "text_change",
             "tone_transfer",
         ],
+    ),
+    "OneIG": BenchmarkInfo(
+        name="oneig",
+        display_name="OneIG",
+        description=(
+            "Comprehensive benchmark for text rendering and image-text alignment "
+            "evaluation across anime, portrait, and object generation."
+        ),
+        metrics=[
+            # "alignment_score", "text_score" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=[
+            "Text_Rendering",
+            "Anime_Stylization",
+            "Portrait",
+            "General_Object",
+            "Knowledge_Reasoning",
+            "Multilingualism",
+        ],
+    ),
+    "OneIGTextRendering": BenchmarkInfo(
+        name="oneig_text_rendering",
+        display_name="OneIG Text Rendering",
+        description="Evaluates text rendering quality in generated images using OCR-based metrics.",
+        metrics=[
+            # "text_score" not supported in Pruna
+        ],
+        task_type="text_to_image",
+    ),
+    "OneIGAlignment": BenchmarkInfo(
+        name="oneig_alignment",
+        display_name="OneIG Alignment",
+        description="Evaluates image-text alignment for anime, human, and object generation with VQA-based questions.",
+        metrics=[
+            # "alignment_score" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=["Anime_Stylization", "Portrait", "General_Object"],
+    ),
+    "DPG": BenchmarkInfo(
+        name="dpg",
+        display_name="DPG",
+        description=(
+            "Descriptive Prompt Generation benchmark for evaluating image understanding "
+            "across entity, attribute, relation, and global aspects."
+        ),
+        metrics=[
+            # "qa_accuracy" not supported in Pruna
+        ],
+        task_type="text_to_image",
+        subsets=["entity", "attribute", "relation", "global", "other"],
     ),
     "COCO": BenchmarkInfo(
         name="coco",
