@@ -99,7 +99,7 @@ class SharpnessMetric(StatefulMetric):
 
         if images.ndim != 4:
             pruna_logger.error(f"Expected 4‑D tensor (B, C, H, W); got shape {tuple(images.shape)}")
-            raise
+            raise ValueError(f"Expected 4-D tensor (B, C, H, W); got shape {tuple(images.shape)}")
 
         # Move to CPU - OpenCV only works on numpy
         imgs = images.detach().cpu()
@@ -134,7 +134,7 @@ class SharpnessMetric(StatefulMetric):
 
             else:
                 pruna_logger.error("SharpnessMetric: unsupported channel count")
-                raise
+                raise ValueError(f"SharpnessMetric: unsupported channel count {img.shape[0]}. Expected 1 or 3 channels.")
 
             self.scores.append(sharpness_score)
 
