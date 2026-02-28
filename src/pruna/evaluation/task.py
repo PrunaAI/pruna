@@ -28,7 +28,7 @@ from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import get_hyperparameters
 from pruna.logging.logger import pruna_logger
 
-AVAILABLE_REQUESTS = ("image_generation_quality",)
+AVAILABLE_REQUESTS = ("image_generation_quality", "text_generation_quality")
 PARENT_METRICS = (
     "ModelArchitectureStats",
     "InferenceTimeStats",
@@ -164,7 +164,8 @@ def get_metrics(
     Parameters
     ----------
     request : str | List[str]
-        The user request. Right now, it only supports image generation quality.
+        The user request. Supports named requests like 'image_generation_quality'
+        and 'text_generation_quality', or a list of metric names.
     inference_device : str | torch.device | None, optional
         The device to be used for inference, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
@@ -254,6 +255,11 @@ def _process_single_request(
             TorchMetricWrapper("clip_score", device=stateful_metric_device),
             TorchMetricWrapper("clip_score", call_type="pairwise", device=stateful_metric_device),
             CMMD(device=stateful_metric_device),
+        ]
+    elif request == "text_generation_quality":
+        pruna_logger.info("An evaluation task for text generation quality is being created.")
+        return [
+            TorchMetricWrapper("perplexity", device=stateful_metric_device),
         ]
     else:
         pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
