@@ -64,7 +64,7 @@ class RingAttn(PrunaAlgorithmBase):
         "qkv_diffusers",
         "padding_pruning",
     ]
-    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile"]
+    compatible_after: Iterable[str | AlgorithmTag] = ["torch_compile", "img2img_denoise", "realesrgan_upscale"]
 
     def get_hyperparameters(self) -> list:
         """

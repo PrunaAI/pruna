@@ -77,7 +77,8 @@ class RealESRGAN(PrunaAlgorithmBase):
         "diffusers_int8",
         "torchao",
         "qkv_diffusers",
-        "ring_attn"
+        "ring_attn",
+        "hyper",
     ]
 
     def get_hyperparameters(self) -> list:

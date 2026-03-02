@@ -50,7 +50,20 @@ class Quanto(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = ["qkv_diffusers"]
-    compatible_after: Iterable[str] = ["deepcache", "sage_attn"]
+    compatible_after: Iterable[str] = [
+        "deepcache",
+        "sage_attn",
+        "text_to_image_distillation_inplace_perp",
+        "text_to_image_distillation_lora",
+        "text_to_image_distillation_perp",
+        "text_to_image_inplace_perp",
+        "text_to_image_lora",
+        "text_to_image_perp",
+        "text_to_text_inplace_perp",
+        "text_to_text_lora",
+        "text_to_text_perp",
+        "x_fast",
+    ]
 
     def get_hyperparameters(self) -> list:
         """

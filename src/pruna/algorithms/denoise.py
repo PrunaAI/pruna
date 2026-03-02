@@ -75,6 +75,7 @@ class Img2ImgDenoise(PrunaAlgorithmBase):
         "torchao",
         "qkv_diffusers",
         "ring_attn",
+        "hyper",
     ]
 
     def get_hyperparameters(self) -> list:

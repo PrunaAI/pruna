@@ -52,6 +52,12 @@ class Half(PrunaAlgorithmBase):
         "ifw",
         "whisper_s2t",
         "sage_attn",
+        "hyper",
+        "ipex_llm",
+        "text_to_text_inplace_perp",
+        "text_to_text_lora",
+        "text_to_text_perp",
+        "x_fast",
     ]
 
     def model_check_fn(self, model: Any) -> bool:
