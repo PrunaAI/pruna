@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Iterable
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from aenum import extend_enum
@@ -31,7 +31,8 @@ from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
-
+from pruna.config.target_modules import TargetModules
+from pruna.config.target_modules import map_targeted_nn_roots
 
 class FlashAttn3(PrunaAlgorithmBase):
     """
@@ -84,6 +85,13 @@ class FlashAttn3(PrunaAlgorithmBase):
         """
         Wrap the model to use flash_attn3 where possible.
 
+        The algorithm follows the following logic:
+
+        - Always register the standard (non-FP8) op.
+        - If no fp8 is requested, apply the standard op to all targeted modules.
+        - If fp8 is requested, apply the standard op to all compatible modules
+          and apply fp8 to the target modules.
+
         Parameters
         ----------
         model : Any
@@ -98,26 +106,39 @@ class FlashAttn3(PrunaAlgorithmBase):
         """
         imported_packages = self.import_algorithm_packages()
         use_fp8 = smash_config["fp8"]
+        target_modules = smash_config["target_modules"]
+        kernel = imported_packages["flash_attention_3"]
 
-        # register the flash attention 3 operation with torch ops to make it compatible with full-graph compilation
-        register_pruna_flash_attn_op(imported_packages["flash_attention_3"], use_fp8=use_fp8)
+        # Always register the standard (non-FP8) kernel with torch ops
+        register_pruna_flash_attn_op(kernel, use_fp8=False)
 
-        # in the new version of diffusers, we can use the modular attention backend to inject flash_attn3
-        if Version(diffusers_version) >= Version("0.35.0.dev0"):
-            # register our "custom" attention function as a backend
-            backend_name = register_custom_backend(imported_packages, use_fp8=use_fp8)
-
-            # replace in all compatible components
-            for component in model.components.values():
-                if hasattr(component, "set_attention_backend") and component.dtype in [
-                    torch.bfloat16,
-                    torch.float16,
-                ]:
-                    component.set_attention_backend(backend_name)
-
+        # Build the version-specific apply function for non-FP8
+        use_new_backend = Version(diffusers_version) >= Version("0.35.0.dev0")
+        use_new_backend = False
+        if use_new_backend:
+            backend_name = register_custom_backend(imported_packages, use_fp8=False)
+            apply_fn = functools.partial(_apply_via_backend, backend=backend_name)
         else:
-            # wrap the model generate function to replace attention computations with flash_attn3 where possible
-            wrap_pipeline_call(model, imported_packages, use_fp8=use_fp8)
+            print("Using old backend")
+            apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
+
+        if use_fp8:
+            # FA3 fp16 on ALL compatible modules
+            model = map_targeted_nn_roots(apply_fn, model, {"include": ["*"], "exclude": []})
+
+            # FA3 fp8 overwrites targeted modules
+            register_pruna_flash_attn_op(kernel, use_fp8=True)
+            if use_new_backend:
+                backend_name_fp8 = register_custom_backend(imported_packages, use_fp8=True)
+                apply_fn_fp8 = functools.partial(_apply_via_backend, backend=backend_name_fp8)
+            else:
+                print("Using old backend")
+                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
+            model = map_targeted_nn_roots(apply_fn_fp8, model, target_modules)
+        else:
+            # FA3 fp16 only on targeted modules
+            model = map_targeted_nn_roots(apply_fn, model, target_modules)
+
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -166,7 +187,10 @@ class FlashAttn3(PrunaAlgorithmBase):
             configuration system.
         """
         return [
-                Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
+            # We do not set specific default target modules as FA3 is lossless if not used with FP8 quantization 
+            # and therefore can be applied to any attn module without any performance degradation.
+            TargetModules(name="target_modules", default_value={"include": ["*"], "exclude": []}),
+            Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
         ]
 
 
@@ -328,29 +352,91 @@ def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None,
     return out.transpose(1, 2)
 
 
-def wrap_pipeline_call(model: Any, imported_packages: Dict[str, Any], use_fp8: bool = False) -> None:
+def _apply_via_backend(
+    root_name: str | None,
+    root_nn_module: torch.nn.Module,
+    relative_target_paths: List[str],
+    backend: str,
+) -> torch.nn.Module:
     """
-    Wrap the model generate function to replace attention computations with flash_attn3 where possible.
+    Apply FA3 by setting the attention backend on targeted submodules.
+
+    Applies to diffusers >= 0.35.0.dev0.
+
+    Parameters
+    ----------
+    root_name : str | None
+        The attribute name of the root in the model (None if model is an nn.Module).
+    root_nn_module : torch.nn.Module
+        The root nn.Module.
+    relative_target_paths : List[str]
+        Relative paths to targeted submodules within the root.
+    backend : str
+        The backend name to set.
+
+    Returns
+    -------
+    torch.nn.Module
+        The (modified) root module.
+    """
+    if root_nn_module.dtype not in (torch.bfloat16, torch.float16):
+        return root_nn_module
+    for rel_path in relative_target_paths:
+        try:
+            sub_module = root_nn_module.get_submodule(rel_path)
+        except AttributeError:
+            continue
+        if hasattr(sub_module, "set_attention_backend"):
+            sub_module.set_attention_backend(backend)
+    return root_nn_module
+
+
+def _apply_via_forward_wrap(
+    root_name: str | None,
+    root_nn_module: torch.nn.Module,
+    relative_target_paths: List[str],
+    kernel: Any,
+    use_fp8: bool,
+) -> torch.nn.Module:
+    """
+    Apply FA3 by wrapping individual attention module forwards with FlashAttention3Context.
 
     Applies to diffusers < 0.35.0.dev0.
 
     Parameters
     ----------
-    model : Any
-        The model to wrap.
-    imported_packages : Dict[str, Any]
-        The imported packages.
+    root_name : str | None
+        The attribute name of the root in the model (None if model is an nn.Module).
+    root_nn_module : torch.nn.Module
+        The root nn.Module.
+    relative_target_paths : List[str]
+        Relative paths to targeted submodules within the root.
+    kernel : Any
+        The flash attention 3 kernel module.
     use_fp8 : bool
         Whether to quantize Q, K, V to FP8 before the attention computation.
+
+    Returns
+    -------
+    torch.nn.Module
+        The (modified) root module.
     """
-    original_forward = model.__call__
+    if root_nn_module.dtype not in (torch.bfloat16, torch.float16):
+        return root_nn_module
+    for rel_path in relative_target_paths:
+        try:
+            sub_module = root_nn_module.get_submodule(rel_path)
+        except AttributeError:
+            continue
+        original_forward = sub_module.forward
 
-    @functools.wraps(original_forward)
-    def new_forward(*args, original_forward=original_forward, **kwargs):
-        with FlashAttention3Context(kernel=imported_packages["flash_attention_3"], use_fp8=use_fp8):
-            return original_forward(*args, **kwargs)
+        @functools.wraps(original_forward)
+        def new_forward(*args, _orig=original_forward, _kernel=kernel, _fp8=use_fp8, **kwargs):
+            with FlashAttention3Context(kernel=_kernel, use_fp8=_fp8):
+                return _orig(*args, **kwargs)
 
-    model.__call__ = new_forward  # type: ignore
+        sub_module.forward = new_forward
+    return root_nn_module
 
 
 def _quantize_fp8(t: torch.Tensor, descale_shape: Tuple[int, int]) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -403,9 +489,13 @@ def register_pruna_flash_attn_op(kernel_mod: Any, use_fp8: bool = False) -> None
             # FA3 requires descale shape (batch_size, num_heads_k) for all three,
             # as kernel expects per tensor quantization
             descale_shape = (q.shape[0], k.shape[2])  # (B, H) as input format = (B, N, H, D)
+            # Quantize sequentially and delete originals to reduce peak memory (otherwise risk of OOM)
             q_fp8, descale_q = _quantize_fp8(q, descale_shape)
+            del q
             k_fp8, descale_k = _quantize_fp8(k, descale_shape)
+            del k
             v_fp8, descale_v = _quantize_fp8(v, descale_shape)
+            del v
             out, lse = flash_attn_cuda(
                 q_fp8, k_fp8, v_fp8,
                 softmax_scale=softmax_scale or None,
