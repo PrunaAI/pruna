@@ -94,7 +94,7 @@ class AutoregressiveHandler(InferenceHandler):
         text, _ = batch
         text = cast(List[str], text)
         inputs = dict(processor(text=text, generation_mode=generation_mode, return_tensors="pt"))
-        inputs = cast(Dict[str, Any], self.move_inputs_to_device(inputs, get_device(self.model)))
+        inputs = self.move_inputs_to_device(inputs, get_device(self.model))  # type: ignore[arg-type]
         return inputs
 
     def process_output(self, output: Any) -> Any:

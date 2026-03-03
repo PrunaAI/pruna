@@ -247,7 +247,7 @@ def wrap_pipeline_call(model: Any, world_size: int) -> Any:
             seed_t = seed_t.chunk(world_size, dim=0)[0]
             seed = seed_t.item()
             seed -= torch.iinfo(torch.int64).min
-            generator = torch.Generator(f"cuda:{rank}").manual_seed(seed)
+            generator = torch.Generator(f"cuda:{rank}").manual_seed(int(seed))
             kwargs["generator"] = generator
 
         return original_forward(*args, **kwargs)

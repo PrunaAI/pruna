@@ -74,7 +74,7 @@ class LLMCompressor(PrunaAlgorithmBase):
                 "calibration_pipeline",
                 choices=["independent", "basic", "datafree", "sequential", "layer_sequential"],
                 default_value="independent",
-                meta=dict(desc="Pipeline to use for calibration.")
+                meta={"desc": "Pipeline to use for calibration."}
             ),
             TargetModules(
                 "target_modules",

@@ -553,4 +553,4 @@ class DenoiserTL(pl.LightningModule):
             optimizer_cls = getattr(torch.optim, self.optimizer_name)
         finetune_params = get_trainable_parameters(self.pipeline)
 
-        return optimizer_cls(finetune_params, lr=lr, weight_decay=wd, **kwargs)
+        return optimizer_cls(finetune_params, lr=lr, weight_decay=wd, **kwargs)  # type: ignore[arg-type]

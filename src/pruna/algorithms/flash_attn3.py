@@ -221,9 +221,8 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                     enable_gqa=enable_gqa,
                 )
             else:
-                out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(
-                    q=query, k=key, v=value, softmax_scale=scale, causal=is_causal
-                )
+                out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(q=query, k=key, v=value,  # type: ignore
+                softmax_scale=scale, causal=is_causal)  # type: ignore
                 return out
 
         extend_enum(attention_backend_name, "FLASH_ATTN3_PRUNA", "flash_attn3_pruna")
@@ -286,7 +285,7 @@ class FlashAttention3Context(TorchFunctionMode):
 def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
+    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)  # type: ignore
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
 

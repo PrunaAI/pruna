@@ -82,10 +82,8 @@ class FORA(PrunaAlgorithmBase):
                 "backbone_calls_per_step",
                 sequence=range(1, 4),
                 default_value=1,
-                meta=cast(
-                    Mapping[Hashable, Any],
-                    dict(desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."),
-                ),
+                meta={"desc": "Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."}
+
             ),
         ]
 

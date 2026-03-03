@@ -18,6 +18,7 @@ import inspect
 from functools import partial
 from typing import Callable, List, Tuple, Union, cast
 
+# cast is used for type narrowing in limit logic
 from datasets import Dataset, IterableDataset
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Subset
@@ -220,9 +221,9 @@ class PrunaDataModule(LightningDataModule):
             train_indices = list(range(min(len(self.train_dataset), train_limit)))  # type: ignore[arg-type]
             val_indices = list(range(min(len(self.val_dataset), val_limit)))  # type: ignore[arg-type]
             test_indices = list(range(min(len(self.test_dataset), test_limit)))  # type: ignore[arg-type]
-            self.train_dataset = Subset(self.train_dataset, train_indices)
-            self.val_dataset = Subset(self.val_dataset, val_indices)
-            self.test_dataset = Subset(self.test_dataset, test_indices)
+            self.train_dataset = Subset(self.train_dataset, train_indices)  # type: ignore[arg-type]
+            self.val_dataset = Subset(self.val_dataset, val_indices)  # type: ignore[arg-type]
+            self.test_dataset = Subset(self.test_dataset, test_indices)  # type: ignore[arg-type]
         else:
             raise ValueError("Dataset could not be limited.")
 
@@ -245,7 +246,7 @@ class PrunaDataModule(LightningDataModule):
         if "shuffle" not in kwargs:
             kwargs["shuffle"] = True  # dispatched to the dataloader
 
-        return self.__construct_dataloader(self.train_dataset, **kwargs)
+        return self.__construct_dataloader(self.train_dataset, **kwargs)  # type: ignore[arg-type]
 
     def val_dataloader(self, **kwargs) -> DataLoader:
         """
@@ -266,7 +267,7 @@ class PrunaDataModule(LightningDataModule):
         if "shuffle" not in kwargs:
             kwargs["shuffle"] = False  # dispatched to the dataloader
 
-        return self.__construct_dataloader(self.val_dataset, **kwargs)
+        return self.__construct_dataloader(self.val_dataset, **kwargs)  # type: ignore[arg-type]
 
     def test_dataloader(self, **kwargs) -> DataLoader:
         """
@@ -287,7 +288,7 @@ class PrunaDataModule(LightningDataModule):
         if "shuffle" not in kwargs:
             kwargs["shuffle"] = False  # dispatched to the dataloader
 
-        return self.__construct_dataloader(self.test_dataset, **kwargs)
+        return self.__construct_dataloader(self.test_dataset, **kwargs)  # type: ignore[arg-type]
 
     def __construct_dataloader(
         self,

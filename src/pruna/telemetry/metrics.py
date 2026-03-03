@@ -176,10 +176,10 @@ def increment_counter(function_name: str, success: bool = True, smash_config: Op
             {
                 "function": function_name,
                 "status": "success" if success else "error",
-                "smash_config": smash_config,  # type: ignore
+                "smash_config": smash_config or "",
                 "session_id": SESSION_ID,
             },
-        )
+        )  # type: ignore[arg-type]
 
 
 def track_usage(name_or_func: Optional[str | Callable] = None) -> Callable:
