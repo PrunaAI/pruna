@@ -37,6 +37,7 @@ possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
 
+
 [tool.coverage.run]
 source = ["src/pruna"]
 

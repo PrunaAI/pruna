@@ -163,8 +163,8 @@ class CacheHelper:
         self.single_stream_blocks_forward: Dict[int, Callable] = {}
 
         # Use seperate caches for the two different transformer block types
-        self.double_stream_blocks_cache: Dict[int, Tuple[Any, Any]] = {}
-        self.single_stream_blocks_cache: Dict[int, Any] = {}
+        self.double_stream_blocks_cache: Dict[Tuple[int, int], Tuple[Any, Any]] = {}
+        self.single_stream_blocks_cache: Dict[Tuple[int, int], Any] = {}
 
     def get_cache_schedule(self, num_steps: int) -> list[int]:
         """

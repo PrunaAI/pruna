@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import wraps
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import torch
 
@@ -34,6 +34,14 @@ class CallSequenceTracker:
     The tracker works with both positional arguments and keyword arguments passed to the modules.
     It can be used for debugging, optimization, or analysis of model execution patterns.
 
+    Examples
+    --------
+    >>> tracker = CallSequenceTracker()
+    >>> tracker.register_wrappers(model)
+    >>> output = model(input_tensor)
+    >>> call_sequence = tracker.get_call_sequence()
+    >>> tracker.clean_call_sequence()  # Reset tracker state
+
     Attributes
     ----------
     call_sequence : List[Dict[str, Any]]
@@ -42,14 +50,6 @@ class CallSequenceTracker:
         - module_name: Name of the module class
         - inputs: List of dictionaries containing shape, dtype, and device info for positional args
         - kwargs: Dictionary containing shape, dtype, and device info for keyword args
-
-    Examples
-    --------
-    >>> tracker = CallSequenceTracker()
-    >>> tracker.register_wrappers(model)
-    >>> output = model(input_tensor)
-    >>> call_sequence = tracker.get_call_sequence()
-    >>> tracker.clean_call_sequence()  # Reset tracker state
     """
 
     def __init__(self) -> None:
@@ -122,7 +122,7 @@ class CallSequenceTracker:
             The unwrapped module.
         """
         if hasattr(module.forward, "__wrapped__"):
-            module.forward = module.forward.__wrapped__
+            module.forward = cast(Any, getattr(module.forward, "__wrapped__"))
         return module
 
     def get_call_sequence(self) -> List[Dict[str, Any]]:
