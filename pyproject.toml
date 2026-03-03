@@ -79,6 +79,13 @@ url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
 [tool.uv]
 index-strategy = "unsafe-best-match"
 
+conflicts = [
+    [
+        { extra = "awq" },
+        { extra = "vbench" },
+    ]
+]
+
 [tool.uv.sources]
 gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
@@ -137,13 +144,11 @@ dependencies = [
     "whisper-s2t==1.3.1",
     "hqq==0.2.7.post1",
     "torchao>=0.12.0,<0.16.0", # 0.16.0 breaks diffusers 0.36.0, torch+torch: https://github.com/pytorch/ao/issues/2919#issue-3375688762
-    "llmcompressor",
     "gliner; python_version >= '3.10'",
     "piq",
     "opencv-python",
     "kernels",
     "aenum",
-    "vbench-pruna; sys_platform != 'darwin'",
     "imageio-ffmpeg",
     "jaxtyping",
     "peft>=0.18.0",
@@ -166,9 +171,17 @@ gptq = [
     "gptqmodel==4.0.0.dev0+cu126torch2.7; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "gptqmodel; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
+awq = [
+    "compressed-tensors >= 0.13.0",
+    "llmcompressor>=0.9",
+    "torch>=2.9.0"
+]
 full = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
+]
+vbench = [
+    "vbench-pruna; sys_platform != 'darwin'",
 ]
 dev = [
     "wget",

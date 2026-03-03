@@ -14,3 +14,6 @@ class TestLLMCompressor(AlgorithmTesterBase):
     allow_pickle_files = False
     algorithm_class = LLMCompressor
     metrics = ["perplexity"]
+    hyperparameters = {
+        "awq_calibration_pipeline": "basic",
+    }
