@@ -9,6 +9,7 @@ from typing import Any, Callable, Iterable
 import numpydoc_validation
 import pytest
 import torch
+from _pytest.outcomes import Skipped
 from accelerate.utils import compute_module_sizes, infer_auto_device_map
 from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
@@ -118,7 +119,9 @@ def run_full_integration(
     try:
         model, smash_config = model_fixture[0], model_fixture[1]
         if device not in algorithm_tester.compatible_devices():
-            pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
+            raise Skipped(
+                f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}"
+            )
         algorithm_tester.prepare_smash_config(smash_config, device)
         device_map = construct_device_map_manually(model) if device == "accelerate" else None
         move_to_device(model, device=smash_config["device"], device_map=device_map)

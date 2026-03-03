@@ -162,13 +162,13 @@ class TextToImageDistiller(PrunaFinetuner):
         ]
 
     @classmethod
-    def finetune(cls, pipeline: Any, smash_config: SmashConfigPrefixWrapper, seed: int, recoverer: str) -> Any:
+    def finetune(cls, model: Any, smash_config: SmashConfigPrefixWrapper, seed: int, recoverer: str) -> Any:
         """
         Train the model previously activated parameters on distillation data extracted from the original model.
 
         Parameters
         ----------
-        pipeline : Any
+        model : Any
             The pipeline containing components to finetune.
         smash_config : SmashConfigPrefixWrapper
             The configuration for the finetuner.
@@ -187,8 +187,8 @@ class TextToImageDistiller(PrunaFinetuner):
                 f"DiffusionDistillation data module is required for distillation, but got {smash_config.data}."
             )
 
-        dtype = get_dtype(pipeline)
-        device = get_device(pipeline)
+        dtype = get_dtype(model)
+        device = get_device(model)
         try:
             lora_r = smash_config["lora_r"]
         except KeyError:
@@ -204,7 +204,7 @@ class TextToImageDistiller(PrunaFinetuner):
 
         # Finetune the model
         trainable_distiller = DistillerTL(
-            pipeline,
+            model,
             smash_config["training_batch_size"],
             smash_config["gradient_accumulation_steps"],
             smash_config["optimizer"],
@@ -247,7 +247,7 @@ class TextToImageDistiller(PrunaFinetuner):
         else:
             precision = "32"
 
-        accelerator = get_device_type(pipeline)
+        accelerator = get_device_type(model)
         if accelerator == "accelerator":
             accelerator = "auto"
         trainer = pl.Trainer(
@@ -270,7 +270,7 @@ class TextToImageDistiller(PrunaFinetuner):
 
         # Loading the best checkpoint is slow and currently creates conflicts with some quantization algorithms,
         # e.g. diffusers_int8. Skipping calling DenoiserTL.load_from_checkpoint for now.
-        return pipeline.to(device)
+        return model.to(device)
 
 
 class DistillerTL(pl.LightningModule):

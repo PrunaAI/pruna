@@ -190,7 +190,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
             subpaths : list[str]
                 The subpaths of the working model to quantize.
             """
-            if not hasattr(working_model, "save_pretrained") or not callable(working_model.save_pretrained):
+            if not hasattr(working_model, "save_pretrained") or not callable(getattr(working_model, "save_pretrained")):
                 raise ValueError(
                     "diffusers-int8 was applied to a module which didn't have a callable save_pretrained method."
                 )

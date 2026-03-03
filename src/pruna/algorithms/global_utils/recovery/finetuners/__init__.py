@@ -17,8 +17,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-import torch
-
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 
 
@@ -45,16 +43,14 @@ class PrunaFinetuner(ABC):
 
     @classmethod
     @abstractmethod
-    def finetune(
-        cls, model: torch.nn.Module, smash_config: SmashConfigPrefixWrapper, seed: int, recoverer: str
-    ) -> torch.nn.Module:
+    def finetune(cls, model: Any, smash_config: SmashConfigPrefixWrapper, seed: int, recoverer: str) -> Any:
         """
         Apply the component to the model: activate parameters for Adapters, or finetune them for Finetuners.
 
         Parameters
         ----------
-        model : torch.nn.Module
-            The model to apply the component to.
+        model : Any
+            The model or pipeline to apply the component to (e.g. torch.nn.Module or DiffusionPipeline).
         smash_config : SmashConfigPrefixWrapper
             The configuration for the component.
         seed : int
@@ -64,7 +60,7 @@ class PrunaFinetuner(ABC):
 
         Returns
         -------
-        torch.nn.Module
-            The model with the component applied.
+        Any
+            The model or pipeline with the component applied.
         """
         pass

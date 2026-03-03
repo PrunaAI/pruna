@@ -138,7 +138,7 @@ class TextToImageFinetuner(PrunaFinetuner):
         ]
 
     @classmethod
-    def finetune(cls, pipeline: Any, smash_config: SmashConfigPrefixWrapper, seed: int, recoverer: str) -> Any:
+    def finetune(cls, model: Any, smash_config: SmashConfigPrefixWrapper, seed: int, recoverer: str) -> Any:
         """
         Finetune the model's previously activated parameters on data.
 
@@ -149,7 +149,7 @@ class TextToImageFinetuner(PrunaFinetuner):
 
         Parameters
         ----------
-        pipeline : Any
+        model : Any
             The pipeline containing components to finetune.
         smash_config : SmashConfigPrefixWrapper
             The configuration for the finetuner.
@@ -163,7 +163,7 @@ class TextToImageFinetuner(PrunaFinetuner):
         Any
             The finetuned pipeline.
         """
-        dtype = get_dtype(pipeline)
+        dtype = get_dtype(model)
         device = smash_config.device if isinstance(smash_config.device, str) else smash_config.device.type
 
         # split seed into two rng: generator for the dataloader and a seed for the training part
@@ -202,11 +202,11 @@ class TextToImageFinetuner(PrunaFinetuner):
             optimizer_name = "AdamW"
 
         # Check resolution mismatch
-        utils.check_resolution_mismatch(pipeline, train_dataloader)
+        utils.check_resolution_mismatch(model, train_dataloader)
 
         # Finetune the model
         trainable_denoiser = DenoiserTL(
-            pipeline,
+            model,
             optimizer_name,
             smash_config["learning_rate"],
             smash_config["weight_decay"],
@@ -263,7 +263,7 @@ class TextToImageFinetuner(PrunaFinetuner):
 
         # Loading the best checkpoint is slow and currently creates conflicts with some quantization algorithms,
         # e.g. diffusers_int8. Skipping calling DenoiserTL.load_from_checkpoint for now.
-        return pipeline.to(device)
+        return model.to(device)
 
 
 class DenoiserTL(pl.LightningModule):

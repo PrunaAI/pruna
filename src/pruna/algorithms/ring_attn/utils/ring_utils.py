@@ -45,12 +45,14 @@ class LocalFunc(torch.autograd.Function):
     """
 
     @staticmethod
-    def forward(cls, *args, **kwargs):
+    def forward(ctx, *args, **kwargs):
         """
         Forward pass for the ring attention implementation.
 
         Parameters
         ----------
+        ctx : torch.autograd.Context
+            The context of the forward pass.
         *args : Any
             The arguments to the forward pass.
         **kwargs : Any
@@ -67,12 +69,14 @@ class LocalFunc(torch.autograd.Function):
         return ring_attention._scaled_dot_product_ring_flash_attention(*args, **kwargs)[:2]
 
     @staticmethod
-    def backward(cls, *args, **kwargs):
+    def backward(ctx, *args, **kwargs):
         """
         Backward pass for ring attention implementation of flash attention.
 
         Parameters
         ----------
+        ctx : torch.autograd.Context
+            The context of the backward pass.
         *args : Any
             The arguments to the backward pass.
         **kwargs : Any
