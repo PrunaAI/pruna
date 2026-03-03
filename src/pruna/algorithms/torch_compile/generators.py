@@ -151,14 +151,17 @@ class CausalLMGenerator:
                 self.past_key_values = StaticCache(
                     self.model.config,
                     self.batch_size,
-                    self.cache_size,
+                    self.cache_size,  # type: ignore
                     self.model.device,
                     self.model.dtype,  # type: ignore
                 )
             except TypeError:
                 # If both fail, try minimal signature
                 self.past_key_values = StaticCache(
-                    self.model.config, self.batch_size, self.cache_size, self.model.device
+                    self.model.config,
+                    self.batch_size,
+                    self.cache_size,  # type: ignore
+                    self.model.device,
                 )
 
     @torch.no_grad()

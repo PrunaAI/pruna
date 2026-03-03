@@ -221,8 +221,13 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                     enable_gqa=enable_gqa,
                 )
             else:
-                out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(q=query, k=key, v=value,  # type: ignore
-                softmax_scale=scale, causal=is_causal)  # type: ignore
+                out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(
+                    q=query,  # type: ignore
+                    k=key,  # type: ignore
+                    v=value,  # type: ignore
+                    softmax_scale=scale,  # type: ignore
+                    causal=is_causal,  # type: ignore
+                )
                 return out
 
         extend_enum(attention_backend_name, "FLASH_ATTN3_PRUNA", "flash_attn3_pruna")
