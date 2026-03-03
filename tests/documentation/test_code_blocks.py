@@ -32,6 +32,7 @@ def pytest_generate_tests(metafunc):
             ids=all_ids
         )
 
+@pytest.mark.cuda
 @pytest.mark.usefixtures("tmp_path")
 def test_codeblock_cuda(rst_path, script_content, tmp_path):
     # Each test gets a unique script file
