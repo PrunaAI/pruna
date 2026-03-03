@@ -73,7 +73,7 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, smash_config, **kwargs)
 
     # check if there are any algorithms to reapply
-    if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
+    if any(is_reapplied for is_reapplied in smash_config.reapply_after_load.values()):
         model = resmash_fn(model, smash_config)
 
     # load artifacts (e.g. speed up the warmup or make it more consistent)
