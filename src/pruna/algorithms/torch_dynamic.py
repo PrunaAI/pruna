@@ -35,7 +35,7 @@ class TorchDynamic(PrunaAlgorithmBase):
     """
 
     algorithm_name = "torch_dynamic"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False

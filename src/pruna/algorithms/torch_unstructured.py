@@ -33,7 +33,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_unstructured"
-    group_tags: list[str] = [tags.PRUNER]
+    group_tags: list[tags] = [tags.PRUNER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # original model-saving can be retained as is, only parameter values are modified
     save_fn = None

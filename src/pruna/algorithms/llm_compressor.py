@@ -44,7 +44,7 @@ class LLMCompressor(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "awq"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
     save_fn: None = None
     tokenizer_required: bool = True

@@ -53,7 +53,7 @@ class TorchStructured(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_structured"
-    group_tags: list[str] = [tags.PRUNER]
+    group_tags: list[tags] = [tags.PRUNER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # when performing structured pruning, the tensor sizes can change and disrupt normal saving
     save_fn = SAVE_FUNCTIONS.pickled

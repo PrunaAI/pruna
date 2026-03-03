@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import wraps
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import torch
 
@@ -122,7 +122,7 @@ class CallSequenceTracker:
             The unwrapped module.
         """
         if hasattr(module.forward, "__wrapped__"):
-            module.forward = module.forward.__wrapped__
+            module.forward = cast(Any, getattr(module.forward, "__wrapped__"))
         return module
 
     def get_call_sequence(self) -> List[Dict[str, Any]]:

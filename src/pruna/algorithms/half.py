@@ -33,7 +33,7 @@ class Half(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "half"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply

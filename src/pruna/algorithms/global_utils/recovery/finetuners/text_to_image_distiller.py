@@ -14,30 +14,24 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
+import pathlib
 import random
 from typing import Any, List, Literal
 
 import pytorch_lightning as pl
 import torch
-from diffusers.optimization import get_scheduler
-from diffusers.utils import BaseOutput
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.utilities.seed import isolate_rng
-
-try:
-    from bitsandbytes.optim import AdamW8bit  # type: ignore[import-untyped]
-except ImportError:
-    AdamW8bit = None
-
-import pathlib
-
 from ConfigSpace import (
     CategoricalHyperparameter,
     Constant,
     UniformFloatHyperparameter,
     UniformIntegerHyperparameter,
 )
+from diffusers.optimization import get_scheduler
+from diffusers.utils import BaseOutput
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.utilities.seed import isolate_rng
 
 from pruna.algorithms.global_utils.recovery.finetuners import PrunaFinetuner
 from pruna.algorithms.global_utils.recovery.finetuners.diffusers import utils
@@ -55,6 +49,10 @@ from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.data.diffuser_distillation_data_module import DiffusionDistillationDataModule
 from pruna.engine.utils import get_device, get_device_type
 from pruna.logging.logger import pruna_logger
+
+AdamW8bit: type[Any] | None = None
+with contextlib.suppress(ImportError):
+    from bitsandbytes.optim import AdamW8bit
 
 
 class TextToImageDistiller(PrunaFinetuner):

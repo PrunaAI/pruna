@@ -3,7 +3,7 @@ exclude = ["test_*.py"]
 line-length = 121
 
 [tool.ruff.lint]
-ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "C408", "PTH123", "N813"]
+ignore = ["ANN002", "ANN003", "ANN401", "C901", "D100", "D104", "D401", "D406", "D420", "C408", "PTH123", "N813"]
 select = ["A", "C", "CPY", "D", "E", "ERA", "F", "FIX", "I", "N", "SIM", "T20", "W", "FA", "PTH"]
 preview = true # enable preview features for copyright checking
 
@@ -22,7 +22,6 @@ author = "- Pruna AI GmbH"
 [tool.ty.rules]
 # Ignore rules that are stricter than mypy for transition period
 unresolved-import = "ignore"
-invalid-assignment = "ignore"  # mypy is more permissive with Any assignments
 call-non-callable = "ignore"   # mypy allows more dynamic method calls
 index-out-of-bounds = "ignore" # mypy is more permissive with tuple indexing
 unresolved-attribute = "ignore" # mypy is more permissive with module attributes
@@ -37,6 +36,7 @@ possibly-missing-import = "ignore"
 possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
+
 
 [tool.coverage.run]
 source = ["src/pruna"]

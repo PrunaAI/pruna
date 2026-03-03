@@ -54,8 +54,9 @@ def test_co2_emissions_metric(model_fixture: tuple[Any, SmashConfig], device: st
     ],
 )
 def test_energy_metric_device_validation(device: str, metric: str) -> None:
-    metric = MetricRegistry.get_metric(metric, device=device)
-
+    metric_obj = MetricRegistry.get_metric(metric, device=device)
+    assert metric_obj is not None
+    
 @pytest.mark.cpu
 @pytest.mark.parametrize(
     "metric",

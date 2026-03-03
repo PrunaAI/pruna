@@ -90,7 +90,7 @@ class SmashConfig:
         self.load_fns: list[str] = []
         self.save_artifacts_fns: list[str] = []
         self.load_artifacts_fns: list[str] = []
-        self.reapply_after_load: dict[str, str | None] = {}
+        self.reapply_after_load: dict[str, bool] = {}
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None

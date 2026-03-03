@@ -37,7 +37,7 @@ class FORA(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fora"
-    group_tags: list[str] = [tags.CACHER]
+    group_tags: list[tags] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False
@@ -163,8 +163,8 @@ class CacheHelper:
         self.single_stream_blocks_forward: Dict[int, Callable] = {}
 
         # Use seperate caches for the two different transformer block types
-        self.double_stream_blocks_cache: Dict[int, Tuple[Any, Any]] = {}
-        self.single_stream_blocks_cache: Dict[int, Any] = {}
+        self.double_stream_blocks_cache: Dict[Tuple[int, int], Tuple[Any, Any]] = {}
+        self.single_stream_blocks_cache: Dict[Tuple[int, int], Any] = {}
 
     def get_cache_schedule(self, num_steps: int) -> list[int]:
         """

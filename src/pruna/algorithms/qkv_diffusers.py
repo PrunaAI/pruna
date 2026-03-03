@@ -32,7 +32,7 @@ class QKVFusing(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "qkv_diffusers"
-    group_tags: list[str] = [tags.FACTORIZER]
+    group_tags: list[tags] = [tags.FACTORIZER]
     references: dict[str, str] = {
         "BFL": "https://github.com/black-forest-labs/flux/",
         "Github": "https://github.com/huggingface/diffusers/pull/9185",

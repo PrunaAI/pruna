@@ -47,7 +47,7 @@ class WS2T(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "whisper_s2t"
-    group_tags: list[str] = [tags.BATCHER]
+    group_tags: list[tags] = [tags.BATCHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/shashikg/WhisperS2T"}
     tokenizer_required: bool = True
