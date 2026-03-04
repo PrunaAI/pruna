@@ -97,7 +97,7 @@ class Img2ImgDenoise(PrunaAlgorithmBase):
                 upper=1.0,
                 default_value=0.02,
                 log=False,
-                meta=dict(desc="Strength of the denoising/refinement. Lower values mean less change/more refinement."),
+                meta={"desc": "Strength of the denoising/refinement. Lower values mean less change/more refinement."},
             ),
         ]
 

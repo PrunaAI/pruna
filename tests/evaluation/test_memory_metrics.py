@@ -22,7 +22,9 @@ def test_disk_memory_metric(model_fixture: tuple[Any, SmashConfig]) -> None:
     disk_memory_metric = DiskMemoryMetric()
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, "cuda")
-    disk_memory_results = disk_memory_metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    disk_memory_results = disk_memory_metric.compute(pruna_model, test_dl)
     assert disk_memory_results.result > 0
 
 @pytest.mark.cuda
@@ -41,7 +43,9 @@ def test_inference_memory_metric(model_fixture: tuple[Any, SmashConfig]) -> None
     inference_memory_metric = InferenceMemoryMetric()
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, "cuda")
-    inference_memory_results = inference_memory_metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    inference_memory_results = inference_memory_metric.compute(pruna_model, test_dl)
     assert inference_memory_results.result > 0
 
 @pytest.mark.cuda
@@ -60,7 +64,9 @@ def test_training_memory_metric(model_fixture: tuple[Any, SmashConfig]) -> None:
     training_memory_metric = TrainingMemoryMetric()
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, "cuda")
-    training_memory_results = training_memory_metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    training_memory_results = training_memory_metric.compute(pruna_model, test_dl)
     assert training_memory_results.result > 0
 
 @pytest.mark.cpu
@@ -76,11 +82,13 @@ def test_memory_metric_raises_when_device_is_not_cuda(model_fixture: tuple[Any, 
     dmm = DiskMemoryMetric()
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, "cpu")
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
     with pytest.raises(ValueError):
-        dmm.compute(pruna_model, smash_config.test_dataloader())
+        dmm.compute(pruna_model, test_dl)
     imm = InferenceMemoryMetric()
     with pytest.raises(ValueError):
-        imm.compute(pruna_model, smash_config.test_dataloader())
+        imm.compute(pruna_model, test_dl)
     tmm = TrainingMemoryMetric()
     with pytest.raises(ValueError):
-        tmm.compute(pruna_model, smash_config.test_dataloader())
+        tmm.compute(pruna_model, test_dl)

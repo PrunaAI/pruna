@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, cast
 
-from datasets import Dataset, load_dataset
+from datasets import Dataset, IterableDataset, load_dataset
 from huggingface_hub import snapshot_download
 
 from pruna.data.utils import split_train_into_train_val_test
@@ -40,6 +40,7 @@ def setup_librispeech_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     ds = load_dataset("argmaxinc/librispeech-200", split="train", streaming=False)
     ds = ds.map(lambda batch: {"sentence": ""})
+    ds = cast(Dataset | IterableDataset, ds)
 
     ds_train, ds_val, ds_test = split_train_into_train_val_test(ds, seed)
     return ds_train, ds_val, ds_test

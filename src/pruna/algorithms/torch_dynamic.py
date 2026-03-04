@@ -70,7 +70,7 @@ class TorchDynamic(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=["quint8", "qint8"],
                 default_value="qint8",
-                meta=dict(desc="Tensor type to use for quantization."),
+                meta={"desc": "Tensor type to use for quantization."},
             ),
         ]
 

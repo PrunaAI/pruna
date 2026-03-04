@@ -63,7 +63,7 @@ class IPEXLLM(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[8, 4],
                 default_value=8,
-                meta=dict(desc="The number of bits to use for weight quantization."),
+                meta={"desc": "The number of bits to use for weight quantization."},
             ),
         ]
 

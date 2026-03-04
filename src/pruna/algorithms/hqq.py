@@ -81,39 +81,39 @@ class HQQ(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[2, 4, 8],
                 default_value=8,
-                meta=dict(desc="Number of bits to use for quantization."),
+                meta={"desc": "Number of bits to use for quantization."},
             ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[8, 16, 32, 64, 128],
                 default_value=64,
-                meta=dict(desc="Group size for quantization."),
+                meta={"desc": "Group size for quantization."},
             ),
             Constant("backend", value="torchao_int4"),
             CategoricalHyperparameter(
                 "compute_dtype",
                 choices=["torch.bfloat16", "torch.float16"],
                 default_value="torch.float16",
-                meta=dict(desc="Compute dtype for quantization."),
+                meta={"desc": "Compute dtype for quantization."},
             ),
             Boolean(
                 "use_torchao_kernels",
                 default=True,
-                meta=dict(desc="Whether to use the torchaoint4 kernels for inference."),
+                meta={"desc": "Whether to use the torchaoint4 kernels for inference."},
             ),
             Boolean(
                 "force_hf_implementation",
                 default=False,
-                meta=dict(desc="Whether or not to bypass the HQQ quantization and use the generic HF quantization."),
+                meta={"desc": "Whether or not to bypass the HQQ quantization and use the generic HF quantization."},
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
                     "e.g. {include: ['model.*']} to quantize the whole language model in a pipeline. "
                     f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                },
             ),
         ]
 
@@ -218,8 +218,8 @@ class HQQ(PrunaAlgorithmBase):
                         f"HQQ on Janus is only supported for the language model `{lm_path}`, skipping other submodules."
                     )
 
-                # relative path from the language model: remove lm_path and the dot
-                lm_subpaths = {path[len(lm_path) + 1 :] for path in supported_targets}
+                # relative path from the language model: remove lm_path and the dot (set deduplicates)
+                lm_subpaths = list({path[len(lm_path) + 1 :] for path in supported_targets})
                 submodule = module.get_submodule(lm_path)
                 lm_attr_name = lm_path if attr_name is None else f"{attr_name}.{lm_path}"
                 submodule = quantize_component(lm_attr_name, submodule, lm_subpaths)

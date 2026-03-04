@@ -65,7 +65,12 @@ class WS2T(PrunaAlgorithmBase):
         list
             The hyperparameters.
         """
-        return [Boolean("int8", meta=dict(desc="Whether to quantize to int8 for inference."))]
+        return [
+            Boolean(
+                "int8",
+                meta={"desc": "Whether to quantize to int8 for inference."},
+            )
+        ]
 
     def model_check_fn(self, model: Any) -> bool:
         """

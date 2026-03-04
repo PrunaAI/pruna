@@ -27,7 +27,6 @@ index-out-of-bounds = "ignore" # mypy is more permissive with tuple indexing
 unresolved-attribute = "ignore" # mypy is more permissive with module attributes
 redundant-cast = "ignore"      # mypy doesn't warn about redundant casts
 unsupported-operator = "ignore" # mypy supports | syntax with from __future__ import annotations
-invalid-argument-type = "ignore" # mypy is more permissive with argument types
 invalid-return-type = "ignore" # mypy is more permissive with return types
 invalid-parameter-default = "ignore" # mypy is more permissive with parameter defaults
 no-matching-overload = "ignore" # mypy is more permissive with overloads
@@ -197,7 +196,7 @@ dev = [
     "pre-commit",
     "twine",
     "pyc-wheel",
-    "ruff",
+    "ruff>=0.15.3",  # introduction of D420 rule
     "numpydoc>=1.9.0",
     "numpydoc-validation",
     "pytest",

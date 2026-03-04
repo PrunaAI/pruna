@@ -17,6 +17,7 @@ from collections.abc import Iterable
 from typing import Any, Dict
 
 from ConfigSpace import OrdinalHyperparameter
+from torch import __version__ as torch_version
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -65,18 +66,18 @@ class GPTQ(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[2, 3, 4, 8],
                 default_value=4,
-                meta=dict(desc="Sets the number of bits to use for weight quantization."),
+                meta={"desc": "Sets the number of bits to use for weight quantization."},
             ),
             Boolean(
                 "use_exllama",
                 default=False,
-                meta=dict(desc="Whether to use exllama for quantization."),
+                meta={"desc": "Whether to use exllama for quantization."},
             ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[64, 128, 256],
                 default_value=128,
-                meta=dict(desc="Group size for quantization."),
+                meta={"desc": "Group size for quantization."},
             ),
         ]
 
@@ -94,8 +95,6 @@ class GPTQ(PrunaAlgorithmBase):
         bool
             True if the model is a causal language model, False otherwise.
         """
-        import torch
-        torch_version = torch.__version__
         if "2.7" not in torch_version:
             raise RuntimeError(f"GPTQ is only supported on PyTorch 2.7.x, but got {torch_version}")
         return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)

@@ -98,7 +98,7 @@ class CTranslate(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[8, 16],
                 default_value=16,
-                meta=dict(desc="Sets the number of bits to use for weight quantization."),
+                meta={"desc": "Sets the number of bits to use for weight quantization."},
             ),
         ]
 
@@ -392,7 +392,7 @@ class GeneratorWrapper:
             The generated sequence.
         """
         if type(x) is dict or isinstance(x, transformers.tokenization_utils_base.BatchEncoding):
-            x_tensor = x["input_ids"]
+            x_tensor = x["input_ids"]  # type: ignore[invalid-argument-type]
         else:
             x_tensor = x
         token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]  # type: ignore[not-subscriptable]
@@ -468,7 +468,7 @@ class TranslatorWrapper:
         if "max_length" in kwargs:
             max_decoding_length = kwargs["max_length"]
         if type(x) is dict or isinstance(x, transformers.tokenization_utils_base.BatchEncoding):
-            x_tensor = x["input_ids"]
+            x_tensor = x["input_ids"]  # type: ignore[invalid-argument-type]
         else:
             x_tensor = x
         token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]  # type: ignore[not-subscriptable]

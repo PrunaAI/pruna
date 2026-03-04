@@ -63,15 +63,15 @@ class ReduceNOE(PrunaAlgorithmBase):
                 lower=1,
                 upper=256,
                 default_value=2,
-                meta=dict(desc="Number of experts triggered per token."),
+                meta={"desc": "Number of experts triggered per token."},
             ),
             UnconstrainedHyperparameter(
                 name="target_name",
                 default_value="num_experts_per_tok",
-                meta=dict(
-                    desc="Name of of the parameter in the config.json file to be modified, "
+                meta={
+                    "desc": "Name of of the parameter in the config.json file to be modified, "
                     "e.g. 'num_experts_per_tok' for mixtral models. "
-                ),
+                },
             ),
         ]
 

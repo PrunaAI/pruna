@@ -119,7 +119,7 @@ class PERPRecoverer(PrunaAlgorithmBase):
             Constant(  # set to constant, waiting for user-defined non-optimized hyperparameters
                 "seed",
                 seed,
-                meta=dict(desc="Random seed used for reproducibility."),
+                meta={"desc": "Random seed used for reproducibility."},
             )
         )
 

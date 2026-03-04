@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 import torch
 from huggingface_hub import constants
@@ -269,7 +269,7 @@ class PrunaModel:
         allow_patterns: Optional[Union[List[str], str]] = None,
         ignore_patterns: Optional[Union[List[str], str]] = None,
         max_workers: int = 8,
-        tqdm_class: Optional[base_tqdm] = None,
+        tqdm_class: Optional[Type[base_tqdm]] = None,
         headers: Optional[Dict[str, str]] = None,
         endpoint: Optional[str] = None,
         local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",

@@ -68,22 +68,20 @@ class LLMCompressor(PrunaAlgorithmBase):
                 "quant_scheme",
                 choices=["W4A16", "W4A16_ASYM"],
                 default_value="W4A16",
-                meta=dict(desc="Quantization scheme to use. Use symmetric quantization to avoid decompression issues."),
+                meta={"desc": "Quantization scheme to use. Use symmetric quantization to avoid decompression issues."},
             ),
             CategoricalHyperparameter(
                 "calibration_pipeline",
                 choices=["independent", "basic", "datafree", "sequential", "layer_sequential"],
                 default_value="independent",
-                meta=dict(desc="Pipeline to use for calibration.")
+                meta={"desc": "Pipeline to use for calibration."}
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
-                    "e.g. {include: ['model.*']} to quantize only the language model in a pipeline. "
-                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                meta={"desc": "Precise choices of which modules to quantize, "
+                        "e.g. {include: ['model.*']} to quantize only the language model in a pipeline. "
+                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."},
             ),
         ]
 

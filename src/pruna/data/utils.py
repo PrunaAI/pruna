@@ -18,7 +18,7 @@ import random
 from typing import Any, Tuple, Union
 
 import torch
-from datasets import Dataset
+from datasets import Dataset, IterableDataset
 from torch.utils.data import DataLoader
 
 from pruna.logging.logger import pruna_logger
@@ -38,7 +38,9 @@ class TokenizerMissingError(Exception):
         super().__init__(message)
 
 
-def split_train_into_train_val_test(dataset: Dataset, seed: int) -> Tuple[Dataset, Dataset, Dataset]:
+def split_train_into_train_val_test(
+    dataset: Dataset | IterableDataset, seed: int
+) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Split the training dataset into train, validation, and test.
 
@@ -62,7 +64,9 @@ def split_train_into_train_val_test(dataset: Dataset, seed: int) -> Tuple[Datase
     return train_ds, val_ds, test_ds
 
 
-def split_train_into_train_val(dataset: Dataset, seed: int) -> Tuple[Dataset, Dataset]:
+def split_train_into_train_val(
+    dataset: Dataset | IterableDataset, seed: int
+) -> Tuple[Dataset, Dataset]:
     """
     Split the trainingdataset into train and validation.
 
@@ -84,7 +88,9 @@ def split_train_into_train_val(dataset: Dataset, seed: int) -> Tuple[Dataset, Da
     return train_ds, val_ds
 
 
-def split_val_into_val_test(dataset: Dataset, seed: int) -> Tuple[Dataset, Dataset]:
+def split_val_into_val_test(
+    dataset: Dataset | IterableDataset, seed: int
+) -> Tuple[Dataset, Dataset]:
     """
     Split the dataset into validation and test.
 

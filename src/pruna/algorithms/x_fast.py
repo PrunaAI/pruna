@@ -44,10 +44,7 @@ class XFast(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: list[str | AlgorithmTag] = [
-        "quanto",
-        "half"
-    ]
+    compatible_before: list[str | AlgorithmTag] = ["quanto", "half"]
     required_install: str = "``pip install pruna[stable-fast]``"
 
     def get_hyperparameters(self) -> list:
@@ -61,7 +58,11 @@ class XFast(PrunaAlgorithmBase):
         """
         return [
             Constant("fn_to_compile", value="forward"),
-            Boolean("xformers", default=True, meta=dict(desc="Whether to use xformers for faster inference.")),
+            Boolean(
+                "xformers",
+                default=True,
+                meta={"desc": "Whether to use xformers for faster inference."},
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:

@@ -66,7 +66,7 @@ def test_dm_from_string(dataset_name: str, collate_fn_args: dict[str, Any]) -> N
     "setup_fn, collate_fn, collate_fn_args",
     [(setup_imagenet_dataset, "image_classification_collate", dict(img_size=512))],
 )
-def test_dm_from_dataset(setup_fn: Callable, collate_fn: Callable, collate_fn_args: dict[str, Any]) -> None:
+def test_dm_from_dataset(setup_fn: Callable, collate_fn: str, collate_fn_args: dict[str, Any]) -> None:
     """Test the datamodule from a dataset."""
     # get datamodule with datasets and collate function as input
     datasets = setup_fn(seed=123)

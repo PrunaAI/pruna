@@ -15,6 +15,7 @@ def test_dm_from_string_to_config(dataset_name: str, collate_fn_args: dict[str, 
     """Test the datamodule from a string to config."""
     smash_config = SmashConfig()
     smash_config.add_data(dataset_name, collate_fn_args=collate_fn_args)
+    assert smash_config.data is not None
     iterate_dataloaders(smash_config.data)
 
 
@@ -25,6 +26,7 @@ def test_dm_to_config(dataset_name: str, collate_fn_args: dict[str, Any]) -> Non
     datamodule = PrunaDataModule.from_string(dataset_name, collate_fn_args=collate_fn_args)
     smash_config = SmashConfig()
     smash_config.add_data(datamodule)
+    assert smash_config.data is not None
     iterate_dataloaders(smash_config.data)
 
 
@@ -38,6 +40,7 @@ def test_dm_from_datasets_to_config(setup_fn: Callable, collate_fn: Callable, co
     datasets = setup_fn(seed=123)
     smash_config = SmashConfig()
     smash_config.add_data(datasets, collate_fn=collate_fn, collate_fn_args=collate_fn_args)
+    assert smash_config.data is not None
     iterate_dataloaders(smash_config.data)
 
 

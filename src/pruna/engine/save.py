@@ -350,7 +350,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         # save pipeline info so we can call transformers.pipeline at load time
         save_pipeline_info(model, str(model_path))
         # pipeline loading requires a safetensor file so we save a fake, lightweight one
-        save_model(torch.nn.Linear(1, 1), model_path / "model.safetensors", metadata={"format": "pt"})
+        save_model(
+            torch.nn.Linear(1, 1), str(model_path / "model.safetensors"), metadata={"format": "pt"}
+        )
 
         save_model_hqq(model.model, model_path, smash_config)
     elif is_janus_llamagen_ar(model):
