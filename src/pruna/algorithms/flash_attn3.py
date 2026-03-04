@@ -29,10 +29,10 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.target_modules import TargetModules, map_targeted_nn_roots
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
-from pruna.config.target_modules import TargetModules
-from pruna.config.target_modules import map_targeted_nn_roots
+
 
 class FlashAttn3(PrunaAlgorithmBase):
     """
@@ -114,12 +114,10 @@ class FlashAttn3(PrunaAlgorithmBase):
 
         # Build the version-specific apply function for non-FP8
         use_new_backend = Version(diffusers_version) >= Version("0.35.0.dev0")
-        use_new_backend = False
         if use_new_backend:
             backend_name = register_custom_backend(imported_packages, use_fp8=False)
             apply_fn = functools.partial(_apply_via_backend, backend=backend_name)
         else:
-            print("Using old backend")
             apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
 
         if use_fp8:
@@ -132,7 +130,6 @@ class FlashAttn3(PrunaAlgorithmBase):
                 backend_name_fp8 = register_custom_backend(imported_packages, use_fp8=True)
                 apply_fn_fp8 = functools.partial(_apply_via_backend, backend=backend_name_fp8)
             else:
-                print("Using old backend")
                 apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
             model = map_targeted_nn_roots(apply_fn_fp8, model, target_modules)
         else:
@@ -187,7 +184,7 @@ class FlashAttn3(PrunaAlgorithmBase):
             configuration system.
         """
         return [
-            # We do not set specific default target modules as FA3 is lossless if not used with FP8 quantization 
+            # We do not set specific default target modules as FA3 is lossless if not used with FP8 quantization
             # and therefore can be applied to any attn module without any performance degradation.
             TargetModules(name="target_modules", default_value={"include": ["*"], "exclude": []}),
             Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
@@ -418,6 +415,8 @@ def _apply_via_forward_wrap(
     """
     Apply FA3 by wrapping individual attention module forwards with FlashAttention3Context.
 
+    If the module is already wrapped by a previous pass, unwrap to the true original and wrap again.
+
     Applies to diffusers < 0.35.0.dev0.
 
     Parameters
@@ -446,6 +445,11 @@ def _apply_via_forward_wrap(
         except AttributeError:
             continue
         original_forward = sub_module.forward
+
+        # If already wrapped by a previous pass, unwrap to the true original
+        # to avoid nested TorchFunctionMode contexts (inner would always win).
+        while hasattr(original_forward, "__wrapped__"):
+            original_forward = original_forward.__wrapped__
 
         @functools.wraps(original_forward)
         def new_forward(*args, _orig=original_forward, _kernel=kernel, _fp8=use_fp8, **kwargs):
