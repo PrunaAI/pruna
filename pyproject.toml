@@ -196,7 +196,7 @@ dev = [
     "pre-commit",
     "twine",
     "pyc-wheel",
-    "ruff",
+    "ruff>=0.15.3",  # introduction of D420 rule
     "numpydoc>=1.9.0",
     "numpydoc-validation",
     "pytest",
