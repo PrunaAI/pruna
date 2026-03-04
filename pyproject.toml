@@ -114,7 +114,7 @@ classifiers = [
 dependencies = [
     "torch>=2.7.0",
     "torchvision>=0.22.0",
-    "torchmetrics[image]==1.7.4",
+    "torchmetrics[image]",
     "requests>=2.31.0",
     "transformers<5.0.0",
     "pytorch-lightning",
@@ -135,7 +135,7 @@ dependencies = [
     "opentelemetry-sdk>=1.30.0",
     "opentelemetry-exporter-otlp>=1.29.0",
     "codecarbon",
-    "pynvml",
+    "nvidia-ml-py",
     "thop",
     "timm",
     "bitsandbytes; sys_platform != 'darwin' or platform_machine != 'arm64'",
