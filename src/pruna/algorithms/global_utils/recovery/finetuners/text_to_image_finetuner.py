@@ -540,7 +540,6 @@ class DenoiserTL(pl.LightningModule):
         """
         lr = self.learning_rate
         wd = self.weight_decay
-        kwargs = {"eps": 1e-7} if self.trainer.precision in [16, "16", "16-true"] else {}
 
         if self.optimizer_name == "AdamW8bit":
             optimizer_cls = AdamW8bit
@@ -553,4 +552,7 @@ class DenoiserTL(pl.LightningModule):
             optimizer_cls = getattr(torch.optim, self.optimizer_name)
         finetune_params = get_trainable_parameters(self.pipeline)
 
-        return optimizer_cls(finetune_params, lr=lr, weight_decay=wd, **kwargs)  # type: ignore[arg-type]
+        if self.trainer.precision in [16, "16", "16-true"]:
+            return optimizer_cls(finetune_params, lr=lr, weight_decay=wd, eps=1e-7)
+        else:
+            return optimizer_cls(finetune_params, lr=lr, weight_decay=wd)

@@ -11,11 +11,6 @@ import pytest
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
 
-_ClipModel = Literal[
-    "openai/clip-vit-large-patch14", "openai/clip-vit-base-patch32", "openai/clip-vit-base-patch16"
-]
-
-
 @pytest.mark.parametrize(
     "device, clip_model",
     [
@@ -30,7 +25,7 @@ def test_aesthetic_laion(device: str, clip_model: str) -> None:
     data_module = PrunaDataModule.from_string("LAION256")
     data_module.limit_datasets(2)
 
-    metric = AestheticLAION(model_name_or_path=cast(_ClipModel, clip_model), device=device)
+    metric = AestheticLAION(model_name_or_path=clip_model, device=device)
     for x, gt in data_module.test_dataloader():
         metric.update(x, gt, gt)
 
@@ -64,4 +59,4 @@ def test_metric_aesthetic_laion_invalid_params() -> None:
     The Hugging Face model, however, gives 5.049.
     """
     with pytest.raises(ValueError, match=r"Model invalid/path-to-model does not exist."):
-        AestheticLAION(model_name_or_path=cast(_ClipModel, "invalid/path-to-model"), device="cpu")
+        AestheticLAION(model_name_or_path="invalid/path-to-model", device="cpu")

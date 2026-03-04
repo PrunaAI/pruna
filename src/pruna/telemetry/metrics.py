@@ -137,7 +137,7 @@ def set_telemetry_metrics(enabled: bool, set_as_default: bool = False) -> None:
         _save_metrics_config(enabled)
 
 
-def increment_counter(function_name: str, success: bool = True, smash_config: Optional[str] = "") -> None:
+def increment_counter(function_name: str, success: bool = True, smash_config: str = "") -> None:
     """
     Increment the counter for a given function or operation.
 
@@ -176,10 +176,10 @@ def increment_counter(function_name: str, success: bool = True, smash_config: Op
             {
                 "function": function_name,
                 "status": "success" if success else "error",
-                "smash_config": smash_config or "",
+                "smash_config": smash_config,
                 "session_id": SESSION_ID,
             },
-        )  # type: ignore[arg-type]
+        )
 
 
 def track_usage(name_or_func: Optional[str | Callable] = None) -> Callable:
