@@ -153,6 +153,8 @@ class TextToTextFinetuner(PrunaFinetuner):
             smash_config.train_dataloader().dataset,  # type: ignore[union-attr]
             smash_config["dataset_text_field"],
         )
+        if dataset_text_field is None:  # use SFTConfig default text field
+            dataset_text_field = "text"
 
         # setup optimizer
         if smash_config["optimizer"] == "AdamW8bit":
@@ -166,7 +168,6 @@ class TextToTextFinetuner(PrunaFinetuner):
         model.train()
         if report_every_n_samples is None:
             report_every_n_samples = max(1, len(dataset) // 8)
-        assert dataset_text_field is not None, "SFTConfig requires dataset_text_field for this dataset format"
         with tempfile.TemporaryDirectory(prefix=str(smash_config["cache_dir"])) as temp_dir:
             training_args = SFTConfig(
                 # task
