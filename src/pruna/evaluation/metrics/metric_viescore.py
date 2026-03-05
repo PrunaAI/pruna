@@ -50,12 +50,6 @@ class VieScoreMetric(StatefulMetric):
     - Quality score: Naturalness and artifacts
     - Overall: Geometric mean of semantic and quality
 
-    References
-    ----------
-    VIEScore: Towards Explainable Metrics for Conditional Image Synthesis Evaluation (ACL 2024)
-    https://arxiv.org/abs/2312.14867
-    https://github.com/TIGER-AI-Lab/VIEScore
-
     Parameters
     ----------
     *args : Any
@@ -80,6 +74,12 @@ class VieScoreMetric(StatefulMetric):
         Call type for the metric.
     **kwargs : Any
         Additional arguments.
+
+    References
+    ----------
+    VIEScore: Towards Explainable Metrics for Conditional Image Synthesis Evaluation (ACL 2024)
+    https://arxiv.org/abs/2312.14867
+    https://github.com/TIGER-AI-Lab/VIEScore
     """
 
     scores: List[float]
@@ -123,6 +123,7 @@ class VieScoreMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """Update the metric with new batch data."""
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -153,6 +154,7 @@ class VieScoreMetric(StatefulMetric):
         return 0.0
 
     def compute(self) -> MetricResult:
+        """Compute the VIEScore metric."""
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
