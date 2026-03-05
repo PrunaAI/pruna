@@ -33,7 +33,8 @@ from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
-from pruna.logging.logger import pruna_logger
+
+import ImageReward as ImageRewardModule
 
 METRIC_IMAGE_REWARD = "image_reward"
 
@@ -84,9 +85,6 @@ class ImageRewardMetric(StatefulMetric):
         self.device = set_to_best_available_device(device)
         self.model_name = model_name
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
-
-import ImageReward as ImageRewardModule
-
         self.model = ImageRewardModule.load(self.model_name, device=str(self.device))
         self.add_state("scores", [])
 

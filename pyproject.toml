@@ -76,6 +76,9 @@ gptqmodel = [
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
 
+[tool.uv]
+extra-build-dependencies = { image-reward = ["setuptools"] }
+
 [project]
 name = "pruna"
 version = "0.3.1"
