@@ -92,9 +92,7 @@ def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> 
     return extract(ann)
 
 
-def split_train_into_train_val_test(
-    dataset: Dataset | IterableDataset, seed: int
-) -> Tuple[Dataset, Dataset, Dataset]:
+def split_train_into_train_val_test(dataset: Dataset | IterableDataset, seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Split the training dataset into train, validation, and test.
 
@@ -118,9 +116,7 @@ def split_train_into_train_val_test(
     return train_ds, val_ds, test_ds
 
 
-def split_train_into_train_val(
-    dataset: Dataset | IterableDataset, seed: int
-) -> Tuple[Dataset, Dataset]:
+def split_train_into_train_val(dataset: Dataset | IterableDataset, seed: int) -> Tuple[Dataset, Dataset]:
     """
     Split the trainingdataset into train and validation.
 
@@ -142,9 +138,7 @@ def split_train_into_train_val(
     return train_ds, val_ds
 
 
-def split_val_into_val_test(
-    dataset: Dataset | IterableDataset, seed: int
-) -> Tuple[Dataset, Dataset]:
+def split_val_into_val_test(dataset: Dataset | IterableDataset, seed: int) -> Tuple[Dataset, Dataset]:
     """
     Split the dataset into validation and test.
 

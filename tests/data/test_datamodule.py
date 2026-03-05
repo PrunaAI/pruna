@@ -5,9 +5,9 @@ import torch
 from transformers import AutoTokenizer
 
 from pruna.data import base_datasets
-from pruna.data.utils import get_literal_values_from_param
 from pruna.data.datasets.image import setup_imagenet_dataset
 from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.data.utils import get_literal_values_from_param
 
 bert_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
@@ -121,9 +121,7 @@ def _benchmarks_with_category() -> list[tuple[str, str]]:
 @pytest.mark.parametrize("dataset_name, category", _benchmarks_with_category())
 def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
     """Test dataset loading with each category filter; dataset has at least one sample."""
-    dm = PrunaDataModule.from_string(
-        dataset_name, category=category, dataloader_args={"batch_size": 4}
-    )
+    dm = PrunaDataModule.from_string(dataset_name, category=category, dataloader_args={"batch_size": 4})
     _assert_at_least_one_sample(dm)
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))

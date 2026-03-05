@@ -20,8 +20,8 @@ import torch
 
 from pruna.data import base_datasets
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.evaluation.benchmarks import BenchmarkRegistry
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
+from pruna.evaluation.benchmarks import BenchmarkRegistry
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
