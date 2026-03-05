@@ -25,11 +25,20 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
+from pruna.engine.utils import (
+    get_device,
+    move_to_device,
+    safe_memory_cleanup,
+    set_to_best_available_device,
+)
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device_map, group_metrics_by_inheritance
+from pruna.evaluation.metrics.utils import (
+    ensure_device_consistency,
+    get_device_map,
+    group_metrics_by_inheritance,
+)
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -54,6 +63,8 @@ class EvaluationAgent:
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
+    dataloader_args : dict[str, Any] | None, optional
+        Args passed to the dataloader when using benchmark (e.g. batch_size).
     """
 
     def __init__(
@@ -135,8 +146,8 @@ class EvaluationAgent:
         List[MetricResult]
             Evaluation results.
 
-        Example
-        -------
+        Examples
+        --------
         >>> results = EvaluationAgent.from_benchmark("Parti Prompts", model)
         >>> results = EvaluationAgent.from_benchmark("HPS", model, category="anime", fraction=0.1)
         """

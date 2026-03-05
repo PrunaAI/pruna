@@ -65,7 +65,16 @@ class BenchmarkRegistry:
     """
     Registry for benchmarks.
 
-    Provides lookup and discovery of benchmark metadata.
+    Provides lookup and discovery of benchmark metadata. Metrics per benchmark
+    are set to those explicitly used in the reference paper (see reference URL).
+    Verified from full text / evaluation sections where available:
+    - Parti/DrawBench: human evaluation only (abstract + HF summary).
+    - GenAI Bench: VQAScore only (2406.13743; not in Pruna).
+    - VBench: 16 dimensions, each with tailored method (DINO, CLIP, ViCLIP, LAION, MUSIQ, GRiT, etc.; 2311.17982 ar5iv).
+    - COCO: FID + CLIP for image-text alignment (Imagen 2205.11487).
+    - ImageNet: top-1/top-5 accuracy (1409.0575). WikiText: perplexity (1609.07843).
+    - GenEval: Mask2Former + CLIP color pipeline, binary GenEval score (2310.11513 arxiv HTML).
+    - HPS/ImgEdit/LongText/GEditBench/OneIG/DPG: paper-specific metrics not in Pruna.
     """
 
     _registry: list[Benchmark] = [
@@ -76,7 +85,7 @@ class BenchmarkRegistry:
                 "and 11 challenge aspects. Evaluates text-to-image models on abstract thinking, world knowledge, "
                 "perspectives, and symbol rendering from basic to complex compositions."
             ),
-            metrics=["arniqa", "clip_score", "clipiqa", "sharpness"],
+            metrics=[],  # Paper uses human evaluation only; pass explicit metrics if needed
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2206.10789",
         ),
@@ -86,12 +95,7 @@ class BenchmarkRegistry:
                 "Comprehensive benchmark from the Imagen team for rigorous evaluation of text-to-image models. "
                 "Enables side-by-side comparison on sample quality and image-text alignment with human raters."
             ),
-            metrics=[
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # DrawBench uses human eval only; image_reward not in Pruna
-            ],
+            metrics=[],  # Paper uses human evaluation only; pass explicit metrics if needed
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2205.11487",
         ),
@@ -102,12 +106,7 @@ class BenchmarkRegistry:
                 "Covers basic skills (scene, attributes, spatial relationships) to advanced reasoning "
                 "(counting, comparison, logic/negation) with over 24k human ratings."
             ),
-            metrics=[
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # GenAI-Bench uses VQAScore; vqa not in Pruna
-            ],
+            metrics=[],  # Paper uses VQAScore only; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2406.13743",
         ),
@@ -118,7 +117,7 @@ class BenchmarkRegistry:
                 "16 disentangled dimensions: temporal flickering, motion smoothness, subject consistency, "
                 "spatial relationship, color, aesthetic quality, and more."
             ),
-            metrics=["clip_score"],
+            metrics=[],  # Paper uses dimension-specific automated metrics; not all in Pruna
             task_type="text_to_video",
             reference="https://arxiv.org/abs/2311.17982",
         ),
@@ -128,7 +127,7 @@ class BenchmarkRegistry:
                 "Microsoft COCO dataset for image generation evaluation. Real image-caption pairs "
                 "enabling FID and alignment metrics on distribution-level and instance-level quality."
             ),
-            metrics=["fid", "clip_score", "clipiqa"],
+            metrics=["fid", "clip_score"],  # Paper: FID + CLIP VIT-L/14 for alignment
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2205.11487",
         ),
@@ -159,13 +158,7 @@ class BenchmarkRegistry:
                 "counting, colors, position, color attributes. Evaluates fine-grained alignment "
                 "between prompts and generated images via VQA-style questions."
             ),
-            metrics=[
-                "arniqa",
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # GenEval uses VQA/TIFA-style qa_accuracy; not in Pruna
-            ],
+            metrics=[],  # Paper: Mask2Former + CLIP ViT-L/14 pipeline; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2310.11513",
         ),
@@ -175,13 +168,7 @@ class BenchmarkRegistry:
                 "HPD (Human Preference Dataset) v2 for HPS (Human Preference Score) evaluation. "
                 "Covers anime, concept-art, paintings, and photo styles with human preference data."
             ),
-            metrics=[
-                "arniqa",
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # HPS v2 uses CLIP fine-tuned on human prefs; hps not in Pruna
-            ],
+            metrics=[],  # Paper uses HPS scoring model; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2306.09341",
         ),
@@ -191,13 +178,7 @@ class BenchmarkRegistry:
                 "Image editing benchmark with 8 edit types: replace, add, remove, adjust, extract, "
                 "style, background, compose. Evaluates instruction-following for inpainting and editing."
             ),
-            metrics=[
-                "arniqa",
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # ImgEdit uses GPT-4o/ImgEdit-Judge; img_edit_score not in Pruna
-            ],
+            metrics=[],  # Paper uses GPT-4o/ImgEdit-Judge; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2505.20275",
         ),
@@ -207,12 +188,7 @@ class BenchmarkRegistry:
                 "Text-to-image benchmark for long, detailed prompts. Evaluates model ability to "
                 "handle complex multi-clause descriptions and maintain coherence across long instructions."
             ),
-            metrics=[
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # LongText-Bench uses text_score/TIT-Score; not in Pruna
-            ],
+            metrics=[],  # Paper uses text_score/TIT-Score; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2507.22058",
         ),
@@ -223,13 +199,7 @@ class BenchmarkRegistry:
                 "material alter, motion change, style change, subject add/remove/replace, text change, "
                 "tone transfer, and human retouching."
             ),
-            metrics=[
-                "arniqa",
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # GEdit-Bench uses VIEScore; viescore not in Pruna
-            ],
+            metrics=[],  # Paper uses VIEScore; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2504.17761",
         ),
@@ -240,13 +210,7 @@ class BenchmarkRegistry:
                 "(Anime_Stylization, General_Object, Knowledge_Reasoning, Multilingualism, Portrait, "
                 "Text_Rendering) plus fine-grained style classes. Includes alignment questions."
             ),
-            metrics=[
-                "arniqa",
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # OneIG uses alignment_score, text_score; not in Pruna
-            ],
+            metrics=[],  # Paper uses dimension-specific metrics; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2506.07977",
         ),
@@ -256,13 +220,7 @@ class BenchmarkRegistry:
                 "Dense Prompt Graph benchmark. Evaluates entity, attribute, relation, "
                 "global, and other descriptive aspects with natural-language questions for alignment."
             ),
-            metrics=[
-                "arniqa",
-                "clip_score",
-                "clipiqa",
-                "sharpness",
-                # DPG uses VQA-style qa_accuracy; not in Pruna
-            ],
+            metrics=[],  # Paper uses custom evaluation; not in Pruna
             task_type="text_to_image",
             reference="https://arxiv.org/abs/2403.05135",
         ),
