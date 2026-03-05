@@ -13,9 +13,10 @@
 # limitations under the License.
 
 """
-VieScore metric for evaluating image quality (semantic + quality).
+VIEScore metric for evaluating conditional image synthesis (semantic + quality).
 
-Reference: VieScore https://github.com/ByteDance/IEA-eval
+Reference: VIEScore: Towards Explainable Metrics for Conditional Image Synthesis Evaluation
+(ACL 2024) - https://arxiv.org/abs/2312.14867, https://github.com/TIGER-AI-Lab/VIEScore
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 @MetricRegistry.register("viescore")
 class VieScoreMetric(StatefulMetric):
     """
-    VieScore metric for evaluating image quality (semantic + quality).
+    VIEScore metric for evaluating conditional image synthesis (semantic + quality).
 
     Uses VLM to assess both semantic alignment and visual quality.
     Higher scores indicate better overall quality.
@@ -48,6 +49,12 @@ class VieScoreMetric(StatefulMetric):
     - Semantic score: How well image follows prompt
     - Quality score: Naturalness and artifacts
     - Overall: Geometric mean of semantic and quality
+
+    References
+    ----------
+    VIEScore: Towards Explainable Metrics for Conditional Image Synthesis Evaluation (ACL 2024)
+    https://arxiv.org/abs/2312.14867
+    https://github.com/TIGER-AI-Lab/VIEScore
 
     Parameters
     ----------

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import base64
 import io
+import math
 import os
 from abc import ABC, abstractmethod
 from typing import Any, List, Literal, Optional, Type, TypeVar
@@ -129,6 +130,7 @@ class BaseVLM(ABC):
         images: List[Image.Image],
         questions: List[str],
         answers: List[str],
+        use_probability: bool = False,
         **kwargs: Any,
     ) -> List[float]:
         """
@@ -142,13 +144,15 @@ class BaseVLM(ABC):
             List of questions.
         answers : List[str]
             List of expected answers.
+        use_probability : bool, optional
+            If True and supported, return P(expected answer) instead of binary 0/1.
         **kwargs : Any
             Additional arguments passed to the implementation.
 
         Returns
         -------
         List[float]
-            Scores for each image-question pair.
+            Scores for each image-question pair (0-1, or probability when use_probability).
         """
         pass
 
@@ -253,10 +257,14 @@ class LitellmVLM(BaseVLM):
         images: List[Image.Image],
         questions: List[str],
         answers: List[str],
+        use_probability: bool = False,
         **kwargs: Any,
     ) -> List[float]:
         """
         Score how well answers match images for given questions.
+
+        When use_probability=True, requests logprobs from the API and returns P(expected).
+        Falls back to binary 0/1 if logprobs not available.
 
         Parameters
         ----------
@@ -266,21 +274,79 @@ class LitellmVLM(BaseVLM):
             List of questions.
         answers : List[str]
             List of expected answers.
+        use_probability : bool, optional
+            If True, return P(expected) from logprobs when available. Default is False.
         **kwargs : Any
-            Additional arguments passed to generate.
+            Additional arguments passed to litellm completion.
 
         Returns
         -------
         List[float]
-            Scores for each image-question pair.
+            Scores for each image-question pair (0-1, or probability when use_probability).
         """
         scores = []
         for image, question, answer in zip(images, questions, answers):
             prompt = f"{question} Please answer yes or no."
-            response = self.generate([image], [prompt], **kwargs)[0].lower()
-            score = 1.0 if answer.lower() in response else 0.0
+            if use_probability:
+                score = self._score_with_logprobs(image, prompt, answer, **kwargs)
+            else:
+                response = self.generate([image], [prompt], **kwargs)[0].lower()
+                score = 1.0 if answer.lower() in response else 0.0
             scores.append(score)
         return scores
+
+    def _score_with_logprobs(self, image: Image.Image, prompt: str, expected: str, **kwargs: Any) -> float:
+        """
+        Get P(expected) from logprobs when available.
+
+        Parameters
+        ----------
+        image : Image.Image
+            PIL Image to score.
+        prompt : str
+            Question prompt.
+        expected : str
+            Expected answer (e.g., "Yes").
+        **kwargs : Any
+            Additional arguments passed to litellm completion.
+
+        Returns
+        -------
+        float
+            Probability of expected answer (0-1), or binary 0/1 on fallback.
+        """
+        content = [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": self._image_to_data_url(image)}},
+        ]
+        completion_kwargs = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": content}],
+            "api_key": self.api_key,
+            "logprobs": True,
+            "top_logprobs": 5,
+            **self.extra_kwargs,
+            **kwargs,
+        }
+        try:
+            response = self._litellm.completion(**completion_kwargs)
+            choice = response.choices[0]
+            logprobs = getattr(choice, "logprobs", None) or getattr(choice.message, "logprobs", None)
+            if logprobs and hasattr(logprobs, "content"):
+                for tok in (logprobs.content or []):
+                    top = getattr(tok, "top_logprobs", None) or []
+                    for t in top:
+                        token_str = getattr(t, "token", "") or str(t).lower()
+                        if token_str and expected.lower() in token_str.lower():
+                            logprob = float(getattr(t, "logprob", -1e9) or -1e9)
+                            return min(1.0, max(0.0, math.exp(logprob)))
+            content_str = (choice.message.content or "").lower()
+            if expected.lower() in content_str:
+                return 1.0
+            return 0.0
+        except Exception:
+            response = self.generate([image], [prompt], **kwargs)[0].lower()
+            return 1.0 if expected.lower() in response else 0.0
 
     def _image_to_data_url(self, image: Image.Image) -> str:
         buffer = io.BytesIO()
@@ -458,10 +524,13 @@ class TransformersVLM(BaseVLM):
         images: List[Image.Image],
         questions: List[str],
         answers: List[str],
+        use_probability: bool = False,
         **kwargs: Any,
     ) -> List[float]:
         """
         Score how well answers match images for given questions.
+
+        use_probability is not supported for TransformersVLM; uses binary 0/1.
 
         Parameters
         ----------
@@ -471,13 +540,15 @@ class TransformersVLM(BaseVLM):
             List of questions.
         answers : List[str]
             List of expected answers.
+        use_probability : bool, optional
+            Ignored; TransformersVLM always uses binary 0/1.
         **kwargs : Any
             Additional arguments passed to generate.
 
         Returns
         -------
         List[float]
-            Scores for each image-question pair.
+            Scores for each image-question pair (0 or 1).
         """
         scores = []
         for image, question, answer in zip(images, questions, answers):

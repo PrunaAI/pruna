@@ -15,7 +15,12 @@
 """
 VQA (Visual Question Answering) metric.
 
-Reference: VQAScore https://arxiv.org/abs/2310.08868
+Reference: VQAScore - Evaluating Text-to-Visual Generation with Image-to-Text Generation
+https://arxiv.org/abs/2404.01291
+
+Note: VQAScore uses P(Yes) (probability of "Yes" answer) for ranking. With litellm,
+use_probability=True (default) requests logprobs for soft scores when the provider supports it.
+Set use_probability=False for binary 0/1. TransformersVLM always uses binary.
 """
 
 from __future__ import annotations
@@ -39,8 +44,11 @@ class VQAMetric(StatefulMetric):
     """
     VQA (Visual Question Answering) metric.
 
-    Uses VLM to answer questions about images and compare with expected answers.
+    Uses VLM to answer "Does this image show '{prompt}'?" and scores alignment.
     Higher scores indicate better image-text alignment.
+
+    VQAScore (arXiv:2404.01291) uses P(Yes) for ranking. Default use_probability=True
+    with litellm requests logprobs for soft scores when supported.
 
     Parameters
     ----------
@@ -64,6 +72,9 @@ class VQAMetric(StatefulMetric):
         API key for litellm.
     call_type : str, optional
         Call type for the metric.
+    use_probability : bool, optional
+        If True, use P(Yes) when backend supports logprobs (litellm). Otherwise binary 0/1.
+        Default is True for paper alignment.
     **kwargs : Any
         Additional arguments.
     """
@@ -86,11 +97,13 @@ class VQAMetric(StatefulMetric):
         device=None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
+        use_probability: bool = True,
         **kwargs,
     ):
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.structured_output = structured_output
+        self.use_probability = use_probability
 
         self.vlm = get_vlm(
             vlm=vlm,
@@ -117,7 +130,13 @@ class VQAMetric(StatefulMetric):
         for i, image in enumerate(images):
             prompt = prompts[i] if i < len(prompts) else ""
             question = f'Does this image show "{prompt}"?'
-            score = self.vlm.score([image], [question], ["Yes"], response_format=self.response_format)[0]
+            score = self.vlm.score(
+                [image],
+                [question],
+                ["Yes"],
+                response_format=self.response_format,
+                use_probability=self.use_probability,
+            )[0]
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
