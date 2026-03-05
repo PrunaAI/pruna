@@ -26,7 +26,11 @@ from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_vlm_utils import YesNoAnswer, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    SINGLE,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
 
@@ -97,8 +101,9 @@ class QAAccuracyMetric(StatefulMetric):
             **(vlm_kwargs or {}),
         )
         self.response_format = (
-            YesNoAnswer if structured_output and vlm_type == "litellm" else
-            ("yes_no" if structured_output and vlm_type == "transformers" else None)
+            YesNoAnswer
+            if structured_output and vlm_type == "litellm"
+            else ("yes_no" if structured_output and vlm_type == "transformers" else None)
         )
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
@@ -118,7 +123,18 @@ class QAAccuracyMetric(StatefulMetric):
         return [[]] * n
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
-        """Update the metric with new batch data."""
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data.
+        gt : torch.Tensor
+            The ground truth (questions per image).
+        outputs : torch.Tensor
+            The output images.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         questions_per_image = self._extract_questions(gt, len(images))
@@ -139,7 +155,14 @@ class QAAccuracyMetric(StatefulMetric):
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
-        """Compute the QA accuracy score."""
+        """
+        Compute the QA accuracy score.
+
+        Returns
+        -------
+        MetricResult
+            The mean QA accuracy across all updates.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))

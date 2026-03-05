@@ -18,12 +18,26 @@ from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
 from pruna.evaluation.metrics.metric_alignment_score import AlignmentScoreMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_dino_score import DinoScore
-from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
-from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
+from pruna.evaluation.metrics.metric_elapsed_time import (
+    LatencyMetric,
+    ThroughputMetric,
+    TotalTimeMetric,
+)
+from pruna.evaluation.metrics.metric_energy import (
+    CO2EmissionsMetric,
+    EnergyConsumedMetric,
+)
 from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
-from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
-from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
+from pruna.evaluation.metrics.metric_memory import (
+    DiskMemoryMetric,
+    InferenceMemoryMetric,
+    TrainingMemoryMetric,
+)
+from pruna.evaluation.metrics.metric_model_architecture import (
+    TotalMACsMetric,
+    TotalParamsMetric,
+)
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
@@ -31,7 +45,12 @@ from pruna.evaluation.metrics.metric_text_score import TextScoreMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.metric_viescore import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
-from pruna.evaluation.metrics.vlm_base import BaseVLM, LitellmVLM, TransformersVLM, get_vlm
+from pruna.evaluation.metrics.vlm_base import (
+    BaseVLM,
+    LitellmVLM,
+    TransformersVLM,
+    get_vlm,
+)
 
 __all__ = [
     "MetricRegistry",

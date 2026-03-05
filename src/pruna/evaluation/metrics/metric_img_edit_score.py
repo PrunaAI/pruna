@@ -33,7 +33,11 @@ from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_vlm_utils import ScoreOutput, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    SINGLE,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
 
@@ -106,15 +110,27 @@ class ImageEditScoreMetric(StatefulMetric):
             **(vlm_kwargs or {}),
         )
         self.response_format = (
-            ScoreOutput if structured_output and vlm_type == "litellm" else
-            ("integer" if structured_output and vlm_type == "transformers" else None)
+            ScoreOutput
+            if structured_output and vlm_type == "litellm"
+            else ("integer" if structured_output and vlm_type == "transformers" else None)
         )
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
-        """Update the metric with new batch data."""
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data (editing instructions).
+        gt : torch.Tensor
+            The ground truth / cached images.
+        outputs : torch.Tensor
+            The output (edited) images.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -135,7 +151,14 @@ class ImageEditScoreMetric(StatefulMetric):
         return 0.0
 
     def compute(self) -> MetricResult:
-        """Compute the image edit score."""
+        """
+        Compute the image edit score.
+
+        Returns
+        -------
+        MetricResult
+            The mean image edit score across all updates.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
