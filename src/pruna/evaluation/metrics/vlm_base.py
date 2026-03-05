@@ -241,7 +241,12 @@ class LitellmVLM(BaseVLM):
                 response = self._litellm.completion(**completion_kwargs)
                 content_result = response.choices[0].message.content
                 # If using pydantic, content is already parsed
-                if response_format is not None and isinstance(response_format, type) and isinstance(content_result, response_format):
+                use_pydantic = (
+                    response_format is not None
+                    and isinstance(response_format, type)
+                    and isinstance(content_result, response_format)
+                )
+                if use_pydantic:
                     # Return JSON string representation
                     results.append(content_result.model_dump_json())
                 else:
