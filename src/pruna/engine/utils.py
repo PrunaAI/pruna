@@ -29,8 +29,6 @@ from accelerate.hooks import remove_hook_from_module
 from diffusers.models.modeling_utils import ModelMixin
 from transformers import Pipeline
 
-
-
 from pruna.logging.logger import pruna_logger
 
 
@@ -38,9 +36,6 @@ def safe_memory_cleanup() -> None:
     """Perform safe memory cleanup by collecting garbage and clearing CUDA cache."""
     gc.collect()
     torch.cuda.empty_cache()
-
-def adding_new_feature():
-    print("it's feature time")
 
 
 def load_json_config(path: str | Path, json_name: str) -> dict:
