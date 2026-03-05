@@ -27,7 +27,11 @@ from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_vlm_utils import OCRText, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    SINGLE,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
 OCR_PROMPT = (
@@ -107,8 +111,9 @@ class TextScoreMetric(StatefulMetric):
         self.vlm_type = vlm_type
         self.structured_output = structured_output
         self.response_format = (
-            OCRText if structured_output and vlm_type == "litellm" else
-            ("json" if structured_output and vlm_type == "transformers" else None)
+            OCRText
+            if structured_output and vlm_type == "litellm"
+            else ("json" if structured_output and vlm_type == "transformers" else None)
         )
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
@@ -132,7 +137,18 @@ class TextScoreMetric(StatefulMetric):
         return float(prev[-1])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
-        """Update the metric with new batch data."""
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            The input data.
+        gt : torch.Tensor
+            The ground truth (text content).
+        outputs : torch.Tensor
+            The output images.
+        """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         text_gt_list = self._extract_ground_truth_text(gt, len(images))
@@ -155,6 +171,7 @@ class TextScoreMetric(StatefulMetric):
         if self.structured_output and raw.strip().startswith("{"):
             try:
                 import json
+
                 data = json.loads(raw)
                 text = data.get("text", raw)
             except (json.JSONDecodeError, TypeError):
@@ -180,7 +197,14 @@ class TextScoreMetric(StatefulMetric):
         return [None] * n
 
     def compute(self) -> MetricResult:
-        """Compute the text score."""
+        """
+        Compute the text score.
+
+        Returns
+        -------
+        MetricResult
+            The mean text score (edit distance) across all updates.
+        """
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
