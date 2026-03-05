@@ -31,7 +31,7 @@ import io
 import math
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Literal, Optional, Type, TypeVar
+from typing import Any, List, Literal, Optional, Type, TypeVar, Union
 
 import torch
 from PIL import Image
@@ -100,7 +100,7 @@ class BaseVLM(ABC):
         self,
         images: List[Image.Image],
         prompts: List[str],
-        response_format: Optional[Type[BaseModel]] = None,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"]]] = None,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -112,8 +112,8 @@ class BaseVLM(ABC):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | None
-            Optional pydantic model for structured output.
+        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | None
+            Optional pydantic model (litellm) or format string (transformers/outlines).
         **kwargs : Any
             Additional arguments passed to the implementation.
 
@@ -196,7 +196,7 @@ class LitellmVLM(BaseVLM):
         self,
         images: List[Image.Image],
         prompts: List[str],
-        response_format: Optional[Type[BaseModel]] = None,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"]]] = None,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -208,8 +208,8 @@ class LitellmVLM(BaseVLM):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | None
-            Optional pydantic model for structured output.
+        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | None
+            Optional pydantic model for structured output (litellm uses BaseModel).
         **kwargs : Any
             Additional arguments passed to litellm completion.
 
@@ -234,15 +234,14 @@ class LitellmVLM(BaseVLM):
                     **self.extra_kwargs,
                     **kwargs,
                 }
-                # Add structured generation if requested
-                if response_format is not None:
-                    # Use litellm's response_format parameter
+                # Add structured generation if requested (litellm uses pydantic models only)
+                if response_format is not None and isinstance(response_format, type):
                     completion_kwargs["response_format"] = response_format
                 # Use synchronous completion
                 response = self._litellm.completion(**completion_kwargs)
                 content_result = response.choices[0].message.content
                 # If using pydantic, content is already parsed
-                if response_format is not None and isinstance(content_result, response_format):
+                if response_format is not None and isinstance(response_format, type) and isinstance(content_result, response_format):
                     # Return JSON string representation
                     results.append(content_result.model_dump_json())
                 else:
@@ -418,7 +417,7 @@ class TransformersVLM(BaseVLM):
         self,
         images: List[Image.Image],
         prompts: List[str],
-        response_format: Optional[str] = None,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"]]] = None,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -430,8 +429,8 @@ class TransformersVLM(BaseVLM):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : str | None
-            Optional format constraint (e.g., "json", "integer", "yes_no").
+        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | None
+            Format constraint for outlines ("integer", "yes_no") or None.
         **kwargs : Any
             Additional arguments passed to model generate.
 
@@ -443,8 +442,9 @@ class TransformersVLM(BaseVLM):
         self._load_model()
         results = []
         max_new_tokens = kwargs.get("max_new_tokens", 128)
-        if self.use_outlines and response_format:
-            results = self._generate_with_outlines(images, prompts, response_format, max_new_tokens)
+        format_str = response_format if isinstance(response_format, str) else None
+        if self.use_outlines and format_str:
+            results = self._generate_with_outlines(images, prompts, format_str, max_new_tokens)
         else:
             results = self._generate_standard(images, prompts, max_new_tokens)
         return results
