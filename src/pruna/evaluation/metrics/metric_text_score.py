@@ -132,6 +132,7 @@ class TextScoreMetric(StatefulMetric):
         return float(prev[-1])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """Update the metric with new batch data."""
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         text_gt_list = self._extract_ground_truth_text(gt, len(images))
@@ -179,6 +180,7 @@ class TextScoreMetric(StatefulMetric):
         return [None] * n
 
     def compute(self) -> MetricResult:
+        """Compute the text score."""
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
