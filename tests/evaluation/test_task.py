@@ -36,15 +36,8 @@ def _mock_torch_metrics():
     with patch.object(TorchMetrics, '_member_map_', {**TorchMetrics._member_map_, **mock_metrics}):
         yield
 
-VLM_METRICS_REQUIRING_LITELLM = frozenset(
-    {"alignment_score", "vqa", "img_edit_score", "text_score", "viescore", "qa_accuracy"}
-)
-
-
 @pytest.mark.parametrize("metric_name", MetricRegistry()._registry)
 def test_metric_initialization_from_metric_name(metric_name):
-    if metric_name in VLM_METRICS_REQUIRING_LITELLM:
-        pytest.importorskip("litellm")
     datamodule = PrunaDataModule.from_string("LAION256")
     Task(request=[metric_name], datamodule=datamodule, device="cpu")
 
