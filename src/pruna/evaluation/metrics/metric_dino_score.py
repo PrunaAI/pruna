@@ -28,7 +28,11 @@ from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import (
+    SINGLE,
+    get_call_type_for_single_metric,
+    metric_data_processor,
+)
 from pruna.logging.logger import pruna_logger
 
 DINO_SCORE = "dino_score"
