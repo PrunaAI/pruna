@@ -302,7 +302,8 @@ class LitellmVLM(BaseVLM):
                     for t in top:
                         token_str = getattr(t, "token", "") or str(t).lower()
                         if token_str and expected.lower() in token_str.lower():
-                            logprob = float(getattr(t, "logprob", -1e9) or -1e9)
+                            raw_logprob = getattr(t, "logprob", None)
+                            logprob = float(raw_logprob) if raw_logprob is not None else -1e9
                             return min(1.0, max(0.0, math.exp(logprob)))
             content_str = (choice.message.content or "").lower()
             if expected.lower() in content_str:
