@@ -49,12 +49,6 @@ class DinoScore(StatefulMetric):
     See https://github.com/facebookresearch/dinov3 and
     https://huggingface.co/collections/facebook/dinov3 for available models.
 
-    References
-    ----------
-    DINO: https://github.com/facebookresearch/dino, https://arxiv.org/abs/2104.14294
-    DINOv2: https://github.com/facebookresearch/dinov2
-    DINOv3: https://github.com/facebookresearch/dinov3
-
     Parameters
     ----------
     device : str | torch.device | None
@@ -68,6 +62,12 @@ class DinoScore(StatefulMetric):
         use timm. Any timm or HF model ID also accepted.
     call_type : str
         The call type to use for the metric.
+
+    References
+    ----------
+    DINO: https://github.com/facebookresearch/dino, https://arxiv.org/abs/2104.14294
+    DINOv2: https://github.com/facebookresearch/dinov2
+    DINOv3: https://github.com/facebookresearch/dinov3
     """
 
     TIMM_MODELS: dict[str, str] = {
