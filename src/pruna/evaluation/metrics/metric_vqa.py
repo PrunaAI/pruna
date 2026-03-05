@@ -123,6 +123,7 @@ class VQAMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """Update the metric with new batch data."""
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -140,6 +141,7 @@ class VQAMetric(StatefulMetric):
             self.scores.append(score)
 
     def compute(self) -> MetricResult:
+        """Compute the VQA score."""
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))

@@ -114,6 +114,7 @@ class ImageEditScoreMetric(StatefulMetric):
         self.add_state("scores", [])
 
     def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """Update the metric with new batch data."""
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
         prompts = x if isinstance(x, list) else [""] * len(images)
@@ -134,6 +135,7 @@ class ImageEditScoreMetric(StatefulMetric):
         return 0.0
 
     def compute(self) -> MetricResult:
+        """Compute the image edit score."""
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
