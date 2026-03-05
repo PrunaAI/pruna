@@ -15,19 +15,44 @@
 from __future__ import annotations
 
 from importlib.resources import as_file, files
-from typing import List, Tuple
+from typing import Literal, Tuple
 
 from datasets import Dataset, load_dataset
 
+VBenchCategory = Literal[
+    "aesthetic_quality",
+    "appearance_style",
+    "background_consistency",
+    "color",
+    "dynamic_degree",
+    "human_action",
+    "imaging_quality",
+    "motion_smoothness",
+    "multiple_objects",
+    "object_class",
+    "overall_consistency",
+    "scene",
+    "spatial_relationship",
+    "subject_consistency",
+    "temporal_flickering",
+    "temporal_style",
+]
 
-def setup_vbench_dataset(category: str | List[str] | None = None) -> Tuple[Dataset, Dataset, Dataset]:
+
+def setup_vbench_dataset(
+    category: VBenchCategory | list[VBenchCategory] | None = None,
+) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the VBench dataset from the VBench full info json file.
 
     Parameters
     ----------
-    category : str | List[str] | None
-        The dimension(s) of the dataset to load.
+    category : VBenchCategory | list[VBenchCategory] | None
+        Filter by dimension(s). Available: aesthetic_quality, appearance_style,
+        background_consistency, color, dynamic_degree, human_action, imaging_quality,
+        motion_smoothness, multiple_objects, object_class, overall_consistency,
+        scene, spatial_relationship, subject_consistency, temporal_flickering,
+        temporal_style.
 
     Returns
     -------

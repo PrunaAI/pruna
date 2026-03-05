@@ -14,8 +14,9 @@
 
 from __future__ import annotations
 
+import inspect
 import random
-from typing import Any, Tuple, Union
+from typing import Any, Callable, Literal, Tuple, Union, get_args, get_origin, get_type_hints
 
 import torch
 from datasets import Dataset, IterableDataset
@@ -36,6 +37,50 @@ class TokenizerMissingError(Exception):
 
     def __init__(self, message: str = "Tokenizer is missing. Please provide a valid tokenizer.") -> None:
         super().__init__(message)
+
+
+def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> list[str] | None:
+    """
+    Extract Literal values from a function parameter's type annotation (handles Union).
+
+    Parameters
+    ----------
+    func : Callable[..., Any]
+        The function to inspect.
+    param_name : str
+        The parameter name to extract Literal values from.
+
+    Returns
+    -------
+    list[str] | None
+        List of string values if the parameter is a Literal type, None otherwise.
+    """
+    unwrapped = getattr(func, "func", func)
+    sig = inspect.signature(unwrapped)
+    if param_name not in sig.parameters:
+        return None
+    ann = sig.parameters[param_name].annotation
+    if ann is inspect.Parameter.empty:
+        return None
+    if isinstance(ann, str):
+        try:
+            hints = get_type_hints(unwrapped)
+            ann = hints.get(param_name, ann)
+        except Exception:
+            return None
+
+    def extract(ann: Any) -> list[str] | None:
+        if ann is None or ann is type(None):
+            return None
+        if get_origin(ann) is Literal:
+            args = get_args(ann)
+            return list(args) if args and all(isinstance(a, str) for a in args) else None
+        for arg in get_args(ann) or ():
+            if (r := extract(arg)) is not None:
+                return r
+        return None
+
+    return extract(ann)
 
 
 def split_train_into_train_val_test(
@@ -190,58 +235,49 @@ def recover_text_from_dataloader(dataloader: DataLoader, tokenizer: Any) -> list
     return texts
 
 
-def stratify_dataset(dataset: Dataset, sample_size: int, seed: int = 42) -> Dataset:
+def stratify_dataset(
+    dataset: Dataset,
+    sample_size: int | None = None,
+    fraction: float = 1.0,
+    seed: int = 42,
+) -> Dataset:
     """
-    Stratify the dataset into a specific size.
+    Stratify the dataset to a specific size via shuffled sampling.
 
     Parameters
     ----------
     dataset : Dataset
         The dataset to stratify.
-    sample_size : int
-        The size to stratify.
+    sample_size : int | None
+        Target size. If None, uses fraction or full dataset.
+    fraction : float
+        Fraction of dataset to use (0.0-1.0). Ignored if sample_size is set.
     seed : int
-        The seed to use for sampling the dataset.
+        Random seed for reproducible sampling.
 
     Returns
     -------
     Dataset
         The stratified dataset.
+
+    Raises
+    ------
+    ValueError
+        If both fraction < 1.0 and sample_size are provided.
     """
+    if fraction < 1.0 and sample_size is not None:
+        raise ValueError("Fraction and sample_size cannot be used together.")
+    target_size = int(len(dataset) * fraction) if fraction < 1.0 else (sample_size or len(dataset))
+
     dataset_length = len(dataset)
-    if dataset_length < sample_size:
+    if dataset_length < target_size:
         pruna_logger.warning(
             "Dataset length is less than the size to stratify."
-            f"Using the entire dataset. ({dataset_length} < {sample_size})"
+            f"Using the entire dataset. ({dataset_length} < {target_size})"
         )
         return dataset
 
     indices = list(range(dataset_length))
     random.Random(seed).shuffle(indices)
-    selected_indices = indices[:sample_size]
-    dataset = dataset.select(selected_indices)
-    return dataset
-
-
-def define_sample_size_for_dataset(dataset: Dataset, fraction: float, sample_size: int | None = None) -> int:
-    """
-    Define the sample size for the dataset.
-
-    Parameters
-    ----------
-    dataset : Dataset
-        The dataset to define the sample size for.
-    fraction : float
-        The fraction of the dataset to sample.
-    sample_size : int | None
-        The sample size to use.
-
-    Returns
-    -------
-    int
-        The sample size for the dataset.
-    """
-    if fraction < 1.0 and (sample_size is not None):
-        raise ValueError("Fraction and sample sizes cannot be used together.")
-    sample_size = int(len(dataset) * fraction) if fraction < 1.0 else sample_size or len(dataset)
-    return sample_size
+    selected_indices = indices[:target_size]
+    return dataset.select(selected_indices)

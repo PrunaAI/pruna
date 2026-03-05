@@ -42,7 +42,8 @@ def test_metric_aesthetic_laion_ipynb_sample() -> None:
     The Hugging Face model, however, gives 5.049.
     """
     metric = AestheticLAION(device="cpu")
-    response = requests.get("https://thumbs.dreamstime.com/b/lovely-cat-as-domestic-animal-view-pictures-182393057.jpg")
+    response = requests.get("https://thumbs.dreamstime.com/b/lovely-cat-as-domestic-animal-view-pictures-182393057.jpg", timeout=30)
+    response.raise_for_status()
     img = np.array(Image.open(BytesIO(response.content)).convert("RGB"))
     img = torch.from_numpy(img).permute(2, 0, 1).contiguous().unsqueeze(0)
     metric.update(["lovely cat as domestic animal view pictures"], img, img)
