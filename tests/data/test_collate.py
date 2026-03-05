@@ -33,14 +33,13 @@ from pruna.data.collate import (
 from pruna.data.pruna_datamodule import PrunaDataModule
 
 
-def _make_pil_image(size: int = 64) -> Image.Image:
-    """Create a random RGB PIL image for testing."""
+def _img(size: int = 64) -> Image.Image:
     return Image.fromarray(np.random.randint(0, 255, (size, size, 3), dtype=np.uint8))
 
 
 @pytest.fixture()
 def bert_tokenizer():
-    """Load bert-base-uncased tokenizer; skip test if unavailable."""
+    """Return a bert-base-uncased tokenizer, skip if unavailable."""
     from transformers import AutoTokenizer
 
     try:
@@ -49,176 +48,139 @@ def bert_tokenizer():
         pytest.skip("bert-base-uncased tokenizer not available offline")
 
 
-@pytest.mark.cpu
-class TestColumnMapImageGeneration:
-    """Test column_map for image_generation_collate."""
-
-    def test_default_columns(self) -> None:
-        """Default column names work without column_map."""
-        batch = [
-            {"image": _make_pil_image(), "text": "a cat"},
-            {"image": _make_pil_image(), "text": "a dog"},
-        ]
-        texts, images = image_generation_collate(batch, img_size=32)
-        assert texts == ["a cat", "a dog"]
-        assert images.shape == (2, 3, 32, 32)
-
-    def test_remapped_columns(self) -> None:
-        """Remapped column names matching the dataset from issue #297."""
-        batch = [
-            {"chosen": _make_pil_image(), "prompt": "a sunset"},
-            {"chosen": _make_pil_image(), "prompt": "a mountain"},
-        ]
-        texts, images = image_generation_collate(
-            batch, img_size=32, column_map={"image": "chosen", "text": "prompt"}
-        )
-        assert texts == ["a sunset", "a mountain"]
-        assert images.shape == (2, 3, 32, 32)
-
-    def test_partial_remap(self) -> None:
-        """Only some columns need remapping; others keep their defaults."""
-        batch = [
-            {"image": _make_pil_image(), "caption": "hello"},
-            {"image": _make_pil_image(), "caption": "world"},
-        ]
-        texts, images = image_generation_collate(
-            batch, img_size=32, column_map={"text": "caption"}
-        )
-        assert texts == ["hello", "world"]
-        assert images.shape == (2, 3, 32, 32)
+# ── image_generation_collate ─────────────────────────────────────
 
 
 @pytest.mark.cpu
-class TestColumnMapPrompt:
-    """Test column_map for prompt collate functions."""
+@pytest.mark.parametrize(
+    "column_map, img_key, txt_key",
+    [
+        (None, "image", "text"),
+        ({"image": "chosen", "text": "prompt"}, "chosen", "prompt"),
+        ({"text": "caption"}, "image", "caption"),
+    ],
+    ids=["defaults", "full-remap", "partial-remap"],
+)
+def test_image_generation_collate(column_map, img_key, txt_key):
+    """Test image_generation_collate with default, full, and partial column_map."""
+    batch = [{img_key: _img(), txt_key: "hello"}, {img_key: _img(), txt_key: "world"}]
+    texts, images = image_generation_collate(batch, img_size=32, column_map=column_map)
+    assert texts == ["hello", "world"]
+    assert images.shape == (2, 3, 32, 32)
 
-    def test_prompt_collate_remapped(self) -> None:
-        """Remapped text column for prompt_collate."""
-        batch = [{"caption": "hello"}, {"caption": "world"}]
-        texts, none = prompt_collate(batch, column_map={"text": "caption"})
-        assert texts == ["hello", "world"]
-        assert none is None
 
-    def test_prompt_with_auxiliaries_remapped(self) -> None:
-        """Remapped text column for prompt_with_auxiliaries_collate."""
-        batch = [
-            {"caption": "hello", "category": "greeting"},
-            {"caption": "world", "category": "noun"},
-        ]
-        texts, aux = prompt_with_auxiliaries_collate(batch, column_map={"text": "caption"})
-        assert texts == ["hello", "world"]
-        # auxiliary should contain category but NOT the remapped text column
-        assert all("caption" not in d for d in aux)
-        assert aux[0]["category"] == "greeting"
+# ── prompt collate functions ────────────────────────────────────
 
 
 @pytest.mark.cpu
-class TestColumnMapAudio:
-    """Test column_map for audio_collate."""
-
-    def test_audio_collate_remapped(self) -> None:
-        """Remapped audio and sentence columns for audio_collate."""
-        batch = [
-            {"speech": {"path": "/tmp/a.wav"}, "transcription": "hello"},
-            {"speech": {"path": "/tmp/b.wav"}, "transcription": "world"},
-        ]
-        paths, transcriptions = audio_collate(
-            batch, column_map={"audio": "speech", "sentence": "transcription"}
-        )
-        assert paths == ["/tmp/a.wav", "/tmp/b.wav"]
-        assert transcriptions == ["hello", "world"]
+def test_prompt_collate_remapped():
+    """Test prompt_collate with remapped text column."""
+    batch = [{"caption": "hello"}, {"caption": "world"}]
+    texts, none = prompt_collate(batch, column_map={"text": "caption"})
+    assert texts == ["hello", "world"]
+    assert none is None
 
 
 @pytest.mark.cpu
-class TestColumnMapImageClassification:
-    """Test column_map for image_classification_collate."""
-
-    def test_remapped_columns(self) -> None:
-        """Remapped image and label columns for image_classification_collate."""
-        batch = [
-            {"photo": _make_pil_image(), "class_id": 0},
-            {"photo": _make_pil_image(), "class_id": 1},
-        ]
-        images, labels = image_classification_collate(
-            batch, img_size=32, column_map={"image": "photo", "label": "class_id"}
-        )
-        assert images.shape == (2, 3, 32, 32)
-        assert labels.tolist() == [0, 1]
+def test_prompt_with_auxiliaries_remapped():
+    """Test prompt_with_auxiliaries_collate with remapped text column."""
+    batch = [
+        {"caption": "hello", "category": "greeting"},
+        {"caption": "world", "category": "noun"},
+    ]
+    texts, aux = prompt_with_auxiliaries_collate(batch, column_map={"text": "caption"})
+    assert texts == ["hello", "world"]
+    assert all("caption" not in d for d in aux)
+    assert aux[0]["category"] == "greeting"
 
 
-@pytest.mark.cpu
-class TestColumnMapTextGeneration:
-    """Test column_map for text_generation_collate."""
-
-    def test_remapped_columns(self, bert_tokenizer) -> None:
-        """Remapped text column for text_generation_collate."""
-        batch = [{"content": "hello world foo bar"}, {"content": "the quick brown fox"}]
-        inputs, targets = text_generation_collate(
-            batch, max_seq_len=16, tokenizer=bert_tokenizer, column_map={"text": "content"}
-        )
-        assert inputs.shape[0] == 2
-        assert targets.shape[0] == 2
+# ── audio_collate ────────────────────────────────────────────────
 
 
 @pytest.mark.cpu
-class TestColumnMapQuestionAnswering:
-    """Test column_map for question_answering_collate."""
+def test_audio_collate_remapped():
+    """Test audio_collate with remapped audio and sentence columns."""
+    batch = [
+        {"speech": {"path": "/tmp/a.wav"}, "transcription": "hello"},
+        {"speech": {"path": "/tmp/b.wav"}, "transcription": "world"},
+    ]
+    paths, transcriptions = audio_collate(
+        batch, column_map={"audio": "speech", "sentence": "transcription"}
+    )
+    assert paths == ["/tmp/a.wav", "/tmp/b.wav"]
+    assert transcriptions == ["hello", "world"]
 
-    def test_remapped_columns(self, bert_tokenizer) -> None:
-        """Remapped question and answer columns for question_answering_collate."""
-        batch = [
-            {"query": "What is pruna?", "response": "A model optimization framework."},
-            {"query": "Is it open source?", "response": "Yes it is."},
-        ]
-        q, a = question_answering_collate(
-            batch,
-            max_seq_len=16,
-            tokenizer=bert_tokenizer,
-            column_map={"question": "query", "answer": "response"},
-        )
-        assert q.shape[0] == 2
-        assert a.shape[0] == 2
+
+# ── image_classification_collate ─────────────────────────────────
 
 
 @pytest.mark.cpu
-class TestColumnMapPipeline:
-    """Test column_map flowing through the full PrunaDataModule pipeline."""
+def test_image_classification_collate_remapped():
+    """Test image_classification_collate with remapped image and label columns."""
+    batch = [{"photo": _img(), "class_id": 0}, {"photo": _img(), "class_id": 1}]
+    images, labels = image_classification_collate(
+        batch, img_size=32, column_map={"image": "photo", "label": "class_id"}
+    )
+    assert images.shape == (2, 3, 32, 32)
+    assert labels.tolist() == [0, 1]
 
-    def test_from_datasets_with_column_map(self) -> None:
-        """column_map passed via collate_fn_args reaches the collate function."""
-        images = [_make_pil_image(64) for _ in range(6)]
-        prompts = [f"prompt {i}" for i in range(6)]
-        ds = Dataset.from_dict({"chosen": images, "prompt": prompts})
-        train_ds = ds.select(range(2))
-        val_ds = ds.select(range(2, 4))
-        test_ds = ds.select(range(4, 6))
 
-        dm = PrunaDataModule.from_datasets(
-            (train_ds, val_ds, test_ds),
-            collate_fn="image_generation_collate",
-            collate_fn_args={
-                "img_size": 32,
-                "column_map": {"image": "chosen", "text": "prompt"},
-            },
-        )
-        texts, images_tensor = next(iter(dm.train_dataloader(batch_size=2)))
-        assert len(texts) == 2
-        assert images_tensor.shape == (2, 3, 32, 32)
+# ── text_generation_collate ──────────────────────────────────────
 
-    def test_from_datasets_without_column_map(self) -> None:
-        """Default behavior unchanged when column_map is not provided."""
-        images = [_make_pil_image(64) for _ in range(6)]
-        captions = [f"caption {i}" for i in range(6)]
-        ds = Dataset.from_dict({"image": images, "text": captions})
-        train_ds = ds.select(range(2))
-        val_ds = ds.select(range(2, 4))
-        test_ds = ds.select(range(4, 6))
 
-        dm = PrunaDataModule.from_datasets(
-            (train_ds, val_ds, test_ds),
-            collate_fn="image_generation_collate",
-            collate_fn_args={"img_size": 32},
-        )
-        texts, images_tensor = next(iter(dm.train_dataloader(batch_size=2)))
-        assert len(texts) == 2
-        assert images_tensor.shape == (2, 3, 32, 32)
+@pytest.mark.cpu
+def test_text_generation_collate_remapped(bert_tokenizer):
+    """Test text_generation_collate with remapped text column."""
+    batch = [{"content": "hello world foo bar"}, {"content": "the quick brown fox"}]
+    inputs, targets = text_generation_collate(
+        batch, max_seq_len=16, tokenizer=bert_tokenizer, column_map={"text": "content"}
+    )
+    assert inputs.shape[0] == 2
+    assert targets.shape[0] == 2
+
+
+# ── question_answering_collate ───────────────────────────────────
+
+
+@pytest.mark.cpu
+def test_question_answering_collate_remapped(bert_tokenizer):
+    """Test question_answering_collate with remapped question and answer columns."""
+    batch = [
+        {"query": "What is pruna?", "response": "A model optimization framework."},
+        {"query": "Is it open source?", "response": "Yes it is."},
+    ]
+    q, a = question_answering_collate(
+        batch, max_seq_len=16, tokenizer=bert_tokenizer,
+        column_map={"question": "query", "answer": "response"},
+    )
+    assert q.shape[0] == 2
+    assert a.shape[0] == 2
+
+
+# ── PrunaDataModule pipeline ────────────────────────────────────
+
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    "column_map, img_key, txt_key",
+    [
+        ({"image": "chosen", "text": "prompt"}, "chosen", "prompt"),
+        (None, "image", "text"),
+    ],
+    ids=["with-column-map", "without-column-map"],
+)
+def test_datamodule_pipeline(column_map, img_key, txt_key):
+    """Test end-to-end PrunaDataModule pipeline with and without column_map."""
+    ds = Dataset.from_dict({img_key: [_img(64) for _ in range(6)], txt_key: [f"p{i}" for i in range(6)]})
+    collate_fn_args = {"img_size": 32}
+    if column_map:
+        collate_fn_args["column_map"] = column_map
+
+    dm = PrunaDataModule.from_datasets(
+        (ds.select(range(2)), ds.select(range(2, 4)), ds.select(range(4, 6))),
+        collate_fn="image_generation_collate",
+        collate_fn_args=collate_fn_args,
+    )
+    texts, images_tensor = next(iter(dm.train_dataloader(batch_size=2)))
+    assert len(texts) == 2
+    assert images_tensor.shape == (2, 3, 32, 32)
