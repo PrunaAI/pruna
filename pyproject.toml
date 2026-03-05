@@ -91,6 +91,9 @@ gptqmodel = [
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
 ]
 
+[tool.uv]
+extra-build-dependencies = { image-reward = ["setuptools"] }
+
 [project]
 name = "pruna"
 version = "0.3.1"
@@ -156,6 +159,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+evaluation = [
+    "image-reward"
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",
