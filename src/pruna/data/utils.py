@@ -16,7 +16,16 @@ from __future__ import annotations
 
 import inspect
 import random
-from typing import Any, Callable, Literal, Tuple, Union, get_args, get_origin, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    Literal,
+    Tuple,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 import torch
 from datasets import Dataset, IterableDataset
