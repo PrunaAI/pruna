@@ -15,7 +15,9 @@
 """
 Image Edit Score metric.
 
-Reference: VieScore https://github.com/ByteDance/IEA-eval
+VLM-based instruction-following score for image editing. Evaluates how well an edited image
+follows the given editing instruction on a 0-10 scale. Related work: EditScore (arXiv:2509.23909),
+ADIEE (ICCV 2025).
 """
 
 from __future__ import annotations
@@ -40,8 +42,10 @@ class ImageEditScoreMetric(StatefulMetric):
     """
     Image Edit Score metric.
 
-    Evaluates how well an image was edited based on editing instructions.
-    Higher scores indicate better editing quality.
+    VLM-based instruction-following score for image editing. Evaluates how well an edited image
+    follows the given editing instruction. Higher scores indicate better editing quality.
+
+    Related work: EditScore (arXiv:2509.23909), ADIEE (ICCV 2025).
 
     Parameters
     ----------
