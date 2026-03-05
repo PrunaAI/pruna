@@ -416,7 +416,7 @@ class TransformersVLM(BaseVLM):
         self._processor = AutoProcessor.from_pretrained(self.model_name)
         self._model = AutoModelForImageTextToText.from_pretrained(self.model_name, **self.model_load_kwargs)
         device = self.device
-        self._model.to(device)
+        self._model.to(device)  # type: ignore[invalid-argument-type]
         self._model.eval()
 
     def generate(
