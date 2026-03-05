@@ -112,8 +112,8 @@ class BaseVLM(ABC):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | Literal["json"] | None
-            Optional pydantic model (litellm) or format string (transformers/outlines).
+        response_format : Type[BaseModel] | str | None
+            Optional pydantic model (litellm) or format string: "integer", "yes_no", "json" (transformers/outlines).
         **kwargs : Any
             Additional arguments passed to the implementation.
 
@@ -208,7 +208,7 @@ class LitellmVLM(BaseVLM):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | Literal["json"] | None
+        response_format : Type[BaseModel] | str | None
             Optional pydantic model for structured output (litellm uses BaseModel).
         **kwargs : Any
             Additional arguments passed to litellm completion.
@@ -337,7 +337,7 @@ class LitellmVLM(BaseVLM):
             choice = response.choices[0]
             logprobs = getattr(choice, "logprobs", None) or getattr(choice.message, "logprobs", None)
             if logprobs and hasattr(logprobs, "content"):
-                for tok in (logprobs.content or []):
+                for tok in logprobs.content or []:
                     top = getattr(tok, "top_logprobs", None) or []
                     for t in top:
                         token_str = getattr(t, "token", "") or str(t).lower()
@@ -435,7 +435,7 @@ class TransformersVLM(BaseVLM):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | Literal["json"] | None
+        response_format : Type[BaseModel] | str | None
             Format constraint for outlines ("integer", "yes_no") or None.
         **kwargs : Any
             Additional arguments passed to model generate.

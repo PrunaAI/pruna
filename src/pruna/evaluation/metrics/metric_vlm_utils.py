@@ -37,26 +37,58 @@ def _process_images(images: torch.Tensor) -> List[Any]:
 
 
 class VQAnswer(BaseModel):
-    """Structured output for VQA (answer with optional confidence)."""
+    """
+    Structured output for VQA (answer with optional confidence).
+
+    Parameters
+    ----------
+    answer : str
+        The VQA answer text.
+    confidence : float, optional
+        Confidence score. Default is 1.0.
+    """
 
     answer: str
     confidence: float = 1.0
 
 
 class YesNoAnswer(BaseModel):
-    """Structured output for Yes/No questions (alignment, VQA, QA accuracy)."""
+    """
+    Structured output for Yes/No questions (alignment, VQA, QA accuracy).
+
+    Parameters
+    ----------
+    answer : Literal["Yes", "No"]
+        Answer must be exactly Yes or No.
+    """
 
     answer: Literal["Yes", "No"] = Field(description="Answer must be exactly Yes or No")
 
 
 class ScoreOutput(BaseModel):
-    """Structured output for numeric scoring (img_edit_score, viescore)."""
+    """
+    Structured output for numeric scoring (img_edit_score, viescore).
+
+    Parameters
+    ----------
+    score : float
+        Score from 0 to 10.
+    reasoning : str | None, optional
+        Optional reasoning for the score.
+    """
 
     score: float = Field(ge=0, le=10, description="Score from 0 to 10")
     reasoning: str | None = None
 
 
 class OCRText(BaseModel):
-    """Structured output for OCR text extraction (text_score)."""
+    """
+    Structured output for OCR text extraction (text_score).
+
+    Parameters
+    ----------
+    text : str
+        Extracted text from the image, or 'No text recognized' if empty.
+    """
 
     text: str = Field(description="Extracted text from the image, or 'No text recognized' if empty")
