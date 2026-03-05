@@ -86,6 +86,8 @@ def image_generation_collate(
         between 0 and 1. With "normalized", they have float values between -1 and 1.
     column_map : dict[str, str] | None
         Optional mapping from canonical column names (``image``, ``text``) to actual dataset column names.
+        For example, ``{"image": "chosen", "text": "prompt"}`` maps the canonical ``image`` key to
+        a ``chosen`` column and ``text`` to ``prompt`` in the dataset.
 
     Returns
     -------

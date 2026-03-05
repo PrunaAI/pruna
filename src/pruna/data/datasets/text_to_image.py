@@ -42,8 +42,6 @@ def setup_open_image_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         The OpenImage dataset.
     """
     dataset = load_dataset("data-is-better-together/open-image-preferences-v1")["cleaned"]  # type: ignore[index]
-    dataset = dataset.rename_column("image_quality_dev", "image")
-    dataset = dataset.rename_column("quality_prompt", "text")
     return split_train_into_train_val_test(dataset, seed)
 
 
