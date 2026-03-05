@@ -118,7 +118,7 @@ class FlashAttn3(PrunaAlgorithmBase):
             backend_name = register_custom_backend(imported_packages, use_fp8=False)
             apply_fn = functools.partial(_apply_via_backend, backend=backend_name)
         else:
-            apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
+            apply_fn = functools.partial(_apply_via_forward_wrap, use_fp8=False)
 
         if use_fp8:
             # FA3 fp16 on ALL compatible modules
@@ -130,7 +130,7 @@ class FlashAttn3(PrunaAlgorithmBase):
                 backend_name_fp8 = register_custom_backend(imported_packages, use_fp8=True)
                 apply_fn_fp8 = functools.partial(_apply_via_backend, backend=backend_name_fp8)
             else:
-                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
+                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, use_fp8=True)
             model = map_targeted_nn_roots(apply_fn_fp8, model, target_modules)
         else:
             # FA3 fp16 only on targeted modules
@@ -290,15 +290,12 @@ class FlashAttention3Context(TorchFunctionMode):
 
     Parameters
     ----------
-    kernel : Any
-        The kernel to use for the flash attention 3.
     use_fp8 : bool
         Whether to quantize Q, K, V to FP8 before the attention computation.
     """
 
-    def __init__(self, kernel: Any, use_fp8: bool = False):
+    def __init__(self, use_fp8: bool = False):
         super().__init__()
-        self.kernel = kernel
         self.use_fp8 = use_fp8
 
     def __torch_function__(self, func, types, args=(), kwargs=None):  # noqa: D105
@@ -332,14 +329,14 @@ class FlashAttention3Context(TorchFunctionMode):
                 kwargs.pop("dropout_p", None)
                 kwargs.pop("enable_gqa", None)
                 kwargs["softmax_scale"] = kwargs.pop("scale", None)
-                return _flash_attention3(*args, **kwargs, kernel=self.kernel, use_fp8=self.use_fp8)
+                return _flash_attention3(*args, **kwargs, use_fp8=self.use_fp8)
             else:
                 return func(*args, **kwargs)
         else:
             return func(*args, **kwargs)
 
 
-def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None, use_fp8=False):
+def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, use_fp8=False):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
     _ops = torch.ops.flash_attn_pruna
@@ -392,7 +389,6 @@ def _apply_via_forward_wrap(
     root_name: str | None,
     root_nn_module: torch.nn.Module,
     relative_target_paths: List[str],
-    kernel: Any,
     use_fp8: bool,
 ) -> torch.nn.Module:
     """
@@ -410,8 +406,6 @@ def _apply_via_forward_wrap(
         The root nn.Module.
     relative_target_paths : List[str]
         Relative paths to targeted submodules within the root.
-    kernel : Any
-        The flash attention 3 kernel module.
     use_fp8 : bool
         Whether to quantize Q, K, V to FP8 before the attention computation.
 
@@ -435,8 +429,8 @@ def _apply_via_forward_wrap(
             original_forward = original_forward.__wrapped__
 
         @functools.wraps(original_forward)
-        def new_forward(*args, _orig=original_forward, _kernel=kernel, _fp8=use_fp8, **kwargs):
-            with FlashAttention3Context(kernel=_kernel, use_fp8=_fp8):
+        def new_forward(*args, _orig=original_forward, _fp8=use_fp8, **kwargs):
+            with FlashAttention3Context(use_fp8=_fp8):
                 return _orig(*args, **kwargs)
 
         sub_module.forward = new_forward
