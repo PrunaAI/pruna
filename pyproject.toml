@@ -151,7 +151,7 @@ dependencies = [
     "imageio-ffmpeg",
     "jaxtyping",
     "peft>=0.18.0",
-    "trl<=0.21.0",
+    "trl<=0.29.0",
     "termcolor==2.3.0",
     "realesrgan"
 ]
