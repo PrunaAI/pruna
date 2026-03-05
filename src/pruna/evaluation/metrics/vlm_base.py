@@ -100,7 +100,7 @@ class BaseVLM(ABC):
         self,
         images: List[Image.Image],
         prompts: List[str],
-        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"]]] = None,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]] = None,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -112,7 +112,7 @@ class BaseVLM(ABC):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | None
+        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | Literal["json"] | None
             Optional pydantic model (litellm) or format string (transformers/outlines).
         **kwargs : Any
             Additional arguments passed to the implementation.
@@ -196,7 +196,7 @@ class LitellmVLM(BaseVLM):
         self,
         images: List[Image.Image],
         prompts: List[str],
-        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"]]] = None,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]] = None,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -208,7 +208,7 @@ class LitellmVLM(BaseVLM):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | None
+        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | Literal["json"] | None
             Optional pydantic model for structured output (litellm uses BaseModel).
         **kwargs : Any
             Additional arguments passed to litellm completion.
@@ -415,14 +415,15 @@ class TransformersVLM(BaseVLM):
         pruna_logger.info(f"Loading VLM model: {self.model_name}")
         self._processor = AutoProcessor.from_pretrained(self.model_name)
         self._model = AutoModelForImageTextToText.from_pretrained(self.model_name, **self.model_load_kwargs)
-        self._model.to(self.device)
+        device = self.device
+        self._model.to(device)
         self._model.eval()
 
     def generate(
         self,
         images: List[Image.Image],
         prompts: List[str],
-        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"]]] = None,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]] = None,
         **kwargs: Any,
     ) -> List[str]:
         """
@@ -434,7 +435,7 @@ class TransformersVLM(BaseVLM):
             List of PIL Images.
         prompts : List[str]
             List of text prompts.
-        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | None
+        response_format : Type[BaseModel] | Literal["integer"] | Literal["yes_no"] | Literal["json"] | None
             Format constraint for outlines ("integer", "yes_no") or None.
         **kwargs : Any
             Additional arguments passed to model generate.
