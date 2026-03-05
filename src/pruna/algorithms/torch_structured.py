@@ -149,7 +149,7 @@ class TorchStructured(PrunaAlgorithmBase):
             return True
         if isinstance(model, imported_modules["torchvision"].models.resnet.ResNet):
             return True
-        if isinstance(model, imported_modules["GLiNER"]):
+        if imported_modules["GLiNER"] is not None and isinstance(model, imported_modules["GLiNER"]):
             return True
         return isinstance(model, imported_modules["timm"].models.resnet.ResNet)
 
@@ -257,7 +257,6 @@ class TorchStructured(PrunaAlgorithmBase):
             import timm
             import torch_pruning as tp
             import torchvision
-            from gliner import GLiNER
             from timm.models.mvitv2 import MultiScaleAttention
             from timm.models.mvitv2 import MultiScaleVit as MViT
             from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
@@ -266,6 +265,10 @@ class TorchStructured(PrunaAlgorithmBase):
         except ImportError:
             pruna_logger.error("TorchStructuredPruner: You need the GPU version of Pruna (timm, torchvision).")
             raise
+        try:
+            from gliner import GLiNER
+        except ImportError:  # onnxruntime doesn't have python3.10- wheels
+            GLiNER = None  # noqa: N806  # type: ignore[assignment]
         return dict(
             timm=timm,
             torchvision=torchvision,
