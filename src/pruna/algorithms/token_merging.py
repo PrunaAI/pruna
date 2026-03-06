@@ -26,7 +26,7 @@ from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
-
+from pruna.engine.model_checks import is_vit, is_transformers_pipeline_with_vit
 # ---------------------------------------------------------------------------
 # Token merging utility functions (adapted from facebook/ToMe)
 # ---------------------------------------------------------------------------
@@ -425,7 +425,7 @@ class TokenMerging(PrunaAlgorithmBase):
             pruna_logger.warning("Transformers library not found. Token merging will not be applied.")
             return False
 
-        return any(isinstance(m, ViTLayer) for m in model.model.modules())
+        return is_vit(model) or is_transformers_pipeline_with_vit(model)
 
     def import_algorithm_packages(self) -> dict[str, Any]:
         """
@@ -466,8 +466,8 @@ class TokenMerging(PrunaAlgorithmBase):
         ToMeModelWrapper
             The wrapped model with Token Merging applied.
         """
-        if isinstance(model, ImageClassificationPipeline):
-            model = model.model
+        if is_transformers_pipeline_with_vit(model):
+            return self._apply_to_model_within_transformers_pipeline(model, smash_config)
 
         imported = self.import_algorithm_packages()
         vit_layer_cls = imported["ViTLayer"]
