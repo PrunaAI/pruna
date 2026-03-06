@@ -68,7 +68,7 @@ def _parse_r(num_layers: int, r: int | list[int] | tuple[int, float]) -> list[in
 
     min_val = int(r * (1.0 - inflect))
     max_val = 2 * r - min_val
-    step = (max_val - min_val) / (num_layers - 1)
+    step = (max_val - min_val) / (num_layers - 1) if num_layers > 1 else 0
     return [int(min_val + step * i) for i in range(num_layers)]
 
 
