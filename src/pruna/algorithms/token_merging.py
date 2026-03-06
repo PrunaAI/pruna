@@ -249,7 +249,7 @@ try:
                 attn_weights = attn_weights + self._tome_info["size"].log()[:, None, None, :, 0]
 
             if head_mask is not None:
-                attn_weights = attn_weights + head_mask
+                attn_weights = attn_weights * head_mask
 
             attn_weights = attn_weights.softmax(dim=-1)
             attn_probs = torch.nn.functional.dropout(attn_weights, p=self.dropout_prob if self.training else 0.0)
