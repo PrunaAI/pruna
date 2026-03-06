@@ -36,13 +36,9 @@ class TestTokenMerging(AlgorithmTesterBase):
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Hook to modify the model after smashing."""
         # Verify that token merging was applied
-        print(model.__class__)
-        print(model.model.__class__)
         assert hasattr(model, "_tome_info"), "Model should have _tome_info attribute"
 
         output = model(self.input_image)
         pred_labels = [model.config.id2label[p] for p in output[0].topk(5).indices[0].tolist()]
-        print("Output: ", pred_labels)
-        print("Original: ", self.original_pred)
         assert model._tome_info["size"] is not None, "Size should be set"
         assert pred_labels[0] == self.original_pred[0], "Most likely class should remain the same"
