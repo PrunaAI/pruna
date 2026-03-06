@@ -18,8 +18,10 @@ from typing import Any, List, cast
 
 import torch
 
+from pruna.data import base_datasets
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
+from pruna.evaluation.benchmarks import BenchmarkRegistry
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -54,6 +56,62 @@ class Task:
         If False, we will run stateful metrics on the best available device.
         Default is False.
     """
+
+    @classmethod
+    def from_benchmark(
+        cls,
+        benchmark_name: str,
+        tokenizer: Any = None,
+        device: str | torch.device | None = None,
+        low_memory: bool = False,
+        dataloader_args: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> "Task":
+        """
+        Create a Task from a benchmark name in BenchmarkRegistry.
+
+        Parameters
+        ----------
+        benchmark_name : str
+            Benchmark name (e.g. "Parti Prompts", "DrawBench").
+        tokenizer : Any, optional
+            Tokenizer for text-generation benchmarks (e.g. WikiText). Required when
+            benchmark_name is "WikiText".
+        device : str | torch.device | None, optional
+            Device for evaluation.
+        low_memory : bool, optional
+            If True, run stateful metrics on cpu.
+        dataloader_args : dict | None, optional
+            Args passed to the dataloader (e.g. batch_size).
+        **kwargs : Any
+            Additional args for PrunaDataModule.from_string (e.g. category, fraction).
+
+        Returns
+        -------
+        Task
+            Task configured with the benchmark's metrics and datamodule.
+        """
+        benchmark = BenchmarkRegistry.get(benchmark_name)
+        _, _, default_args = base_datasets[benchmark.lookup_key]
+        collate_fn_args = dict(default_args)
+        if benchmark.lookup_key == "WikiText" and tokenizer is None:
+            raise ValueError(
+                "Tokenizer is required for WikiText benchmark. "
+                "Pass tokenizer=AutoTokenizer.from_pretrained('bert-base-uncased') or similar."
+            )
+        datamodule = PrunaDataModule.from_string(
+            benchmark.lookup_key,
+            tokenizer=tokenizer,
+            collate_fn_args=collate_fn_args,
+            dataloader_args=dataloader_args or {},
+            **kwargs,
+        )
+        return cls(
+            request=benchmark.metrics,
+            datamodule=datamodule,
+            device=device,
+            low_memory=low_memory,
+        )
 
     def __init__(
         self,
