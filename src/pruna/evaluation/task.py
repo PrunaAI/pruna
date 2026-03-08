@@ -262,5 +262,6 @@ def _process_single_request(
             TorchMetricWrapper("perplexity", device=stateful_metric_device),
         ]
     else:
-        pruna_logger.error(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
-        raise ValueError(f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}.")
+        msg = f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
+        pruna_logger.error(msg)
+        raise ValueError(msg)

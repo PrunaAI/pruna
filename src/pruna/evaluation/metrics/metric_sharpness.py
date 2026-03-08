@@ -98,8 +98,9 @@ class SharpnessMetric(StatefulMetric):
             images = images.unsqueeze(0)
 
         if images.ndim != 4:
-            pruna_logger.error(f"Expected 4‑D tensor (B, C, H, W); got shape {tuple(images.shape)}")
-            raise ValueError(f"Expected 4-D tensor (B, C, H, W); got shape {tuple(images.shape)}")
+            msg = f"Expected 4-D tensor (B, C, H, W); got shape {tuple(images.shape)}"
+            pruna_logger.error(msg)
+            raise ValueError(msg)
 
         # Move to CPU - OpenCV only works on numpy
         imgs = images.detach().cpu()
@@ -133,8 +134,9 @@ class SharpnessMetric(StatefulMetric):
                 sharpness_score = laplacian_variance
 
             else:
-                pruna_logger.error("SharpnessMetric: unsupported channel count")
-                raise ValueError(f"SharpnessMetric: unsupported channel count {img.shape[0]}. Expected 1 or 3 channels.")
+                msg = f"SharpnessMetric: unsupported channel count {img.shape[0]}. Expected 1 or 3 channels."
+                pruna_logger.error(msg)
+                raise ValueError(msg)
 
             self.scores.append(sharpness_score)
 

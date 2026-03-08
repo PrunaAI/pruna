@@ -68,8 +68,9 @@ class DinoScore(StatefulMetric):
         super().__init__()
         self.device = set_to_best_available_device(device)
         if device is not None and not any(self.device.startswith(prefix) for prefix in self.runs_on):
-            pruna_logger.error(f"DinoScore: device {device} not supported. Supported devices: {self.runs_on}")
-            raise ValueError(f"DinoScore: device {device} not supported. Supported devices: {self.runs_on}")
+            msg = f"DinoScore: device {device} not supported. Supported devices: {self.runs_on}"
+            pruna_logger.error(msg)
+            raise ValueError(msg)
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         # Load the DINO ViT-S/16 model once
         self.model = timm.create_model("vit_small_patch16_224.dino", pretrained=True)

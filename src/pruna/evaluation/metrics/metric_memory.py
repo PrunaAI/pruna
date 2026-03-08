@@ -188,8 +188,9 @@ class GPUMemoryStats(BaseMetric):
             safe_memory_cleanup()
 
         if len(model_device_indices) > 1 and self.device_map is None:
-            pruna_logger.error("Multiple GPUs detected, but no device map found. Please check the model configuration.")
-            raise RuntimeError("Multiple GPUs detected, but no device map found. Please check the model configuration.")
+            msg = "Multiple GPUs detected, but no device map found. Please check the model configuration."
+            pruna_logger.error(msg)
+            raise RuntimeError(msg)
         else:
             move_to_device(model, "cuda")
         return MetricResult(self.mode, self.__dict__.copy(), peak_memory)
