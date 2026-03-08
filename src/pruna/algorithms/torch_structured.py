@@ -53,7 +53,7 @@ class TorchStructured(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_structured"
-    group_tags: list[str] = [tags.PRUNER]
+    group_tags: list[tags] = [tags.PRUNER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # when performing structured pruning, the tensor sizes can change and disrupt normal saving
     save_fn = SAVE_FUNCTIONS.pickled
@@ -83,38 +83,47 @@ class TorchStructured(PrunaAlgorithmBase):
                     "HessianImportance",
                 ],
                 default_value="MagnitudeImportance",
-                meta=dict(desc="Importance criterion for pruning."),
+                meta={"desc": "Importance criterion for pruning."},
             ),
             UniformIntegerHyperparameter(
                 name="calibration_samples",
                 lower=1,
                 upper=256,
                 default_value=64,
-                meta=dict(desc="Number of calibration samples for importance computation."),
+                meta={"desc": "Number of calibration samples for importance computation."},
             ),
-            Boolean("prune_head_dims", meta=dict(desc="Whether to prune head dimensions.")),
-            Boolean("prune_num_heads", meta=dict(desc="Whether to prune number of heads.")),
-            Boolean("global_pruning", meta=dict(desc="Whether to perform global pruning.")),
+            Boolean(
+                "prune_head_dims",
+                meta={"desc": "Whether to prune head dimensions."},
+            ),
+            Boolean(
+                "prune_num_heads",
+                meta={"desc": "Whether to prune number of heads."},
+            ),
+            Boolean(
+                "global_pruning",
+                meta={"desc": "Whether to perform global pruning."},
+            ),
             UniformFloatHyperparameter(
                 "sparsity",
                 lower=0.0,
                 upper=1.0,
                 default_value=0.1,
-                meta=dict(desc="Sparsity level up to which to prune."),
+                meta={"desc": "Sparsity level up to which to prune."},
             ),
             UniformFloatHyperparameter(
                 "head_sparsity",
                 lower=0.0,
                 upper=1.0,
                 default_value=0.0,
-                meta=dict(desc="Sparsity level up to which to prune heads."),
+                meta={"desc": "Sparsity level up to which to prune heads."},
             ),
             UniformIntegerHyperparameter(
                 name="it_steps",
                 lower=1,
                 upper=10,
                 default_value=1,
-                meta=dict(desc="Number of iterations for pruning."),
+                meta={"desc": "Number of iterations for pruning."},
             ),
         ]
 
@@ -140,7 +149,7 @@ class TorchStructured(PrunaAlgorithmBase):
             return True
         if isinstance(model, imported_modules["torchvision"].models.resnet.ResNet):
             return True
-        if isinstance(model, imported_modules["GLiNER"]):
+        if imported_modules["GLiNER"] is not None and isinstance(model, imported_modules["GLiNER"]):
             return True
         return isinstance(model, imported_modules["timm"].models.resnet.ResNet)
 
@@ -248,7 +257,6 @@ class TorchStructured(PrunaAlgorithmBase):
             import timm
             import torch_pruning as tp
             import torchvision
-            from gliner import GLiNER
             from timm.models.mvitv2 import MultiScaleAttention
             from timm.models.mvitv2 import MultiScaleVit as MViT
             from transformers.models.llama.modeling_llama import LlamaForCausalLM as Llama
@@ -257,6 +265,10 @@ class TorchStructured(PrunaAlgorithmBase):
         except ImportError:
             pruna_logger.error("TorchStructuredPruner: You need the GPU version of Pruna (timm, torchvision).")
             raise
+        try:
+            from gliner import GLiNER
+        except ImportError:  # onnxruntime doesn't have python3.10- wheels
+            GLiNER = None  # noqa: N806  # type: ignore[assignment]
         return dict(
             timm=timm,
             torchvision=torchvision,

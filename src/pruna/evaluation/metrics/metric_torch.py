@@ -179,7 +179,7 @@ class TorchMetrics(Enum):
     clip_score = (partial(CLIPScore), None, "y_x")
     precision = (partial(Precision), None, "y_gt")
     recall = (partial(Recall), None, "y_gt")
-    psnr = (partial(PeakSignalNoiseRatio), None, "pairwise_y_gt")
+    psnr = (partial(PeakSignalNoiseRatio, data_range=255.0), None, "pairwise_y_gt")
     ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
     lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")

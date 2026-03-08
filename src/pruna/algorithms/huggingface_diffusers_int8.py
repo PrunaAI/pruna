@@ -53,15 +53,25 @@ class DiffusersInt8(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "diffusers_int8"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/bitsandbytes-foundation/bitsandbytes"}
     tokenizer_required: bool = False
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     save_fn: None = None
-    compatible_before: Iterable[str] = ["qkv_diffusers"]
-    compatible_after: Iterable[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile", "sage_attn"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "padding_pruning"]
+    compatible_after: Iterable[str] = [
+        "deepcache",
+        "fastercache",
+        "fora",
+        "pab",
+        "torch_compile",
+        "sage_attn",
+        "img2img_denoise",
+        "hyper",
+        "realesrgan_upscale",
+    ]
 
     def get_hyperparameters(self) -> list:
         """
@@ -77,7 +87,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[4, 8],
                 default_value=8,
-                meta=dict(desc="Number of bits to use for quantization."),
+                meta={"desc": "Number of bits to use for quantization."},
             ),
             Boolean("double_quant", meta=dict(desc="Whether to enable double quantization.")),
             Boolean("enable_fp32_cpu_offload", meta=dict(desc="Whether to enable fp32 cpu offload.")),
@@ -88,16 +98,16 @@ class DiffusersInt8(PrunaAlgorithmBase):
                 "quant_type",
                 choices=["fp4", "nf4"],
                 default_value="fp4",
-                meta=dict(desc="Quantization type to use."),
+                meta={"desc": "Quantization type to use."},
             ),
             TargetModules(
                 name="target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
                     "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
                     f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                },
             ),
         ]
 
@@ -180,7 +190,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
             subpaths : list[str]
                 The subpaths of the working model to quantize.
             """
-            if not hasattr(working_model, "save_pretrained") or not callable(working_model.save_pretrained):
+            if not hasattr(working_model, "save_pretrained") or not callable(getattr(working_model, "save_pretrained")):
                 raise ValueError(
                     "diffusers-int8 was applied to a module which didn't have a callable save_pretrained method."
                 )

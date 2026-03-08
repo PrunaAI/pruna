@@ -35,7 +35,7 @@ class TorchDynamic(PrunaAlgorithmBase):
     """
 
     algorithm_name = "torch_dynamic"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
@@ -43,7 +43,18 @@ class TorchDynamic(PrunaAlgorithmBase):
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
     compatible_before: Iterable[str] = []
-    compatible_after: Iterable[str] = ["sage_attn"]
+    compatible_after: Iterable[str] = [
+        "sage_attn",
+        "text_to_image_distillation_inplace_perp",
+        "text_to_image_distillation_lora",
+        "text_to_image_distillation_perp",
+        "text_to_image_inplace_perp",
+        "text_to_image_lora",
+        "text_to_image_perp",
+        "text_to_text_inplace_perp",
+        "text_to_text_lora",
+        "text_to_text_perp",
+    ]
 
     def get_hyperparameters(self) -> list:
         """
@@ -59,7 +70,7 @@ class TorchDynamic(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=["quint8", "qint8"],
                 default_value="qint8",
-                meta=dict(desc="Tensor type to use for quantization."),
+                meta={"desc": "Tensor type to use for quantization."},
             ),
         ]
 
@@ -107,7 +118,7 @@ class TorchDynamic(PrunaAlgorithmBase):
             else:
                 modules_to_quantize = {torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d, torch.nn.Linear}
 
-            quantized_model = torch.quantization.quantize_dynamic(
+            quantized_model = torch.quantization.quantize_dynamic(  # type: ignore[deprecated]
                 model,
                 modules_to_quantize,
                 dtype=getattr(torch, smash_config["weight_bits"]),

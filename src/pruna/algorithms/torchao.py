@@ -86,15 +86,22 @@ class Torchao(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torchao"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://huggingface.co/docs/diffusers/quantization/torchao"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["qkv_diffusers", "torch_structured"]
-    compatible_after: Iterable[str] = ["flash_attn3", "fora", "torch_compile", "sage_attn"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "torch_structured", "padding_pruning"]
+    compatible_after: Iterable[str] = [
+        "flash_attn3",
+        "fora",
+        "torch_compile",
+        "sage_attn",
+        "img2img_denoise",
+        "realesrgan_upscale",
+    ]
     disjointly_compatible_before: Iterable[str] = ["hqq", "hqq_diffusers"]
     disjointly_compatible_after: Iterable[str] = []
 
@@ -112,29 +119,29 @@ class Torchao(PrunaAlgorithmBase):
                 "quant_type",
                 choices=["int4dq", "int4wo", "int8dq", "int8wo", "fp8wo", "fp8dq", "fp8dqrow"],
                 default_value="int8dq",
-                meta=dict(
-                    desc=(
+                meta={
+                    "desc": (
                         "Quantization type: prefix selects data format (int4/int8/fp8); "
                         "`wo` quantizes only the weights (activations remain in full precision); "
                         "`dq` fully quantizes and dequantizes both weights and activations; "
                         "`dqrow` also does full quantize-dequantize but computes a separate scale for each row"
                     )
-                ),
+                },
             ),
             CategoricalHyperparameter(
                 "excluded_modules",
                 choices=["none", "norm", "embedding", "norm+embedding"],
                 default_value="none",
-                meta=dict(desc="Which types of modules to omit when applying quantization."),
+                meta={"desc": "Which types of modules to omit when applying quantization."},
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
                     "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
                     f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                },
             ),
         ]
 

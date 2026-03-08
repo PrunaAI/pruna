@@ -95,6 +95,7 @@ def test_cmmd_pairwise_direct_params(model_fixture: tuple[Any, SmashConfig], dev
     assert result[0].result == pytest.approx(0.0, abs=1e-2)
 
 
+@pytest.mark.slow
 def test_evaluation_agent_parameter_validation():
     """Test parameter validation for EvaluationAgent constructor."""
     data_module = PrunaDataModule.from_string("LAION256")

@@ -41,7 +41,7 @@ class FlashAttn3(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "flash_attn3"
-    group_tags: list[str] = [tags.KERNEL]
+    group_tags: list[tags] = [tags.KERNEL]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/Dao-AILab/flash-attention",
@@ -51,7 +51,7 @@ class FlashAttn3(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["torchao"]
+    compatible_before: Iterable[str] = ["torchao", "padding_pruning"]
     compatible_after: Iterable[str] = ["fora", "torch_compile"]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -222,7 +222,11 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                 )
             else:
                 out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(
-                    q=query, k=key, v=value, softmax_scale=scale, causal=is_causal
+                    q=query,  # type: ignore
+                    k=key,  # type: ignore
+                    v=value,  # type: ignore
+                    softmax_scale=scale,  # type: ignore
+                    causal=is_causal,  # type: ignore
                 )
                 return out
 
@@ -286,7 +290,7 @@ class FlashAttention3Context(TorchFunctionMode):
 def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
+    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)  # type: ignore
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
 

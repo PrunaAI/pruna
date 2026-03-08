@@ -26,6 +26,7 @@ import transformers
 from ConfigSpace import OrdinalHyperparameter
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
+    PretrainedConfig,
     WhisperConfig,
 )
 from transformers.modeling_utils import PreTrainedModel
@@ -63,7 +64,7 @@ class CTranslate(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "c_translate"
-    group_tags: list[str] = [tags.COMPILER]
+    group_tags: list[tags] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
     tokenizer_required: bool = True
@@ -97,7 +98,7 @@ class CTranslate(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[8, 16],
                 default_value=16,
-                meta=dict(desc="Sets the number of bits to use for weight quantization."),
+                meta={"desc": "Sets the number of bits to use for weight quantization."},
             ),
         ]
 
@@ -345,6 +346,7 @@ class GeneratorWrapper:
         self.output_dir = output_dir
         self.task = "generation"
         self.tokenizer = tokenizer
+        self.config: PretrainedConfig | None = None
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -390,10 +392,10 @@ class GeneratorWrapper:
             The generated sequence.
         """
         if type(x) is dict or isinstance(x, transformers.tokenization_utils_base.BatchEncoding):
-            x_tensor = x["input_ids"]
+            x_tensor = x["input_ids"]  # type: ignore[invalid-argument-type]
         else:
             x_tensor = x
-        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]
+        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]  # type: ignore[not-subscriptable]
         return self.generator.generate_batch(token_list, min_length=min_length, max_length=max_length, *args, **kwargs)  # type: ignore[operator]
 
 
@@ -416,6 +418,7 @@ class TranslatorWrapper:
         self.output_dir = output_dir
         self.task = "translation"
         self.tokenizer = tokenizer
+        self.config: PretrainedConfig | None = None
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -465,10 +468,10 @@ class TranslatorWrapper:
         if "max_length" in kwargs:
             max_decoding_length = kwargs["max_length"]
         if type(x) is dict or isinstance(x, transformers.tokenization_utils_base.BatchEncoding):
-            x_tensor = x["input_ids"]
+            x_tensor = x["input_ids"]  # type: ignore[invalid-argument-type]
         else:
             x_tensor = x
-        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]
+        token_list = [self.tokenizer.convert_ids_to_tokens(x_tensor[i]) for i in range(len(x_tensor))]  # type: ignore[not-subscriptable]
         return self.translator.translate_batch(  # type: ignore[operator]
             token_list,
             min_decoding_length=min_decoding_length,
@@ -499,6 +502,7 @@ class WhisperWrapper:
         self.processor = processor
         self.language = None
         self.prompt = None
+        self.config: PretrainedConfig | None = None
 
     def __getattr__(self, name: str) -> Any:
         """

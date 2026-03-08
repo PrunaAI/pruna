@@ -15,7 +15,7 @@ import importlib
 import inspect
 import logging
 import pkgutil
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
@@ -28,7 +28,7 @@ class AlgorithmRegistry:
     The registry is a dictionary that maps algorithm names to algorithm instances.
     """
 
-    _registry: Dict[str, Callable[..., Any]] = {}
+    _registry: Dict[str, PrunaAlgorithmBase] = {}
 
     @classmethod
     def discover_algorithms(cls, algorithms_pkg: Any) -> None:

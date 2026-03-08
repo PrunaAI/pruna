@@ -44,7 +44,7 @@ class LLMCompressor(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "awq"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/vllm-project/llm-compressor"}
     save_fn: None = None
     tokenizer_required: bool = True
@@ -52,7 +52,7 @@ class LLMCompressor(PrunaAlgorithmBase):
     dataset_required: bool = True
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = []
-    compatible_after: Iterable[str] = []
+    compatible_after: Iterable[str] = ["sage_attn"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -68,16 +68,20 @@ class LLMCompressor(PrunaAlgorithmBase):
                 "quant_scheme",
                 choices=["W4A16", "W4A16_ASYM"],
                 default_value="W4A16",
-                meta=dict(desc="Quantization scheme to use. Use symmetric quantization to avoid decompression issues."),
+                meta={"desc": "Quantization scheme to use. Use symmetric quantization to avoid decompression issues."},
+            ),
+            CategoricalHyperparameter(
+                "calibration_pipeline",
+                choices=["independent", "basic", "datafree", "sequential", "layer_sequential"],
+                default_value="independent",
+                meta={"desc": "Pipeline to use for calibration."}
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
-                    "e.g. {include: ['model.*']} to quantize only the language model in a pipeline. "
-                    f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                meta={"desc": "Precise choices of which modules to quantize, "
+                        "e.g. {include: ['model.*']} to quantize only the language model in a pipeline. "
+                        f"See the {TargetModules.documentation_name_with_link} documentation for more details."},
             ),
         ]
 
@@ -173,7 +177,8 @@ class LLMCompressor(PrunaAlgorithmBase):
                     targets=["Linear"],
                 )
             ]
-            return imported["oneshot"](model=language_model, recipe=recipe, dataset=dataset, processor=processor)
+            return imported["oneshot"](model=language_model, recipe=recipe, dataset=dataset, processor=processor,
+            pipeline=smash_config["calibration_pipeline"])
 
         model = map_targeted_nn_roots(quantize_language_model, model, target_modules)
         return model

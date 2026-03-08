@@ -33,14 +33,15 @@ class StableFast(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "stable_fast"
-    group_tags: list[str] = [tags.COMPILER]
+    group_tags: list[tags] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/chengzeyi/stable-fast"}
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["half", "deepcache", "fora"]
+    compatible_before: Iterable[str] = ["half", "deepcache", "fora", "hyper", "padding_pruning"]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
     required_install: str = "``pip install pruna[stable-fast]``"
 
     def model_check_fn(self, model: Any) -> bool:

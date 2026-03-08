@@ -90,7 +90,7 @@ class SmashConfig:
         self.load_fns: list[str] = []
         self.save_artifacts_fns: list[str] = []
         self.load_artifacts_fns: list[str] = []
-        self.reapply_after_load: dict[str, str | None] = {}
+        self.reapply_after_load: dict[str, bool] = {}
         self.tokenizer: PreTrainedTokenizerBase | None = None
         self.processor: ProcessorMixin | None = None
         self.data: PrunaDataModule | None = None
@@ -246,12 +246,6 @@ class SmashConfig:
             "batcher",
             "factorizer",
             "kernel",
-            "distiller",
-            "recoverer",
-            "enhancer",
-            "distributer",
-            "resampler",
-            "decoder",
         ]
         for name in deprecated_keys:
             if name in config_dict:
@@ -286,7 +280,7 @@ class SmashConfig:
             setattr(self, name, config_dict.pop(name))
 
         # Keep only values that still exist in the space, drop stale keys
-        supported_hparam_names = {hp.name for hp in SMASH_SPACE.get_hyperparameters()}
+        supported_hparam_names = {hp.name for hp in list(SMASH_SPACE.values())}
         saved_values = {k: v for k, v in config_dict.items() if k in supported_hparam_names}
 
         # Seed with the defaults, then overlay the saved values

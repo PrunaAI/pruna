@@ -9,6 +9,7 @@ from typing import Any, Callable, Iterable
 import numpydoc_validation
 import pytest
 import torch
+from _pytest.outcomes import Skipped
 from accelerate.utils import compute_module_sizes, infer_auto_device_map
 from docutils.core import publish_doctree
 from docutils.nodes import literal_block, section, title
@@ -39,7 +40,7 @@ def device_parametrized(cls: Any) -> Any:
 def get_instances_from_module(module: Any) -> list[tuple[Any, str]]:
     """Get all tester instances from a module and expand their model parametrizations."""
 
-    def process_fn(cls: Any, model: str) -> dict[str, Any]:
+    def process_fn(cls: Any, model: str) -> list[Any]:
         return [cls(), model]
 
     return collect_tester_instances(module, process_fn, "models")
@@ -48,7 +49,7 @@ def get_instances_from_module(module: Any) -> list[tuple[Any, str]]:
 def get_negative_examples_from_module(module: Any) -> list[tuple[Any, str]]:
     """Get all negative examples from a module."""
 
-    def process_fn(cls: Any, model: str) -> dict[str, Any]:
+    def process_fn(cls: Any, model: str) -> list[Any]:
         return [cls.get_algorithm_name(), model]
 
     return collect_tester_instances(module, process_fn, "reject_models")
@@ -118,7 +119,9 @@ def run_full_integration(
     try:
         model, smash_config = model_fixture[0], model_fixture[1]
         if device not in algorithm_tester.compatible_devices():
-            pytest.skip(f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}")
+            raise Skipped(
+                f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}"
+            )
         algorithm_tester.prepare_smash_config(smash_config, device)
         device_map = construct_device_map_manually(model) if device == "accelerate" else None
         move_to_device(model, device=smash_config["device"], device_map=device_map)
@@ -256,7 +259,7 @@ def get_all_imports(package: str) -> list[str]:
 def run_script_successfully(script_file: Path) -> None:
     """Run the script and return the result."""
     result = subprocess.run(["python", str(script_file)], capture_output=True, text=True)
-    run_ruff_linting(script_file)
+    run_ruff_linting(str(script_file))
     script_file.unlink()
 
     max_err_len = 300

@@ -55,7 +55,7 @@ class EvaluationAgent:
         self,
         task: Task | None = None,
         *,
-        request: str | List[str | BaseMetric | StatefulMetric] | None = None,
+        request: str | List[str] | List[BaseMetric | StatefulMetric] | None = None,
         datamodule: PrunaDataModule | None = None,
         device: str | torch.device | None = None,
     ) -> None:

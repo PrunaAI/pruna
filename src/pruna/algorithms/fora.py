@@ -37,7 +37,7 @@ class FORA(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "fora"
-    group_tags: list[str] = [tags.CACHER]
+    group_tags: list[tags] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {"Paper": "https://arxiv.org/abs/2407.01425"}
     tokenizer_required: bool = False
@@ -50,9 +50,11 @@ class FORA(PrunaAlgorithmBase):
         "hqq_diffusers",
         "torchao",
         "flash_attn3",
-        "sage_attn"
+        "sage_attn",
+        "hyper",
+        "padding_pruning",
     ]
-    compatible_after: Iterable[str] = ["stable_fast", "torch_compile"]
+    compatible_after: Iterable[str] = ["stable_fast", "torch_compile", "img2img_denoise", "realesrgan_upscale"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -68,21 +70,20 @@ class FORA(PrunaAlgorithmBase):
                 "interval",
                 sequence=range(1, 6),
                 default_value=2,
-                meta=dict(desc="Interval at which the outputs are computed. Higher is faster, but reduces quality."),
+                meta={"desc": "Interval at which the outputs are computed. Higher is faster, but reduces quality."},
             ),
             OrdinalHyperparameter(
                 "start_step",
                 sequence=range(11),
                 default_value=2,
-                meta=dict(desc="How many steps to wait before starting to cache."),
+                meta={"desc": "How many steps to wait before starting to cache."},
             ),
             OrdinalHyperparameter(
                 "backbone_calls_per_step",
                 sequence=range(1, 4),
                 default_value=1,
-                meta=dict(
-                    desc="Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."
-                ),
+                meta={"desc": "Number of backbone forward passes per diffusion step (e.g., 2 for CFG)."}
+
             ),
         ]
 
@@ -163,8 +164,8 @@ class CacheHelper:
         self.single_stream_blocks_forward: Dict[int, Callable] = {}
 
         # Use seperate caches for the two different transformer block types
-        self.double_stream_blocks_cache: Dict[int, Tuple[Any, Any]] = {}
-        self.single_stream_blocks_cache: Dict[int, Any] = {}
+        self.double_stream_blocks_cache: Dict[Tuple[int, int], Tuple[Any, Any]] = {}
+        self.single_stream_blocks_cache: Dict[Tuple[int, int], Any] = {}
 
     def get_cache_schedule(self, num_steps: int) -> list[int]:
         """

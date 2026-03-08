@@ -42,7 +42,7 @@ class Task:
 
     Parameters
     ----------
-    request : str | List[str | BaseMetric | StatefulMetric]
+    request : str | List[str] | List[BaseMetric | StatefulMetric]
         The user request.
     datamodule : PrunaDataModule
         The dataloader to use for the evaluation.
@@ -57,7 +57,7 @@ class Task:
 
     def __init__(
         self,
-        request: str | List[str | BaseMetric | StatefulMetric],
+        request: str | List[str] | List[BaseMetric | StatefulMetric],
         datamodule: PrunaDataModule,
         device: str | torch.device | None = None,
         low_memory: bool = False,
@@ -142,7 +142,7 @@ class Task:
 
 
 def _safe_build_metrics(
-    request: str | List[str | BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
+    request: str | List[str] | List[BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
 ):
     try:
         return get_metrics(request, inference_device, stateful_metric_device)
@@ -156,7 +156,7 @@ def _safe_build_metrics(
 
 
 def get_metrics(
-    request: str | List[str | BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
+    request: str | List[str] | List[BaseMetric | StatefulMetric], inference_device: str, stateful_metric_device: str
 ) -> List[BaseMetric | StatefulMetric]:
     """
     Convert user requests into a list of metrics.

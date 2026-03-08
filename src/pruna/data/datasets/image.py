@@ -14,10 +14,9 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Tuple, cast
 
-from datasets import load_dataset
-from torch.utils.data import Dataset
+from datasets import Dataset, load_dataset
 
 from pruna.data.utils import (
     define_sample_size_for_dataset,
@@ -52,6 +51,8 @@ def setup_mnist_dataset(
         The MNIST dataset.
     """
     train_ds, test_ds = load_dataset("ylecun/mnist", split=["train", "test"])  # type: ignore[misc]
+    train_ds = cast(Dataset, train_ds)
+    test_ds = cast(Dataset, test_ds)
 
     train_sample_size = define_sample_size_for_dataset(train_ds, fraction, train_sample_size)
     test_sample_size = define_sample_size_for_dataset(test_ds, fraction, test_sample_size)
@@ -90,6 +91,8 @@ def setup_imagenet_dataset(
         The ImageNet dataset.
     """
     train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"])  # type: ignore[misc]
+    train_ds = cast(Dataset, train_ds)
+    val = cast(Dataset, val)
     train_sample_size = define_sample_size_for_dataset(train_ds, fraction, train_sample_size)
     train_ds = stratify_dataset(train_ds, train_sample_size, seed)
     val_ds, test_ds = split_val_into_val_test(val, seed)

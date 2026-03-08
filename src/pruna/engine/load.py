@@ -20,7 +20,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
 
 import diffusers
 import torch
@@ -73,7 +73,7 @@ def load_pruna_model(model_path: str | Path, **kwargs) -> tuple[Any, SmashConfig
     model = LOAD_FUNCTIONS[smash_config.load_fns[0]](model_path, smash_config, **kwargs)
 
     # check if there are any algorithms to reapply
-    if any(algorithm is not None for algorithm in smash_config.reapply_after_load.values()):
+    if any(is_reapplied for is_reapplied in smash_config.reapply_after_load.values()):
         model = resmash_fn(model, smash_config)
 
     # load artifacts (e.g. speed up the warmup or make it more consistent)
@@ -127,7 +127,7 @@ def load_pruna_model_from_pretrained(
     allow_patterns: Optional[Union[List[str], str]] = None,
     ignore_patterns: Optional[Union[List[str], str]] = None,
     max_workers: int = 8,
-    tqdm_class: Optional[base_tqdm] = None,
+    tqdm_class: Optional[Type[base_tqdm]] = None,
     headers: Optional[Dict[str, str]] = None,
     endpoint: Optional[str] = None,
     # Deprecated args
@@ -434,7 +434,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         # load the pipeline with a fake model on meta device
         with (model_path / PIPELINE_INFO_FILE_NAME).open("r") as f:
             task = json.load(f)["task"]
-        pipe = pipeline(task=task, model=model_path, model_kwargs={"device_map": "meta"})
+        pipe = pipeline(task=task, model=str(model_path), model_kwargs={"device_map": "meta"})
         # load the quantized model
         pipe.model = load_quantized_model(model_path)
         move_to_device(pipe, smash_config.device)

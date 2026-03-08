@@ -54,7 +54,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "hqq_diffusers"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {
         "GitHub": "https://github.com/mobiusml/hqq",
         "Article": "https://mobiusml.github.io/hqq_blog/",
@@ -64,8 +64,17 @@ class HQQDiffusers(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["qkv_diffusers"]
-    compatible_after: Iterable[str] = ["deepcache", "fastercache", "fora", "pab", "torch_compile", "sage_attn"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "padding_pruning"]
+    compatible_after: Iterable[str] = [
+        "deepcache",
+        "fastercache",
+        "fora",
+        "pab",
+        "torch_compile",
+        "sage_attn",
+        "img2img_denoise",
+        "realesrgan_upscale",
+    ]
     disjointly_compatible_before: Iterable[str] = []
     disjointly_compatible_after: Iterable[str] = ["torchao"]
 
@@ -83,28 +92,28 @@ class HQQDiffusers(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[2, 4, 8],
                 default_value=8,
-                meta=dict(desc="Number of bits to use for quantization."),
+                meta={"desc": "Number of bits to use for quantization."},
             ),
             OrdinalHyperparameter(
                 "group_size",
                 sequence=[8, 16, 32, 64, 128],
                 default_value=64,
-                meta=dict(desc="Group size for quantization."),
+                meta={"desc": "Group size for quantization."},
             ),
             OrdinalHyperparameter(
                 "backend",
                 sequence=["gemlite", "bitblas", "torchao_int4", "marlin"],
                 default_value="torchao_int4",
-                meta=dict(desc="Backend to use for quantization."),
+                meta={"desc": "Backend to use for quantization."},
             ),
             TargetModules(
                 "target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
                     "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
                     f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                },
             ),
         ]
 

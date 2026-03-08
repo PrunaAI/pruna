@@ -33,7 +33,7 @@ class Half(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "half"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # the half-helper is not saved with the model but is fast to reattach
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
@@ -52,6 +52,12 @@ class Half(PrunaAlgorithmBase):
         "ifw",
         "whisper_s2t",
         "sage_attn",
+        "hyper",
+        "ipex_llm",
+        "text_to_text_inplace_perp",
+        "text_to_text_lora",
+        "text_to_text_perp",
+        "x_fast",
     ]
 
     def model_check_fn(self, model: Any) -> bool:

@@ -40,7 +40,7 @@ class IFW(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "ifw"
-    group_tags: list[str] = [tags.BATCHER]
+    group_tags: list[tags] = [tags.BATCHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/transformers"}
     tokenizer_required: bool = True
@@ -63,7 +63,7 @@ class IFW(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=[16, 32],
                 default_value=16,
-                meta=dict(desc="Sets the number of bits to use for weight quantization."),
+                meta={"desc": "Sets the number of bits to use for weight quantization."},
             ),
             Constant(name="chunk_length", value=30),
         ]

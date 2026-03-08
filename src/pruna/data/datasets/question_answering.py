@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
+from typing import Tuple, cast
 
-from datasets import Dataset, load_dataset
+from datasets import Dataset, IterableDataset, load_dataset
 
 from pruna.data.utils import split_train_into_train_val_test
 
@@ -38,4 +38,5 @@ def setup_polyglot_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     dataset = load_dataset("Polyglot-or-Not/Fact-Completion", split="english".capitalize())
     dataset = dataset.rename_column("true", "answer")
     dataset = dataset.rename_column("stem", "question")
+    dataset = cast(Dataset | IterableDataset, dataset)
     return split_train_into_train_val_test(dataset, seed)

@@ -42,7 +42,7 @@ class Quanto(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "quanto"
-    group_tags: list[str] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/huggingface/optimum-quanto"}
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
     tokenizer_required: bool = False
@@ -50,7 +50,20 @@ class Quanto(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = ["qkv_diffusers"]
-    compatible_after: Iterable[str] = ["deepcache", "sage_attn"]
+    compatible_after: Iterable[str] = [
+        "deepcache",
+        "sage_attn",
+        "text_to_image_distillation_inplace_perp",
+        "text_to_image_distillation_lora",
+        "text_to_image_distillation_perp",
+        "text_to_image_inplace_perp",
+        "text_to_image_lora",
+        "text_to_image_perp",
+        "text_to_text_inplace_perp",
+        "text_to_text_lora",
+        "text_to_text_perp",
+        "x_fast",
+    ]
 
     def get_hyperparameters(self) -> list:
         """
@@ -66,19 +79,23 @@ class Quanto(PrunaAlgorithmBase):
                 "weight_bits",
                 sequence=["qint2", "qint4", "qint8", "qfloat8"],
                 default_value="qfloat8",
-                meta=dict(desc="Tensor type to use for quantization."),
+                meta={"desc": "Tensor type to use for quantization."},
             ),
             Constant("act_bits", value=None),
-            Boolean("calibrate", default=True, meta=dict(desc="Whether to calibrate the model.")),
+            Boolean(
+                "calibrate",
+                default=True,
+                meta={"desc": "Whether to calibrate the model."},
+            ),
             Constant(name="calibration_samples", value=64),
             TargetModules(
                 name="target_modules",
                 default_value=None,
-                meta=dict(
-                    desc="Precise choices of which modules to quantize, "
+                meta={
+                    "desc": "Precise choices of which modules to quantize, "
                     "e.g. {include: ['transformer.*']} to quantize only the transformer in a diffusion pipeline. "
                     f"See the {TargetModules.documentation_name_with_link} documentation for more details."
-                ),
+                },
             ),
         ]
 

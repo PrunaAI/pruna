@@ -43,7 +43,7 @@ class PAB(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "pab"
-    group_tags: list[str] = [tags.CACHER]
+    group_tags: list[tags] = [tags.CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2408.12588",
@@ -53,8 +53,8 @@ class PAB(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_before: Iterable[str] = ["hqq_diffusers", "diffusers_int8", "sage_attn"]
-    compatible_after: Iterable[str] = []
+    compatible_before: Iterable[str] = ["hqq_diffusers", "diffusers_int8", "sage_attn", "hyper", "padding_pruning"]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
 
     def get_hyperparameters(self) -> list:
         """
@@ -70,10 +70,10 @@ class PAB(PrunaAlgorithmBase):
                 "interval",
                 sequence=[1, 2, 3, 4, 5],
                 default_value=2,
-                meta=dict(
-                    desc="Interval at which to cache spatial attention blocks - 1 disables caching."
+                meta={
+                    "desc": "Interval at which to cache spatial attention blocks - 1 disables caching."
                     "Higher is faster but might degrade quality."
-                ),
+                },
             )
         ]
 

@@ -21,7 +21,9 @@ def test_total_macs_metric(model_fixture: tuple[Any, SmashConfig], device: str) 
     macs_metric = TotalMACsMetric(device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, device)
-    macs_results = macs_metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    macs_results = macs_metric.compute(pruna_model, test_dl)
     assert macs_results.result > 0
 
 
@@ -39,5 +41,7 @@ def test_total_params_metric(model_fixture: tuple[Any, SmashConfig], device: str
     params_metric = TotalParamsMetric(device=device)
     pruna_model = PrunaModel(model, smash_config=smash_config)
     move_to_device(pruna_model, device)
-    params_results = params_metric.compute(pruna_model, smash_config.test_dataloader())
+    test_dl = smash_config.test_dataloader()
+    assert test_dl is not None
+    params_results = params_metric.compute(pruna_model, test_dl)
     assert params_results.result > 0

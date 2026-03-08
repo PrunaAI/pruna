@@ -350,7 +350,9 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         # save pipeline info so we can call transformers.pipeline at load time
         save_pipeline_info(model, str(model_path))
         # pipeline loading requires a safetensor file so we save a fake, lightweight one
-        save_model(torch.nn.Linear(1, 1), model_path / "model.safetensors", metadata={"format": "pt"})
+        save_model(
+            torch.nn.Linear(1, 1), str(model_path / "model.safetensors"), metadata={"format": "pt"}
+        )
 
         save_model_hqq(model.model, model_path, smash_config)
     elif is_janus_llamagen_ar(model):
@@ -412,7 +414,7 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
         json.dump({"dtype": str(model.dtype).split(".")[-1]}, f)
 
     # backups for the quantized components to save the rest of the pipeline
-    backup_components: dict[str, torch.nn.Module] = {}
+    backup_components: dict[str | None, torch.nn.Module] = {}
 
     def save_component(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> torch.nn.Module:
         """
@@ -453,10 +455,12 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
     # save the rest of the pipeline
     if None not in backup_components:  # a None key means the model itself was quantized
         for attr_name in backup_components:
-            setattr(model, attr_name, None)
+            if attr_name is not None:
+                setattr(model, attr_name, None)
         model.save_pretrained(model_path)
         for attr_name, module_backup in backup_components.items():
-            setattr(model, attr_name, module_backup)
+            if attr_name is not None:
+                setattr(model, attr_name, module_backup)
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 

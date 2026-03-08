@@ -37,7 +37,7 @@ class SageAttn(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "sage_attn"
-    group_tags: list[str] = [tags.KERNEL]
+    group_tags: list[tags] = [tags.KERNEL]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper (SA2++)": "https://arxiv.org/pdf/2505.21136v3",
@@ -48,8 +48,8 @@ class SageAttn(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = [tags.QUANTIZER]
-    compatible_after: Iterable[str] = ["torch_compile", tags.CACHER]
+    compatible_before: Iterable[str | tags] = [tags.QUANTIZER]
+    compatible_after: Iterable[str | tags] = ["torch_compile", tags.CACHER]
 
     def model_check_fn(self, model: Any) -> bool:
         """

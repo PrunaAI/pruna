@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import copy
-from typing import Tuple
+from typing import Tuple, cast
 
-from datasets import Dataset, load_dataset
+from datasets import Dataset, IterableDataset, load_dataset
 
 from pruna.data.utils import split_train_into_train_val, split_train_into_train_val_test
 from pruna.logging.logger import pruna_logger
@@ -92,6 +92,7 @@ def setup_smoltalk_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     train_full = load_dataset("HuggingFaceTB/smoltalk", "everyday-conversations", split="train")
     test_data = load_dataset("HuggingFaceTB/smoltalk", "everyday-conversations", split="test")
+    train_full = cast(Dataset | IterableDataset, train_full)
 
     train_ds, val_ds = split_train_into_train_val(train_full, seed)
 
@@ -140,6 +141,7 @@ def setup_smolsmoltalk_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     """
     train_full = load_dataset("HuggingFaceTB/smol-smoltalk", split="train")
     test_ds = load_dataset("HuggingFaceTB/smol-smoltalk", split="test")
+    train_full = cast(Dataset | IterableDataset, train_full)
 
     train_ds, val_ds = split_train_into_train_val(train_full, seed)
 
@@ -208,6 +210,7 @@ def setup_openassistant_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         The OpenAssistant dataset.
     """
     train_dataset, test_dataset = load_dataset("timdettmers/openassistant-guanaco", split=["train", "test"])  # type: ignore[misc]
+    train_dataset = cast(Dataset | IterableDataset, train_dataset)
     train_ds, val_ds = split_train_into_train_val(train_dataset, seed)
     return train_ds, val_ds, test_dataset  # type: ignore[return-value]
 

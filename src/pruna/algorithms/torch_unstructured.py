@@ -33,7 +33,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "torch_unstructured"
-    group_tags: list[str] = [tags.PRUNER]
+    group_tags: list[tags] = [tags.PRUNER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
     # original model-saving can be retained as is, only parameter values are modified
     save_fn = None
@@ -57,7 +57,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
                 "pruning_method",
                 choices=["random", "l1"],
                 default_value="l1",
-                meta=dict(desc="Pruning method to use."),
+                meta={"desc": "Pruning method to use."},
             ),
             UniformFloatHyperparameter(
                 "sparsity",
@@ -65,7 +65,7 @@ class TorchUnstructured(PrunaAlgorithmBase):
                 upper=1.0,
                 log=False,
                 default_value=0.1,
-                meta=dict(desc="Sparsity level up to which to prune."),
+                meta={"desc": "Sparsity level up to which to prune."},
             ),
         ]
 

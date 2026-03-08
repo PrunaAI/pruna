@@ -105,13 +105,13 @@ def test_clipiqa(datamodule_fixture: PrunaDataModule) -> None:
 )
 def test_torch_metrics(datamodule_fixture: PrunaDataModule, device: str, metric: str) -> None:
     """Test the torch metrics accuracy, recall, precision."""
-    metric = TorchMetricWrapper(metric, task="multiclass", num_classes=1000, device=device)
+    metric_obj = TorchMetricWrapper(metric, task="multiclass", num_classes=1000, device=device)
     dataloader = datamodule_fixture.val_dataloader()
     dataloader_iter = iter(dataloader)
 
-    x, gt = next(dataloader_iter)
-    metric.update(gt, gt, gt)
-    assert metric.compute().result == 1.0
+    _, gt = next(dataloader_iter)
+    metric_obj.update(gt, gt, gt)
+    assert metric_obj.compute().result == 1.0
 
 @pytest.mark.cpu
 @pytest.mark.parametrize("datamodule_fixture", ["LAION256"], indirect=True)
@@ -135,13 +135,13 @@ def test_check_call_type(metric: str, call_type: str):
         with pytest.raises(Exception):
             TorchMetricWrapper(metric, call_type=call_type, **kwargs)
         return
-    metric = TorchMetricWrapper(metric, call_type=call_type, **kwargs)
-    if call_type == "pairwise" and metric.metric_name not in ["arniqa", "clipiqa"]:
-        assert metric.call_type.startswith("pairwise")
-    elif metric.metric_name in ["arniqa", "clipiqa"]:
-        assert metric.call_type == "y"
+    metric_obj = TorchMetricWrapper(metric, call_type=call_type, **kwargs)
+    if call_type == "pairwise" and metric_obj.metric_name not in ["arniqa", "clipiqa"]:
+        assert metric_obj.call_type.startswith("pairwise")
+    elif metric_obj.metric_name in ["arniqa", "clipiqa"]:
+        assert metric_obj.call_type == "y"
     else:
-        assert not metric.call_type.startswith("pairwise")
+        assert not metric_obj.call_type.startswith("pairwise")
 
 @pytest.mark.cpu
 @pytest.mark.parametrize(
