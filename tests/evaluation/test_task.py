@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch
+from transformers import AutoTokenizer
 from pruna.evaluation.task import Task
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -112,7 +113,8 @@ def test_task_from_string_request():
 @pytest.mark.cpu
 def test_task_text_generation_quality_request():
     """Test that 'text_generation_quality' named request creates perplexity metric."""
-    task = Task(request="text_generation_quality", datamodule=PrunaDataModule.from_string("TinyWikiText"), device="cpu")
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    task = Task(request="text_generation_quality", datamodule=PrunaDataModule.from_string("TinyWikiText", tokenizer=tokenizer), device="cpu")
     assert len(task.metrics) == 1
     assert isinstance(task.metrics[0], TorchMetricWrapper)
     assert task.metrics[0].metric_name == "perplexity"
