@@ -14,15 +14,14 @@
 from __future__ import annotations
 
 import functools
+import inspect
 from collections.abc import Iterable
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from aenum import extend_enum
 from diffusers import DiffusionPipeline
-from diffusers import __version__ as diffusers_version
 from kernels import get_kernel
-from packaging.version import Version
 from torch.overrides import TorchFunctionMode
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -70,16 +69,21 @@ class FlashAttn3(PrunaAlgorithmBase):
         bool
             True if the model is a valid model for the algorithm, False otherwise.
         """
-        if Version(diffusers_version) >= Version("0.35.0.dev0"):
-            if not isinstance(model, DiffusionPipeline) or not hasattr(model, "components"):
+        # Standard diffusers pipeline path
+        if isinstance(model, DiffusionPipeline):
+            if not hasattr(model, "components"):
                 return False
-
             return any(
-                hasattr(component, "set_attention_backend") and component.dtype in [torch.bfloat16, torch.float16]
+                hasattr(component, "set_attention_backend")
+                and component.dtype in [torch.bfloat16, torch.float16]
                 for component in model.components.values()
             )
-        else:
-            return isinstance(model, DiffusionPipeline) and hasattr(model, "transformer")
+        # Custom models: accept if the model is an nn.Module itself or a wrapper that contains
+        # at least one nn.Module attribute. While this does not ensure that the model has at least one attention module,
+        # it already filters out invalid models.
+        if isinstance(model, torch.nn.Module):
+            return True
+        return any(isinstance(attr, torch.nn.Module) for _, attr in inspect.getmembers(model))
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -87,6 +91,10 @@ class FlashAttn3(PrunaAlgorithmBase):
 
         The algorithm follows the following logic:
 
+        - If the model is a custom model (i.e. not a diffusers pipeline), the algorithm will wrap
+          the forward method of the targeted modules with FlashAttention3Context.
+        - If the model is a diffusers pipeline, the algorithm will set the attention backend of
+          the targeted modules to flash_attn3_pruna.
         - Always register the standard (non-FP8) op.
         - If no fp8 is requested, apply the standard op to all targeted modules.
         - If fp8 is requested, apply the standard op to all compatible modules
@@ -108,29 +116,31 @@ class FlashAttn3(PrunaAlgorithmBase):
         use_fp8 = smash_config["fp8"]
         target_modules = smash_config["target_modules"]
         kernel = imported_packages["flash_attention_3"]
+        custom_model = smash_config["custom_model"]
 
         # Always register the standard (non-FP8) kernel with torch ops
         register_pruna_flash_attn_op(kernel, use_fp8=False)
 
-        # Build the version-specific apply function for non-FP8
-        use_new_backend = Version(diffusers_version) >= Version("0.35.0.dev0")
-        if use_new_backend:
+        # Build the apply function for the non-FP8 case
+        # Standard diffusers pipelines use the backend API; custom models use forward wrapping.
+        if custom_model:
+            apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
+        else:
             backend_name = register_custom_backend(imported_packages, use_fp8=False)
             apply_fn = functools.partial(_apply_via_backend, backend=backend_name)
-        else:
-            apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
 
+        # Apply the apply function to the model
+        # If fp8 is used, the apply function for fp8 needs to be build as well
         if use_fp8:
             # FA3 fp16 on ALL compatible modules
             model = map_targeted_nn_roots(apply_fn, model, {"include": ["*"], "exclude": []})
-
             # FA3 fp8 overwrites targeted modules
             register_pruna_flash_attn_op(kernel, use_fp8=True)
-            if use_new_backend:
+            if custom_model:
+                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
+            else:
                 backend_name_fp8 = register_custom_backend(imported_packages, use_fp8=True)
                 apply_fn_fp8 = functools.partial(_apply_via_backend, backend=backend_name_fp8)
-            else:
-                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
             model = map_targeted_nn_roots(apply_fn_fp8, model, target_modules)
         else:
             # FA3 fp16 only on targeted modules
@@ -150,27 +160,26 @@ class FlashAttn3(PrunaAlgorithmBase):
         flash_attention_3 = get_kernel("kernels-community/flash-attn3", version="<0.1.0")
         packages = {"flash_attention_3": flash_attention_3}
 
-        if Version(diffusers_version) >= Version("0.35.0.dev0"):
-            from diffusers.models.attention_dispatch import (
-                AttentionBackendName,
-                _AttentionBackendRegistry,
-                _check_device,
-                _check_qkv_dtype_bf16_or_fp16,
-                _check_shape,
-                _native_attention,
-            )
+        from diffusers.models.attention_dispatch import (
+            AttentionBackendName,
+            _AttentionBackendRegistry,
+            _check_device,
+            _check_qkv_dtype_bf16_or_fp16,
+            _check_shape,
+            _native_attention,
+        )
 
-            packages.update(
-                {
-                    "_AttentionBackendRegistry": _AttentionBackendRegistry,
-                    "_check_device": _check_device,
-                    "_check_qkv_dtype_bf16_or_fp16": _check_qkv_dtype_bf16_or_fp16,
-                    "_check_shape": _check_shape,
-                    "_native_attention": _native_attention,
-                    "AttentionBackendName": AttentionBackendName,
-                    "flash_attention_3": flash_attention_3,
-                }
-            )
+        packages.update(
+            {
+                "_AttentionBackendRegistry": _AttentionBackendRegistry,
+                "_check_device": _check_device,
+                "_check_qkv_dtype_bf16_or_fp16": _check_qkv_dtype_bf16_or_fp16,
+                "_check_shape": _check_shape,
+                "_native_attention": _native_attention,
+                "AttentionBackendName": AttentionBackendName,
+                "flash_attention_3": flash_attention_3,
+            }
+        )
         return packages
 
     def get_hyperparameters(self) -> list:
@@ -188,6 +197,11 @@ class FlashAttn3(PrunaAlgorithmBase):
             # and therefore can be applied to any attn module without any performance degradation.
             TargetModules(name="target_modules", default_value={"include": ["*"], "exclude": []}),
             Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
+            Boolean(
+                "custom_model",
+                default=False,
+                meta=dict(desc="Apply FlashAttention3 to a custom (=non-diffusers pipeline) model."),
+            ),
         ]
 
 
@@ -195,7 +209,7 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
     """
     Register the attention backend for flash_attn3 by mimicing the native backend.
 
-    Applies to diffusers >= 0.35.0.dev0.
+    Used for standard diffusers pipeline models.
 
     Parameters
     ----------
@@ -295,7 +309,7 @@ class FlashAttention3Context(TorchFunctionMode):
     """
     Context manager to intercept calls to scaled_dot_product_attention and replace them with flash_attn3.
 
-    Applies to diffusers < 0.35.0.dev0.
+    Used for custom (non-diffusers-pipeline) models.
 
     Parameters
     ----------
@@ -375,7 +389,10 @@ def _apply_via_backend(
     """
     Apply FA3 by setting the attention backend on targeted submodules.
 
-    Applies to diffusers >= 0.35.0.dev0.
+    Used for standard diffusers pipeline models.
+
+    The model check function already ensures that the model has at least one attention module, which the algorithm
+    will be applied to.
 
     Parameters
     ----------
@@ -417,7 +434,11 @@ def _apply_via_forward_wrap(
 
     If the module is already wrapped by a previous pass, unwrap to the true original and wrap again.
 
-    Applies to diffusers < 0.35.0.dev0.
+    Used for custom (non-diffusers-pipeline) models.
+
+    Since the generic model check cannot guarantee the model contains attention modules, it is
+    the caller's responsibility to ensure the targeted submodules actually use ``scaled_dot_product_attention``.
+    If there are no attention modules in the model, the algorithm just runs silently and does nothing.
 
     Parameters
     ----------
@@ -437,8 +458,21 @@ def _apply_via_forward_wrap(
     torch.nn.Module
         The (modified) root module.
     """
-    if root_nn_module.dtype not in (torch.bfloat16, torch.float16):
+    # Determine dtype: diffusers provides a .dtype attribute directly; for vanilla nn.Modules
+    # we fall back to the dtype of the first parameter.
+    try:
+        module_dtype = root_nn_module.dtype
+    except AttributeError:
+        first_param = next(root_nn_module.parameters(), None)
+        module_dtype = first_param.dtype if first_param is not None else None
+    if module_dtype not in (torch.bfloat16, torch.float16):
+        pruna_logger.warning(
+            "FlashAttention3 forward wrap was not applied to module '%s' "
+            "because its dtype is not bfloat16 or float16.",
+            root_name,
+        )
         return root_nn_module
+
     for rel_path in relative_target_paths:
         try:
             sub_module = root_nn_module.get_submodule(rel_path)
@@ -509,16 +543,13 @@ def register_pruna_flash_attn_op(kernel_mod: Any, use_fp8: bool = False) -> None
         if use_fp8:
             # FA3 requires descale shape (batch_size, num_heads_k) for all three,
             # as kernel expects per tensor quantization
+            # Quantize sequentially, reassigning to drop fp16 originals and reduce peak memory (otherwise risk of OOM)
             descale_shape = (q.shape[0], k.shape[2])  # (B, H) as input format = (B, N, H, D)
-            # Quantize sequentially and delete originals to reduce peak memory (otherwise risk of OOM)
-            q_fp8, descale_q = _quantize_fp8(q, descale_shape)
-            del q
-            k_fp8, descale_k = _quantize_fp8(k, descale_shape)
-            del k
-            v_fp8, descale_v = _quantize_fp8(v, descale_shape)
-            del v
+            q, descale_q = _quantize_fp8(q, descale_shape)
+            k, descale_k = _quantize_fp8(k, descale_shape)
+            v, descale_v = _quantize_fp8(v, descale_shape)
             out, lse = flash_attn_cuda(
-                q_fp8, k_fp8, v_fp8,
+                q, k, v,
                 softmax_scale=softmax_scale or None,
                 causal=causal,
                 deterministic=False,
