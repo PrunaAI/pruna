@@ -286,17 +286,8 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
                     enable_gqa=enable_gqa,
                 )
             else:
-<<<<<<< HEAD
-                out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(
-                    q=query,  # type: ignore
-                    k=key,  # type: ignore
-                    v=value,  # type: ignore
-                    softmax_scale=scale,  # type: ignore
-                    causal=is_causal,  # type: ignore
-=======
                 out, _, *_ = _op_fn(
                     q=query, k=key, v=value, softmax_scale=scale, causal=is_causal
->>>>>>> c6f343e (Initial commit: Add fp8 quantization to fa3 as hyperparameter)
                 )
                 return out
 
@@ -365,17 +356,9 @@ class FlashAttention3Context(TorchFunctionMode):
 def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None, use_fp8=False):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-<<<<<<< HEAD
-<<<<<<< HEAD
-    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)  # type: ignore
-=======
-    op_fn = torch.ops.flash_attn_pruna._flash_attn_forward_fp8 if use_fp8 else torch.ops.flash_attn_pruna._flash_attn_forward
-=======
     _ops = torch.ops.flash_attn_pruna
     op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
->>>>>>> c7a4892 (Fix: ruff checks)
     out, _ = op_fn(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
->>>>>>> c6f343e (Initial commit: Add fp8 quantization to fa3 as hyperparameter)
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
 
