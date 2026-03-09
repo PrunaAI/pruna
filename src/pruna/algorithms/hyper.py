@@ -59,7 +59,6 @@ class Hyper(PrunaAlgorithmBase):
         "torch_compile",
         "stable_fast",
         AlgorithmTag.ENHANCER,  # type: ignore[attr-defined]
-        AlgorithmTag.RESAMPLER,  # type: ignore[attr-defined]
     ]
 
     def get_hyperparameters(self) -> list:
