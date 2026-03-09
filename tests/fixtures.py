@@ -212,4 +212,5 @@ MODEL_FACTORY: dict[str, Callable] = {
     "qwen_moe_tiny_random": partial(
         get_automodel_transformers, "yujiepan/qwen1.5-moe-tiny-random", torch_dtype=torch.bfloat16
     ),
+    "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m", torch_dtype=torch.bfloat16),
 }
