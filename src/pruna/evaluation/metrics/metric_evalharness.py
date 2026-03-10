@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Any, List, Tuple
 
-import numpy as np
 from lm_eval.api import metrics  # noqa: F401  # needed to register lm-eval metrics
 from lm_eval.api import registry as lm_registry
 

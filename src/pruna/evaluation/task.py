@@ -244,7 +244,7 @@ def _process_metric_names(
         metric_name = cast(str, metric_name)
         new_requests.append(cast(str, metric_name))
     return MetricRegistry.get_metrics(
-        names=new_requests, inference_device=inference_device, stateful_metric_device=stateful_metric_device 
+        names=new_requests, inference_device=inference_device, stateful_metric_device=stateful_metric_device
     )
 
 
