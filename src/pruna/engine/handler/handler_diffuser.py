@@ -17,7 +17,9 @@ from __future__ import annotations
 import inspect
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import torch
+from PIL import Image
 from torchvision import transforms
 
 from pruna.engine.handler.handler_inference import InferenceHandler
@@ -83,8 +85,19 @@ class DiffuserHandler(InferenceHandler):
         torch.Tensor
             The processed images.
         """
-        generated = output.images
-        return torch.stack([transforms.PILToTensor()(g) for g in generated])
+        generated = getattr(output, "images", None) or getattr(output, "frames", None)
+        if generated is None:
+            raise AttributeError(f"{type(output).__name__} has neither 'images' nor 'frames' attribute.")
+        # Video pipelines return nested lists of PIL images; flatten to a single list.
+        if isinstance(generated, list) and generated and isinstance(generated[0], list):
+            generated = [frame for clip in generated for frame in clip]
+        to_tensor = transforms.PILToTensor()
+        tensors = []
+        for g in generated:
+            if isinstance(g, np.ndarray):
+                g = Image.fromarray(g)
+            tensors.append(to_tensor(g))
+        return torch.stack(tensors)
 
     def log_model_info(self) -> None:
         """Log information about the inference handler."""

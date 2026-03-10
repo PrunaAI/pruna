@@ -19,6 +19,7 @@ from typing import Any, List
 
 import torch
 from diffusers import DiffusionPipeline
+from diffusers.models.attention_dispatch import AttentionBackendName, _maybe_download_kernel_for_backend
 from typing_extensions import cast
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -94,6 +95,10 @@ class SageAttn(PrunaAlgorithmBase):
         if target_modules is None:
             target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)["target_modules"]
             target_modules = cast(TARGET_MODULES_TYPE, target_modules)
+
+        # Diffusers has two set_attention_backend methods, one for the whole model and one for the submodules
+        # The submodule-level method does not trigger the download therefore we need to pre-load the kernel once
+        _maybe_download_kernel_for_backend(AttentionBackendName.SAGE_HUB)
 
         def apply_sage_attn(
             root_name: str | None,
