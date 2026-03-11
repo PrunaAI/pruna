@@ -18,7 +18,7 @@ def test_lm_eval_metric_bleu_like():
     preds = ["the cat is on mat", "a quick brown fox"]
 
     metric = LMEvalMetric(metric_name="bleu")
-    metric.update(preds, refs)
+    metric.update(refs,refs, preds)
     result = metric.compute()
 
     assert isinstance(result, MetricResult)
@@ -49,7 +49,7 @@ def test_lm_eval_metric_length_mismatch():
     preds = ["a", "b"]
 
     with pytest.raises(ValueError, match="Preds and refs length mismatch"):
-        metric.update(preds, refs)
+        metric.update(refs, refs, preds)
 
 
 @pytest.mark.cpu

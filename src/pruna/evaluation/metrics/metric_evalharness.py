@@ -16,12 +16,14 @@ from __future__ import annotations
 
 from typing import Any, List, Tuple
 
+import torch
 from lm_eval.api import metrics  # noqa: F401  # needed to register lm-eval metrics
 from lm_eval.api import registry as lm_registry
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
+from pruna.evaluation.metrics.utils import metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_EVALHARNESS = "lm_eval_metric"
@@ -71,12 +73,28 @@ class LMEvalMetric(StatefulMetric):
 
         pruna_logger.info(f"LMEvalMetric initialized: {metric_name} (higher_is_better={self.higher_is_better})")
 
-    def update(self, preds, refs) -> None:
-        """Accumulate predictions and references for later aggregation."""
-        if len(preds) != len(refs):
-            raise ValueError(f"Preds and refs length mismatch: {len(preds)} vs {len(refs)}")
+    def update(
+        self,
+        x: List[Any] | torch.Tensor,
+        gt: List[Any] | torch.Tensor,
+        outputs: List[Any] | torch.Tensor,
+    ) -> None:
+        """
+        Accumulate predictions and references for later aggregation.
 
-        for ref, pred in zip(refs, preds):
+        Parameters
+        ----------
+        x : List[Any] | torch.Tensor
+            Input data.
+        gt : List[Any] | torch.Tensor
+            Ground truth data.
+        outputs : List[Any] | torch.Tensor
+            Output data.
+        """
+        if len(x) != len(gt) != len(outputs):
+            raise ValueError(f"Input, ground truth, and output length mismatch: {len(x)} vs {len(gt)} vs {len(outputs)}")
+        inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        for ref, pred in zip(inputs[0], inputs[1]):
             raw_item = self.metric_fn((ref, pred))
             self.pairs.append(raw_item)
 

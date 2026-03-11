@@ -12,4 +12,4 @@ runs:
         github-token: ${{ github.token }}
 
     - shell: bash
-      run: uv sync --extra dev --extra evalharness --extra vllm
+      run: uv sync --extra dev --extra lmharness
