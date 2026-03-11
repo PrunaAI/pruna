@@ -211,7 +211,7 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 cpu = []
-evalharness = [
+lmharness = [
     "lm-eval>=0.4.0"
 ]
 intel = [
