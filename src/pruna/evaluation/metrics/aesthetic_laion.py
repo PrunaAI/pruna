@@ -180,7 +180,7 @@ class AestheticLAION(StatefulMetric):
         if not path_to_model.exists():
             cache_folder.mkdir(exist_ok=True, parents=True)
             url_model = (
-                f"https://github.com/LAION-AI/aesthetic-predictor/blob/main/sa_0_4_{clip_model}_linear.pth?raw=true"
+            f"https://raw.githubusercontent.com/LAION-AI/aesthetic-predictor/refs/heads/main/sa_0_4_{clip_model}_linear.pth"
             )
             urlretrieve(url_model, path_to_model)
 
