@@ -32,7 +32,7 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import YesNoAnswer, _process_images
+from pruna.evaluation.metrics.metric_vlm_utils import VQAnswer, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -118,11 +118,7 @@ class VQAMetric(StatefulMetric):
             use_outlines=use_outlines,
             **(vlm_kwargs or {}),
         )
-        self.response_format = (
-            YesNoAnswer
-            if structured_output and vlm_type == "litellm"
-            else ("yes_no" if structured_output and vlm_type == "transformers" else None)
-        )
+        self.response_format = VQAnswer if structured_output else None
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])

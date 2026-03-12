@@ -20,6 +20,16 @@ def _dummy_image(batch: int = 1, size: int = 224) -> torch.Tensor:
     return torch.rand(batch, 3, size, size)
 
 
+def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
+    """Update metric with appropriate gt type per metric contract."""
+    if isinstance(metric, QAAccuracyMetric):
+        metric.update(prompts, [["Is there a cat?"]], images)
+    elif isinstance(metric, TextScoreMetric):
+        metric.update(prompts, ["cat"], images)
+    else:
+        metric.update(prompts, images, images)
+
+
 @pytest.mark.cpu
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -44,7 +54,7 @@ def test_vlm_metrics_transformers_smolvlm(metric_cls: type, structured_output: b
     )
     images = _dummy_image(batch=1)
     prompts = ["a cat"]
-    metric.update(prompts, images, images)
+    _update_metric(metric, prompts, images)
     result = metric.compute()
     assert result.name == metric.metric_name
     assert isinstance(result.result, float)
@@ -72,9 +82,14 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
     pytest.importorskip("litellm")
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = (
-        '{"score": 8, "reasoning": "yes"}' if structured_output else "8"
-    )
+    if metric_cls in (AlignmentScoreMetric, VQAMetric, QAAccuracyMetric):
+        mock_response.choices[0].message.content = (
+            '{"answer": "Yes"}' if structured_output else "Yes"
+        )
+    else:
+        mock_response.choices[0].message.content = (
+            '{"score": 8}' if structured_output else "8"
+        )
 
     with patch("litellm.completion") as mock_completion:
         mock_completion.return_value = mock_response
@@ -87,7 +102,7 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
         )
         images = _dummy_image(batch=1)
         prompts = ["a cat"]
-        metric.update(prompts, images, images)
+        _update_metric(metric, prompts, images)
         result = metric.compute()
 
     assert result.name == metric.metric_name
@@ -146,6 +161,21 @@ def test_get_vlm_returns_custom() -> None:
     custom = MagicMock(spec=BaseVLM)
     out = get_vlm(vlm=custom, vlm_type="litellm", model_name="gpt-4o")
     assert out is custom
+
+
+@pytest.mark.cpu
+def test_text_score_with_list_str_gt() -> None:
+    """Test TextScoreMetric accepts List[str] ground truth from text_score_collate."""
+    mock_vlm = MagicMock(spec=BaseVLM)
+    mock_vlm.generate.return_value = ["hello world"]
+
+    metric = TextScoreMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
+    images = _dummy_image(batch=1)
+    metric.update(["a prompt"], ["hello world"], images)
+    result = metric.compute()
+
+    assert result.result == 0.0
+    mock_vlm.generate.assert_called_once()
 
 
 @pytest.mark.cpu

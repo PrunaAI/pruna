@@ -30,7 +30,7 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import ScoreOutput, _process_images
+from pruna.evaluation.metrics.metric_vlm_utils import FloatOutput, _process_images, get_score_from_response
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -109,11 +109,7 @@ class ImageEditScoreMetric(StatefulMetric):
             use_outlines=use_outlines,
             **(vlm_kwargs or {}),
         )
-        self.response_format = (
-            ScoreOutput
-            if structured_output and vlm_type == "litellm"
-            else ("integer" if structured_output and vlm_type == "transformers" else None)
-        )
+        self.response_format = FloatOutput if structured_output else None
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])
