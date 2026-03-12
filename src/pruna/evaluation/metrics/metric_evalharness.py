@@ -47,7 +47,7 @@ class LMEvalMetric(StatefulMetric):
 
     pairs: List[Tuple[Any, Any]]  # dynamically added by add_state()
 
-    def __init__(self, metric_name: str, call_type: str = "y_gt") -> None:
+    def __init__(self, metric_name: str = METRIC_EVALHARNESS, call_type: str = "y_gt") -> None:
         super().__init__()
         self.metric_name = metric_name
         self.call_type = call_type
@@ -91,8 +91,11 @@ class LMEvalMetric(StatefulMetric):
         outputs : List[Any] | torch.Tensor
             Output data.
         """
-        if len(x) != len(gt) != len(outputs):
-            raise ValueError(f"Input, ground truth, and output length mismatch: {len(x)} vs {len(gt)} vs {len(outputs)}")
+        if not (len(x) == len(gt) == len(outputs)):
+            error_message = f"Input, ground truth, and output length mismatch: {len(x)} vs {len(gt)} vs {len(outputs)}"
+            pruna_logger.error(error_message)
+            raise ValueError(error_message)
+        pruna_logger.debug(f"Processing {len(x)} samples for {self.metric_name}")
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         for ref, pred in zip(inputs[0], inputs[1]):
             raw_item = self.metric_fn((ref, pred))
