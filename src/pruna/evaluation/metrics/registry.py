@@ -125,7 +125,7 @@ class MetricRegistry:
         elif isinstance(metric_cls, partial):  # For the mock tests
             return metric_cls(**kwargs)
         else:
-            raise ValueError(f"Metric '{metric_cls}' dos not inherit from a valid metric class.")
+            raise ValueError(f"Metric '{metric_cls}' does not inherit from a valid metric class.")
 
     @classmethod
     def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric | StatefulMetric]:
