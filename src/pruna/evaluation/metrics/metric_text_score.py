@@ -24,7 +24,7 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import OCRText, _process_images
+from pruna.evaluation.metrics.metric_vlm_utils import TextOutput, _process_images, get_text_from_response
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -77,10 +77,10 @@ class TextScoreMetric(StatefulMetric):
     """
 
     scores: List[float]
-    default_call_type: str = "y"
+    default_call_type: str = "y_gt"
     higher_is_better: bool = False
     metric_name: str = "text_score"
-    runs_on: List[str] = ["cpu"]
+    runs_on: List[str] = ["cuda", "cpu"]
 
     def __init__(
         self,
@@ -108,13 +108,7 @@ class TextScoreMetric(StatefulMetric):
             use_outlines=use_outlines,
             **(vlm_kwargs or {}),
         )
-        self.vlm_type = vlm_type
-        self.structured_output = structured_output
-        self.response_format = (
-            OCRText
-            if structured_output and vlm_type == "litellm"
-            else ("json" if structured_output and vlm_type == "transformers" else None)
-        )
+        self.response_format = TextOutput if structured_output else None
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])
@@ -136,65 +130,37 @@ class TextScoreMetric(StatefulMetric):
             prev = curr
         return float(prev[-1])
 
-    def update(self, x: List[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+    def update(self, x: List[Any] | torch.Tensor, gt: List[str], outputs: torch.Tensor) -> None:
         """
         Update the metric with new batch data.
 
         Parameters
         ----------
         x : List[Any] | torch.Tensor
-            The input data.
-        gt : torch.Tensor
-            The ground truth (text content).
+            The input data (prompts).
+        gt : List[str]
+            Ground truth text content, one string per image. Use text_score_collate
+            to produce this from datasets with a 'text_content' column.
         outputs : torch.Tensor
             The output images.
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        text_gt_list = self._extract_ground_truth_text(gt, len(images))
+        text_gt_list: List[str | None] = (
+            list(inputs[1]) if len(inputs) > 1 and isinstance(inputs[1], (list, tuple)) else [None] * len(images)
+        )
         for i, image in enumerate(images):
             responses = self.vlm.generate([image], [OCR_PROMPT], response_format=self.response_format)
-            raw = (responses[0] or "").strip() if responses else ""
-            ocr_text = self._extract_ocr_text(raw)
+            raw = responses[0] if responses else ""
+            ocr_text = get_text_from_response(raw)
             text_gt = text_gt_list[i] if i < len(text_gt_list) else None
             if text_gt is not None:
                 norm_gt = self._normalize_text(text_gt)
                 norm_ocr = self._normalize_text(ocr_text)
                 score = self._levenshtein(norm_ocr, norm_gt)
             else:
-                score = 0.0 if ocr_text else 0.0
+                score = 0.0
             self.scores.append(score)
-
-    def _extract_ocr_text(self, raw: str) -> str:
-        if not raw:
-            return ""
-        if self.structured_output and raw.strip().startswith("{"):
-            try:
-                import json
-
-                data = json.loads(raw)
-                text = data.get("text", raw)
-            except (json.JSONDecodeError, TypeError):
-                text = raw
-        else:
-            text = raw
-        for phrase in ("No text recognized", "no text recognized", "No text"):
-            text = text.replace(phrase, "").strip()
-        return text.strip()
-
-    def _extract_ground_truth_text(self, gt: Any, n: int) -> List[str | None]:
-        if isinstance(gt, (list, tuple)) and len(gt) >= n:
-            out = []
-            for i in range(n):
-                v = gt[i]
-                if isinstance(v, str):
-                    out.append(v)
-                elif isinstance(v, dict) and "text_content" in v:
-                    out.append(v["text_content"])
-                else:
-                    out.append(None)
-            return out
-        return [None] * n
 
     def compute(self) -> MetricResult:
         """

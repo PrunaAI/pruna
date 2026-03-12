@@ -131,6 +131,7 @@ class BaseVLM(ABC):
         questions: List[str],
         answers: List[str],
         use_probability: bool = False,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]] = None,
         **kwargs: Any,
     ) -> List[float]:
         """
@@ -146,6 +147,9 @@ class BaseVLM(ABC):
             List of expected answers.
         use_probability : bool, optional
             If True and supported, return P(expected answer) instead of binary 0/1.
+        response_format : Type[BaseModel] | str | None, optional
+            Structured output format. When set, uses generate() with this format and
+            extracts the answer field for comparison instead of raw string matching.
         **kwargs : Any
             Additional arguments passed to the implementation.
 
@@ -262,12 +266,14 @@ class LitellmVLM(BaseVLM):
         questions: List[str],
         answers: List[str],
         use_probability: bool = False,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]] = None,
         **kwargs: Any,
     ) -> List[float]:
         """
         Score how well answers match images for given questions.
 
         When use_probability=True, requests logprobs from the API and returns P(expected).
+        When response_format is set, uses structured generation and extracts the answer field.
         Falls back to binary 0/1 if logprobs not available.
 
         Parameters
@@ -280,6 +286,8 @@ class LitellmVLM(BaseVLM):
             List of expected answers.
         use_probability : bool, optional
             If True, return P(expected) from logprobs when available. Default is False.
+        response_format : Type[BaseModel] | str | None, optional
+            Structured output format for answer extraction.
         **kwargs : Any
             Additional arguments passed to litellm completion.
 
@@ -288,11 +296,17 @@ class LitellmVLM(BaseVLM):
         List[float]
             Scores for each image-question pair (0-1, or probability when use_probability).
         """
+        from pruna.evaluation.metrics.metric_vlm_utils import get_answer_from_response
+
         scores = []
         for image, question, answer in zip(images, questions, answers):
             prompt = f"{question} Please answer yes or no."
             if use_probability:
                 score = self._score_with_logprobs(image, prompt, answer, **kwargs)
+            elif response_format is not None:
+                raw = self.generate([image], [prompt], response_format=response_format, **kwargs)[0]
+                response_answer = get_answer_from_response(raw)
+                score = 1.0 if answer.lower() in response_answer.lower() else 0.0
             else:
                 response = self.generate([image], [prompt], **kwargs)[0].lower()
                 score = 1.0 if answer.lower() in response else 0.0
@@ -531,12 +545,14 @@ class TransformersVLM(BaseVLM):
         questions: List[str],
         answers: List[str],
         use_probability: bool = False,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]] = None,
         **kwargs: Any,
     ) -> List[float]:
         """
         Score how well answers match images for given questions.
 
         use_probability is not supported for TransformersVLM; uses binary 0/1.
+        When response_format is set, uses structured generation and extracts the answer field.
 
         Parameters
         ----------
@@ -548,6 +564,8 @@ class TransformersVLM(BaseVLM):
             List of expected answers.
         use_probability : bool, optional
             Ignored; TransformersVLM always uses binary 0/1.
+        response_format : Type[BaseModel] | str | None, optional
+            Structured output format for answer extraction.
         **kwargs : Any
             Additional arguments passed to generate.
 
@@ -556,11 +574,14 @@ class TransformersVLM(BaseVLM):
         List[float]
             Scores for each image-question pair (0 or 1).
         """
+        from pruna.evaluation.metrics.metric_vlm_utils import get_answer_from_response
+
         scores = []
         for image, question, answer in zip(images, questions, answers):
             prompt = f"{question} Please answer yes or no."
-            responses = self.generate([image], [prompt], **kwargs)
-            response = responses[0].lower() if responses else ""
-            score = 1.0 if answer.lower() in response else 0.0
+            responses = self.generate([image], [prompt], response_format=response_format, **kwargs)
+            raw = responses[0] if responses else ""
+            response_answer = get_answer_from_response(raw) if response_format is not None else raw.lower()
+            score = 1.0 if answer.lower() in response_answer.lower() else 0.0
             scores.append(score)
         return scores
