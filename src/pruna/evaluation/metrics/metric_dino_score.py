@@ -50,20 +50,18 @@ class DinoScore(StatefulMetric):
     reference images.
 
     DINO v1 and DINOv2 load via timm. DINOv3 loads via Hugging Face Transformers (>=4.56.0).
-    See https://github.com/facebookresearch/dinov3 and
-    https://huggingface.co/collections/facebook/dinov3 for available models.
 
     Parameters
     ----------
     device : str | torch.device | None
         The device to use for the metric.
     model : str
-        Backbone name. "dino" (default), "dinov2_vits14", "dinov2_vitb14",
-        "dinov2_vitl14", "dinov3_vits16", "dinov3_vits16plus", "dinov3_vitb16",
-        "dinov3_vitl16", "dinov3_vith16plus", "dinov3_vit7b16",
-        "dinov3_convnext_tiny/small/base/large", "dinov3_vitl16_sat493m",
-        "dinov3_vit7b16_sat493m", etc. DINOv3 uses HF Transformers; DINO v1/v2
-        use timm. Any timm or HF model ID also accepted.
+        One of the registered model keys. TIMM_MODELS keys: "dino", "dinov2_vits14",
+        "dinov2_vitb14", "dinov2_vitl14". HF_DINOV3_MODELS keys: "dinov3_vits16",
+        "dinov3_vits16plus", "dinov3_vitb16", "dinov3_vitl16", "dinov3_vith16plus",
+        "dinov3_vit7b16", "dinov3_convnext_tiny", "dinov3_convnext_small",
+        "dinov3_convnext_base", "dinov3_convnext_large", "dinov3_vitl16_sat493m",
+        "dinov3_vit7b16_sat493m".
     call_type : str
         The call type to use for the metric.
 
@@ -96,6 +94,11 @@ class DinoScore(StatefulMetric):
         "dinov3_vit7b16_sat493m": "facebook/dinov3-vit7b16-pretrain-sat493m",
     }
 
+    @classmethod
+    def valid_models(cls) -> list[str]:
+        """Return all valid model keys."""
+        return list(cls.TIMM_MODELS) + list(cls.HF_DINOV3_MODELS)
+
     similarities: List[Tensor]
     metric_name: str = DINO_SCORE
     higher_is_better: bool = True
@@ -114,20 +117,19 @@ class DinoScore(StatefulMetric):
             pruna_logger.error(f"DinoScore: device {device} not supported. Supported devices: {self.runs_on}")
             raise
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
-        self.model_name = model
+        valid = self.valid_models()
+        if model not in valid:
+            raise ValueError(f"Unknown DinoScore model '{model}'. Valid keys: {valid}")
 
-        hf_name = self.HF_DINOV3_MODELS.get(model)
-        if hf_name is not None or (model.startswith("facebook/") and "dinov3" in model):
+        if model in self.HF_DINOV3_MODELS:
             from transformers import AutoModel
 
-            hf_name = hf_name or model
-            self.model = AutoModel.from_pretrained(hf_name)
+            self.model = AutoModel.from_pretrained(self.HF_DINOV3_MODELS[model])
             self.model.eval().to(self.device)
             self._use_transformers = True
             h = 224
         else:
-            timm_name = self.TIMM_MODELS.get(model, model)
-            self.model = timm.create_model(timm_name, pretrained=True)
+            self.model = timm.create_model(self.TIMM_MODELS[model], pretrained=True)
             self.model.eval().to(self.device)
             self._use_transformers = False
             h = self.model.default_cfg.get("input_size", (3, 224, 224))[1]
@@ -145,8 +147,9 @@ class DinoScore(StatefulMetric):
         if self._use_transformers:
             out = self.model(pixel_values=x)
             return out.pooler_output
-        features = self.model.forward_features(x)
-        return features["x_norm_clstoken"] if isinstance(features, dict) else features[:, 0]
+        else:
+            features = self.model.forward_features(x)
+            return features["x_norm_clstoken"] if isinstance(features, dict) else features[:, 0]
 
     @torch.no_grad()
     def update(self, x: List[Any] | Tensor, gt: Tensor, outputs: torch.Tensor) -> None:
