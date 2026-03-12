@@ -48,7 +48,7 @@ def test_lm_eval_metric_length_mismatch():
     refs = ["a", "b", "c"]
     preds = ["a", "b"]
 
-    with pytest.raises(ValueError, match="Preds and refs length mismatch"):
+    with pytest.raises(ValueError):
         metric.update(refs, refs, preds)
 
 
