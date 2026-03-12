@@ -16,7 +16,9 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Literal
+import json
+import re
+from typing import Any, List
 
 import torch
 from PIL import Image
@@ -38,34 +40,19 @@ def _process_images(images: torch.Tensor) -> List[Any]:
 
 class VQAnswer(BaseModel):
     """
-    Structured output for VQA (answer with optional confidence).
+    Structured output for VQA questions (Yes/No or open-ended).
 
     Parameters
     ----------
     answer : str
-        The VQA answer text.
-    confidence : float, optional
-        Confidence score. Default is 1.0.
+        Answer to the question. Typically "Yes" or "No" for alignment metrics,
+        but can be any string for open-ended questions.
     """
 
-    answer: str
-    confidence: float = 1.0
+    answer: str = Field(description="Answer to the question")
 
 
-class YesNoAnswer(BaseModel):
-    """
-    Structured output for Yes/No questions (alignment, VQA, QA accuracy).
-
-    Parameters
-    ----------
-    answer : Literal["Yes", "No"]
-        Answer must be exactly Yes or No.
-    """
-
-    answer: Literal["Yes", "No"] = Field(description="Answer must be exactly Yes or No")
-
-
-class ScoreOutput(BaseModel):
+class FloatOutput(BaseModel):
     """
     Structured output for numeric scoring (img_edit_score, viescore).
 
@@ -73,17 +60,14 @@ class ScoreOutput(BaseModel):
     ----------
     score : float
         Score from 0 to 10.
-    reasoning : str | None, optional
-        Optional reasoning for the score.
     """
 
     score: float = Field(ge=0, le=10, description="Score from 0 to 10")
-    reasoning: str | None = None
 
 
-class OCRText(BaseModel):
+class TextOutput(BaseModel):
     """
-    Structured output for OCR text extraction (text_score).
+    Structured output for text extraction (text_score).
 
     Parameters
     ----------
@@ -92,3 +76,89 @@ class OCRText(BaseModel):
     """
 
     text: str = Field(description="Extracted text from the image, or 'No text recognized' if empty")
+
+
+def get_answer_from_response(response: str | BaseModel | dict) -> str:
+    """
+    Extract answer string from a VLM score() response (VQAnswer, dict, or raw string).
+
+    Parameters
+    ----------
+    response : str | BaseModel | dict
+        Raw response from vlm.generate() or vlm.score().
+
+    Returns
+    -------
+    str
+        Extracted answer string, or empty string.
+    """
+    if response is None:
+        return ""
+    if isinstance(response, VQAnswer):
+        return response.answer
+    if isinstance(response, dict):
+        return response.get("answer", "")
+    raw = str(response).strip()
+    if raw.startswith("{"):
+        try:
+            return json.loads(raw).get("answer", raw)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return raw
+
+
+def get_text_from_response(response: str | BaseModel | dict) -> str:
+    """
+    Extract text from a VLM generate() response (str, pydantic, or dict).
+
+    Parameters
+    ----------
+    response : str | BaseModel | dict
+        Raw response from vlm.generate().
+
+    Returns
+    -------
+    str
+        Extracted text, or empty string.
+    """
+    if response is None:
+        return ""
+    if isinstance(response, TextOutput):
+        text = response.text
+    elif isinstance(response, dict):
+        text = response.get("text", "")
+    else:
+        text = (response or "").strip()
+        if text.startswith("{"):
+            try:
+                data = json.loads(text)
+                text = data.get("text", text)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        for phrase in ("No text recognized", "no text recognized", "No text"):
+            text = text.replace(phrase, "").strip()
+    return (text or "").strip()
+
+
+def get_score_from_response(response: str | BaseModel | dict) -> float:
+    """
+    Extract numeric score (0-10) from a VLM generate() response.
+
+    Parameters
+    ----------
+    response : str | BaseModel | dict
+        Raw response from vlm.generate().
+
+    Returns
+    -------
+    float
+        Score in [0, 1] (normalized from 0-10).
+    """
+    if response is None:
+        return 0.0
+    if isinstance(response, FloatOutput):
+        return min(response.score, 10.0) / 10.0
+    if isinstance(response, dict):
+        return min(float(response.get("score", 0)), 10.0) / 10.0
+    numbers = re.findall(r"\d+", str(response or ""))
+    return min(float(numbers[0]), 10.0) / 10.0 if numbers else 0.0
