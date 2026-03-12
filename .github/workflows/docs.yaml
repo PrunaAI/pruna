@@ -3,6 +3,7 @@ name: Algorithm Docs Generation
 permissions:
   contents: read
   pull-requests: read
+  actions: write
 
 on:
   workflow_dispatch:
