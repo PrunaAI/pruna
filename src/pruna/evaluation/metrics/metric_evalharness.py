@@ -29,7 +29,7 @@ from pruna.logging.logger import pruna_logger
 METRIC_EVALHARNESS = "lm_eval_metric"
 
 
-@MetricRegistry.register(METRIC_EVALHARNESS)
+@MetricRegistry.register_wrapper(available_metrics=lm_registry.METRIC_REGISTRY.keys())
 class LMEvalMetric(StatefulMetric):
     """
     Generic Pruna wrapper for lm-evaluation-harness metrics.
@@ -47,7 +47,7 @@ class LMEvalMetric(StatefulMetric):
 
     pairs: List[Tuple[Any, Any]]  # dynamically added by add_state()
 
-    def __init__(self, metric_name: str = METRIC_EVALHARNESS, call_type: str = "y_gt") -> None:
+    def __init__(self, metric_name: str, call_type: str = "y_gt") -> None:
         super().__init__()
         self.metric_name = metric_name
         self.call_type = call_type
