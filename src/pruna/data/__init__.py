@@ -26,8 +26,15 @@ from pruna.data.datasets.image import (
     setup_mnist_dataset,
 )
 from pruna.data.datasets.prompt import (
+    setup_dpg_dataset,
     setup_drawbench_dataset,
+    setup_gedit_dataset,
     setup_genai_bench_dataset,
+    setup_geneval_dataset,
+    setup_hps_dataset,
+    setup_imgedit_dataset,
+    setup_long_text_bench_dataset,
+    setup_oneig_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -97,8 +104,19 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         {"img_size": 224},
     ),
     "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
-    "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
+    "PartiPrompts": (
+        setup_parti_prompts_dataset,
+        "prompt_with_auxiliaries_collate",
+        {},
+    ),
     "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
+    "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
+    "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
+    "GEditBench": (setup_gedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
+    "DPG": (setup_dpg_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }

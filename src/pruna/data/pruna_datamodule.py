@@ -137,6 +137,9 @@ class PrunaDataModule(LightningDataModule):
         dataloader_args: dict = dict(),
         seed: int = 42,
         category: str | list[str] | None = None,
+        fraction: float = 1.0,
+        train_sample_size: int | None = None,
+        test_sample_size: int | None = None,
     ) -> "PrunaDataModule":
         """
         Create a PrunaDataModule from the dataset name with preimplemented dataset loading.
@@ -153,9 +156,14 @@ class PrunaDataModule(LightningDataModule):
             Any additional arguments for the dataloader.
         seed : int
             The seed to use.
-
         category : str | list[str] | None
             The category of the dataset.
+        fraction : float
+            Fraction of dataset to use (when setup fn accepts it).
+        train_sample_size : int | None
+            Train sample size (when setup fn accepts it).
+        test_sample_size : int | None
+            Test sample size (when setup fn accepts it).
 
         Returns
         -------
@@ -173,6 +181,10 @@ class PrunaDataModule(LightningDataModule):
 
         if "category" in inspect.signature(setup_fn).parameters:
             setup_fn = partial(setup_fn, category=category)
+
+        for param in ("fraction", "train_sample_size", "test_sample_size"):
+            if param in inspect.signature(setup_fn).parameters:
+                setup_fn = partial(setup_fn, **{param: locals()[param]})
 
         train_ds, val_ds, test_ds = setup_fn()
 
