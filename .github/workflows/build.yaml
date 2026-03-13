@@ -45,7 +45,7 @@ jobs:
           echo "wheel_name=$wheel" >> $GITHUB_OUTPUT
 
       - name: Upload Wheel Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.get_wheel.outputs.wheel_name }}
           path: dist/*.whl
