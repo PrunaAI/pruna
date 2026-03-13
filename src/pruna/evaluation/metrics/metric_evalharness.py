@@ -27,9 +27,15 @@ from pruna.evaluation.metrics.utils import metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_EVALHARNESS = "lm_eval_metric"
+# Perplexity from lm_eval requires the call type to be "y"
+# So requires us to handle turning the vector logits into a single log prob.
+LM_EVAL_METRICS = [
+    m for m in lm_registry.METRIC_REGISTRY
+    if m != "perplexity"  # We use the torchmetrics implementation for perplexity
+]
 
 
-@MetricRegistry.register_wrapper(available_metrics=lm_registry.METRIC_REGISTRY.keys())
+@MetricRegistry.register_wrapper(available_metrics=LM_EVAL_METRICS)
 class LMEvalMetric(StatefulMetric):
     """
     Generic Pruna wrapper for lm-evaluation-harness metrics.
