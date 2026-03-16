@@ -25,6 +25,7 @@ from torchmetrics import Metric
 from torchmetrics.classification import Accuracy, Precision, Recall
 from torchmetrics.image import (
     FrechetInceptionDistance,
+    KernelInceptionDistance,
     LearnedPerceptualImagePatchSimilarity,
     MultiScaleStructuralSimilarityIndexMeasure,
     PeakSignalNoiseRatio,
@@ -124,6 +125,41 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
     """
     preds = preds.float() / 255.0
     metric.update(preds)
+
+
+def kid_update(metric: KernelInceptionDistance, reals: Any, fakes: Any) -> None:
+    """
+    Update handler for KID metric.
+
+    Parameters
+    ----------
+    metric : KernelInceptionDistance instance
+        The KID metric instance.
+    reals : Any
+        The ground truth images tensor.
+    fakes : Any
+        The generated images tensor.
+    """
+    metric.update(reals, real=True)
+    metric.update(fakes, real=False)
+
+
+def kid_compute(metric: KernelInceptionDistance) -> Tensor:
+    """
+    Compute handler for KID metric (returns mean only, discarding std).
+
+    Parameters
+    ----------
+    metric : KernelInceptionDistance instance
+        The KID metric instance.
+
+    Returns
+    -------
+    Tensor
+        The KID mean score.
+    """
+    mean, std = metric.compute()
+    return mean
 
 
 def ssim_update(
