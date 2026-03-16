@@ -40,6 +40,16 @@ from pruna.logging.logger import pruna_logger
 # This allows for torch compile to use more cache memory to compile the model
 torch._dynamo.config.cache_size_limit = 128
 
+# Workaround for PyTorch Inductor bug: Mod.eval asserts p >= 0,
+# but sympy's is_constant() can pass negative random values during shape analysis.
+# _orig_mod_eval = torch.utils._sympy.functions.Mod.eval.__func__
+# @classmethod
+# def _patched_mod_eval(cls, p, q):
+#     if q.is_Number and p.is_Number and (p < 0 or q < 1):
+#         return p % q
+#     return _orig_mod_eval(cls, p, q)
+# torch.utils._sympy.functions.Mod.eval = _patched_mod_eval
+
 
 class TorchCompile(PrunaAlgorithmBase):
     """
@@ -69,6 +79,7 @@ class TorchCompile(PrunaAlgorithmBase):
         "flash_attn3",
         "deepcache",
         "fora",
+        "sage_attn",
     ]
 
     def get_hyperparameters(self) -> list:
