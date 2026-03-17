@@ -3,7 +3,6 @@ name: Code Quality & Tests
 permissions:
   contents: read
   pull-requests: read
-  actions: write
 
 on:
   push:

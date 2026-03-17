@@ -3,7 +3,6 @@ name: Package Build
 permissions:
   contents: read
   pull-requests: read
-  actions: write
 
 on:
   pull_request:
