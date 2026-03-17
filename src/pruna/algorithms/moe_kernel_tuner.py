@@ -39,7 +39,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "moe_kernel_tuner"
-    group_tags: list[str] = [tags.KERNEL]
+    group_tags: list[tags] = [tags.KERNEL]
     save_fn: None = None
     references: dict[str, str] = {
         "GitHub": "https://github.com/vllm-project/vllm/blob/main/benchmarks/kernels/benchmark_moe.py",
@@ -76,59 +76,59 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 "compute_dtype",
                 choices=["bfloat16", "float16"],
                 default_value="bfloat16",
-                meta=dict(desc="Compute dtype to use."),
+                meta={"desc": "Compute dtype to use."},
             ),
             CategoricalHyperparameter(
                 "weight_dtype",
                 choices=["fp16", "fp8_w8a8", "int8_w8a16"],
                 default_value="fp16",
-                meta=dict(desc="Dtype to use for the weights (and activations)."),
+                meta={"desc": "Dtype to use for the weights (and activations)."},
             ),
             OrdinalHyperparameter(
                 "tensor_parallel_size",
                 sequence=[1, 2, 4, 8, 16, 32],
                 default_value=1,
-                meta=dict(desc="Tensor parallel size to use if the model can not fit on a single GPU."),
+                meta={"desc": "Tensor parallel size to use if the model can not fit on a single GPU."},
             ),
             UnconstrainedHyperparameter(
                 "path_to_huggingface_hub_cache",
                 default_value="~",
-                meta=dict(
-                    desc=(
+                meta={
+                    "desc": (
                         "Path to the Hugging Face Hub cache directory "
                         "(that contains `kernels` configs). If not provided, "
                         "the cache will be saved in the current working directory."
                     )
-                ),
+                },
             ),
             UnconstrainedHyperparameter(
                 "path_to_vllm_cache",
                 default_value="vllm/model_executor/layers/fused_moe/configs",
-                meta=dict(desc="Path to the vLLM MoE configs directory."),
+                meta={"desc": "Path to the vLLM MoE configs directory."},
             ),
             OrdinalHyperparameter(
                 "num_iters",
                 sequence=[1, 20, 50, 100],
                 default_value=20,
-                meta=dict(desc="Number of iterations to average the kernel times on."),
+                meta={"desc": "Number of iterations to average the kernel times on."},
             ),
             OrdinalHyperparameter(
                 "block_size_m_max",
                 sequence=[4, 5, 6, 7, 8, 9, 10],
                 default_value=8,
-                meta=dict(desc="Maximum (log) block size for tiling through input dimension."),
+                meta={"desc": "Maximum (log) block size for tiling through input dimension."},
             ),
             OrdinalHyperparameter(
                 "block_size_n_max",
                 sequence=[5, 6, 7, 8, 9, 10],
                 default_value=8,
-                meta=dict(desc="Maximum (log) block size for tiling through output dimension."),
+                meta={"desc": "Maximum (log) block size for tiling through output dimension."},
             ),
             OrdinalHyperparameter(
                 "block_size_k_max",
                 sequence=[6, 7, 8, 9, 10],
                 default_value=8,
-                meta=dict(desc="Maximum (log) block size for tiling through intermediate dimension."),
+                meta={"desc": "Maximum (log) block size for tiling through intermediate dimension."},
             ),
         ]
 
