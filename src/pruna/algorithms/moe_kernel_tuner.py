@@ -212,36 +212,35 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         ray_outputs: list[Any] = []
         tune_kernel = ray.remote(num_gpus=1)(tune_kernel)
 
-        for batch_size in batch_sizes:
-            out = tune_kernel.remote(
-                batch_size,
-                nb_experts,
-                shard_intermediate_size,
-                hidden_size,
-                topk,
-                dtype,
-                use_fp8_w8a8,
-                use_int8_w8a16,
-                search_space,
-                None,
-                False,
-                imported_packages,
-                0,  # fixed seed for reproducibility
-                smash_config["num_iters"],
-            )
-            ray_outputs.append(out)
-
         # Shutdown Ray processes on other devices and log any resulting exception as warnings.
         tuned_config_by_batch_size: dict[int, Any] = {}
         try:
+            for batch_size in batch_sizes:
+                out = tune_kernel.remote(
+                    batch_size,
+                    nb_experts,
+                    shard_intermediate_size,
+                    hidden_size,
+                    topk,
+                    dtype,
+                    use_fp8_w8a8,
+                    use_int8_w8a16,
+                    search_space,
+                    None,
+                    False,
+                    imported_packages,
+                    0,  # fixed seed for reproducibility
+                    smash_config["num_iters"],
+                )
+                ray_outputs.append(out)
+
             for batch_size, output_ref in zip(batch_sizes, ray_outputs):
                 try:
                     raw_config = ray.get(output_ref)
                     tuned_config_by_batch_size[batch_size] = ensure_benchmark_config(raw_config)
                 except no_valid_config_error:
                     pruna_logger.warning(
-                        "No valid config for batch_size=%s; skipping (smaller batch sizes may still be used).",
-                        batch_size,
+                        f"No valid config for {batch_size=}; skipping (smaller batch sizes may still be used)."
                     )
         finally:
             try:

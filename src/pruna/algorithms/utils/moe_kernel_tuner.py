@@ -419,33 +419,22 @@ def benchmark_config(
 def write_config_file(
     path: pathlib.Path,
     data: dict[str, Any],
-    merge_if_exists: bool,
-    write_only_if_missing: bool,
     log_label: str,
 ) -> None:
     """
-    Write config dict to a JSON file, optionally merging with existing content.
+    Write config dict to a JSON file if it does not already exist.
 
     Parameters
     ----------
     path : pathlib.Path
         Target file path.
     data : dict[str, Any]
-        Config to write (will be merged into existing if merge_if_exists and file exists).
-    merge_if_exists : bool
-        If True and path exists, load existing JSON, update with data, then write.
-    write_only_if_missing : bool
-        If True and path already exists, do not write (preserves existing file).
+        Config to write.
     log_label : str
         Label for the log message when writing.
     """
-    if write_only_if_missing and path.exists():
+    if path.exists():
         return
-    if merge_if_exists and path.exists():
-        with open(path) as f:
-            existing: dict[str, Any] = json.load(f)
-        existing.update(data)
-        data = existing
     path.parent.mkdir(parents=True, exist_ok=True)
     pruna_logger.info(f"Writing best config to {log_label}...")
     with open(path, "w") as f:
@@ -468,9 +457,7 @@ def save_configs(
     """
     Save the best configs to the HF cache and vLLM cache.
 
-    Writes one file per cache; for the HF path we merge with existing file content
-    if present so that other keys are preserved. Uses a shared helper to avoid
-    duplicating the write logic.
+    Writes one file per cache. If the file already exists it is left untouched.
 
     Parameters
     ----------
@@ -513,13 +500,7 @@ def save_configs(
         pathlib.Path(path_to_huggingface_hub_cache) / ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
     )
     path_hf = path_to_kernel_configs / filename
-    write_config_file(
-        path_hf,
-        data,
-        merge_if_exists=True,
-        write_only_if_missing=False,
-        log_label=str(path_hf),
-    )
+    write_config_file(path_hf, data, log_label=str(path_hf))
 
     path_to_vllm_configs = imported_packages["envs"].VLLM_TUNED_CONFIG_FOLDER
     if path_to_vllm_configs is None:
@@ -530,10 +511,4 @@ def save_configs(
             raise RuntimeError("Could not determine installation path for vllm.")
         path_to_vllm_configs = pathlib.Path(path_where_vllm_is_installed).parent / path_to_vllm_cache
     path_vllm = pathlib.Path(path_to_vllm_configs) / filename
-    write_config_file(
-        path_vllm,
-        data,
-        merge_if_exists=False,
-        write_only_if_missing=True,
-        log_label=str(path_vllm),
-    )
+    write_config_file(path_vllm, data, log_label=str(path_vllm))
