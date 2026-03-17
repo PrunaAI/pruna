@@ -98,25 +98,6 @@ def image_generation_collate(
     return texts, images_tensor
 
 
-def prompt_collate(data: Any) -> Tuple[List[str], None]:
-    """
-    Custom collation function for prompt datasets.
-
-    Expects a ``text`` column containing the clear-text prompt in the dataset.
-
-    Parameters
-    ----------
-    data : Any
-        The data to collate.
-
-    Returns
-    -------
-    Tuple[List[str], None]
-        The collated data.
-    """
-    return [item["text"] for item in data], None
-
-
 def prompt_with_auxiliaries_collate(
     data: Any,
 ) -> Tuple[List[str], List[dict[str, Any]]]:
@@ -286,6 +267,5 @@ pruna_collate_fns: dict[str, Callable] = {
     "image_classification_collate": image_classification_collate,
     "text_generation_collate": text_generation_collate,
     "question_answering_collate": question_answering_collate,
-    "prompt_collate": prompt_collate,
     "prompt_with_auxiliaries_collate": prompt_with_auxiliaries_collate,
 }

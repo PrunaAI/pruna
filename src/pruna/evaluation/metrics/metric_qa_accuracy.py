@@ -69,7 +69,7 @@ class QAAccuracyMetric(StatefulMetric):
     """
 
     scores: List[float]
-    default_call_type: str = "y"
+    default_call_type: str = "y_gt"
     higher_is_better: bool = True
     metric_name: str = "qa_accuracy"
     runs_on: List[str] = ["cpu"]
@@ -133,21 +133,24 @@ class QAAccuracyMetric(StatefulMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        questions_per_image = self._extract_questions(gt, len(images))
+        auxiliaries = inputs[1] if len(inputs) > 1 else []
+        questions_per_image = self._extract_questions(auxiliaries, len(images))
         for i, image in enumerate(images):
             questions = questions_per_image[i] if i < len(questions_per_image) else []
-            if questions:
-                scores = self.vlm.score(
-                    [image] * len(questions),
-                    questions,
-                    ["Yes"] * len(questions),
-                    response_format=self.response_format,
+            if not questions:
+                aux = auxiliaries[i] if i < len(auxiliaries) else {}
+                raise ValueError(
+                    "qa_accuracy requires 'questions' in auxiliaries. "
+                    "Use a benchmark that provides it (e.g. GenEval, DPG, OneIG). "
+                    f"Got aux keys: {list(aux.keys()) if isinstance(aux, dict) else 'not a dict'}."
                 )
-                score = float(np.mean(scores))
-            else:
-                question = "What is in this image?"
-                responses = self.vlm.generate([image], [question], response_format=self.response_format)
-                score = 1.0 if responses and responses[0].strip() else 0.0
+            scores = self.vlm.score(
+                [image] * len(questions),
+                questions,
+                ["Yes"] * len(questions),
+                response_format=self.response_format,
+            )
+            score = float(np.mean(scores))
             self.scores.append(score)
 
     def compute(self) -> MetricResult:

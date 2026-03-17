@@ -127,6 +127,44 @@ class Task:
         self.datamodule = datamodule
         self.dataloader = datamodule.test_dataloader()
 
+    @classmethod
+    def from_benchmark(
+        cls,
+        name: str,
+        device: str | torch.device | None = None,
+        low_memory: bool = False,
+        **kwargs: Any,
+    ) -> Task:
+        """
+        Create a Task from a benchmark name.
+
+        Looks up BenchmarkRegistry for metrics and PrunaDataModule.from_string for the dataloader.
+
+        Parameters
+        ----------
+        name : str
+            Benchmark name (e.g. "PartiPrompts", "DrawBench").
+        device : str | torch.device | None, optional
+            Device for inference. Default is None.
+        low_memory : bool, optional
+            If True, run stateful metrics on cpu. Default is False.
+        **kwargs : Any
+            Passed to PrunaDataModule.from_string (e.g. dataloader_args, category).
+
+        Returns
+        -------
+        Task
+            Configured task with benchmark metrics and datamodule.
+
+        Example
+        -------
+        >>> task = Task.from_benchmark("DrawBench", dataloader_args={"batch_size": 4})
+        >>> agent = EvaluationAgent(task=task)
+        """
+        benchmark = BenchmarkRegistry.get(name)
+        datamodule = PrunaDataModule.from_string(benchmark.lookup_key, **kwargs)
+        return cls(request=benchmark.metrics, datamodule=datamodule, device=device, low_memory=low_memory)
+
     def get_single_stateful_metrics(self) -> List[StatefulMetric]:
         """
         Get single stateful metrics.

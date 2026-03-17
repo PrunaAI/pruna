@@ -138,28 +138,29 @@ class TextScoreMetric(StatefulMetric):
         ----------
         x : List[Any] | torch.Tensor
             The input data (prompts).
-        gt : List[str]
-            Ground truth text content, one string per image. Use text_score_collate
-            to produce this from datasets with a 'text_content' column.
+        gt : List[dict] | List[str]
+            Ground truth auxiliaries. Each item must have 'text_content' key (e.g. from
+            LongTextBench, OneIG). Or a list of strings for backward compatibility.
         outputs : torch.Tensor
             The output images.
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        text_gt_list: List[str | None] = (
-            list(inputs[1]) if len(inputs) > 1 and isinstance(inputs[1], (list, tuple)) else [None] * len(images)
-        )
+        auxiliaries = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], (list, tuple)) else [{}] * len(images)
         for i, image in enumerate(images):
             responses = self.vlm.generate([image], [OCR_PROMPT], response_format=self.response_format)
             raw = responses[0] if responses else ""
             ocr_text = get_text_from_response(raw)
-            text_gt = text_gt_list[i] if i < len(text_gt_list) else None
-            if text_gt is not None:
-                norm_gt = self._normalize_text(text_gt)
-                norm_ocr = self._normalize_text(ocr_text)
-                score = self._levenshtein(norm_ocr, norm_gt)
-            else:
-                score = 0.0
+            aux = auxiliaries[i] if i < len(auxiliaries) else {}
+            text_gt = aux.get("text_content") if isinstance(aux, dict) else (aux if isinstance(aux, str) else None)
+            if text_gt is None:
+                raise ValueError(
+                    "text_score requires 'text_content' in auxiliaries. "
+                    "Use a benchmark that provides it (e.g. LongTextBench, OneIG)."
+                )
+            norm_gt = self._normalize_text(text_gt)
+            norm_ocr = self._normalize_text(ocr_text)
+            score = self._levenshtein(norm_ocr, norm_gt)
             self.scores.append(score)
 
     def compute(self) -> MetricResult:

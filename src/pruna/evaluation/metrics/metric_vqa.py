@@ -84,7 +84,7 @@ class VQAMetric(StatefulMetric):
     """
 
     scores: List[float]
-    default_call_type: str = "y"
+    default_call_type: str = "y_x"
     higher_is_better: bool = True
     metric_name: str = "vqa"
     runs_on: List[str] = ["cpu"]
@@ -138,7 +138,7 @@ class VQAMetric(StatefulMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        prompts = x if isinstance(x, list) else [""] * len(images)
+        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
 
         for i, image in enumerate(images):
             prompt = prompts[i] if i < len(prompts) else ""
