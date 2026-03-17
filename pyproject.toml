@@ -82,7 +82,11 @@ conflicts = [
     [
         { extra = "awq" },
         { extra = "vbench" },
-    ]
+    ],
+    [
+        { extra = "vllm" },
+        { extra = "vbench" },
+    ],
 ]
 
 [tool.uv.sources]
@@ -153,13 +157,12 @@ dependencies = [
     "peft>=0.18.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
-    "vllm>=0.16.0",
     "realesrgan"
 ]
 
 [project.optional-dependencies]
 vllm = [
-    "vllm>=0.11.0",
+    "vllm>=0.16.0",
     "ray",
 ]
 stable-fast = [
