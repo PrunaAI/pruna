@@ -48,8 +48,18 @@ class MoeKernelTuner(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = tags.tags_compatible_with_moe_kernel()
-    compatible_after: Iterable[str] = tags.tags_compatible_with_moe_kernel()
+    compatible_before: Iterable[str] = [
+        "awq", "deepcache", "diffusers_int8", "fastercache", "flash_attn3",
+        "fora", "hqq", "hqq_diffusers", "llm_int8", "pab", "padding_pruning",
+        "qkv_diffusers", "quanto", "reduce_noe", "ring_attn", "sage_attn",
+        "torch_compile", "torchao",
+    ]
+    compatible_after: Iterable[str] = [
+        "awq", "deepcache", "diffusers_int8", "fastercache", "flash_attn3",
+        "fora", "hqq", "hqq_diffusers", "llm_int8", "pab", "padding_pruning",
+        "qkv_diffusers", "quanto", "ring_attn", "sage_attn",
+        "torch_compile", "torchao",
+    ]
     required_install = "``uv pip install vllm>=0.11.0``"
 
     def get_hyperparameters(self) -> list:
@@ -237,7 +247,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             try:
                 ray.shutdown()
             except Exception as e:
-                pruna_logger.warning("Exception during ray.shutdown(): %s", e)
+                pruna_logger.warning(f"Exception during ray.shutdown(): {e}")
 
         if not tuned_config_by_batch_size:
             raise RuntimeError(
@@ -336,6 +346,16 @@ def extract_hunyuan_dimensions(
     """
     Extract MoE dimensions for HunyuanImage3ForCausalMM.
 
+    In MoE architectures each expert is an MLP that projects hidden states from
+    ``hidden_size`` up to a larger ``intermediate_size`` (the MLP's inner
+    dimension) and then back down. This is distinct from the ``hidden_size``
+    used by attention and residual connections throughout the rest of the model.
+    Some models (e.g. Qwen-MoE) use a separate ``moe_intermediate_size`` for
+    the expert MLP, which may differ from the dense-layer ``intermediate_size``.
+
+    ``shard_intermediate_size`` accounts for tensor parallelism and the
+    SiLU-and-mul gating: ``2 * intermediate_size // tensor_parallel_size``.
+
     Parameters
     ----------
     model : Any
@@ -350,8 +370,9 @@ def extract_hunyuan_dimensions(
     tuple[int, int, int, int]
         (nb_experts, shard_intermediate_size, hidden_size, topk).
         - nb_experts: number of experts in the MoE layer.
-        - shard_intermediate_size: intermediate dimension per GPU shard (after SiLU-and-mul).
-        - hidden_size: model hidden dimension.
+        - shard_intermediate_size: expert MLP inner dimension per GPU shard
+          (accounts for SiLU-and-mul gating and tensor parallelism).
+        - hidden_size: model hidden dimension (input/output of the expert).
         - topk: number of active experts per token.
     """
     if getattr(model_config, "num_experts", None) is None:
@@ -385,6 +406,16 @@ def extract_transformers_moe_dimensions(
     """
     Extract MoE dimensions for standard transformers MoE LMs (e.g. Mixtral, Qwen-MoE).
 
+    In MoE architectures each expert is an MLP that projects hidden states from
+    ``hidden_size`` up to a larger ``intermediate_size`` (the MLP's inner
+    dimension) and then back down. This is distinct from the ``hidden_size``
+    used by attention and residual connections throughout the rest of the model.
+    Some models (e.g. Qwen-MoE) use a separate ``moe_intermediate_size`` for
+    the expert MLP, which may differ from the dense-layer ``intermediate_size``.
+
+    ``shard_intermediate_size`` accounts for tensor parallelism and the
+    SiLU-and-mul gating: ``2 * intermediate_size // tensor_parallel_size``.
+
     Parameters
     ----------
     model : Any
@@ -400,8 +431,9 @@ def extract_transformers_moe_dimensions(
     tuple[int, int, int, int]
         (nb_experts, shard_intermediate_size, hidden_size, topk).
         - nb_experts: number of experts in the MoE layer.
-        - shard_intermediate_size: intermediate dimension per GPU shard.
-        - hidden_size: model hidden dimension.
+        - shard_intermediate_size: expert MLP inner dimension per GPU shard
+          (accounts for SiLU-and-mul gating and tensor parallelism).
+        - hidden_size: model hidden dimension (input/output of the expert).
         - topk: number of active experts per token.
     """
     if getattr(model_config, "num_experts", None) is None:

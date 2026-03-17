@@ -64,7 +64,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["qkv_diffusers", "padding_pruning"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "padding_pruning", "moe_kernel_tuner"]
     compatible_after: Iterable[str] = [
         "deepcache",
         "fastercache",
@@ -74,6 +74,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
         "sage_attn",
         "img2img_denoise",
         "realesrgan_upscale",
+        "moe_kernel_tuner",
     ]
     disjointly_compatible_before: Iterable[str] = []
     disjointly_compatible_after: Iterable[str] = ["torchao"]

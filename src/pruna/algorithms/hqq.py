@@ -62,8 +62,8 @@ class HQQ(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = ["torch_structured"]
-    compatible_after: Iterable[str] = ["torch_compile", "sage_attn"]
+    compatible_before: Iterable[str] = ["torch_structured", "moe_kernel_tuner"]
+    compatible_after: Iterable[str] = ["torch_compile", "sage_attn", "moe_kernel_tuner"]
     disjointly_compatible_before: Iterable[str] = []
     disjointly_compatible_after: Iterable[str] = ["torchao"]
 

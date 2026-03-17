@@ -52,6 +52,7 @@ class DeepCache(PrunaAlgorithmBase):
         "sage_attn",
         "hyper",
         "padding_pruning",
+        "moe_kernel_tuner",
         ]
     compatible_after: Iterable[str] = [
         "stable_fast",
@@ -64,6 +65,7 @@ class DeepCache(PrunaAlgorithmBase):
         "text_to_image_inplace_perp",
         "text_to_image_lora",
         "text_to_image_perp",
+        "moe_kernel_tuner",
     ]
 
     def get_hyperparameters(self) -> list:
