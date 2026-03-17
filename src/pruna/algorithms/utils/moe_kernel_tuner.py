@@ -103,7 +103,6 @@ def tune_kernel(
     from datetime import datetime
 
     import ray.experimental.tqdm_ray as tqdm_ray
-
     from vllm.utils.torch_utils import set_random_seed
 
     set_random_seed(seed)
