@@ -30,7 +30,7 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import FloatOutput, _process_images, get_score_from_response
+from pruna.evaluation.metrics.metric_vlm_utils import FloatOutput, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -87,7 +87,7 @@ class VieScoreMetric(StatefulMetric):
     """
 
     scores: List[float]
-    default_call_type: str = "y"
+    default_call_type: str = "y_x"
     higher_is_better: bool = True
     metric_name: str = "viescore"
     runs_on: List[str] = ["cpu"]
@@ -138,7 +138,7 @@ class VieScoreMetric(StatefulMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        prompts = x if isinstance(x, list) else [""] * len(images)
+        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
         for i, image in enumerate(images):
             prompt = prompts[i] if i < len(prompts) else ""
 
