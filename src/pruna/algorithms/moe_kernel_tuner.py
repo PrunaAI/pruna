@@ -303,11 +303,12 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         import vllm.envs as envs
         import vllm.model_executor.layers.fused_moe.fused_moe as fused_moe
         import vllm.platforms as vllm_platforms
-        from vllm.model_executor.layers.fused_moe import override_config
+        from vllm.model_executor.layers.fused_moe import fused_topk, override_config
         from vllm.model_executor.layers.fused_moe.config import (
             FusedMoEQuantConfig,
             _get_config_dtype_str,
         )
+        from vllm.model_executor.layers.fused_moe.fused_moe import disable_inplace
         from vllm.triton_utils import triton
 
         from pruna.algorithms.utils.moe_kernel_tuner import (
@@ -323,6 +324,8 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             FusedMoEQuantConfig=FusedMoEQuantConfig,
             _get_config_dtype_str=_get_config_dtype_str,
             FusedMoE=fused_moe,
+            fused_topk=fused_topk,
+            disable_inplace=disable_inplace,
             vllm_platforms=vllm_platforms,
             triton=triton,
             override_config=override_config,

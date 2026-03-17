@@ -104,7 +104,9 @@ def tune_kernel(
 
     import ray.experimental.tqdm_ray as tqdm_ray
 
-    imported_packages["vllm_platforms"].current_platform.seed_everything(seed)
+    from vllm.utils.torch_utils import set_random_seed
+
+    set_random_seed(seed)
     best_config = None
     best_time = float("inf")
 
@@ -370,7 +372,7 @@ def benchmark_config(
         )
 
         with imported_packages["override_config"](config):
-            topk_weights, topk_ids, token_expert_indices = imported_packages["FusedMoE"].fused_topk(
+            topk_weights, topk_ids, token_expert_indices = imported_packages["fused_topk"](
                 x, input_gating, topk, renormalize=not use_deep_gemm
             )
             return imported_packages["FusedMoE"].fused_experts(
@@ -379,9 +381,8 @@ def benchmark_config(
                 w2,
                 topk_weights,
                 topk_ids,
-                inplace=True,
+                inplace=not imported_packages["disable_inplace"](),
                 quant_config=quant_config,
-                allow_deep_gemm=use_deep_gemm,
             )
 
     run()
