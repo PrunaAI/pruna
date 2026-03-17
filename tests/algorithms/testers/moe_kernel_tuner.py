@@ -17,6 +17,13 @@ class TestMoeKernelTuner(AlgorithmTesterBase):
     allow_pickle_files = False
     algorithm_class = MoeKernelTuner
     metrics = ["perplexity"]
+    # for faster testing
+    hyperparameters = {
+        "moe_kernel_tuner_num_iters": 1,
+        "moe_kernel_tuner_block_size_m_max": 4,
+        "moe_kernel_tuner_block_size_n_max": 5,
+        "moe_kernel_tuner_block_size_k_max": 6,
+    }
 
     def post_smash_hook(self, model: PrunaModel) -> None:
         """Assert the tuned config artifact was written to cache_dir."""
@@ -52,7 +59,7 @@ class TestMoeKernelTuner(AlgorithmTesterBase):
 
         hf_cache_base = smash_cfg.get("moe_kernel_tuner_path_to_huggingface_hub_cache", "~")
         return (
-            Path(hf_cache_base).expanduser()
+            Path(hf_cache_base)
             / ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
             / filename
         )
