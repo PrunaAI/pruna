@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Iterable
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import torch
 from aenum import extend_enum
@@ -127,7 +127,7 @@ class FlashAttn3(PrunaAlgorithmBase):
         Dict[str, Any]
             The algorithm packages.
         """
-        flash_attention_3 = get_kernel("kernels-community/flash-attn3", version="<0.1.0")
+        flash_attention_3 = get_kernel("kernels-community/flash-attn3")
         packages = {"flash_attention_3": flash_attention_3}
 
         if Version(diffusers_version) >= Version("0.35.0.dev0"):
@@ -221,7 +221,7 @@ def register_custom_backend(imported_packages: Dict[str, Any]) -> None:
                     enable_gqa=enable_gqa,
                 )
             else:
-                out, _, *_ = torch.ops.flash_attn_pruna._flash_attn_forward(
+                out = torch.ops.flash_attn_pruna._flash_attn_forward(
                     q=query,  # type: ignore
                     k=key,  # type: ignore
                     v=value,  # type: ignore
@@ -290,7 +290,7 @@ class FlashAttention3Context(TorchFunctionMode):
 def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-    out, _ = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)  # type: ignore
+    out = torch.ops.flash_attn_pruna._flash_attn_forward(q, k, v, causal=is_causal, softmax_scale=softmax_scale)  # type: ignore
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
 
@@ -336,9 +336,12 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
         v: torch.Tensor,
         softmax_scale: float | None = None,
         causal: bool = False,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        out, lse = flash_attn_cuda(q, k, v, softmax_scale=softmax_scale or None, causal=causal, deterministic=False)
-        return out, lse.permute(0, 2, 1)  # (B,H,S) → (B,S,H)
+    ) -> torch.Tensor:
+        result = flash_attn_cuda(q, k, v, softmax_scale=softmax_scale or None, causal=causal, deterministic=False)
+        # Some kernel builds return (out, lse), others return just out, depending on torch and cuda version
+        if isinstance(result, tuple):
+            return result[0]
+        return result
 
     @torch.library.register_fake("flash_attn_pruna::_flash_attn_forward")
     def _flash_attn_forward_fake(
@@ -347,6 +350,5 @@ def register_pruna_flash_attn_op(kernel_mod: Any) -> None:
         v: torch.Tensor,
         softmax_scale: float | None = None,
         causal: bool = False,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        b, s, h, _ = q.shape
-        return torch.empty_like(q), q.new_empty((b, s, h))
+    ) -> torch.Tensor:
+        return torch.empty_like(q)
