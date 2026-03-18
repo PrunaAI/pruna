@@ -83,8 +83,9 @@ class TorchCompile(PrunaAlgorithmBase):
         "text_to_text_inplace_perp",
         "text_to_text_lora",
         "text_to_text_perp",
+        "moe_kernel_tuner",
     ]
-    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale", "moe_kernel_tuner"]
 
     def get_hyperparameters(self) -> list:
         """

@@ -60,7 +60,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     save_fn: None = None
-    compatible_before: Iterable[str] = ["qkv_diffusers", "padding_pruning"]
+    compatible_before: Iterable[str] = ["qkv_diffusers", "padding_pruning", "moe_kernel_tuner"]
     compatible_after: Iterable[str] = [
         "deepcache",
         "fastercache",
@@ -71,6 +71,7 @@ class DiffusersInt8(PrunaAlgorithmBase):
         "img2img_denoise",
         "hyper",
         "realesrgan_upscale",
+        "moe_kernel_tuner",
     ]
 
     def get_hyperparameters(self) -> list:

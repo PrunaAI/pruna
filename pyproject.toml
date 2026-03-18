@@ -82,7 +82,11 @@ conflicts = [
     [
         { extra = "awq" },
         { extra = "vbench" },
-    ]
+    ],
+    [
+        { extra = "vllm" },
+        { extra = "vbench" },
+    ],
 ]
 
 [tool.uv.sources]
@@ -157,6 +161,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+vllm = [
+    "vllm>=0.16.0",
+    "ray",
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",

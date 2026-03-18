@@ -57,7 +57,8 @@ class LLMInt8(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     save_fn: None = None
-    compatible_after: Iterable[str] = ["torch_compile", "sage_attn"]
+    compatible_before: Iterable[str] = ["moe_kernel_tuner"]
+    compatible_after: Iterable[str] = ["torch_compile", "sage_attn", "moe_kernel_tuner"]
 
     def get_hyperparameters(self) -> list:
         """

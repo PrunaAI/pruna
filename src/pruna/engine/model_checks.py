@@ -121,7 +121,7 @@ def is_moe_lm(model: Any) -> bool:
     bool
         True if the model is a MoE LM, False otherwise.
     """
-    return hasattr(model, "num_experts")
+    return hasattr(getattr(model, "config", None), "num_experts")
 
 
 def is_transformers_pipeline_with_causal_lm(model: Any) -> bool:

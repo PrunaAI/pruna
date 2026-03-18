@@ -53,8 +53,10 @@ class PAB(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
-    compatible_before: Iterable[str] = ["hqq_diffusers", "diffusers_int8", "sage_attn", "hyper", "padding_pruning"]
-    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
+    compatible_before: Iterable[str] = [
+        "hqq_diffusers", "diffusers_int8", "sage_attn", "hyper", "padding_pruning", "moe_kernel_tuner",
+    ]
+    compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale", "moe_kernel_tuner"]
 
     def get_hyperparameters(self) -> list:
         """
