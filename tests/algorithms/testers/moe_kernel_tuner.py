@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pruna import PrunaModel
+import torch
+
+from pruna import PrunaModel, SmashConfig
 from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner
 
 from .base_tester import AlgorithmTesterBase
@@ -32,21 +34,18 @@ class TestMoeKernelTuner(AlgorithmTesterBase):
 
     def _resolve_hf_cache_config_path(self) -> Path:
         """Read the saved artifact and compute the expected HF cache config path."""
-        from pruna.algorithms.utils.moe_kernel_tuner import save_configs  # noqa: F401
 
-        tuner = MoeKernelTuner()
-        imported_packages = tuner.import_algorithm_packages()
+        imported_packages = MoeKernelTuner().import_algorithm_packages()
 
-        smash_config_path = self._saving_path / "smash_config.json"
-        with open(smash_config_path) as f:
-            smash_cfg = json.load(f)
+        smash_cfg = SmashConfig()
+        smash_cfg.load_from_json(self._saving_path)
 
-        artifact_path = self._saving_path / "moe_kernel_tuner.json"
-        with open(artifact_path) as f:
+        with open(self._saving_path / "moe_kernel_tuner.json") as f:
             artifact = json.load(f)
 
+        dtype = torch.bfloat16 if artifact["dtype"] == "bfloat16" else torch.float16
         dtype_str = imported_packages["_get_config_dtype_str"](
-            artifact["dtype"] == "bfloat16" and __import__("torch").bfloat16 or __import__("torch").float16,
+            dtype,
             use_int8_w8a16=artifact["use_int8_w8a16"],
             use_fp8_w8a8=artifact["use_fp8_w8a8"],
         )
@@ -57,7 +56,7 @@ class TestMoeKernelTuner(AlgorithmTesterBase):
             None,
         )
 
-        hf_cache_base = smash_cfg.get("moe_kernel_tuner_path_to_huggingface_hub_cache", "~")
+        hf_cache_base = smash_cfg["moe_kernel_tuner_path_to_huggingface_hub_cache"]
         return (
             Path(hf_cache_base)
             / ".cache/huggingface/hub/models--RedHatAI--moe/blobs/configs"
