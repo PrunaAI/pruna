@@ -38,6 +38,7 @@ from pruna.evaluation.metrics.metric_model_architecture import (
     TotalMACsMetric,
     TotalParamsMetric,
 )
+from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
@@ -75,6 +76,7 @@ __all__ = [
     "AlignmentScoreMetric",
     "ImageEditScoreMetric",
     "QAAccuracyMetric",
+    "OneIGAlignmentMetric",
     "TextScoreMetric",
     "OneIGTextScoreMetric",
     "VieScoreMetric",

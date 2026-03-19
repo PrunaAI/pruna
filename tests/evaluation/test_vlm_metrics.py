@@ -6,12 +6,13 @@ import pytest
 import torch
 
 from pruna.evaluation.metrics.metric_alignment_score import AlignmentScoreMetric
-from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
+from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_viescore import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
+from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
 SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
@@ -22,8 +23,23 @@ def _dummy_image(batch: int = 1, size: int = 224) -> torch.Tensor:
 
 def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
     """Update metric with appropriate gt type per metric contract."""
-    if isinstance(metric, QAAccuracyMetric):
-        metric.update(prompts, [["Is there a cat?"]], images)
+    if isinstance(metric, OneIGAlignmentMetric):
+        metric.update(
+            prompts,
+            [
+                {
+                    "questions": {"1": "Is there a cat?", "2": "Is it sleeping?"},
+                    "dependencies": {"1": [0], "2": [1]},
+                }
+            ],
+            images,
+        )
+    elif isinstance(metric, QAAccuracyMetric):
+        metric.update(
+            prompts,
+            [{"questions": {"1": "Is there a cat?"}}],
+            images,
+        )
     elif isinstance(metric, (TextScoreMetric, OneIGTextScoreMetric)):
         metric.update(prompts, ["cat"], images)
     else:
@@ -39,6 +55,7 @@ def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
         AlignmentScoreMetric,
         ImageEditScoreMetric,
         QAAccuracyMetric,
+        OneIGAlignmentMetric,
         TextScoreMetric,
         OneIGTextScoreMetric,
         VieScoreMetric,
@@ -73,6 +90,7 @@ def test_vlm_metrics_transformers_smolvlm(metric_cls: type, structured_output: b
         AlignmentScoreMetric,
         ImageEditScoreMetric,
         QAAccuracyMetric,
+        OneIGAlignmentMetric,
         TextScoreMetric,
         OneIGTextScoreMetric,
         VieScoreMetric,
@@ -84,7 +102,7 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
     pytest.importorskip("litellm")
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
-    if metric_cls in (AlignmentScoreMetric, VQAMetric, QAAccuracyMetric):
+    if metric_cls in (AlignmentScoreMetric, VQAMetric, QAAccuracyMetric, OneIGAlignmentMetric):
         mock_response.choices[0].message.content = (
             '{"answer": "Yes"}' if structured_output else "Yes"
         )
@@ -120,6 +138,7 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
         AlignmentScoreMetric,
         ImageEditScoreMetric,
         QAAccuracyMetric,
+        OneIGAlignmentMetric,
         TextScoreMetric,
         OneIGTextScoreMetric,
         VieScoreMetric,
