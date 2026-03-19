@@ -469,6 +469,37 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         )
 
 
+def load_llama_cpp(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
+    """
+    Load a model quantized with llama.cpp from the given model path.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path to the model directory.
+    smash_config : SmashConfig
+        The SmashConfig object containing the device and device_map.
+    **kwargs : Any
+        Additional keyword arguments to pass to the model loading function.
+
+    Returns
+    -------
+    Any
+        The loaded llama.cpp model.
+    """
+    from pruna.algorithms.llama_cpp import LlamaCpp
+
+    algorithm_packages = LlamaCpp().import_algorithm_packages()
+    llama_cpp = algorithm_packages["llama_cpp"]
+
+    model_path = Path(path) / "model.gguf"
+    if not model_path.exists():
+        raise FileNotFoundError(f"GGUF file not found at {model_path}")
+
+    model = llama_cpp.Llama(model_path=str(model_path), **filter_load_kwargs(llama_cpp.Llama.__init__, kwargs))
+    return model
+
+
 def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     Load a diffusers model from the given model path.
@@ -592,6 +623,7 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     pickled = partial(load_pickled)
     hqq = partial(load_hqq)
     hqq_diffusers = partial(load_hqq_diffusers)
+    llama_cpp = partial(load_llama_cpp)
 
     def __call__(self, *args, **kwargs) -> Any:
         """
