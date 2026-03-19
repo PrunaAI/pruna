@@ -246,18 +246,27 @@ def stratify_dataset(
 ) -> Dataset:
     """Stratify the dataset to a specific size via optional shuffled sampling.
 
-    Args:
-        dataset: The dataset to stratify.
-        sample_size: Target size. If None, uses fraction or full dataset.
-        fraction: Fraction of dataset to use (0.0-1.0). Ignored if sample_size is set.
-        seed: Random seed for reproducible shuffled sampling.
-            If None, no shuffling is performed and the first target_size elements are returned.
+    Parameters
+    ----------
+    dataset : Dataset
+        The dataset to stratify.
+    sample_size : int or None
+        Target size. If None, uses fraction or full dataset.
+    fraction : float
+        Fraction of dataset to use (0.0-1.0). Ignored if sample_size is set.
+    seed : int or None
+        Random seed for reproducible shuffled sampling.
+        If None, no shuffling is performed and the first target_size elements are returned.
 
-    Returns:
+    Returns
+    -------
+    Dataset
         The stratified dataset.
 
-    Raises:
-        ValueError: If both fraction < 1.0 and sample_size are provided.
+    Raises
+    ------
+    ValueError
+        If both fraction < 1.0 and sample_size are provided.
     """
     if fraction < 1.0 and sample_size is not None:
         raise ValueError("Fraction and sample_size cannot be used together.")
