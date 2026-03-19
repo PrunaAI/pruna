@@ -23,6 +23,7 @@ from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
+from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 
@@ -45,4 +46,5 @@ __all__ = [
     "SharpnessMetric",
     "AestheticLAION",
     "LMEvalMetric",
+    "RapidataMetric",
 ]

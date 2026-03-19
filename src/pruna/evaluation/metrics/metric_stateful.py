@@ -121,9 +121,37 @@ class StatefulMetric(ABC):
             The keyword arguments to pass to the metric.
         """
 
+    def set_current_context(self, *args, **kwargs) -> None:
+        """
+        Set the current benchmarked model for the metric.
+
+        Override this in subclasses that need to track which model or
+        configuration is being evaluated, such as async metrics that
+        submit results to external services.
+
+        By default, this is a no-op.
+
+        Parameters
+        ----------
+        *args : Any
+            The arguments to pass to the metric.
+        **kwargs : Any
+            The keyword arguments to pass to the metric.
+        """
+        pass
+
     @abstractmethod
-    def compute(self) -> Any:
-        """Override this method to compute the final metric value."""
+    def compute(self, *args, **kwargs) -> Any:
+        """
+        Override this method to compute the final metric value.
+
+        Parameters
+        ----------
+        *args : Any
+            The arguments to pass to the metric.
+        **kwargs : Any
+            The keyword arguments to pass to the metric.
+        """
 
     def is_pairwise(self) -> bool:
         """
