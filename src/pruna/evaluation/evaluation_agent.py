@@ -112,8 +112,8 @@ class EvaluationAgent:
 
         Examples
         --------
-        >>> agent = EvaluationAgent.from_benchmark("Parti Prompts", model)
-        >>> agent = EvaluationAgent.from_benchmark("HPS", model, category="anime", fraction=0.1)
+        >>> agent = EvaluationAgent.from_benchmark("Parti Prompts")
+        >>> agent = EvaluationAgent.from_benchmark("HPS", category="anime", fraction=0.1)
         """
         task = Task.from_benchmark(
             benchmark_name,

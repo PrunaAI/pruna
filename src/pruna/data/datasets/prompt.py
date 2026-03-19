@@ -123,6 +123,14 @@ GEditBenchCategory = Literal[
 DPGCategory = Literal["entity", "attribute", "relation", "global", "other"]
 
 
+def _warn_ignored_benchmark_seed(seed: int | None, *, dataset: str) -> None:
+    if seed is not None:
+        pruna_logger.warning(
+            "%s: `seed` is ignored for this test-only benchmark; sampling does not shuffle the test split.",
+            dataset,
+        )
+
+
 def _to_oneig_record(row: dict, questions_by_key: dict[str, dict]) -> dict:
     """Convert OneIG row to unified record format."""
     row_category = row.get("category", "")
@@ -159,7 +167,7 @@ def setup_drawbench_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
 
 def setup_parti_prompts_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -172,8 +180,8 @@ def setup_parti_prompts_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -188,6 +196,7 @@ def setup_parti_prompts_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The Parti Prompts dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="PartiPrompts")
     ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
 
     if category is not None:
@@ -226,7 +235,7 @@ def _generate_geneval_question(entry: dict) -> list[str]:
 
 
 def setup_geneval_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -239,8 +248,8 @@ def setup_geneval_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -255,6 +264,7 @@ def setup_geneval_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The GenEval dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="GenEval")
     import json
 
     import requests
@@ -286,7 +296,7 @@ def setup_geneval_dataset(
 
 
 def setup_hps_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -299,8 +309,8 @@ def setup_hps_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -315,6 +325,7 @@ def setup_hps_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The HPD dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="HPS")
     import json
 
     from huggingface_hub import hf_hub_download
@@ -338,7 +349,7 @@ def setup_hps_dataset(
 
 
 def setup_long_text_bench_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -350,8 +361,8 @@ def setup_long_text_bench_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -364,6 +375,7 @@ def setup_long_text_bench_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The Long Text Bench dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="LongTextBench")
     ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("text", "text_content")
     ds = ds.rename_column("prompt", "text")
@@ -390,7 +402,7 @@ def setup_genai_bench_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
 
 def setup_imgedit_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -403,8 +415,8 @@ def setup_imgedit_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -420,6 +432,7 @@ def setup_imgedit_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The ImgEdit dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="ImgEdit")
     import json
 
     import requests
@@ -493,7 +506,7 @@ def _fetch_oneig_alignment() -> dict[str, dict]:
 
 
 def setup_oneig_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -506,8 +519,8 @@ def setup_oneig_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -523,6 +536,7 @@ def setup_oneig_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The OneIG dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="OneIG")
     questions_by_key = _fetch_oneig_alignment()
 
     ds_raw = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
@@ -545,7 +559,7 @@ def setup_oneig_dataset(
 
 
 def setup_gedit_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -558,8 +572,8 @@ def setup_gedit_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -576,6 +590,7 @@ def setup_gedit_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The GEditBench dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="GEditBench")
     task_type_map = {
         "subject_add": "subject-add",
         "subject_remove": "subject-remove",
@@ -613,7 +628,7 @@ def setup_gedit_dataset(
 
 
 def setup_dpg_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -626,8 +641,8 @@ def setup_dpg_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -642,6 +657,7 @@ def setup_dpg_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The DPG dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="DPG")
     import csv
     import io
     from collections import defaultdict
