@@ -194,7 +194,7 @@ def setup_parti_prompts_dataset(
         categories = [category] if not isinstance(category, list) else category
         ds = ds.filter(lambda x: x["Category"] in categories or x["Challenge"] in categories)
 
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
     ds = ds.rename_column("Prompt", "text")
     pruna_logger.info("PartiPrompts is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
@@ -280,7 +280,7 @@ def setup_geneval_dataset(
         )
 
     ds = Dataset.from_list(records)
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
     pruna_logger.info("GenEval is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
@@ -332,7 +332,7 @@ def setup_hps_dataset(
                 all_prompts.append({"text": prompt, "category": cat})
 
     ds = Dataset.from_list(all_prompts)
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
     pruna_logger.info("HPD is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
@@ -367,7 +367,7 @@ def setup_long_text_bench_dataset(
     ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("text", "text_content")
     ds = ds.rename_column("prompt", "text")
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
     pruna_logger.info("LongTextBench is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
 
@@ -451,7 +451,7 @@ def setup_imgedit_dataset(
         )
 
     ds = Dataset.from_list(records)
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
 
     if len(ds) == 0:
         raise ValueError(f"No samples found for category '{category}'.")
@@ -527,7 +527,7 @@ def setup_oneig_dataset(
 
     ds_raw = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
     records = [_to_oneig_record(dict(row), questions_by_key) for row in ds_raw]
-    ds = Dataset.from_list(records).shuffle(seed=seed)
+    ds = Dataset.from_list(records)
 
     if category is not None:
         categories = [category] if not isinstance(category, list) else category
@@ -535,7 +535,7 @@ def setup_oneig_dataset(
             lambda x: (x.get("category") in categories or x.get("class") in categories or x.get("subset") in categories)
         )
 
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
 
     if len(ds) == 0:
         raise ValueError(f"No samples found for category '{category}'. Check that the category exists and has data.")
@@ -603,7 +603,7 @@ def setup_gedit_dataset(
         )
 
     ds = Dataset.from_list(records)
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
 
     if len(ds) == 0:
         raise ValueError(f"No samples found for category '{category}'.")
@@ -669,6 +669,6 @@ def setup_dpg_dataset(
     records = [{"text": text, "category": cat, "questions": qs} for (text, cat), qs in grouped.items()]
 
     ds = Dataset.from_list(records)
-    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
+    ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
     pruna_logger.info("DPG is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
