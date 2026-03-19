@@ -35,16 +35,13 @@ def test_aesthetic_laion(device: str, clip_model: str) -> None:
 @pytest.mark.cpu
 def test_metric_aesthetic_laion_ipynb_sample() -> None:
     """
-    Test the aesthetic_laion metric with an image from the notebook.
-
-    Image taken from aesthetic-predictor ipynb. The result in the original
-    notebook is 4.0330; if you rerun it, you will get 4.4425. The Hugging Face
-    model gives 5.049.
+    Test the aesthetic_laion metric with an image taken from
+    https://github.com/LAION-AI/aesthetic-predictor/blob/main/asthetics_predictor.ipynb
+    The result in the original notebook is 4.0330; if you rerun it, you will get 4.4425.
+    The Hugging Face model, however, gives 5.049.
     """
     metric = AestheticLAION(device="cpu")
-    url = "https://thumbs.dreamstime.com/b/lovely-cat-as-domestic-animal-view-pictures-182393057.jpg"
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
+    response = requests.get("https://thumbs.dreamstime.com/b/lovely-cat-as-domestic-animal-view-pictures-182393057.jpg")
     img = np.array(Image.open(BytesIO(response.content)).convert("RGB"))
     img = torch.from_numpy(img).permute(2, 0, 1).contiguous().unsqueeze(0)
     metric.update(["lovely cat as domestic animal view pictures"], img, img)
@@ -55,9 +52,10 @@ def test_metric_aesthetic_laion_ipynb_sample() -> None:
 @pytest.mark.cpu
 def test_metric_aesthetic_laion_invalid_params() -> None:
     """
-    Test AestheticLAION raises on invalid model path.
-
-    Error message should indicate the model path does not exist.
+    Test the aesthetic_laion metric with an image taken from
+    https://github.com/LAION-AI/aesthetic-predictor/blob/main/asthetics_predictor.ipynb
+    The result in the original notebook is 4.0330; if you rerun it, you will get 4.4425.
+    The Hugging Face model, however, gives 5.049.
     """
     with pytest.raises(ValueError, match=r"Model invalid/path-to-model does not exist."):
         AestheticLAION(model_name_or_path="invalid/path-to-model", device="cpu")

@@ -78,7 +78,7 @@ class EvaluationAgent:
         self.evaluation_for_first_model: bool = True
 
     @classmethod
-    def from_benchmark(
+    def evaluate_benchmark(
         cls,
         benchmark_name: str,
         model: Any,
@@ -87,9 +87,9 @@ class EvaluationAgent:
         device: str | torch.device | None = None,
         dataloader_args: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> List[MetricResult]:
+    ) -> "EvaluationAgent":
         """
-        Create an agent from a benchmark name, evaluate the model, and return results.
+        Evaluate a model on a named benchmark and return the agent with results.
 
         Convenience one-liner that hooks up the benchmark dataset and metrics, then runs evaluation.
 
@@ -110,13 +110,13 @@ class EvaluationAgent:
 
         Returns
         -------
-        List[MetricResult]
-            Evaluation results.
+        EvaluationAgent
+            Agent after evaluation, with results accessible via the agent.
 
         Examples
         --------
-        >>> results = EvaluationAgent.from_benchmark("Parti Prompts", model)
-        >>> results = EvaluationAgent.from_benchmark("HPS", model, category="anime", fraction=0.1)
+        >>> agent = EvaluationAgent.evaluate_benchmark("Parti Prompts", model)
+        >>> agent = EvaluationAgent.evaluate_benchmark("HPS", model, category="anime", fraction=0.1)
         """
         task = Task.from_benchmark(
             benchmark_name,
@@ -125,8 +125,7 @@ class EvaluationAgent:
             dataloader_args=dataloader_args,
             **kwargs,
         )
-        agent = cls(task=task)
-        return agent.evaluate(model)
+        return cls(task=task)
 
     def evaluate(self, model: Any) -> List[MetricResult]:
         """
