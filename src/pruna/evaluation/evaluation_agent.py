@@ -25,20 +25,11 @@ from pruna.config.utils import is_empty_config
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
-from pruna.engine.utils import (
-    get_device,
-    move_to_device,
-    safe_memory_cleanup,
-    set_to_best_available_device,
-)
+from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import (
-    ensure_device_consistency,
-    get_device_map,
-    group_metrics_by_inheritance,
-)
+from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device_map, group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
 
@@ -52,19 +43,12 @@ class EvaluationAgent:
     task : Task, optional
         Configuration object that defines how to evaluate the model.
     request : str | List[str | BaseMetric | StatefulMetric], optional
-        The user request to evaluate. Required if task/benchmark not provided.
+        The user request to evaluate. Required if task is not provided.
     datamodule : PrunaDataModule, optional
-        The dataloader to use for the evaluation. Required if task/benchmark not provided.
-    benchmark : str, optional
-        Benchmark name from BenchmarkRegistry (e.g. "Parti Prompts"). Creates task with
-        benchmark metrics and datamodule. Use with tokenizer for WikiText.
-    tokenizer : Any, optional
-        Tokenizer for text-generation benchmarks. Required when benchmark is "WikiText".
+        The dataloader to use for the evaluation. Required if task is not provided.
     device : str | torch.device | None, optional
         The device to be used, e.g., 'cuda' or 'cpu'. Default is None.
         If None, the best available device will be used.
-    dataloader_args : dict[str, Any] | None, optional
-        Args passed to the dataloader when using benchmark (e.g. batch_size).
     """
 
     def __init__(
@@ -73,35 +57,18 @@ class EvaluationAgent:
         *,
         request: str | List[str] | List[BaseMetric | StatefulMetric] | None = None,
         datamodule: PrunaDataModule | None = None,
-        benchmark: str | None = None,
-        tokenizer: Any = None,
         device: str | torch.device | None = None,
-        dataloader_args: dict[str, Any] | None = None,
     ) -> None:
         if task is not None:
-            if (
-                request is not None
-                or datamodule is not None
-                or benchmark is not None
-                or tokenizer is not None
-                or device is not None
-                or dataloader_args is not None
-            ):
+            if request is not None or datamodule is not None or device is not None:
                 raise ValueError(
-                    "Cannot specify both 'task' parameter and direct parameters "
-                    "(request, datamodule, benchmark, tokenizer, device, dataloader_args). "
-                    "Use either 'task' or the direct parameters."
+                    "Cannot specify both 'task' parameter and direct parameters (request, datamodule, device). "
+                    "Use either the 'task' parameter or the new direct parameters."
                 )
             self.task = task
-        elif benchmark is not None:
-            self.task = Task.from_benchmark(
-                benchmark, tokenizer=tokenizer, device=device, dataloader_args=dataloader_args
-            )
         else:
             if request is None or datamodule is None:
-                raise ValueError(
-                    "When not using 'task' or 'benchmark', both 'request' and 'datamodule' must be provided."
-                )
+                raise ValueError("When not using 'task' parameter, both 'request' and 'datamodule' must be provided.")
             self.task = Task(request=request, datamodule=datamodule, device=device)
 
         self.first_model_results: List[MetricResult] = []
