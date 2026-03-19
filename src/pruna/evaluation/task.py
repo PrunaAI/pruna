@@ -18,7 +18,6 @@ from typing import Any, List, cast
 
 import torch
 
-from pruna.data import base_datasets
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
 from pruna.evaluation.benchmarks import BenchmarkRegistry
@@ -92,8 +91,6 @@ class Task:
             Task configured with the benchmark's metrics and datamodule.
         """
         benchmark = BenchmarkRegistry.get(benchmark_name)
-        _, _, default_args = base_datasets[benchmark.lookup_key]
-        collate_fn_args = dict(default_args)
         if benchmark.lookup_key == "WikiText" and tokenizer is None:
             raise ValueError(
                 "Tokenizer is required for WikiText benchmark. "
@@ -102,7 +99,6 @@ class Task:
         datamodule = PrunaDataModule.from_string(
             benchmark.lookup_key,
             tokenizer=tokenizer,
-            collate_fn_args=collate_fn_args,
             dataloader_args=dataloader_args or {},
             **kwargs,
         )

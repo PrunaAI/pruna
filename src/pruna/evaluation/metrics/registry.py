@@ -90,6 +90,11 @@ class MetricRegistry:
         return decorator
 
     @classmethod
+    def has_metric(cls, name: str) -> bool:
+        """Return True if a metric with this name is registered."""
+        return name in cls._registry
+
+    @classmethod
     def get_metric(cls, name: str, **kwargs) -> BaseMetric | StatefulMetric:
         """
         Get a metric from the registry.

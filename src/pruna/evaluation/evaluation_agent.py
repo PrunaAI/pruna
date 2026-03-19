@@ -78,10 +78,9 @@ class EvaluationAgent:
         self.evaluation_for_first_model: bool = True
 
     @classmethod
-    def evaluate_benchmark(
+    def from_benchmark(
         cls,
         benchmark_name: str,
-        model: Any,
         *,
         tokenizer: Any = None,
         device: str | torch.device | None = None,
@@ -89,7 +88,7 @@ class EvaluationAgent:
         **kwargs: Any,
     ) -> "EvaluationAgent":
         """
-        Evaluate a model on a named benchmark and return the agent with results.
+        Create an EvaluationAgent from a benchmark name.
 
         Convenience one-liner that hooks up the benchmark dataset and metrics, then runs evaluation.
 
@@ -97,8 +96,6 @@ class EvaluationAgent:
         ----------
         benchmark_name : str
             Benchmark name from BenchmarkRegistry (e.g. "Parti Prompts", "DrawBench").
-        model : Any
-            Model to evaluate (PrunaModel or raw model).
         tokenizer : Any, optional
             Tokenizer for text-generation benchmarks. Required when benchmark is "WikiText".
         device : str | torch.device | None, optional
@@ -115,8 +112,8 @@ class EvaluationAgent:
 
         Examples
         --------
-        >>> agent = EvaluationAgent.evaluate_benchmark("Parti Prompts", model)
-        >>> agent = EvaluationAgent.evaluate_benchmark("HPS", model, category="anime", fraction=0.1)
+        >>> agent = EvaluationAgent.from_benchmark("Parti Prompts", model)
+        >>> agent = EvaluationAgent.from_benchmark("HPS", model, category="anime", fraction=0.1)
         """
         task = Task.from_benchmark(
             benchmark_name,

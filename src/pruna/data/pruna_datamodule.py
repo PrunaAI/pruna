@@ -182,9 +182,14 @@ class PrunaDataModule(LightningDataModule):
         if "category" in inspect.signature(setup_fn).parameters:
             setup_fn = partial(setup_fn, category=category)
 
-        for param in ("fraction", "train_sample_size", "test_sample_size"):
+        sampling_params = {
+            "fraction": fraction,
+            "train_sample_size": train_sample_size,
+            "test_sample_size": test_sample_size,
+        }
+        for param, value in sampling_params.items():
             if param in inspect.signature(setup_fn).parameters:
-                setup_fn = partial(setup_fn, **{param: locals()[param]})
+                setup_fn = partial(setup_fn, **{param: value})
 
         train_ds, val_ds, test_ds = setup_fn()
 
