@@ -242,31 +242,22 @@ def stratify_dataset(
     dataset: Dataset,
     sample_size: int | None = None,
     fraction: float = 1.0,
-    seed: int = 42,
+    seed: int | None = None,
 ) -> Dataset:
-    """
-    Stratify the dataset to a specific size via shuffled sampling.
+    """Stratify the dataset to a specific size via optional shuffled sampling.
 
-    Parameters
-    ----------
-    dataset : Dataset
-        The dataset to stratify.
-    sample_size : int | None
-        Target size. If None, uses fraction or full dataset.
-    fraction : float
-        Fraction of dataset to use (0.0-1.0). Ignored if sample_size is set.
-    seed : int
-        Random seed for reproducible sampling.
+    Args:
+        dataset: The dataset to stratify.
+        sample_size: Target size. If None, uses fraction or full dataset.
+        fraction: Fraction of dataset to use (0.0-1.0). Ignored if sample_size is set.
+        seed: Random seed for reproducible shuffled sampling.
+            If None, no shuffling is performed and the first target_size elements are returned.
 
-    Returns
-    -------
-    Dataset
+    Returns:
         The stratified dataset.
 
-    Raises
-    ------
-    ValueError
-        If both fraction < 1.0 and sample_size are provided.
+    Raises:
+        ValueError: If both fraction < 1.0 and sample_size are provided.
     """
     if fraction < 1.0 and sample_size is not None:
         raise ValueError("Fraction and sample_size cannot be used together.")
@@ -281,6 +272,7 @@ def stratify_dataset(
         return dataset
 
     indices = list(range(dataset_length))
-    random.Random(seed).shuffle(indices)
+    if seed is not None:
+        random.Random(seed).shuffle(indices)
     selected_indices = indices[:target_size]
     return dataset.select(selected_indices)
