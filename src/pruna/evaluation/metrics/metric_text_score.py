@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Text rendering metrics: simple Levenshtein (``text_score``) and OneIG composite (``oneig_text_score``)."""
+"""Text rendering via OCR: mean Levenshtein (``text_score`` / ``ocr_levenshtein``) and OneIG composite (``oneig_text_score`` / ``ocr_text_score``)."""
 
 from __future__ import annotations
 
@@ -163,30 +163,33 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
         return MetricResult(self.metric_name, self.__dict__, float(value))
 
 
+@MetricRegistry.register("ocr_levenshtein")
 @MetricRegistry.register("text_score")
 class TextScoreMetric(_BaseVLMOCRTextMetric):
     """
-    Mean Levenshtein distance between OCR and ground truth (lower is better).
+    OCR then mean Levenshtein distance to ground truth (lower is better).
+
+    Registry: ``ocr_levenshtein`` (descriptive) and ``text_score`` (legacy).
 
     Uses light normalization only (not the full OneIG preprocess). See
-    :class:`OneIGTextScoreMetric` for the official composite text score.
+    :class:`OneIGTextScoreMetric` for the OneIG composite ``ocr_text_score``.
 
     Parameters
     ----------
     *args : Any
-        Additional positional arguments.
+        Additional positional arguments (unused; registry compatibility).
     vlm : BaseVLM | None, optional
-        Custom VLM instance.
+        Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
     vlm_type : {'litellm', 'transformers'}, optional
-        VLM backend.
+        VLM backend. Default is ``'litellm'``.
     model_name : str, optional
-        Model name.
+        Model name. Default is ``'gpt-4o'``.
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init.
     structured_output : bool, optional
-        Use structured generation.
+        Use structured generation. Default is True.
     use_outlines : bool, optional
-        Use outlines for transformers.
+        Use outlines for transformers. Default is False.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -194,15 +197,40 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
     call_type : str, optional
         Call type for the metric.
     **kwargs : Any
-        Additional arguments.
+        Additional keyword arguments forwarded to :class:`_BaseVLMOCRTextMetric`.
     """
 
     scores: List[float]
     higher_is_better: bool = False
     metric_name: str = "text_score"
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        *args: Any,
+        vlm: Optional[BaseVLM] = None,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        vlm_kwargs: Optional[dict[str, Any]] = None,
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device: str | torch.device | None = None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            *args,
+            vlm=vlm,
+            vlm_type=vlm_type,
+            model_name=model_name,
+            vlm_kwargs=vlm_kwargs,
+            structured_output=structured_output,
+            use_outlines=use_outlines,
+            device=device,
+            api_key=api_key,
+            call_type=call_type,
+            **kwargs,
+        )
         self.add_state("scores", [])
 
     def _accumulate_sample(self, text_gt: str, ocr_text: str) -> None:
@@ -216,32 +244,35 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
         return float(np.mean(self.scores))
 
 
+@MetricRegistry.register("ocr_text_score")
 @MetricRegistry.register("oneig_text_score")
 class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
     """
-    OneIG-style composite text score (higher is better).
+    OCR then OneIG-style composite text score (higher is better).
+
+    Registry: ``ocr_text_score`` (descriptive) and ``oneig_text_score`` (protocol).
 
     Aggregates edit distance, completion rate, and word/char accuracy like
     ``OneIG-Benchmark/scripts/text/text_score.py``.
 
     Parameters
     ----------
+    *args : Any
+        Additional positional arguments (forwarded to :class:`_BaseVLMOCRTextMetric`).
     language_mode : {'EN', 'ZH'}, optional
         Selects ``MAX_EDIT_DISTANCE`` (100 vs 50) for the composite.
-    *args : Any
-        Forwarded to :class:`_BaseVLMOCRTextMetric`.
     vlm : BaseVLM | None, optional
-        Custom VLM instance.
+        Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
     vlm_type : {'litellm', 'transformers'}, optional
-        VLM backend.
+        VLM backend. Default is ``'litellm'``.
     model_name : str, optional
-        Model name.
+        Model name. Default is ``'gpt-4o'``.
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init.
+        Extra kwargs for VLM init (e.g. ``model_load_kwargs`` for transformers).
     structured_output : bool, optional
-        Use structured generation.
+        Use structured generation. Default is True.
     use_outlines : bool, optional
-        Use outlines for transformers.
+        Use outlines for transformers. Default is False.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -249,7 +280,7 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
     call_type : str, optional
         Call type for the metric.
     **kwargs : Any
-        Additional arguments.
+        Additional keyword arguments forwarded to :class:`_BaseVLMOCRTextMetric`.
     """
 
     edit_distances: List[float]
@@ -264,9 +295,30 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
         self,
         *args: Any,
         language_mode: Literal["EN", "ZH"] = "EN",
+        vlm: Optional[BaseVLM] = None,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str = "gpt-4o",
+        vlm_kwargs: Optional[dict[str, Any]] = None,
+        structured_output: bool = True,
+        use_outlines: bool = False,
+        device: str | torch.device | None = None,
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            *args,
+            vlm=vlm,
+            vlm_type=vlm_type,
+            model_name=model_name,
+            vlm_kwargs=vlm_kwargs,
+            structured_output=structured_output,
+            use_outlines=use_outlines,
+            device=device,
+            api_key=api_key,
+            call_type=call_type,
+            **kwargs,
+        )
         self.language_mode = language_mode
         self.add_state("edit_distances", [])
         self.add_state("completion_ratios", [])
