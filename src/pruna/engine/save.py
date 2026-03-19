@@ -470,6 +470,33 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
+def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Save the model with llama.cpp functionality.
+
+    Parameters
+    ----------
+    model : Any
+        The model to save.
+    model_path : str | Path
+        The directory to save the model to.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    """
+    model_path = Path(model_path)
+    
+    if hasattr(model, "model_path"):
+        gguf_file = Path(model.model_path)
+        if gguf_file.exists():
+            target_file = model_path / "model.gguf"
+            shutil.copy(gguf_file, target_file)
+            smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
+        else:
+            pruna_logger.error(f"GGUF file not found at {gguf_file}")
+    else:
+        pruna_logger.error("Llama object does not have model_path attribute.")
+
+
 def reapply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Reapply the model.
@@ -521,6 +548,7 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     pickled = member(save_pickled)
     hqq = member(save_model_hqq)
     hqq_diffusers = member(save_model_hqq_diffusers)
+    llama_cpp = member(save_model_llama_cpp)
     save_before_apply = member(save_before_apply)
     reapply = member(reapply)
 
