@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Literal, Tuple, get_args
+from typing import Callable, Literal, Tuple, get_args
 
 from datasets import Dataset, load_dataset
 
@@ -131,21 +131,80 @@ def _warn_ignored_benchmark_seed(seed: int | None, *, dataset: str) -> None:
         )
 
 
-def _to_oneig_record(row: dict, questions_by_key: dict[str, dict]) -> dict:
-    """Convert OneIG row to unified record format."""
+def _oneig_alignment_language_zh(row: dict) -> bool:
+    """Return True when the official Q_D file for this row should use the ``*_zh`` graphs."""
+    row_category = row.get("category", "")
+    if row_category == "Multilingualism":
+        return True
+    lang = row.get("language") or row.get("lang")
+    if isinstance(lang, str) and lang.lower() in {"zh", "zh-cn", "zh_cn", "chinese", "cn"}:
+        return True
+    if row.get("prompt_zh"):
+        return True
+    prompt = row.get("prompt")
+    prompt_en = row.get("prompt_en")
+    return bool(prompt and not (isinstance(prompt_en, str) and prompt_en.strip()))
+
+
+def _oneig_qd_prefix(row: dict) -> str:
+    """Map dataset ``category`` (+ language) to Q_D JSON stem (e.g. ``object``, ``anime_zh``)."""
+    row_category = row.get("category", "")
+    use_zh = _oneig_alignment_language_zh(row)
+    if row_category == "Multilingualism":
+        return "multilingualism_zh"
+    base = _CATEGORY_TO_QD.get(row_category, "")
+    if not base:
+        return ""
+    return f"{base}_zh" if use_zh else base
+
+
+def _to_oneig_record(
+    row: dict,
+    questions_by_key: dict[str, dict],
+    reasoning_gt_en: dict[str, str],
+    reasoning_gt_zh: dict[str, str],
+) -> dict:
+    """Convert OneIG row to unified record format.
+
+    Parameters
+    ----------
+    row : dict
+        Raw Hugging Face row (``category``, ``id``, ``class``). EN configs use ``prompt_en``; the
+        ``OneIG-Bench-ZH`` **Multilingualism** split uses ``prompt_cn`` instead of ``prompt_en``.
+    questions_by_key : dict[str, dict]
+        Merged Q_D index keyed as ``{qd_stem}_{prompt_id}`` (see ``_fetch_oneig_alignment``).
+    reasoning_gt_en : dict[str, str]
+        Official ``gt_answer.json`` keyed by prompt id (e.g. ``"000"``).
+    reasoning_gt_zh : dict[str, str]
+        Official ``gt_answer_zh.json`` keyed by prompt id.
+
+    Returns
+    -------
+    dict
+        Unified record including ``questions``, ``dependencies``, and reasoning aux strings when applicable.
+    """
     row_category = row.get("category", "")
     row_class = row.get("class", "None") or "None"
-    qd_name = _CATEGORY_TO_QD.get(row_category, "")
-    lookup_key = f"{qd_name}_{row.get('id', '')}" if qd_name else ""
+    prompt_id = str(row.get("id", ""))
+    qd_prefix = _oneig_qd_prefix(row)
+    lookup_key = f"{qd_prefix}_{prompt_id}" if qd_prefix else ""
     q_info = questions_by_key.get(lookup_key, {})
+    text = row.get("prompt") or row.get("prompt_en") or row.get("prompt_cn") or ""
+    reasoning_en: str | None = None
+    reasoning_zh: str | None = None
+    if row_category == "Knowledge_Reasoning":
+        reasoning_en = reasoning_gt_en.get(prompt_id)
+        reasoning_zh = reasoning_gt_zh.get(prompt_id)
     return {
-        "text": row.get("prompt_en", row.get("prompt", "")),
+        "text": text,
         "subset": "Text_Rendering" if row_category in ("Text_Rendering", "Text Rendering") else row_category,
         "text_content": row_class if row_class != "None" else None,
         "category": row_category,
         "class": row_class,
         "questions": q_info.get("questions", {}),
         "dependencies": q_info.get("dependencies", {}),
+        "reasoning_gt_answer_en": reasoning_en,
+        "reasoning_gt_answer_zh": reasoning_zh,
     }
 
 
@@ -479,18 +538,47 @@ _CATEGORY_TO_QD: dict[str, str] = {
     "General_Object": "object",
 }
 
-_ONEIG_ALIGNMENT_BASE = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/41b49831e79e6dde5323618c164da1c4cf0f699d/scripts/alignment/Q_D"
+_ONEIG_BENCHMARK_REF = "41b49831e79e6dde5323618c164da1c4cf0f699d"
+_ONEIG_RAW_BASE = f"https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/{_ONEIG_BENCHMARK_REF}"
+_ONEIG_ALIGNMENT_QD_URL = f"{_ONEIG_RAW_BASE}/scripts/alignment/Q_D"
+_ONEIG_REASONING_GT_URL_EN = f"{_ONEIG_RAW_BASE}/scripts/reasoning/gt_answer.json"
+_ONEIG_REASONING_GT_URL_ZH = f"{_ONEIG_RAW_BASE}/scripts/reasoning/gt_answer_zh.json"
+
+_ONEIG_QD_JSON_STEMS: tuple[str, ...] = (
+    "anime",
+    "human",
+    "object",
+    "anime_zh",
+    "human_zh",
+    "object_zh",
+    "multilingualism_zh",
+)
 
 
 def _fetch_oneig_alignment() -> dict[str, dict]:
-    """Fetch alignment questions from per-category Q_D files (InferBench-style)."""
+    """Load OneIG question/dependency graphs from the official repo (HTTP, no on-disk cache).
+
+    Fetches every ``scripts/alignment/Q_D/*.json`` file used by upstream ``alignment_score.py`` (EN + ZH),
+    including ``multilingualism_zh.json``. Keys in the returned map are ``{stem}_{prompt_id}`` matching
+    upstream file stems (e.g. ``object_012``, ``multilingualism_zh_000``).
+
+    Returns
+    -------
+    dict[str, dict]
+        ``prompt_id``-level ``questions`` and ``dependencies`` dicts (parsed from JSON strings when needed).
+
+    Raises
+    ------
+    requests.HTTPError
+        If any asset URL is missing or the response is not successful.
+    """
     import json
 
     import requests
 
     questions_by_key: dict[str, dict] = {}
-    for qd_name in ("anime", "human", "object"):
-        url = f"{_ONEIG_ALIGNMENT_BASE}/{qd_name}.json"
+    for stem in _ONEIG_QD_JSON_STEMS:
+        url = f"{_ONEIG_ALIGNMENT_QD_URL}/{stem}.json"
         resp = requests.get(url, timeout=30)
         resp.raise_for_status()
         data = json.loads(resp.text)
@@ -501,8 +589,46 @@ def _fetch_oneig_alignment() -> dict[str, dict]:
                 q = json.loads(q)
             if isinstance(d, str):
                 d = json.loads(d)
-            questions_by_key[f"{qd_name}_{prompt_id}"] = {"questions": q, "dependencies": d}
+            questions_by_key[f"{stem}_{prompt_id}"] = {"questions": q, "dependencies": d}
     return questions_by_key
+
+
+def _fetch_oneig_reasoning_gt() -> tuple[dict[str, str], dict[str, str]]:
+    """Load official knowledge-reasoning reference answers (HTTP, no on-disk cache).
+
+    Mirrors ``scripts/reasoning/gt_answer.json`` and ``gt_answer_zh.json`` from the same pinned commit as Q_D.
+    Keys are prompt ids (``str``), values are answer strings; downstream metrics may slice filenames to the
+    first three characters like ``reasoning_score.py``.
+
+    Returns
+    -------
+    tuple[dict[str, str], dict[str, str]]
+        ``(en_by_id, zh_by_id)``.
+
+    Raises
+    ------
+    requests.HTTPError
+        If any asset URL is missing or the response is not successful.
+    """
+    import json
+
+    import requests
+
+    def _load(url: str) -> dict[str, str]:
+        resp = requests.get(url, timeout=60)
+        resp.raise_for_status()
+        raw = json.loads(resp.text)
+        return {str(k): str(v) for k, v in raw.items()}
+
+    return _load(_ONEIG_REASONING_GT_URL_EN), _load(_ONEIG_REASONING_GT_URL_ZH)
+
+
+def _oneig_needs_zh_multilingualism_hub(category: OneIGCategory | list[OneIGCategory] | None) -> bool:
+    """Whether ``OneIG-Bench-ZH`` must be loaded for ``Multilingualism`` rows."""
+    if category is None:
+        return True
+    categories = [category] if not isinstance(category, list) else category
+    return "Multilingualism" in categories
 
 
 def setup_oneig_dataset(
@@ -534,13 +660,33 @@ def setup_oneig_dataset(
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
-        The OneIG dataset (dummy train, dummy val, test).
+        The OneIG dataset (dummy train, dummy val, test). Rows include ``questions`` and
+        ``dependencies`` from official Q_D JSON (EN + ZH stems, including ``multilingualism_zh``),
+        plus ``reasoning_gt_answer_en`` / ``reasoning_gt_answer_zh`` for ``Knowledge_Reasoning``.
+        Rows cover EN categories from ``OneIG-Bench`` plus ``Multilingualism`` from ``OneIG-Bench-ZH``.
+        Assets are downloaded over HTTP on each call (pinned commit ``_ONEIG_BENCHMARK_REF``); there is
+        no local disk cache.
+
+    Notes
+    -----
+    Non-multilingual prompts are loaded from the Hub config ``OneIG-Bench``; **Multilingualism** rows
+    are taken only from ``OneIG-Bench-ZH`` (they use ``prompt_cn``). The ZH config is fetched only when
+    the requested ``category`` is ``None`` (full suite) or explicitly includes ``Multilingualism``.
+    Q_D / reasoning JSON URLs are defined next to ``_fetch_oneig_alignment`` and
+    ``_fetch_oneig_reasoning_gt``.
     """
     _warn_ignored_benchmark_seed(seed, dataset="OneIG")
     questions_by_key = _fetch_oneig_alignment()
+    reasoning_gt_en, reasoning_gt_zh = _fetch_oneig_reasoning_gt()
 
-    ds_raw = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
-    records = [_to_oneig_record(dict(row), questions_by_key) for row in ds_raw]
+    ds_en = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
+    records = [_to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh) for row in ds_en]
+    if _oneig_needs_zh_multilingualism_hub(category):
+        ds_zh = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench-ZH")["train"]  # type: ignore[index]
+        ds_zh_ml = ds_zh.filter(lambda r: r["category"] == "Multilingualism")
+        records.extend(
+            _to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh) for row in ds_zh_ml
+        )
     ds = Dataset.from_list(records)
 
     if category is not None:
@@ -556,6 +702,91 @@ def setup_oneig_dataset(
 
     pruna_logger.info("OneIG is a test-only dataset. Do not use it for training or validation.")
     return ds.select([0]), ds.select([0]), ds
+
+
+def _oneig_fixed_category_loader(
+    category: OneIGCategory,
+    *,
+    name: str,
+) -> Callable[..., Tuple[Dataset, Dataset, Dataset]]:
+    """
+    Build a ``base_datasets`` entry that pins ``category`` without exposing it on the signature.
+
+    ``functools.partial(setup_oneig_dataset, category=...)`` is avoided: ``get_literal_values_from_param``
+    unwraps to ``setup_oneig_dataset`` and would enumerate every ``OneIGCategory`` in category-filter tests.
+
+    Parameters
+    ----------
+    category : OneIGCategory
+        Row filter passed through to ``setup_oneig_dataset``.
+    name : str
+        ``__name__`` of the returned callable (for tracebacks).
+
+    Returns
+    -------
+    Callable[..., Tuple[Dataset, Dataset, Dataset]]
+        Loader with only seed / fraction / sample-size parameters.
+    """
+
+    def load_subset(
+        seed: int | None = None,
+        fraction: float = 1.0,
+        train_sample_size: int | None = None,
+        test_sample_size: int | None = None,
+    ) -> Tuple[Dataset, Dataset, Dataset]:
+        return setup_oneig_dataset(
+            seed=seed,
+            fraction=fraction,
+            train_sample_size=train_sample_size,
+            test_sample_size=test_sample_size,
+            category=category,
+        )
+
+    load_subset.__name__ = name
+    load_subset.__doc__ = (
+        f"Load OneIG-Bench with ``category`` fixed to ``{category}``. See ``setup_oneig_dataset``.\n\n"
+        "Parameters\n"
+        "----------\n"
+        "seed : int | None, optional\n"
+        "    Ignored; see ``setup_oneig_dataset``.\n"
+        "fraction : float\n"
+        "    Fraction of the subset to use.\n"
+        "train_sample_size : int | None\n"
+        "    Unused; train/val are dummy.\n"
+        "test_sample_size : int | None\n"
+        "    Test sample size cap for the subset.\n\n"
+        "Returns\n"
+        "-------\n"
+        "Tuple[Dataset, Dataset, Dataset]\n"
+        "    Dummy train, dummy val, and test split for this subset."
+    )
+    return load_subset
+
+
+setup_oneig_anime_stylization_dataset = _oneig_fixed_category_loader(
+    "Anime_Stylization",
+    name="setup_oneig_anime_stylization_dataset",
+)
+setup_oneig_general_object_dataset = _oneig_fixed_category_loader(
+    "General_Object",
+    name="setup_oneig_general_object_dataset",
+)
+setup_oneig_knowledge_reasoning_dataset = _oneig_fixed_category_loader(
+    "Knowledge_Reasoning",
+    name="setup_oneig_knowledge_reasoning_dataset",
+)
+setup_oneig_multilingualism_dataset = _oneig_fixed_category_loader(
+    "Multilingualism",
+    name="setup_oneig_multilingualism_dataset",
+)
+setup_oneig_portrait_dataset = _oneig_fixed_category_loader(
+    "Portrait",
+    name="setup_oneig_portrait_dataset",
+)
+setup_oneig_text_rendering_dataset = _oneig_fixed_category_loader(
+    "Text_Rendering",
+    name="setup_oneig_text_rendering_dataset",
+)
 
 
 def setup_gedit_dataset(

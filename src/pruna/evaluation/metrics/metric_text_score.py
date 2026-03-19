@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Text Score metric for evaluating text rendering in images using VLM OCR."""
+"""Text rendering metrics: simple Levenshtein (``text_score``) and OneIG composite (``oneig_text_score``)."""
 
 from __future__ import annotations
 
-import re
+from abc import abstractmethod
 from typing import Any, List, Literal, Optional
 
 import numpy as np
@@ -24,6 +24,12 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+from pruna.evaluation.metrics.metric_text_score_utils import (
+    levenshtein,
+    normalize_text_simple,
+    oneig_mean_text_score,
+    oneig_per_sample_contributions,
+)
 from pruna.evaluation.metrics.metric_vlm_utils import TextOutput, _process_images, get_text_from_response
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -42,26 +48,24 @@ OCR_PROMPT = (
 )
 
 
-@MetricRegistry.register("text_score")
-class TextScoreMetric(StatefulMetric):
+class _BaseVLMOCRTextMetric(StatefulMetric):
     """
-    Text Score metric for evaluating text rendering in images.
+    Shared VLM OCR over rendered images with ground truth in ``text_content``.
 
-    Uses VLM for OCR to extract text and compare with ground truth.
-    Lower scores (edit distance) are better.
+    Subclasses implement how OCR and GT strings are scored and aggregated.
 
     Parameters
     ----------
     *args : Any
-        Additional positional arguments.
+        Additional positional arguments (unused; registry compatibility).
     vlm : BaseVLM | None, optional
-        Custom VLM instance. If provided, vlm_type and model_name are ignored.
-    vlm_type : {"litellm", "transformers"}, optional
-        VLM backend. Default is "litellm".
+        Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
+    vlm_type : {'litellm', 'transformers'}, optional
+        VLM backend. Default is ``'litellm'``.
     model_name : str, optional
-        Model name. Default is "gpt-4o".
+        Model name. Default is ``'gpt-4o'``.
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
+        Extra kwargs for VLM init.
     structured_output : bool, optional
         Use structured generation. Default is True.
     use_outlines : bool, optional
@@ -76,26 +80,23 @@ class TextScoreMetric(StatefulMetric):
         Additional arguments.
     """
 
-    scores: List[float]
     default_call_type: str = "y_gt"
-    higher_is_better: bool = False
-    metric_name: str = "text_score"
-    runs_on: List[str] = ["cuda", "cpu"]
+    runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         vlm: Optional[BaseVLM] = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
         structured_output: bool = True,
         use_outlines: bool = False,
-        device=None,
+        device: str | torch.device | None = None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
@@ -111,38 +112,27 @@ class TextScoreMetric(StatefulMetric):
         self.response_format = TextOutput if structured_output else None
 
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
-        self.add_state("scores", [])
 
-    @staticmethod
-    def _normalize_text(s: str) -> str:
-        cleaned = re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9\sàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]", "", s or "")
-        return re.sub(r"\s+", " ", cleaned).strip()
+    @abstractmethod
+    def _accumulate_sample(self, text_gt: str, ocr_text: str) -> None:
+        """Update metric state from one ground-truth / OCR pair."""
 
-    @staticmethod
-    def _levenshtein(s1: str, s2: str) -> float:
-        if len(s1) < len(s2):
-            return TextScoreMetric._levenshtein(s2, s1)
-        prev = list(range(len(s2) + 1))
-        for i, c1 in enumerate(s1):
-            curr = [i + 1]
-            for j, c2 in enumerate(s2):
-                curr.append(min(prev[j] + (c1 != c2), prev[j + 1] + 1, curr[-1] + 1))
-            prev = curr
-        return float(prev[-1])
+    @abstractmethod
+    def _compute_result_value(self) -> float:
+        """Return the scalar reported as ``MetricResult.result``."""
 
     def update(self, x: List[Any] | torch.Tensor, gt: List[str], outputs: torch.Tensor) -> None:
         """
-        Update the metric with new batch data.
+        Run OCR on outputs and score against ``text_content`` (or string list) auxiliaries.
 
         Parameters
         ----------
         x : List[Any] | torch.Tensor
-            The input data (prompts).
-        gt : List[dict] | List[str]
-            Ground truth auxiliaries. Each item must have 'text_content' key (e.g. from
-            LongTextBench, OneIG). Or a list of strings for backward compatibility.
+            Batch prompts or metadata.
+        gt : list of dict or list of str
+            Auxiliaries with ``'text_content'`` or plain strings.
         outputs : torch.Tensor
-            The output images.
+            Rendered images.
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
@@ -155,23 +145,147 @@ class TextScoreMetric(StatefulMetric):
             text_gt = aux.get("text_content") if isinstance(aux, dict) else (aux if isinstance(aux, str) else None)
             if text_gt is None:
                 raise ValueError(
-                    "text_score requires 'text_content' in auxiliaries. "
+                    f"{self.metric_name} requires 'text_content' in auxiliaries. "
                     "Use a benchmark that provides it (e.g. LongTextBench, OneIG)."
                 )
-            norm_gt = self._normalize_text(text_gt)
-            norm_ocr = self._normalize_text(ocr_text)
-            score = self._levenshtein(norm_ocr, norm_gt)
-            self.scores.append(score)
+            self._accumulate_sample(text_gt, ocr_text)
 
     def compute(self) -> MetricResult:
         """
-        Compute the text score.
+        Aggregate batched contributions into a single metric value.
 
         Returns
         -------
         MetricResult
-            The mean text score (edit distance) across all updates.
+            Named result with ``higher_is_better`` taken from the class.
         """
+        value = self._compute_result_value()
+        return MetricResult(self.metric_name, self.__dict__, float(value))
+
+
+@MetricRegistry.register("text_score")
+class TextScoreMetric(_BaseVLMOCRTextMetric):
+    """
+    Mean Levenshtein distance between OCR and ground truth (lower is better).
+
+    Uses light normalization only (not the full OneIG preprocess). See
+    :class:`OneIGTextScoreMetric` for the official composite text score.
+
+    Parameters
+    ----------
+    *args : Any
+        Additional positional arguments.
+    vlm : BaseVLM | None, optional
+        Custom VLM instance.
+    vlm_type : {'litellm', 'transformers'}, optional
+        VLM backend.
+    model_name : str, optional
+        Model name.
+    vlm_kwargs : dict, optional
+        Extra kwargs for VLM init.
+    structured_output : bool, optional
+        Use structured generation.
+    use_outlines : bool, optional
+        Use outlines for transformers.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    **kwargs : Any
+        Additional arguments.
+    """
+
+    scores: List[float]
+    higher_is_better: bool = False
+    metric_name: str = "text_score"
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.add_state("scores", [])
+
+    def _accumulate_sample(self, text_gt: str, ocr_text: str) -> None:
+        norm_gt = normalize_text_simple(text_gt)
+        norm_ocr = normalize_text_simple(ocr_text)
+        self.scores.append(levenshtein(norm_ocr, norm_gt))
+
+    def _compute_result_value(self) -> float:
         if not self.scores:
-            return MetricResult(self.metric_name, self.__dict__, 0.0)
-        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
+            return 0.0
+        return float(np.mean(self.scores))
+
+
+@MetricRegistry.register("oneig_text_score")
+class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
+    """
+    OneIG-style composite text score (higher is better).
+
+    Aggregates edit distance, completion rate, and word/char accuracy like
+    ``OneIG-Benchmark/scripts/text/text_score.py``.
+
+    Parameters
+    ----------
+    language_mode : {'EN', 'ZH'}, optional
+        Selects ``MAX_EDIT_DISTANCE`` (100 vs 50) for the composite.
+    *args : Any
+        Forwarded to :class:`_BaseVLMOCRTextMetric`.
+    vlm : BaseVLM | None, optional
+        Custom VLM instance.
+    vlm_type : {'litellm', 'transformers'}, optional
+        VLM backend.
+    model_name : str, optional
+        Model name.
+    vlm_kwargs : dict, optional
+        Extra kwargs for VLM init.
+    structured_output : bool, optional
+        Use structured generation.
+    use_outlines : bool, optional
+        Use outlines for transformers.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    **kwargs : Any
+        Additional arguments.
+    """
+
+    edit_distances: List[float]
+    completion_ratios: List[float]
+    match_counts: List[int]
+    gt_totals: List[int]
+
+    higher_is_better: bool = True
+    metric_name: str = "oneig_text_score"
+
+    def __init__(
+        self,
+        *args: Any,
+        language_mode: Literal["EN", "ZH"] = "EN",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.language_mode = language_mode
+        self.add_state("edit_distances", [])
+        self.add_state("completion_ratios", [])
+        self.add_state("match_counts", [])
+        self.add_state("gt_totals", [])
+
+    def _accumulate_sample(self, text_gt: str, ocr_text: str) -> None:
+        ed, cr, mcount, gtot = oneig_per_sample_contributions(text_gt, ocr_text)
+        self.edit_distances.append(ed)
+        self.completion_ratios.append(cr)
+        self.match_counts.append(mcount)
+        self.gt_totals.append(gtot)
+
+    def _compute_result_value(self) -> float:
+        *_, text_score = oneig_mean_text_score(
+            self.edit_distances,
+            self.completion_ratios,
+            self.match_counts,
+            self.gt_totals,
+            self.language_mode,
+        )
+        return text_score

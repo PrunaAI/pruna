@@ -87,7 +87,7 @@ class VQAMetric(StatefulMetric):
     default_call_type: str = "y_x"
     higher_is_better: bool = True
     metric_name: str = "vqa"
-    runs_on: List[str] = ["cpu"]
+    runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
         self,

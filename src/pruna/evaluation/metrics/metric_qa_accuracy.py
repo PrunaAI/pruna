@@ -72,7 +72,7 @@ class QAAccuracyMetric(StatefulMetric):
     default_call_type: str = "y_gt"
     higher_is_better: bool = True
     metric_name: str = "qa_accuracy"
-    runs_on: List[str] = ["cpu"]
+    runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
         self,

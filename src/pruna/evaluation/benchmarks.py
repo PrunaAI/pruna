@@ -31,7 +31,10 @@ class Benchmark:
     description : str
         Description of what the benchmark evaluates.
     metrics : list[str]
-        List of metric names used for evaluation.
+        Metric names from ``MetricRegistry`` that the ``reference`` paper
+        explicitly names for that benchmark (not speculative proxies). Entries
+        with no matching registered name stay empty; pass metrics explicitly to
+        ``Task`` when running other evaluations.
     task_type : str
         Type of task the benchmark evaluates (e.g., 'text_to_image').
     reference : str | None
@@ -62,24 +65,17 @@ class BenchmarkRegistry:
     """
     Registry for benchmarks.
 
-    Metrics per benchmark are set to those explicitly used in the reference
-    paper (see reference URL). All entries verified from paper evaluation
-    sections (ar5iv/HTML or PDF) as of verification pass:
+    Each entry's ``metrics`` lists only ``MetricRegistry`` names that have a
+    **directly named** counterpart in the ``reference`` paper (e.g. CLIPScore →
+    ``clip_score``, VQAScore → ``vqa``, Fréchet inception distance → ``fid``).
+    If the paper cites a method with no registered metric (HPS v2, Mask2Former,
+    mPLUG-large adjudication, …), the list is empty.
 
-    - Parti Prompts (2206.10789 §5.2, §5.4): human side-by-side only on P222.
-    - DrawBench (2205.11487 §4.3): human raters only; COCO uses FID + CLIP.
-    - GenAI Bench (2406.13743): VQAScore only (web/PWC; ar5iv failed).
-    - VBench (2311.17982): 16 dimension-specific methods; no single Pruna metric.
-    - COCO (2205.11487 §4.1): FID and CLIP score for fidelity and alignment.
-    - ImageNet (1409.0575 §4): top-1/top-5 classification accuracy.
-    - WikiText (1609.07843 §5): perplexity on validation/test.
-    - GenEval (2310.11513 §3.2): Mask2Former + CLIP color pipeline, binary score.
-    - HPS (2306.09341): HPS v2 scoring model (CLIP fine-tuned on HPD v2).
-    - ImgEdit (2505.20275 §4.2): GPT-4o 1–5 ratings and ImgEdit-Judge.
-    - Long Text Bench (2507.22058 §4): Text Accuracy (OCR, Qwen2.5-VL-7B).
-    - GEditBench (2504.17761 §4.2): VIEScore (SQ, PQ, O via GPT-4.1/Qwen2.5-VL).
-    - OneIG (2506.07977 §4.1): per-dimension metrics (semantic alignment, ED, etc.).
-    - DPG (2403.05135): DSG-style graph score, mPLUG-large adjudicator.
+    See ``.mine/benchmark-paper-alignment/01-arxiv-literature-vs-pruna-metrics.md``
+    for paper-by-paper notes and Pruna implementation gaps.
+
+    OneIG is split into six subset benchmarks (plus full ``OneIG``); see
+    ``.mine/benchmark-paper-alignment/02-oneig-subset-metrics-verification.md`` for §4.1 mapping.
     """
 
     _registry: dict[str, Benchmark] = {}
@@ -174,7 +170,7 @@ for _benchmark in [
             "Covers basic skills (scene, attributes, spatial relationships) to advanced reasoning "
             "(counting, comparison, logic/negation) with over 24k human ratings."
         ),
-        metrics=[],  # Paper uses VQAScore only; not in Pruna
+        metrics=["vqa", "clip_score"],  # VQAScore + CLIPScore both named (arXiv:2406.13743)
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2406.13743",
     ),
@@ -195,7 +191,7 @@ for _benchmark in [
             "MS-COCO for text-to-image evaluation (Imagen, 2205.11487). Paper reports "
             "FID for fidelity and CLIP score for image-text alignment."
         ),
-        metrics=["fid", "clip_score"],  # §4.1: FID + CLIP score
+        metrics=["fid", "clip_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2205.11487",
     ),
@@ -226,7 +222,7 @@ for _benchmark in [
             "counting, colors, position, color attributes. Evaluates fine-grained alignment "
             "between prompts and generated images via VQA-style questions."
         ),
-        metrics=["clip_score"],  # §3.2: Mask2Former; not in Pruna
+        metrics=["vqa", "clip_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2310.11513",
     ),
@@ -246,7 +242,7 @@ for _benchmark in [
             "Image editing benchmark with 8 edit types: replace, add, remove, adjust, extract, "
             "style, background, compose. Evaluates instruction-following for inpainting and editing."
         ),
-        metrics=[],  # Paper uses GPT-4o/ImgEdit-Judge; not in Pruna
+        metrics=["img_edit_score"],  # Paper: GPT-4o rubric scores, FakeShield; no matching MetricRegistry name
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2505.20275",
     ),
@@ -256,7 +252,7 @@ for _benchmark in [
             "Text-to-image benchmark for long, detailed prompts. Evaluates model ability to "
             "handle complex multi-clause descriptions and maintain coherence across long instructions."
         ),
-        metrics=[],  # Paper uses text_score/TIT-Score; not in Pruna
+        metrics=["text_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2507.22058",
     ),
@@ -267,18 +263,62 @@ for _benchmark in [
             "material alter, motion change, style change, subject add/remove/replace, text change, "
             "tone transfer, and human retouching."
         ),
-        metrics=[],  # Paper uses VIEScore; not in Pruna
+        metrics=["viescore"],  # VIEScore named in GEdit-Bench section
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2504.17761",
     ),
     Benchmark(
+        name="OneIG Anime Stylization",
+        description="OneIG subset: anime and stylized imagery.",
+        # §4.1 DSG alignment; missing: root/leaf gating, paper VLM judge, S_style (CSD+encoder), diversity
+        metrics=["qa_accuracy"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG General Object",
+        description="OneIG subset: everyday objects and scenes.",
+        metrics=["qa_accuracy"],  # §4.1 𝒪 alignment; missing: full DSG scorer details, paper judge choice
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Knowledge Reasoning",
+        description="OneIG subset: knowledge- and reasoning-heavy prompts.",
+        metrics=[],  # paper 𝒦ℛ scorer (GPT-4o answers + LLM2CLIP) not in MetricRegistry
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Multilingualism",
+        description="OneIG subset: multilingual prompts (incl. Chinese splits).",
+        # loader: no Q_D questions for this bucket; do not default clip/vqa as stand-ins for paper alignment
+        metrics=[],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Portrait",
+        description="OneIG subset: people and portraits.",
+        metrics=["qa_accuracy"],  # §4.1 𝒫 alignment; missing: full DSG aggregation, style-only rows
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Text Rendering",
+        description="OneIG subset: text and graphics painted into the image.",
+        # §4.1: ED-like only; missing CR, WAC, S_text, paper extract path
+        metrics=["text_score"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
         name="OneIG",
         description=(
-            "Omni-dimensional benchmark for text-to-image evaluation. Six dataset categories "
-            "(Anime_Stylization, General_Object, Knowledge_Reasoning, Multilingualism, Portrait, "
-            "Text_Rendering) plus fine-grained style classes. Includes alignment questions."
+            "OneIG-Bench: broad text-to-image suite (objects, people, styles, text-in-image, reasoning, languages). "
+            "Prefer a category ``OneIG …`` entry for one axis."
         ),
-        metrics=[],  # Paper uses dimension-specific metrics; not in Pruna
+        metrics=[],  # full suite has mixed axes; subset benchmarks or explicit metrics recommended
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),

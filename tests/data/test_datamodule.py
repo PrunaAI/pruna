@@ -65,6 +65,7 @@ def _assert_at_least_one_sample(datamodule: PrunaDataModule) -> None:
         pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
         pytest.param("GEditBench", dict(), marks=pytest.mark.slow),
         pytest.param("OneIG", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGPortrait", dict(), marks=pytest.mark.slow),
         pytest.param("DPG", dict(), marks=pytest.mark.slow),
     ],
 )
