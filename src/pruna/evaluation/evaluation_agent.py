@@ -28,7 +28,7 @@ from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.result import MetricResult
+from pruna.evaluation.metrics.result import MetricResult, MetricResultProtocol
 from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device_map, group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
@@ -71,8 +71,8 @@ class EvaluationAgent:
                 raise ValueError("When not using 'task' parameter, both 'request' and 'datamodule' must be provided.")
             self.task = Task(request=request, datamodule=datamodule, device=device)
 
-        self.first_model_results: List[MetricResult] = []
-        self.subsequent_model_results: List[MetricResult] = []
+        self.first_model_results: List[MetricResultProtocol] = []
+        self.subsequent_model_results: List[MetricResultProtocol] = []
         self.device = set_to_best_available_device(self.task.device)
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
@@ -124,18 +124,20 @@ class EvaluationAgent:
         )
         return cls(task=task)
 
-    def evaluate(self, model: Any) -> List[MetricResult]:
+    def evaluate(self, model: Any, model_name: str | None = None) -> List[MetricResultProtocol]:
         """
         Evaluate models using different metric types.
 
         Parameters
         ----------
-        model : PrunaModel
+        model : Any
             The model to evaluate.
+        model_name : str | None, optional
+            The name of the model to evaluate. Required for rapidata benchmark submission.
 
         Returns
         -------
-        List[MetricResult]
+        List[MetricResultProtocol]
             The results of the model.
         """
         results = []
@@ -145,6 +147,9 @@ class EvaluationAgent:
         single_stateful_metrics = self.task.get_single_stateful_metrics()
         pairwise_metrics = self.task.get_pairwise_stateful_metrics()
         stateless_metrics = self.task.get_stateless_metrics()
+
+        for metric in single_stateful_metrics + pairwise_metrics:
+            metric.set_current_context(model_name=model_name)
 
         # Update and compute stateful metrics.
         pruna_logger.info("Evaluating stateful metrics.")
@@ -278,7 +283,7 @@ class EvaluationAgent:
 
     def compute_stateful_metrics(
         self, single_stateful_metrics: List[StatefulMetric], pairwise_metrics: List[StatefulMetric]
-    ) -> List[MetricResult]:
+    ) -> List[MetricResultProtocol]:
         """
         Compute stateful metrics.
 
@@ -296,16 +301,20 @@ class EvaluationAgent:
         """
         results = []
         for stateful_metric in single_stateful_metrics:
-            results.append(stateful_metric.compute())
+            result = stateful_metric.compute()
+            if result is not None:
+                results.append(result)
             stateful_metric.reset()
 
         if not self.evaluation_for_first_model and self.task.is_pairwise_evaluation():
             for pairwise_metric in pairwise_metrics:
-                results.append(pairwise_metric.compute())
+                result = pairwise_metric.compute()
+                if result is not None:
+                    results.append(result)
                 pairwise_metric.reset()
         return results
 
-    def compute_stateless_metrics(self, model: PrunaModel, stateless_metrics: List[Any]) -> List[MetricResult]:
+    def compute_stateless_metrics(self, model: PrunaModel, stateless_metrics: List[Any]) -> List[MetricResultProtocol]:
         """
         Compute stateless metrics.
 
