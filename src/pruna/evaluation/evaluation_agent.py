@@ -77,6 +77,53 @@ class EvaluationAgent:
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
 
+    @classmethod
+    def from_benchmark(
+        cls,
+        benchmark_name: str,
+        *,
+        tokenizer: Any = None,
+        device: str | torch.device | None = None,
+        dataloader_args: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> "EvaluationAgent":
+        """
+        Create an EvaluationAgent from a benchmark name.
+
+        Convenience one-liner that hooks up the benchmark dataset and metrics, then runs evaluation.
+
+        Parameters
+        ----------
+        benchmark_name : str
+            Benchmark name from BenchmarkRegistry (e.g. "Parti Prompts", "DrawBench").
+        tokenizer : Any, optional
+            Tokenizer for text-generation benchmarks. Required when benchmark is "WikiText".
+        device : str | torch.device | None, optional
+            Device for evaluation. Default is None (best available).
+        dataloader_args : dict | None, optional
+            Args passed to the dataloader (e.g. batch_size).
+        **kwargs : Any
+            Additional args for PrunaDataModule.from_string (e.g. category, fraction).
+
+        Returns
+        -------
+        EvaluationAgent
+            Agent after evaluation, with results accessible via the agent.
+
+        Examples
+        --------
+        >>> agent = EvaluationAgent.from_benchmark("Parti Prompts", model)
+        >>> agent = EvaluationAgent.from_benchmark("HPS", model, category="anime", fraction=0.1)
+        """
+        task = Task.from_benchmark(
+            benchmark_name,
+            tokenizer=tokenizer,
+            device=device,
+            dataloader_args=dataloader_args,
+            **kwargs,
+        )
+        return cls(task=task)
+
     def evaluate(self, model: Any) -> List[MetricResult]:
         """
         Evaluate models using different metric types.

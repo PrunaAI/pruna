@@ -19,7 +19,6 @@ from typing import Tuple, cast
 from datasets import Dataset, load_dataset
 
 from pruna.data.utils import (
-    define_sample_size_for_dataset,
     split_train_into_train_val,
     split_val_into_val_test,
     stratify_dataset,
@@ -54,11 +53,8 @@ def setup_mnist_dataset(
     train_ds = cast(Dataset, train_ds)
     test_ds = cast(Dataset, test_ds)
 
-    train_sample_size = define_sample_size_for_dataset(train_ds, fraction, train_sample_size)
-    test_sample_size = define_sample_size_for_dataset(test_ds, fraction, test_sample_size)
-
-    train_ds = stratify_dataset(train_ds, train_sample_size, seed)
-    test_ds = stratify_dataset(test_ds, test_sample_size, seed)
+    train_ds = stratify_dataset(train_ds, sample_size=train_sample_size, fraction=fraction, seed=seed)
+    test_ds = stratify_dataset(test_ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
 
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     val_ds, test_ds = split_val_into_val_test(val_ds, seed)
@@ -93,11 +89,9 @@ def setup_imagenet_dataset(
     train_ds, val = load_dataset("zh-plus/tiny-imagenet", split=["train", "valid"])  # type: ignore[misc]
     train_ds = cast(Dataset, train_ds)
     val = cast(Dataset, val)
-    train_sample_size = define_sample_size_for_dataset(train_ds, fraction, train_sample_size)
-    train_ds = stratify_dataset(train_ds, train_sample_size, seed)
+    train_ds = stratify_dataset(train_ds, sample_size=train_sample_size, fraction=fraction, seed=seed)
     val_ds, test_ds = split_val_into_val_test(val, seed)
-    test_sample_size = define_sample_size_for_dataset(test_ds, fraction, test_sample_size)
-    test_ds = stratify_dataset(test_ds, test_sample_size, seed)
+    test_ds = stratify_dataset(test_ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
     return train_ds, val_ds, test_ds  # type: ignore[return-value]
 
 
@@ -136,11 +130,8 @@ def setup_cifar10_dataset(
     train_ds = train_ds.rename_column("img", "image")
     test_ds = test_ds.rename_column("img", "image")
 
-    train_sample_size = define_sample_size_for_dataset(train_ds, fraction, train_sample_size)
-    test_sample_size = define_sample_size_for_dataset(test_ds, fraction, test_sample_size)
-
-    train_ds = stratify_dataset(train_ds, train_sample_size, seed)
-    test_ds = stratify_dataset(test_ds, test_sample_size, seed)
+    train_ds = stratify_dataset(train_ds, sample_size=train_sample_size, fraction=fraction, seed=seed)
+    test_ds = stratify_dataset(test_ds, sample_size=test_sample_size, fraction=fraction, seed=seed)
 
     train_ds, val_ds = split_train_into_train_val(train_ds, seed)
     return train_ds, val_ds, test_ds  # type: ignore[return-value]
