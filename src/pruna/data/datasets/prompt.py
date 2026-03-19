@@ -532,7 +532,7 @@ def setup_oneig_dataset(
     if category is not None:
         categories = [category] if not isinstance(category, list) else category
         ds = ds.filter(
-            lambda x: (x.get("category") in categories or x.get("class") in categories or x.get("subset") in categories)
+            lambda x: x.get("category") in categories or x.get("class") in categories or x.get("subset") in categories
         )
 
     ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)

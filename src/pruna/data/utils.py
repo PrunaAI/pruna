@@ -254,9 +254,11 @@ def stratify_dataset(
             If None, no shuffling is performed and the first target_size elements are returned.
 
     Returns:
+    -------
         The stratified dataset.
 
     Raises:
+    ------
         ValueError: If both fraction < 1.0 and sample_size are provided.
     """
     if fraction < 1.0 and sample_size is not None:
