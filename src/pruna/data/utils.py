@@ -244,7 +244,8 @@ def stratify_dataset(
     fraction: float = 1.0,
     seed: int | None = None,
 ) -> Dataset:
-    """Stratify the dataset to a specific size via optional shuffled sampling.
+    """
+    Stratify the dataset to a specific size via optional shuffled sampling.
 
     Parameters
     ----------

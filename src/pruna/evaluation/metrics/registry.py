@@ -91,7 +91,19 @@ class MetricRegistry:
 
     @classmethod
     def has_metric(cls, name: str) -> bool:
-        """Return True if a metric with this name is registered."""
+        """
+        Return True if a metric with this name is registered.
+
+        Parameters
+        ----------
+        name : str
+            Name of the metric to look up.
+
+        Returns
+        -------
+        bool
+            True if the metric is registered, False otherwise.
+        """
         return name in cls._registry
 
     @classmethod
