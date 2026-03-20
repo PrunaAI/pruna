@@ -217,8 +217,12 @@ class SmashConfig:
 
     def cleanup_cache_dir(self) -> None:
         """Clean up the cache directory."""
-        if self.cache_dir.exists():
-            shutil.rmtree(self.cache_dir)
+        try:
+            if hasattr(self, 'cache_dir') and self.cache_dir is not None and hasattr(self.cache_dir, 'exists') and self.cache_dir.exists():
+                shutil.rmtree(self.cache_dir)
+        except (AttributeError, TypeError, ImportError):
+            # This can happen during interpreter shutdown when modules are already None
+            pass
 
     def reset_cache_dir(self) -> None:
         """Reset the cache directory."""
