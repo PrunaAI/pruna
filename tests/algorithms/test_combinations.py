@@ -63,6 +63,7 @@ class CombinationsTester(AlgorithmTesterBase):
         pytest.param("flux_tiny", ["fora", "flash_attn3", "torch_compile"], False, 'cmmd', marks=pytest.mark.high),
     ],
     indirect=["model_fixture"],
+    ids=lambda val: "+".join(val) if isinstance(val, list) else None,
 )
 def test_full_integration_combo(
     algorithms: list[str], allow_pickle_files: bool, model_fixture: tuple[Any, SmashConfig], metric:str
