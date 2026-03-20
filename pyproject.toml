@@ -168,6 +168,10 @@ vllm = [
     "vllm>=0.16.0",
     "ray",
 ]
+llamacpp = [
+    "llama-cpp-python>=0.2.78",
+    "gguf>=0.6.0",
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna>=1.0.8,<1.0.9",
@@ -194,6 +198,8 @@ awq = [
 ]
 full = [
     "pruna[stable-fast]",
+    "llama-cpp-python>=0.2.78",
+    "gguf>=0.6.0",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
