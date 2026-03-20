@@ -27,7 +27,7 @@ from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 
 try:
-    from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric
+    from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as RapidataMetric
 except ModuleNotFoundError as e:
     if e.name != "rapidata":
         raise

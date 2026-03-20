@@ -35,6 +35,12 @@ def metric_ready(metric_with_benchmark):
     metric_with_benchmark.set_current_context("test-model")
     return metric_with_benchmark
 
+@pytest.fixture
+def metric_ready_with_cleanup(metric_ready):
+    """metric_ready that auto-cleans temp media after the test."""
+    yield metric_ready
+    metric_ready._cleanup_temp_media()
+
 
 # Initialization with / without a client
 def test_default_client_created_when_none_provided():
@@ -140,23 +146,20 @@ def test_update_raises_without_model(metric_with_benchmark):
     with pytest.raises(ValueError, match="No model set"):
         metric_with_benchmark.update(["p"], [None], [torch.rand(3, 32, 32)])
 
-
-def test_prepare_media_string_passthrough(metric_ready):
+def test_prepare_media_string_passthrough(metric_ready_with_cleanup):
     """Test that string URLs/paths are passed through as-is."""
-    metric_ready.media_cache = ["https://example.com/img.png", "/tmp/local.png"]
-    paths = metric_ready._prepare_media_for_upload()
+    metric_ready_with_cleanup.media_cache = ["https://example.com/img.png", "/tmp/local.png"]
+    paths = metric_ready_with_cleanup._prepare_media_for_upload()
     assert paths == ["https://example.com/img.png", "/tmp/local.png"]
-    metric_ready._cleanup_temp_media()
 
 
-def test_prepare_media_pil_image(metric_ready):
+def test_prepare_media_pil_image(metric_ready_with_cleanup):
     """Test that PIL images are saved to temp files."""
     img = PIL.Image.new("RGB", (64, 64), color="red")
-    metric_ready.media_cache = [img]
-    paths = metric_ready._prepare_media_for_upload()
+    metric_ready_with_cleanup.media_cache = [img]
+    paths = metric_ready_with_cleanup._prepare_media_for_upload()
     assert len(paths) == 1
     assert Path(paths[0]).exists()
-    metric_ready._cleanup_temp_media()
 
 
 def test_prepare_media_tensor(metric_ready):

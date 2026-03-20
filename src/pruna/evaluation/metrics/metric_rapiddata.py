@@ -40,7 +40,7 @@ METRIC_RAPIDATA = "rapidata"
 # because we need to instantiate the Metric directly with benchmark and leaderboards.
 class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
     """
-    Evaluate models with human feedback via the Rapidata platform.
+    Evaluate models with human feedback via the Rapidata platform https://www.rapidata.ai/.
 
     Parameters
     ----------
@@ -84,10 +84,9 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
     media_cache: List[torch.Tensor | PIL.Image.Image | str]
     prompt_cache: List[str]
+    higher_is_better: bool
     default_call_type: str = "x_y"
-    higher_is_better: bool = True
     metric_name: str = METRIC_RAPIDATA
-    runs_on: List[str] = ["cpu", "cuda"]
 
     def __init__(
         self,
@@ -112,9 +111,9 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         self.current_benchmarked_model: str | None = None
 
     @classmethod
-    def from_benchmark(
+    def from_rapidata_benchmark(
         cls,
-        benchmark: RapidataBenchmark,
+        benchmark: RapidataBenchmark | str,
         rapidata_client_id: str | None = None,
         rapidata_client_secret: str | None = None
     ) -> RapidataMetric:
@@ -123,8 +122,8 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
         Parameters
         ----------
-        benchmark : RapidataBenchmark
-            The benchmark to attach to.
+        benchmark : RapidataBenchmark | str
+            The benchmark to attach to. Can be a RapidataBenchmark object or a string (benchmark ID).
         rapidata_client_id : str | None
             The client ID of the Rapidata client.
         rapidata_client_secret : str | None
@@ -139,38 +138,12 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             rapidata_client_id=rapidata_client_id,
             rapidata_client_secret=rapidata_client_secret,
         )
-        metric.benchmark = benchmark
-        return metric
-
-    @classmethod
-    def from_benchmark_id(
-        cls,
-        benchmark_id: str,
-        rapidata_client_id: str | None = None,
-        rapidata_client_secret: str | None = None,
-    ) -> RapidataMetric:
-        """
-        Create a RapidataMetric from an existing benchmark ID.
-
-        Parameters
-        ----------
-        benchmark_id : str
-            The ID of the benchmark on the Rapidata platform.
-        rapidata_client_id : str | None
-            The client ID of the Rapidata client.
-        rapidata_client_secret : str | None
-            The client secret of the Rapidata client.
-
-        Returns
-        -------
-        RapidataMetric
-            The created metric.
-        """
-        metric = cls(
-            rapidata_client_id=rapidata_client_id,
-            rapidata_client_secret=rapidata_client_secret,
-        )
-        metric.benchmark = metric.client.mri.get_benchmark_by_id(benchmark_id)
+        if isinstance(benchmark, RapidataBenchmark):
+            metric.benchmark = benchmark
+        elif isinstance(benchmark, str):
+            metric.benchmark = metric.client.mri.get_benchmark_by_id(benchmark)
+        else:
+            raise ValueError(f"Invalid benchmark: {benchmark}. Expected a RapidataBenchmark or a string.")
         return metric
 
     def create_benchmark(
@@ -217,7 +190,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
         self.benchmark = self.client.mri.create_new_benchmark(name, prompts=data, **kwargs)
 
-    def create_request(
+    def create_async_request(
         self,
         name: str,
         instruction: str,
@@ -315,7 +288,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
         self._cleanup_temp_media()
 
-        pruna_logger.info(
+        pruna_logger.warning(
             "Sent evaluation request for model '%s' to Rapidata.\n "
             "It may take a while to collect votes from human raters.\n "
             "Use retrieve_results() to check scores later, "
@@ -325,12 +298,22 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             self.benchmark.id,
         )
 
-    def retrieve_results(self, *args, **kwargs) -> CompositeMetricResult | None:
+    def retrieve_async_results(
+        self,
+        granular: bool = False,
+        *args,
+        **kwargs,
+    ) -> List[CompositeMetricResult] | CompositeMetricResult | None:
         """
-        Retrieve aggregated standings across all leaderboards.
+        Retrieve standings for all leaderboards.
+
+        If granular is True, retrieve standings for each leaderboard separately.
+        Otherwise, retrieve aggregated standings across all leaderboards.
 
         Parameters
         ----------
+        granular: bool, optional
+            Whether to retrieve granular results. Default is False.
         *args : Any
             Additional arguments passed to the Rapidata API.
         **kwargs : Any
@@ -338,32 +321,35 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
         Returns
         -------
-        CompositeMetricResult | None
-            The overall standings, or None if not enough votes yet.
+        List[CompositeMetricResult] | CompositeMetricResult | None
+            If granular is True, a list of results, one per leaderboard.
+            If granular is False, the overall standings, or None if not enough votes yet.
         """
         self._require_benchmark()
 
-        try:
-            standings = self.benchmark.get_overall_standings(*args, **kwargs)
-        except Exception as e:
-            if "ValidationError" in type(e).__name__:
-                pruna_logger.warning(
-                    "The benchmark hasn't finished yet.\n "
-                    "Please wait for more votes and try again.\n "
-                    "Skipping."
-                )
-                return None
-            raise
+        if not granular:
+            try:
+                standings = self.benchmark.get_overall_standings(*args, **kwargs)
+            except Exception as e:
+                if "ValidationError" in type(e).__name__:
+                    pruna_logger.warning(
+                        "The benchmark hasn't finished yet.\n "
+                        "Please wait for more votes and try again.\n "
+                        "Skipping."
+                    )
+                    return None
+                raise
 
-        scores = dict(zip(standings["name"], standings["score"]))
-        return CompositeMetricResult(
-            name=self.metric_name,
-            params={},
-            result=scores,
-            higher_is_better=self.higher_is_better,
-        )
+            return CompositeMetricResult(
+                name=self.metric_name,
+                params={},
+                result=dict(zip(standings["name"], standings["score"])),
+                higher_is_better=self.higher_is_better,
+            )
 
-    def retrieve_granular_results(self, **kwargs) -> List[CompositeMetricResult]:
+        return self._retrieve_granular_results(**kwargs)
+
+    def _retrieve_granular_results(self, **kwargs) -> List[CompositeMetricResult]:
         """
         Retrieve per-leaderboard results.
 
@@ -380,8 +366,6 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         List[CompositeMetricResult]
             A list of results, one per leaderboard.
         """
-        self._require_benchmark()
-
         results = []
         for leaderboard in self.benchmark.leaderboards:
             try:

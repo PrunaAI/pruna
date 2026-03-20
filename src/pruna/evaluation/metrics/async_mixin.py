@@ -27,7 +27,7 @@ class AsyncEvaluationMixin(ABC):
     """
 
     @abstractmethod
-    def create_request(self, *args, **kwargs) -> Any:
+    def create_async_request(self, *args, **kwargs) -> Any:
         """
         Create/configure an evaluation request on the external service.
 
@@ -40,7 +40,7 @@ class AsyncEvaluationMixin(ABC):
         """
 
     @abstractmethod
-    def retrieve_results(self, *args, **kwargs) -> Any:
+    def retrieve_async_results(self, *args, **kwargs) -> Any:
         """
         Retrieve results from the external service.
 
