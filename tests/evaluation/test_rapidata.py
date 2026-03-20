@@ -41,7 +41,7 @@ def test_default_client_created_when_none_provided():
     """Test that a RapidataClient is created when none is provided."""
     with patch("pruna.evaluation.metrics.metric_rapiddata.RapidataClient") as mock_cls:
         mock_cls.return_value = MagicMock()
-        m = RapidataMetric()
+        _ = RapidataMetric()
         mock_cls.assert_called_once()
 
 

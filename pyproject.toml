@@ -198,6 +198,9 @@ full = [
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
 ]
+rapidata = [
+    "rapidata>=3.0.0"
+]
 dev = [
     "wget",
     "python-dotenv",

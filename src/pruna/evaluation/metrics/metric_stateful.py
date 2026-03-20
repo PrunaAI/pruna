@@ -141,17 +141,8 @@ class StatefulMetric(ABC):
         pass
 
     @abstractmethod
-    def compute(self, *args, **kwargs) -> Any:
-        """
-        Override this method to compute the final metric value.
-
-        Parameters
-        ----------
-        *args : Any
-            The arguments to pass to the metric.
-        **kwargs : Any
-            The keyword arguments to pass to the metric.
-        """
+    def compute(self,) -> Any:
+        """Override this method to compute the final metric value."""
 
     def is_pairwise(self) -> bool:
         """

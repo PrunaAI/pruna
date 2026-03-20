@@ -30,12 +30,14 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.async_mixin import AsyncEvaluationMixin
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import CompositeMetricResult
-from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import PAIRWISE, SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_RAPIDATA = "rapidata"
 
 
+# We don't use the MetricRegistry here
+# because we need to instantiate the Metric directly with benchmark and leaderboards.
 class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
     """
     Evaluate models with human feedback via the Rapidata platform.
@@ -101,6 +103,8 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             client_id=rapidata_client_id,
             client_secret=rapidata_client_secret,
         )
+        if call_type.startswith(PAIRWISE):
+            raise ValueError("RapidataMetric does not support pairwise metrics. Use a single metric instead.")
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("media_cache", default=[])
         self.add_state("prompt_cache", default=[])
@@ -196,6 +200,8 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         if self.benchmark is not None:
             raise ValueError("Benchmark already created. Use from_benchmark() to attach to an existing one.")
 
+        # Rapidata benchmarks only accept a list of string,
+        # so we need to convert the PrunaDataModule to a list of strings.
         if isinstance(data, PrunaDataModule):
             split_map = {"test": data.test_dataset, "val": data.val_dataset, "train": data.train_dataset}
             dataset = split_map[split]
@@ -259,7 +265,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             Additional keyword arguments.
         """
         self.current_benchmarked_model = model_name
-        self.reset()
+        self.reset()  # Clear the cache for the new model.
 
     def update(self, x: List[Any] | Tensor, gt: List[Any] | Tensor, outputs: Any) -> None:
         """

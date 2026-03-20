@@ -159,13 +159,6 @@ class CompositeMetricResult:
     higher_is_better: Optional[bool] = None
     metric_units: Optional[str] = None
 
-    def __post_init__(self) -> None:
-        """Resolve metric_units and higher_is_better from params if not explicitly provided."""
-        if self.metric_units is None:
-            object.__setattr__(self, "metric_units", self.params.get("metric_units"))
-        if self.higher_is_better is None:
-            object.__setattr__(self, "higher_is_better", self.params.get("higher_is_better"))
-
     def __str__(self) -> str:
         """
         Return a string representation of the CompositeMetricResult.
