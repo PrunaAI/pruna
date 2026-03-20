@@ -17,10 +17,16 @@ import inspect
 import json
 import sys
 from copy import deepcopy
-from enum import Enum
+from enum import Enum, member
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
+
+try:
+    from enum import member
+except ImportError:
+    # member was added in 3.11
+    member = lambda x: x
 
 import diffusers
 import torch
@@ -618,12 +624,12 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     <Loaded transformer model>
     """
 
-    transformers = partial(load_transformers_model)
-    diffusers = partial(load_diffusers_model)
-    pickled = partial(load_pickled)
-    hqq = partial(load_hqq)
-    hqq_diffusers = partial(load_hqq_diffusers)
-    llama_cpp = partial(load_llama_cpp)
+    transformers = member(partial(load_transformers_model))
+    diffusers = member(partial(load_diffusers_model))
+    pickled = member(partial(load_pickled))
+    hqq = member(partial(load_hqq))
+    hqq_diffusers = member(partial(load_hqq_diffusers))
+    llama_cpp = member(partial(load_llama_cpp))
 
     def __call__(self, *args, **kwargs) -> Any:
         """

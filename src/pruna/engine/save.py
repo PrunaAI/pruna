@@ -17,10 +17,16 @@ import copy
 import json
 import shutil
 import tempfile
-from enum import Enum
+from enum import Enum, member
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, cast
+
+try:
+    from enum import member
+except ImportError:
+    # member was added in 3.11
+    member = lambda x: x
 
 import torch
 import transformers
@@ -58,6 +64,12 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
+
+    def get_fn_name(obj):
+        if isinstance(obj, partial):
+            return get_fn_name(obj.func)
+        return getattr(obj, 'name', getattr(obj, '__name__', str(obj)))
+
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True, exist_ok=True)
@@ -67,8 +79,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
         pruna_logger.debug("Using model's original save function...")
         save_fn = original_save_fn
 
-    # if save-before-move was the last operation, we simply move the already saved files, we have delt with them before
-    elif smash_config.save_fns[-1] == SAVE_FUNCTIONS.save_before_apply.name:
+    elif len(smash_config.save_fns) > 0 and smash_config.save_fns[-1] == get_fn_name(SAVE_FUNCTIONS.save_before_apply):
         pruna_logger.debug("Moving saved model...")
         save_fn = save_before_apply
 
@@ -540,12 +551,12 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     # Model saved to disk in pickled format
     """
 
-    pickled = partial(save_pickled)
-    hqq = partial(save_model_hqq)
-    hqq_diffusers = partial(save_model_hqq_diffusers)
-    llama_cpp = partial(save_model_llama_cpp)
-    save_before_apply = partial(save_before_apply)
-    reapply = partial(reapply)
+    pickled = member(partial(save_pickled))
+    hqq = member(partial(save_model_hqq))
+    hqq_diffusers = member(partial(save_model_hqq_diffusers))
+    llama_cpp = member(partial(save_model_llama_cpp))
+    save_before_apply = member(partial(save_before_apply))
+    reapply = member(partial(reapply))
 
     def __call__(self, *args, **kwargs) -> None:
         """
