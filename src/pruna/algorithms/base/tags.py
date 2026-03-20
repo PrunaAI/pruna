@@ -75,10 +75,6 @@ class AlgorithmTag(Enum):
         "enhancer",
         "Enhancers improve the quality of the model's output. Enhancers can range from post-processing to test time compute algorithms.",
     )
-    RESAMPLER = (
-        "resampler",
-        "Resamplers change the shape of image or video latents during generation to speed up inference.",
-    )
     RECOVERER = (
         "recoverer",
         "Recovery restores the performance of a model after compression.",

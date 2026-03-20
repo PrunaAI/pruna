@@ -33,8 +33,7 @@ def setup_wikitext_dataset() -> Tuple[Dataset, Dataset, Dataset]:
         The WikiText dataset.
     """
     train_dataset, val_dataset, test_dataset = load_dataset(
-        path="mikasenghaas/wikitext-2",
-        split=["train", "validation", "test"]
+        path="mikasenghaas/wikitext-2", split=["train", "validation", "test"]
     )
     return train_dataset, val_dataset, test_dataset  # type: ignore[return-value]
 

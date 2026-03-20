@@ -35,7 +35,7 @@ class ZipAR(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "zipar"
-    group_tags: list[AlgorithmTag] = [AlgorithmTag.COMPILER]
+    group_tags: list[AlgorithmTag] = [AlgorithmTag.DECODER]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/thisisbillhe/zipar",

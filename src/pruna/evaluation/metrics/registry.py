@@ -90,6 +90,23 @@ class MetricRegistry:
         return decorator
 
     @classmethod
+    def has_metric(cls, name: str) -> bool:
+        """
+        Return True if a metric with this name is registered.
+
+        Parameters
+        ----------
+        name : str
+            Name of the metric to look up.
+
+        Returns
+        -------
+        bool
+            True if the metric is registered, False otherwise.
+        """
+        return name in cls._registry
+
+    @classmethod
     def get_metric(cls, name: str, **kwargs) -> BaseMetric | StatefulMetric:
         """
         Get a metric from the registry.
@@ -125,7 +142,7 @@ class MetricRegistry:
         elif isinstance(metric_cls, partial):  # For the mock tests
             return metric_cls(**kwargs)
         else:
-            raise ValueError(f"Metric '{metric_cls}' dos not inherit from a valid metric class.")
+            raise ValueError(f"Metric '{metric_cls}' does not inherit from a valid metric class.")
 
     @classmethod
     def get_metrics(cls, names: List[str], **kwargs) -> List[BaseMetric | StatefulMetric]:

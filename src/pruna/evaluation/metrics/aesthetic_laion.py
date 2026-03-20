@@ -30,6 +30,7 @@ from pruna.evaluation.metrics.utils import metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_AESTHETIC_LAION = "aesthetic_laion"
+LAION_AESTHETIC_BASE_URL = "https://raw.githubusercontent.com/LAION-AI/aesthetic-predictor/refs/heads/main"
 
 
 @MetricRegistry.register(METRIC_AESTHETIC_LAION)
@@ -176,13 +177,11 @@ class AestheticLAION(StatefulMetric):
             pruna_logger.error(f"Model {clip_model} is not supported by aesthetic predictor.")
             raise ValueError(f"Model {clip_model} is not supported by aesthetic predictor.")
 
-        path_to_model = cache_folder / f"sa_0_4_{clip_model}_linear.pth"
+        model_file = f"sa_0_4_{clip_model}_linear.pth"
+        path_to_model = cache_folder / model_file
         if not path_to_model.exists():
             cache_folder.mkdir(exist_ok=True, parents=True)
-            url_model = (
-                f"https://github.com/LAION-AI/aesthetic-predictor/blob/main/sa_0_4_{clip_model}_linear.pth?raw=true"
-            )
-            urlretrieve(url_model, path_to_model)
+            urlretrieve(f"{LAION_AESTHETIC_BASE_URL}/{model_file}", path_to_model)
 
         aesthetic_linear_head = nn.Linear(hidden_dim, 1)
         aesthetic_linear_head.load_state_dict(torch.load(path_to_model, map_location=self.device))

@@ -124,6 +124,10 @@ class AlgorithmTesterBase:
         """Fast hook to verify algorithm application after smashing."""
         pass
 
+    def post_load_hook(self, model: PrunaModel) -> None:
+        """Fast hook to verify side-effects after loading (e.g. artifact restoration)."""
+        pass
+
     def pre_smash_hook(self, model: PrunaModel) -> None:
         """Fast hook to get information about the base model before smashing (if required)."""
         pass
@@ -132,7 +136,7 @@ class AlgorithmTesterBase:
         """Load the smashed model."""
         model = PrunaModel.from_pretrained(str(self._saving_path))
         assert isinstance(model, PrunaModel)
-        self.post_smash_hook(model)
+        self.post_load_hook(model)
         assert _resolve_cuda_device(model.smash_config.device) == _resolve_cuda_device(get_device(model))
         return model
 

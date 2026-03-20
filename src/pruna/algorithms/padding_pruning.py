@@ -43,7 +43,7 @@ class PaddingPruner(PrunaAlgorithmBase):
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
     save_fn = SAVE_FUNCTIONS.reapply
-    compatible_before: Iterable[str | AlgorithmTag] = ["qkv_diffusers"]
+    compatible_before: Iterable[str | AlgorithmTag] = ["qkv_diffusers", "moe_kernel_tuner"]
     compatible_after: Iterable[str | AlgorithmTag] = [
         AlgorithmTag.CACHER,
         "hyper",
@@ -54,6 +54,7 @@ class PaddingPruner(PrunaAlgorithmBase):
         "torchao",
         "flash_attn3",
         "ring_attn",
+        "moe_kernel_tuner",
     ]
 
     def get_hyperparameters(self) -> list:

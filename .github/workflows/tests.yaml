@@ -63,6 +63,7 @@ jobs:
         run: echo "success=true" >> $GITHUB_OUTPUT
 
   test:
+    needs: linting
     runs-on: pruna-cpu
 
     strategy:
