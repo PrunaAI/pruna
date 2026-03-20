@@ -27,6 +27,12 @@ except ImportError:
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
 
+try:
+    from enum import member
+except ImportError:
+    # member was added in 3.11
+    member = lambda x: x
+
 import diffusers
 import torch
 import transformers

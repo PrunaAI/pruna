@@ -365,7 +365,12 @@ class PrunaAlgorithmBase(ABC):
 
         # if the registered save function is None, the original saving function remains
         if self.save_fn is not None and self.save_fn != SAVE_FUNCTIONS.reapply:
-            smash_config.save_fns.append(self.save_fn.name)
+            if isinstance(self.save_fn, functools.partial):
+                fn_name = getattr(self.save_fn.func, 'name', getattr(self.save_fn.func, '__name__', str(self.save_fn.func)))
+            else:
+                fn_name = getattr(self.save_fn, 'name', getattr(self.save_fn, '__name__', str(self.save_fn)))
+            
+            smash_config.save_fns.append(fn_name)
 
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
