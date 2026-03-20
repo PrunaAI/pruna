@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import contextlib
 import gc
+import hashlib
 import inspect
 import json
 from contextlib import AbstractContextManager, contextmanager
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +38,48 @@ def safe_memory_cleanup() -> None:
     """Perform safe memory cleanup by collecting garbage and clearing CUDA cache."""
     gc.collect()
     torch.cuda.empty_cache()
+
+
+def get_fn_name(obj: Any) -> str:
+    """
+    Get the name of a function or a partial function.
+
+    Parameters
+    ----------
+    obj : Any
+        The function or partial function to get the name of.
+
+    Returns
+    -------
+    str
+        The name of the function.
+    """
+    if isinstance(obj, partial):
+        return get_fn_name(obj.func)
+    return getattr(obj, "name", getattr(obj, "__name__", str(obj)))
+
+
+def verify_sha256(file_path: str | Path, expected_hash: str) -> bool:
+    """
+    Verify the SHA256 hash of a file.
+
+    Parameters
+    ----------
+    file_path : str | Path
+        The path to the file to verify.
+    expected_hash : str
+        The expected SHA256 hash.
+
+    Returns
+    -------
+    bool
+        True if the hash matches, False otherwise.
+    """
+    sha256_hash = hashlib.sha256()
+    with Path(file_path).open("rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest() == expected_hash
 
 
 def load_json_config(path: str | Path, json_name: str) -> dict:
