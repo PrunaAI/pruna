@@ -299,6 +299,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         :meth:`retrieve_granular_results` once enough votes have been
         collected.
         """
+        self._require_benchmark()
         self._require_model()
         if not self.media_cache:
             raise ValueError("No data accumulated. Call update() before compute().")
@@ -348,7 +349,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             if "ValidationError" in type(e).__name__:
                 pruna_logger.warning(
                     "The benchmark hasn't finished yet.\n "
-                    "Please wait for more votes and try again."
+                    "Please wait for more votes and try again.\n "
                     "Skipping."
                 )
                 return None
