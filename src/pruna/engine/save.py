@@ -48,7 +48,7 @@ from pruna.engine.load import (
 )
 from pruna.engine.model_checks import get_helpers, is_janus_llamagen_ar
 from pruna.engine.save_artifacts import save_artifacts
-from pruna.engine.utils import determine_dtype, monkeypatch
+from pruna.engine.utils import determine_dtype, get_fn_name, monkeypatch
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -69,11 +69,6 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-
-    def get_fn_name(obj):
-        if isinstance(obj, partial):
-            return get_fn_name(obj.func)
-        return getattr(obj, 'name', getattr(obj, '__name__', str(obj)))
 
     model_path = Path(model_path)
     if not model_path.exists():
@@ -500,12 +495,20 @@ def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: Smash
         gguf_file = Path(model.model_path)
         if gguf_file.exists():
             target_file = model_path / "model.gguf"
-            shutil.copy(gguf_file, target_file)
+            if gguf_file.resolve() != target_file.resolve():
+                if hasattr(model, "_pruna_temp_dir") and Path(model._pruna_temp_dir).resolve() == gguf_file.parent.resolve():
+                    shutil.move(gguf_file, target_file)
+                    shutil.rmtree(model._pruna_temp_dir)
+                    delattr(model, "_pruna_temp_dir")
+                else:
+                    shutil.copy(gguf_file, target_file)
+            
+            model.model_path = str(target_file)
             smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
         else:
-            pruna_logger.error(f"GGUF file not found at {gguf_file}")
+            raise FileNotFoundError(f"GGUF file not found at {gguf_file}")
     else:
-        pruna_logger.error("Llama object does not have model_path attribute.")
+        raise AttributeError("Llama object does not have model_path attribute.")
 
 
 def reapply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:

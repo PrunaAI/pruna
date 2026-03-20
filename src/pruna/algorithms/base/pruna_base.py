@@ -28,6 +28,7 @@ from pruna.engine.save import (
     SAVE_FUNCTIONS,
     save_pruna_model,
 )
+from pruna.engine.utils import get_fn_name
 from pruna.logging.logger import pruna_logger
 
 
@@ -365,11 +366,7 @@ class PrunaAlgorithmBase(ABC):
 
         # if the registered save function is None, the original saving function remains
         if self.save_fn is not None and self.save_fn != SAVE_FUNCTIONS.reapply:
-            if isinstance(self.save_fn, functools.partial):
-                fn_name = getattr(self.save_fn.func, 'name', getattr(self.save_fn.func, '__name__', str(self.save_fn.func)))
-            else:
-                fn_name = getattr(self.save_fn, 'name', getattr(self.save_fn, '__name__', str(self.save_fn)))
-            
+            fn_name = get_fn_name(self.save_fn)
             smash_config.save_fns.append(fn_name)
 
         prefix = self.algorithm_name + "_"
