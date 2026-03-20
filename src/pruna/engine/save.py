@@ -18,7 +18,12 @@ import json
 import shutil
 import tempfile
 from enum import Enum
-from functools import partial
+
+try:
+    from enum import member
+except ImportError:
+    # Python 3.10 compat: partial prevents Enum from treating functions as methods
+    from functools import partial as member
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, cast
 
@@ -513,11 +518,11 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     # Model saved to disk in pickled format
     """
 
-    pickled = partial(save_pickled)
-    hqq = partial(save_model_hqq)
-    hqq_diffusers = partial(save_model_hqq_diffusers)
-    save_before_apply = partial(save_before_apply)
-    reapply = partial(reapply)
+    pickled = member(save_pickled)
+    hqq = member(save_model_hqq)
+    hqq_diffusers = member(save_model_hqq_diffusers)
+    save_before_apply = member(save_before_apply)
+    reapply = member(reapply)
 
     def __call__(self, *args, **kwargs) -> None:
         """

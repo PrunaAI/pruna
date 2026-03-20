@@ -18,7 +18,12 @@ import json
 import sys
 from copy import deepcopy
 from enum import Enum
-from functools import partial
+
+try:
+    from enum import member
+except ImportError:
+    # Python 3.10 compat: partial prevents Enum from treating functions as methods
+    from functools import partial as member
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
 
@@ -31,7 +36,11 @@ from transformers import pipeline
 
 from pruna import SmashConfig
 from pruna.engine.load_artifacts import load_artifacts
-from pruna.engine.utils import load_json_config, move_to_device, set_to_best_available_device
+from pruna.engine.utils import (
+    load_json_config,
+    move_to_device,
+    set_to_best_available_device,
+)
 from pruna.logging.logger import pruna_logger
 
 PICKLED_FILE_NAME = "optimized_model.pt"
@@ -244,7 +253,9 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     return smash(model=model, smash_config=smash_config_subset)
 
 
-def load_transformers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
+def load_transformers_model(
+    path: str | Path, smash_config: SmashConfig | None = None, **kwargs
+) -> Any:
     """
     Load a transformers model or pipeline from the given model path.
 
@@ -286,11 +297,17 @@ def load_transformers_model(path: str | Path, smash_config: SmashConfig | None =
             device_map = "auto"
         else:
             device = smash_config.device if smash_config.device != "cuda" else "cuda:0"
-            device_map = smash_config.device_map if smash_config.device == "accelerate" else device
+            device_map = (
+                smash_config.device_map
+                if smash_config.device == "accelerate"
+                else device
+            )
         return cls.from_pretrained(path, device_map=device_map, **kwargs)
 
 
-def load_diffusers_model(path: str | Path, smash_config: SmashConfig | None = None, **kwargs) -> Any:
+def load_diffusers_model(
+    path: str | Path, smash_config: SmashConfig | None = None, **kwargs
+) -> Any:
     """
     Load a diffusers model from the given model path.
 
@@ -366,7 +383,9 @@ def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
         The loaded pickled model.
     """
     # torch load has a target device but no interface to reproduce an accelerate-distributed model, we first map to cpu
-    target_device = "cpu" if smash_config.device == "accelerate" else smash_config.device
+    target_device = (
+        "cpu" if smash_config.device == "accelerate" else smash_config.device
+    )
     model = torch.load(
         Path(path) / PICKLED_FILE_NAME,
         weights_only=False,
@@ -406,11 +425,17 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     else:
         saved_smash_config = SmashConfig()
         saved_smash_config.load_from_json(model_path)
-        compute_dtype = torch.float16 if saved_smash_config["hqq_compute_dtype"] == "torch.float16" else torch.bfloat16
+        compute_dtype = (
+            torch.float16
+            if saved_smash_config["hqq_compute_dtype"] == "torch.float16"
+            else torch.bfloat16
+        )
 
     has_config = (model_path / "config.json").exists()
     is_janus_model = (
-        has_config and load_json_config(model_path, "config.json")["architectures"][0] == "JanusForConditionalGeneration"
+        has_config
+        and load_json_config(model_path, "config.json")["architectures"][0]
+        == "JanusForConditionalGeneration"
     )
 
     def load_quantized_model(quantized_path: str | Path) -> Any:
@@ -418,15 +443,21 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
             quantized_model = algorithm_packages["HQQModelForCausalLM"].from_quantized(
                 str(quantized_path),
                 device=smash_config.device,
-                **filter_load_kwargs(algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs),
+                **filter_load_kwargs(
+                    algorithm_packages["HQQModelForCausalLM"].from_quantized, kwargs
+                ),
             )
         except Exception:  # Default to generic HQQ pipeline if it fails
-            pruna_logger.info("Could not load HQQ model using HQQModelForCausalLM, trying generic AutoHQQHFModel...")
+            pruna_logger.info(
+                "Could not load HQQ model using HQQModelForCausalLM, trying generic AutoHQQHFModel..."
+            )
             quantized_model = algorithm_packages["AutoHQQHFModel"].from_quantized(
                 str(quantized_path),
                 device=smash_config.device,
                 compute_dtype=compute_dtype,
-                **filter_load_kwargs(algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs),
+                **filter_load_kwargs(
+                    algorithm_packages["AutoHQQHFModel"].from_quantized, kwargs
+                ),
             )
         return quantized_model
 
@@ -434,7 +465,9 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         # load the pipeline with a fake model on meta device
         with (model_path / PIPELINE_INFO_FILE_NAME).open("r") as f:
             task = json.load(f)["task"]
-        pipe = pipeline(task=task, model=str(model_path), model_kwargs={"device_map": "meta"})
+        pipe = pipeline(
+            task=task, model=str(model_path), model_kwargs={"device_map": "meta"}
+        )
         # load the quantized model
         pipe.model = load_quantized_model(model_path)
         move_to_device(pipe, smash_config.device)
@@ -450,7 +483,9 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         # Janus language model must be patched to match HQQ's causal LM assumption
         quantized_path = str(hqq_model_dir / "qmodel.pt")
         weights = torch.load(quantized_path, map_location="cpu", weights_only=True)
-        is_already_patched = all(k == "lm_head" or k.startswith("model.") for k in weights)
+        is_already_patched = all(
+            k == "lm_head" or k.startswith("model.") for k in weights
+        )
         if not is_already_patched:
             # load the weight on cpu to rename attr -> model.attr,
             weights = {f"model.{k}": v for k, v in weights.items()}
@@ -459,7 +494,9 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
             torch.save(weights, quantized_path)  # patch weights
 
         quantized_causal_lm = load_quantized_model(hqq_model_dir)
-        model.model.language_model = quantized_causal_lm.model  # drop the lm_head and causal_lm wrapper
+        model.model.language_model = (
+            quantized_causal_lm.model
+        )  # drop the lm_head and causal_lm wrapper
         # some weights of the language_model are not on the correct device, so we move it afterwards.
         move_to_device(model, smash_config.device)
         return model
@@ -498,8 +535,12 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
     )
 
     hf_quantizer = HQQDiffusers()
-    auto_hqq_hf_diffusers_model = construct_base_class(hf_quantizer.import_algorithm_packages(), [])
-    quantized_load_kwargs = filter_load_kwargs(auto_hqq_hf_diffusers_model.from_quantized, kwargs)
+    auto_hqq_hf_diffusers_model = construct_base_class(
+        hf_quantizer.import_algorithm_packages(), []
+    )
+    quantized_load_kwargs = filter_load_kwargs(
+        auto_hqq_hf_diffusers_model.from_quantized, kwargs
+    )
 
     path = Path(path)
     if "compute_dtype" not in kwargs and (path / "dtype_info.json").exists():
@@ -508,7 +549,9 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         kwargs.setdefault("torch_dtype", dtype)
 
     qmodel_path = path / "qmodel.pt"
-    if qmodel_path.exists():  # the whole model was quantized, not a pipeline, load it directly
+    if (
+        qmodel_path.exists()
+    ):  # the whole model was quantized, not a pipeline, load it directly
         model = auto_hqq_hf_diffusers_model.from_quantized(path, **kwargs)
         # force dtype if specified, from_quantized does not set it properly
         if "torch_dtype" in kwargs:
@@ -520,7 +563,9 @@ def load_hqq_diffusers(path: str | Path, smash_config: SmashConfig, **kwargs) ->
         # that can be quantized and saved separately.
         # by convention, each component has been saved in a directory f"{attr_name}_quantized".
         quantized_components: dict[str, Any] = {}
-        for quantized_path in [qpath for qpath in path.iterdir() if qpath.name.endswith("_quantized")]:
+        for quantized_path in [
+            qpath for qpath in path.iterdir() if qpath.name.endswith("_quantized")
+        ]:
             attr_name = quantized_path.name.replace("_quantized", "")
 
             # legacy behavior: backbone_quantized -> target the transformer or unet attribute
@@ -587,11 +632,11 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     <Loaded transformer model>
     """
 
-    transformers = partial(load_transformers_model)
-    diffusers = partial(load_diffusers_model)
-    pickled = partial(load_pickled)
-    hqq = partial(load_hqq)
-    hqq_diffusers = partial(load_hqq_diffusers)
+    transformers = member(load_transformers_model)
+    diffusers = member(load_diffusers_model)
+    pickled = member(load_pickled)
+    hqq = member(load_hqq)
+    hqq_diffusers = member(load_hqq_diffusers)
 
     def __call__(self, *args, **kwargs) -> Any:
         """
@@ -636,7 +681,10 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
     signature = inspect.signature(func)
 
     # Check if function accepts arbitrary kwargs
-    has_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
+    has_kwargs = any(
+        param.kind == inspect.Parameter.VAR_KEYWORD
+        for param in signature.parameters.values()
+    )
 
     if has_kwargs:
         return kwargs
@@ -648,6 +696,8 @@ def filter_load_kwargs(func: Callable, kwargs: dict) -> dict:
 
     # Log the discarded kwargs
     if invalid_kwargs:
-        pruna_logger.info(f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}")
+        pruna_logger.info(
+            f"Discarded unused loading kwargs: {list(invalid_kwargs.keys())}"
+        )
 
     return valid_kwargs
