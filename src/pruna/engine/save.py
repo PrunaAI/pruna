@@ -17,7 +17,7 @@ import copy
 import json
 import shutil
 import tempfile
-from enum import Enum, member
+from enum import Enum
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, cast

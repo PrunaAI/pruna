@@ -17,7 +17,7 @@ import inspect
 import json
 import sys
 from copy import deepcopy
-from enum import Enum, member
+from enum import Enum
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
