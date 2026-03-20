@@ -375,6 +375,9 @@ def get_device(model: Any) -> str:
             model_device = next(model.parameters()).device
         except StopIteration:
             raise ValueError("Could not determine device of model, model has no device attribute.")
+        except AttributeError:
+            # Model does not use PyTorch parameters natively (e.g. llama_cpp), default to cpu string mapping
+            model_device = "cpu"
 
     # model_device.type ignores the device index. Added a new function to convert to string.
     model_device = device_to_string(model_device)
