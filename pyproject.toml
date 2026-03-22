@@ -164,6 +164,8 @@ dependencies = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
+    "nvidia-cudnn-frontend; sys_platform == 'linux'",
+    "nvidia-cutlass-dsl-libs-base; sys_platform == 'linux'",
 ]
 stable-fast = [
     "xformers>=0.0.30",
