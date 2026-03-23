@@ -16,8 +16,9 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import time
 from pathlib import Path
-from typing import Any, List, Literal
+from typing import Any, Callable, List, Literal
 
 import PIL.Image
 import torch
@@ -84,7 +85,10 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
     media_cache: List[torch.Tensor | PIL.Image.Image | str]
     prompt_cache: List[str]
-    higher_is_better: bool
+    # With every metric higher is actually better,
+    # Because for negative questions like "Which image has more errors?"
+    # We create the leaderboard with inverse_ranking=True, which reverses the ranking.
+    higher_is_better: bool = True
     default_call_type: str = "x_y"
     metric_name: str = METRIC_RAPIDATA
 
@@ -150,6 +154,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         self,
         name: str,
         data: list[str] | PrunaDataModule,
+        data_assets: list[str] | None = None,
         split: Literal["test", "val", "train"] = "test",
         **kwargs,
     ) -> None:
@@ -159,12 +164,20 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         The benchmark defines the prompt pool. Any data submitted to
         leaderboards later must be drawn from this pool.
 
+        Prompts can be provided as a list of strings or as a PrunaDataModule.
+        When using a list of strings, you can optionally pass data_assets as a list of file paths or URLs.
+        When using a PrunaDataModule, data assets are extracted automatically from the datamodule, if available.
+
         Parameters
         ----------
         name : str
             The name of the benchmark.
         data : list[str] | PrunaDataModule
             The prompts or dataset to benchmark against.
+        data_assets : list[str] | None
+            The assets to attach to the prompts.
+            For instance, if you wish to benchmark an image editing model,
+            you can pass the original images as data_assets.
         split : str, optional
             Which split to use when data is a PrunaDataModule. Default is "test".
         **kwargs : Any
@@ -181,6 +194,11 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             # PrunaDataModule dataset loaders always renames the prompts column to "text"
             if hasattr(dataset, "column_names") and "text" in dataset.column_names:
                 data = list(dataset["text"])
+                data_assets = None  # When using a PrunaDataModule, we need to get the data assets from the datamodule.
+                if "image" in dataset.column_names:
+                    images = list(dataset["image"])  # Pruna text to image datasets always have an "image" column.
+                    #  Rapidata only accepts file paths or URLs, so we need to convert the images to file paths.
+                    data_assets = self._prepare_media_for_upload(images)
             else:
                 raise ValueError(
                     "Could not extract prompts from dataset.\n "
@@ -188,13 +206,14 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
                     or pass a list[str] directly instead."
                 )
 
-        self.benchmark = self.client.mri.create_new_benchmark(name, prompts=data, **kwargs)
+        self.benchmark = self.client.mri.create_new_benchmark(name, prompts=data, prompt_assets=data_assets, **kwargs)
 
     def create_async_request(
         self,
         name: str,
         instruction: str,
         show_prompt: bool = False,
+        show_prompt_assets: bool = False,
         **kwargs,
     ) -> None:
         """
@@ -216,11 +235,13 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             The evaluation instruction shown to human raters.
         show_prompt : bool, optional
             Whether to show the prompt to raters. Default is False.
+        show_prompt_assets : bool, optional
+            Whether to show the prompt assets to raters. Default is False.
         **kwargs : Any
             Additional keyword arguments passed to the Rapidata API.
         """
         self._require_benchmark()
-        self.benchmark.create_leaderboard(name, instruction, show_prompt, **kwargs)
+        self.benchmark.create_leaderboard(name, instruction, show_prompt, show_prompt_assets, **kwargs)
 
     def set_current_context(self, model_name: str, **kwargs) -> None:
         """
@@ -298,22 +319,177 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             self.benchmark.id,
         )
 
+    @staticmethod
+    def _is_not_ready_error(exc: Exception) -> bool:
+        """
+        Search for a ValidationError in the exception chain.
+
+        When the benchmark is not finished yet, the API throws a pydantic ValidationError
+        we are catching it and returning None to indicate that the benchmark is not ready yet,
+        rather than straight up failing with an exception.
+        """
+        return "ValidationError" in type(exc).__name__
+
+    def _fetch_standings(self, api_call, *args, **kwargs):
+        """
+        Barebones API call wrapper that catches ValidationError and returns None if the benchmark is not ready yet.
+
+        Since the core logic between the overall and granular standings is the same,
+        we can use a single function to fetch the standings.
+
+        Parameters
+        ----------
+        api_call : callable
+            The API call to make.
+        *args : Any
+            Additional arguments passed to the API call.
+        **kwargs : Any
+            Additional keyword arguments passed to the API call.
+        """
+        try:
+            return api_call(*args, **kwargs)
+        except Exception as e:
+            if not self._is_not_ready_error(e):
+                raise
+            return None
+
+    def _fetch_overall_standings(self, *args, **kwargs) -> tuple[CompositeMetricResult | None, bool]:
+        """
+        Retrieve overall standings for the benchmark.
+
+        Returns a tuple where the first element is the composite score of all leaderboards in the benchmark,
+        and the second element is a boolean indicating whether the benchmark is finished yet.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments passed to the Rapidata API.
+        **kwargs : Any
+            Additional keyword arguments passed to the Rapidata API.
+
+        Returns
+        -------
+        CompositeMetricResult | None
+            The overall standings or None if the benchmark is not finished yet.
+        """
+        standings = self._fetch_standings(self.benchmark.get_overall_standings, *args, **kwargs)
+        if standings is None:
+            return None, False
+        return CompositeMetricResult(
+            name=self.metric_name,
+            params={},
+            result=dict(zip(standings["name"], standings["score"])),
+            higher_is_better=self.higher_is_better,
+        ), True
+
+    def _fetch_granular_standings(self, *args, **kwargs) -> tuple[List[CompositeMetricResult] | None, bool]:
+        """
+        Retrieve standings for all leaderboards.
+
+        Returns a tuple where the first element is a list of results, one per leaderboard,
+        and the second element is a boolean indicating whether all of the leaderboards (the benchmark) is finished yet.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments passed to the Rapidata API.
+        **kwargs : Any
+            Additional keyword arguments passed to the Rapidata API.
+
+        Returns
+        -------
+        List[CompositeMetricResult] | None
+            A list of results, one per leaderboard, or None if the benchmark is not finished yet.
+        """
+        results = []
+        all_finished = True
+        for leaderboard in self.benchmark.leaderboards:
+            standings = self._fetch_standings(leaderboard.get_standings, *args, **kwargs)
+            if standings is None:
+                all_finished = False
+                continue
+            results.append(CompositeMetricResult(
+                name=leaderboard.name,
+                params={"instruction": leaderboard.instruction},
+                result=dict(zip(standings["name"], standings["score"])),
+                higher_is_better=self.higher_is_better,
+            ))
+        return results, all_finished
+
+    def _fetch_with_retry_option(
+        self,
+        fetch_fn: Callable,
+        is_blocking: bool,
+        timeout: float,
+        poll_interval: float,
+        *args,
+        **kwargs,
+    ) -> CompositeMetricResult | List[CompositeMetricResult] | None:
+        """
+        Wait for  the results or return whatever we have as is from the benchmark.
+
+        If is_blocking is True, it will poll until the results are ready or the timeout is reached.
+        If is_blocking is False, it will return the results immediately if they are ready,
+        otherwise it will return None and log a warning.
+
+        Parameters
+        ----------
+        fetch_fn : callable
+            The function to fetch the standings from the benchmark.
+        is_blocking : bool
+            Whether to block and wait for the results to be ready.
+        timeout : float
+            The maximum time to wait for the results to be ready.
+        poll_interval : float
+            The interval in seconds to poll for the results.
+        *args : Any
+            Additional arguments passed to the Rapidata API.
+        **kwargs : Any
+            Additional keyword arguments passed to the Rapidata API.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            result, is_finished = fetch_fn(*args, **kwargs)
+            if is_finished:  # The benchmark is finished, we don't need to check anything else, just return the result.
+                return result
+            if not is_blocking:  # The benchmark is not finished yet, but the user doesn't want to keep on polling.
+                pruna_logger.warning(
+                    "The benchmark hasn't finished yet. "
+                    "Please wait for more votes and try again."
+                )
+                return result  # Return whatever we have as is.
+            if time.monotonic() + poll_interval > deadline:  # The timeout is reached, we raise an exception.
+                raise TimeoutError(
+                    f"Benchmark results not ready after {timeout:.0f}s. "
+                    f"Monitor at: https://app.rapidata.ai/mri/benchmarks/{self.benchmark.id}"
+                )
+            pruna_logger.info("Results not ready yet, retrying in %ds...", poll_interval)
+            time.sleep(poll_interval)
+
     def retrieve_async_results(
         self,
-        granular: bool = False,
+        is_granular: bool = False,
+        is_blocking: bool = False,
+        timeout: float = 3600,
+        poll_interval: float = 30,
         *args,
         **kwargs,
     ) -> List[CompositeMetricResult] | CompositeMetricResult | None:
         """
-        Retrieve standings for all leaderboards.
-
-        If granular is True, retrieve standings for each leaderboard separately.
-        Otherwise, retrieve aggregated standings across all leaderboards.
+        Retrieve standings from the benchmark.
 
         Parameters
         ----------
-        granular: bool, optional
-            Whether to retrieve granular results. Default is False.
+        is_granular : bool, optional
+            If True, return per-leaderboard results (partial results
+            are returned for any leaderboard that is ready).
+            If False, return overall aggregated standings.
+        is_blocking : bool, optional
+            If True, poll until results are ready or *timeout* is reached.
+        timeout : float, optional
+            Maximum seconds to wait when blocking. Default is 3600.
+        poll_interval : float, optional
+            Seconds between polling attempts when blocking. Default is 30.
         *args : Any
             Additional arguments passed to the Rapidata API.
         **kwargs : Any
@@ -322,73 +498,17 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         Returns
         -------
         List[CompositeMetricResult] | CompositeMetricResult | None
-            If granular is True, a list of results, one per leaderboard.
-            If granular is False, the overall standings, or None if not enough votes yet.
+            Granular returns a list (possibly partial), overall returns
+            a single result or None if not ready.
+
+        Raises
+        ------
+        TimeoutError
+            If *is_blocking* is True and results are not ready within *timeout*.
         """
         self._require_benchmark()
-
-        if not granular:
-            try:
-                standings = self.benchmark.get_overall_standings(*args, **kwargs)
-            except Exception as e:
-                if "ValidationError" in type(e).__name__:
-                    pruna_logger.warning(
-                        "The benchmark hasn't finished yet.\n "
-                        "Please wait for more votes and try again.\n "
-                        "Skipping."
-                    )
-                    return None
-                raise
-
-            return CompositeMetricResult(
-                name=self.metric_name,
-                params={},
-                result=dict(zip(standings["name"], standings["score"])),
-                higher_is_better=self.higher_is_better,
-            )
-
-        return self._retrieve_granular_results(**kwargs)
-
-    def _retrieve_granular_results(self, **kwargs) -> List[CompositeMetricResult]:
-        """
-        Retrieve per-leaderboard results.
-
-        Each leaderboard produces a separate CompositeMetricResult containing
-        scores for all evaluated models.
-
-        Parameters
-        ----------
-        **kwargs : Any
-            Additional keyword arguments passed to the Rapidata API.
-
-        Returns
-        -------
-        List[CompositeMetricResult]
-            A list of results, one per leaderboard.
-        """
-        results = []
-        for leaderboard in self.benchmark.leaderboards:
-            try:
-                standings = leaderboard.get_standings(**kwargs)
-            except Exception as e:
-                if "ValidationError" in type(e).__name__:
-                    pruna_logger.warning(
-                        "Leaderboard '%s' does not have results yet.\n "
-                        "Not enough votes have been collected. Skipping.",
-                        leaderboard.name,
-                    )
-                    continue
-                raise
-
-            scores = dict(zip(standings["name"], standings["score"]))
-            result = CompositeMetricResult(
-                name=leaderboard.name,
-                params={"instruction": leaderboard.instruction},
-                result=scores,
-                higher_is_better=not leaderboard.inverse_ranking,
-            )
-            results.append(result)
-        return results
+        fetch_fn = self._fetch_granular_standings if is_granular else self._fetch_overall_standings
+        return self._fetch_with_retry_option(fetch_fn, is_blocking, timeout, poll_interval, **kwargs)
 
     def _require_benchmark(self) -> None:
         """Raise if no benchmark has been created or attached."""
@@ -405,7 +525,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
                 "No model set. Call set_current_context() first."
             )
 
-    def _prepare_media_for_upload(self) -> list[str]:
+    def _prepare_media_for_upload(self, media: list[torch.Tensor | PIL.Image.Image | str] | None = None) -> list[str]:
         """
         Convert cached media to file paths that Rapidata can upload.
 
@@ -422,7 +542,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         self._temp_dir = Path(tempfile.mkdtemp(prefix="rapidata_"))
         media_paths = []
 
-        for i, item in enumerate(self.media_cache):
+        for i, item in enumerate(media or self.media_cache):
             if isinstance(item, str):
                 media_paths.append(item)
             elif isinstance(item, PIL.Image.Image):
