@@ -9,7 +9,8 @@
 
 <br>
 
-[![Documentation](https://img.shields.io/badge/Pruna_documentation-purple?style=for-the-badge)][documentation]
+[![Documentation](https://img.shields.io/badge/Pruna_documentation-purple?style=for-the-badge)][documentation] &nbsp;
+[![Try our optimized models](https://img.shields.io/badge/Try_our_optimized_models-purple?style=for-the-badge)][api_dashboard]
 
 <br>
 
@@ -180,3 +181,4 @@ If you use Pruna in your research, feel free to cite the project! 💜
 [docs-faq]: https://docs.pruna.ai/en/stable/resources/faq.html
 [docs-office-hours]: https://docs.pruna.ai/en/stable/resources/office_hours.html
 [docs-contributing]: https://docs.pruna.ai/en/stable/docs_pruna/contributions/how_to_contribute.html
+[api_dashboard]: https://dashboard.pruna.ai/login?utm_source=github&utm_medium=readme&utm_campaign=github_traffic
