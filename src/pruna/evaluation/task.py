@@ -17,7 +17,11 @@ from __future__ import annotations
 from typing import Any, List, cast
 
 import torch
-from lm_eval.tasks import get_task_dict
+
+try:
+    from lm_eval.tasks import get_task_dict
+except ImportError:
+    get_task_dict = None
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
@@ -303,12 +307,8 @@ def _process_metric_names(
 
 
 def _get_lm_eval_task_metrics(task_name: str):
-    task_dict = get_task_dict(task_name)
-    task = task_dict[task_name]
-    return task.config.metric_list
-
-
-def _get_lm_eval_task_metrics(task_name: str):
+    if get_task_dict is None:
+        raise ImportError("lm-eval is not installed. Please install it with `pip install 'pruna[lmharness]'`.")
     task_dict = get_task_dict(task_name)
     task = task_dict[task_name]
     return task.config.metric_list
