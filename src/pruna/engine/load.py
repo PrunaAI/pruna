@@ -31,7 +31,9 @@ try:
     from enum import member
 except ImportError:
     # member was added in 3.11
-    member = lambda x: x
+    def member(x):
+        """Standard member decorator fallback for older python versions."""
+        return x
 
 import diffusers
 import torch
@@ -540,6 +542,7 @@ def load_llama_cpp(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         raise FileNotFoundError(f"GGUF file not found at {model_path}")
 
     model = llama_cpp.Llama(model_path=str(model_path), **filter_load_kwargs(llama_cpp.Llama.__init__, kwargs))
+    model.model_path = str(model_path)
     return model
 
 
