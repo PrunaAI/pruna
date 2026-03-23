@@ -28,7 +28,7 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.target_modules import TargetModules, map_targeted_nn_roots
+from pruna.config.target_modules import TargetModules, filter_targeted_modules, map_targeted_nn_roots
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
@@ -57,7 +57,7 @@ class FlashAttn3(PrunaAlgorithmBase):
 
     def model_check_fn(self, model: Any) -> bool:
         """
-        Check if the model has an attention mechanism that can be replaced with flash_attn3.
+        Check if the model fulfills necessary conditions to apply the fa3 algorithm.
 
         Parameters
         ----------
@@ -69,17 +69,13 @@ class FlashAttn3(PrunaAlgorithmBase):
         bool
             True if the model is a valid model for the algorithm, False otherwise.
         """
-        # Standard diffusers pipeline path
         if isinstance(model, DiffusionPipeline):
-            if not hasattr(model, "components"):
-                return False
             return any(
-                hasattr(component, "set_attention_backend")
-                and component.dtype in [torch.bfloat16, torch.float16]
-                for component in model.components.values()
+                isinstance(component, torch.nn.Module) and _is_fp16_or_bf16(component)
+                for _, component in inspect.getmembers(model)
             )
-        # Custom models: accept if the model is an nn.Module itself or a wrapper that contains
-        # at least one nn.Module attribute. While this does not ensure that the model has at least one attention module,
+        # Custom models: accept if the model is an nn.Module itself or contains at least one nn.Module attribute.
+        # While this does not ensure that the model has at least one attention module,
         # it already filters out invalid models.
         if isinstance(model, torch.nn.Module):
             return True
@@ -91,10 +87,10 @@ class FlashAttn3(PrunaAlgorithmBase):
 
         The algorithm follows the following logic:
 
-        - If the model is a custom model (i.e. not a diffusers pipeline), the algorithm will wrap
-          the forward method of the targeted modules with FlashAttention3Context.
-        - If the model is a diffusers pipeline, the algorithm will set the attention backend of
-          the targeted modules to flash_attn3_pruna.
+        - If the model supports the diffusers backend API (``set_attention_backend``, diffusers >= 0.35),
+          the algorithm sets the attention backend on targeted modules.
+        - Otherwise (older diffusers pipelines, plain nn.Modules, or custom wrappers), the algorithm
+          wraps the forward method of targeted modules with FlashAttention3Context.
         - Always register the standard (non-FP8) op.
         - If no fp8 is requested, apply the standard op to all targeted modules.
         - If fp8 is requested, apply the standard op to all compatible modules
@@ -112,35 +108,39 @@ class FlashAttn3(PrunaAlgorithmBase):
         Any
             The wrapped model.
         """
-        imported_packages = self.import_algorithm_packages()
+        kernel = self.import_algorithm_packages()["flash_attention_3"]
         use_fp8 = smash_config["fp8"]
         target_modules = smash_config["target_modules"]
-        kernel = imported_packages["flash_attention_3"]
-        custom_model = smash_config["custom_model"]
 
         # Always register the standard (non-FP8) kernel with torch ops
         register_pruna_flash_attn_op(kernel, use_fp8=False)
 
-        # Build the apply function for the non-FP8 case
-        # Standard diffusers pipelines use the backend API; custom models use forward wrapping.
-        if custom_model:
-            apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
-        else:
-            backend_name = register_custom_backend(imported_packages, use_fp8=False)
+        # Filter target modules to only include fp16/bf16 modules
+        target_modules = filter_targeted_modules(_is_fp16_or_bf16, model, target_modules)
+
+        # Determine apply strategy: backend API (diffusers >= 0.35) or forward wrapping (everything else)
+        use_backend = self._has_backend_api(model)
+
+        if use_backend:
+            backend_packages = self._import_backend_packages()
+            backend_name = register_custom_backend(backend_packages, use_fp8=False)
             apply_fn = functools.partial(_apply_via_backend, backend=backend_name)
+        else:
+            apply_fn = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=False)
 
         # Apply the apply function to the model
-        # If fp8 is used, the apply function for fp8 needs to be build as well
+        # If fp8 is used, the apply function for fp8 needs to be built as well
         if use_fp8:
             # FA3 fp16 on ALL compatible modules
-            model = map_targeted_nn_roots(apply_fn, model, {"include": ["*"], "exclude": []})
+            all_fp16 = filter_targeted_modules(_is_fp16_or_bf16, model, {"include": ["*"], "exclude": []})
+            model = map_targeted_nn_roots(apply_fn, model, all_fp16)
             # FA3 fp8 overwrites targeted modules
             register_pruna_flash_attn_op(kernel, use_fp8=True)
-            if custom_model:
-                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
-            else:
-                backend_name_fp8 = register_custom_backend(imported_packages, use_fp8=True)
+            if use_backend:
+                backend_name_fp8 = register_custom_backend(backend_packages, use_fp8=True)
                 apply_fn_fp8 = functools.partial(_apply_via_backend, backend=backend_name_fp8)
+            else:
+                apply_fn_fp8 = functools.partial(_apply_via_forward_wrap, kernel=kernel, use_fp8=True)
             model = map_targeted_nn_roots(apply_fn_fp8, model, target_modules)
         else:
             # FA3 fp16 only on targeted modules
@@ -157,9 +157,16 @@ class FlashAttn3(PrunaAlgorithmBase):
         Dict[str, Any]
             The algorithm packages.
         """
-        flash_attention_3 = get_kernel("kernels-community/flash-attn3")
-        packages = {"flash_attention_3": flash_attention_3}
+        return {"flash_attention_3": get_kernel("kernels-community/flash-attn3")}
 
+    def _has_backend_api(self, model: Any) -> bool:
+        """Check if the model supports the diffusers attention backend API (>= 0.35)."""
+        if not isinstance(model, DiffusionPipeline) or not hasattr(model, "components"):
+            return False
+        return any(hasattr(c, "set_attention_backend") for c in model.components.values())
+
+    def _import_backend_packages(self) -> Dict[str, Any]:
+        """Import diffusers backend packages. Only called when the backend API is available."""
         from diffusers.models.attention_dispatch import (
             AttentionBackendName,
             _AttentionBackendRegistry,
@@ -169,18 +176,14 @@ class FlashAttn3(PrunaAlgorithmBase):
             _native_attention,
         )
 
-        packages.update(
-            {
-                "_AttentionBackendRegistry": _AttentionBackendRegistry,
-                "_check_device": _check_device,
-                "_check_qkv_dtype_bf16_or_fp16": _check_qkv_dtype_bf16_or_fp16,
-                "_check_shape": _check_shape,
-                "_native_attention": _native_attention,
-                "AttentionBackendName": AttentionBackendName,
-                "flash_attention_3": flash_attention_3,
-            }
-        )
-        return packages
+        return {
+            "_AttentionBackendRegistry": _AttentionBackendRegistry,
+            "_check_device": _check_device,
+            "_check_qkv_dtype_bf16_or_fp16": _check_qkv_dtype_bf16_or_fp16,
+            "_check_shape": _check_shape,
+            "_native_attention": _native_attention,
+            "AttentionBackendName": AttentionBackendName,
+        }
 
     def get_hyperparameters(self) -> list:
         """
@@ -197,11 +200,6 @@ class FlashAttn3(PrunaAlgorithmBase):
             # and therefore can be applied to any attn module without any performance degradation.
             TargetModules(name="target_modules", default_value={"include": ["*"], "exclude": []}),
             Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
-            Boolean(
-                "custom_model",
-                default=False,
-                meta=dict(desc="Apply FlashAttention3 to a custom (=non-diffusers pipeline) model."),
-            ),
         ]
 
 
@@ -241,7 +239,7 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
     if enum_key not in attention_backend_name.__members__:
 
         # Pick the right custom op based on use_fp8
-        _ops = torch.ops.flash_attn_pruna
+        _ops = torch.ops.flash_attn_pruna  # ty: ignore[invalid-argument-type]
         _op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
 
         @attention_backend_registry.register(
@@ -356,11 +354,21 @@ class FlashAttention3Context(TorchFunctionMode):
 def _flash_attention3(query, key, value, *, is_causal=False, softmax_scale=None, kernel=None, use_fp8=False):
     # convert (B, H, S, D) → (B, S, H, D)
     q, k, v = [x.transpose(1, 2).contiguous() for x in (query, key, value)]
-    _ops = torch.ops.flash_attn_pruna
+    _ops = torch.ops.flash_attn_pruna  # ty: ignore[invalid-argument-type]
     op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
     out = op_fn(q, k, v, causal=is_causal, softmax_scale=softmax_scale)
     # back to (B, H, S, D) for the rest of the pipeline
     return out.transpose(1, 2)
+
+
+def _is_fp16_or_bf16(module: torch.nn.Module, path: str | None = None) -> bool:
+    """Check if a module's dtype is float16 or bfloat16."""
+    try:
+        dtype = module.dtype
+    except AttributeError:
+        first_param = next(module.parameters(), None)
+        dtype = first_param.dtype if first_param is not None else None
+    return dtype in (torch.bfloat16, torch.float16)
 
 
 def _apply_via_backend(
@@ -393,8 +401,6 @@ def _apply_via_backend(
     torch.nn.Module
         The (modified) root module.
     """
-    if root_nn_module.dtype not in (torch.bfloat16, torch.float16):
-        return root_nn_module
     for rel_path in relative_target_paths:
         try:
             sub_module = root_nn_module.get_submodule(rel_path)
@@ -441,21 +447,6 @@ def _apply_via_forward_wrap(
     torch.nn.Module
         The (modified) root module.
     """
-    # Determine dtype: diffusers provides a .dtype attribute directly; for vanilla nn.Modules
-    # we fall back to the dtype of the first parameter.
-    try:
-        module_dtype = root_nn_module.dtype
-    except AttributeError:
-        first_param = next(root_nn_module.parameters(), None)
-        module_dtype = first_param.dtype if first_param is not None else None
-    if module_dtype not in (torch.bfloat16, torch.float16):
-        pruna_logger.warning(
-            "FlashAttention3 forward wrap was not applied to module '%s' "
-            "because its dtype is not bfloat16 or float16.",
-            root_name,
-        )
-        return root_nn_module
-
     for rel_path in relative_target_paths:
         try:
             sub_module = root_nn_module.get_submodule(rel_path)
@@ -463,9 +454,9 @@ def _apply_via_forward_wrap(
             continue
         original_forward = sub_module.forward
 
-        # If already wrapped by a previous pass, unwrap to the true original
+        # If already wrapped by a previous FA3 pass, unwrap to the true original
         # to avoid nested TorchFunctionMode contexts (inner would always win).
-        while hasattr(original_forward, "__wrapped__"):
+        while getattr(original_forward, "_is_fa3_pruna_wrap", False):
             original_forward = original_forward.__wrapped__
 
         @functools.wraps(original_forward)
@@ -473,6 +464,8 @@ def _apply_via_forward_wrap(
             with FlashAttention3Context(kernel=_kernel, use_fp8=_fp8):
                 return _orig(*args, **kwargs)
 
+        # Add flag such that only the FA3 wrapper is removed when unwrapping.
+        new_forward._is_fa3_pruna_wrap = True
         sub_module.forward = new_forward
     return root_nn_module
 
