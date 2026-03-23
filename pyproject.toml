@@ -34,7 +34,7 @@ unresolved-reference = "ignore" # mypy is more permissive with references
 possibly-missing-import = "ignore"
 possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
-invalid-argument-type = "ignore"  # torch.ops dynamic dispatch is not understood by ty
+
 unused-type-ignore-comment = "ignore"
 
 
