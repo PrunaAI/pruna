@@ -26,6 +26,7 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
+from pruna.evaluation.metrics.context_mixin import EvaluationContextMixin
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult, MetricResultProtocol
@@ -148,8 +149,9 @@ class EvaluationAgent:
         pairwise_metrics = self.task.get_pairwise_stateful_metrics()
         stateless_metrics = self.task.get_stateless_metrics()
 
-        for metric in single_stateful_metrics + pairwise_metrics:
-            metric.set_current_context(model_name=model_name)
+        for metric in single_stateful_metrics:
+            if isinstance(metric, EvaluationContextMixin):
+                metric.current_context = model_name
 
         # Update and compute stateful metrics.
         pruna_logger.info("Evaluating stateful metrics.")

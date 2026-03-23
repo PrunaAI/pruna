@@ -34,7 +34,7 @@ def metric_with_benchmark(metric):
 
 @pytest.fixture
 def metric_ready(metric_with_benchmark):
-    metric_with_benchmark.set_current_context("test-model")
+    metric_with_benchmark.current_context = "test-model"
     return metric_with_benchmark
 
 @pytest.fixture
@@ -120,7 +120,7 @@ def test_set_current_context_resets_caches(metric_ready):
     """Test that set_current_context resets the caches."""
     metric_ready.prompt_cache.append("leftover")
     metric_ready.media_cache.append("leftover")
-    metric_ready.set_current_context("model-b")
+    metric_ready.current_context = "model-b"
     assert metric_ready.prompt_cache == []
     assert metric_ready.media_cache == []
 
@@ -138,14 +138,14 @@ def test_update_accumulates_prompts_and_media(metric_ready):
 
 def test_update_raises_without_benchmark(metric):
     """Test that update raises without a benchmark."""
-    metric.current_benchmarked_model = "m"
+    metric.current_context = "m"
     with pytest.raises(ValueError, match="No benchmark configured"):
         metric.update(["p"], [None], [torch.rand(3, 32, 32)])
 
 
-def test_update_raises_without_model(metric_with_benchmark):
+def test_update_raises_without_context(metric_with_benchmark):
     """Test that update raises without a model context."""
-    with pytest.raises(ValueError, match="No model set"):
+    with pytest.raises(ValueError, match="No context set. Set current_context first."):
         metric_with_benchmark.update(["p"], [None], [torch.rand(3, 32, 32)])
 
 def test_prepare_media_string_passthrough(metric_ready_with_cleanup):
@@ -211,7 +211,7 @@ def test_compute_raises_when_cache_empty(metric_ready):
 
 def test_compute_raises_without_model_context(metric_with_benchmark):
     """Test that compute raises without a model context."""
-    with pytest.raises(ValueError, match="No model set"):
+    with pytest.raises(ValueError, match="No context set. Set current_context first."):
         metric_with_benchmark.compute()
 
 

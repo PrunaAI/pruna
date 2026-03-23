@@ -29,6 +29,7 @@ from torchvision.utils import save_image
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.async_mixin import AsyncEvaluationMixin
+from pruna.evaluation.metrics.context_mixin import EvaluationContextMixin
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import CompositeMetricResult
 from pruna.evaluation.metrics.utils import PAIRWISE, SINGLE, get_call_type_for_single_metric, metric_data_processor
@@ -39,14 +40,14 @@ METRIC_RAPIDATA = "rapidata"
 
 # We don't use the MetricRegistry here
 # because we need to instantiate the Metric directly with benchmark and leaderboards.
-class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
+class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixin):
     """
     Evaluate models with human feedback via the Rapidata platform https://www.rapidata.ai/.
 
     Parameters
     ----------
     call_type : str
-        How to extract inputs from (x, gt, outputs). Default is "single".
+        How to extract inputs from (x, gt, outputs). Only "single" is supported.
     client : RapidataClient | None
         The Rapidata client to use. If None, a new one is created.
     rapidata_client_id : str | None
@@ -112,7 +113,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         self.add_state("media_cache", default=[])
         self.add_state("prompt_cache", default=[])
         self.benchmark: RapidataBenchmark | None = None
-        self.current_benchmarked_model: str | None = None
+        self.current_context: str | None = None
 
     @classmethod
     def from_rapidata_benchmark(
@@ -225,7 +226,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
 
         You can create multiple leaderboards to evaluate different quality dimensions.
         Must be called after :meth:`create_benchmark` (or after attaching a
-        benchmark via :meth:`from_benchmark` / :meth:`from_benchmark_id`).
+        benchmark via :meth:`from_rapidata_benchmark`).
 
         Parameters
         ----------
@@ -258,7 +259,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         **kwargs : Any
             Additional keyword arguments.
         """
-        self.current_benchmarked_model = model_name
+        self.current_context = model_name
         self.reset()  # Clear the cache for the new model.
 
     def update(self, x: List[Any] | Tensor, gt: List[Any] | Tensor, outputs: Any) -> None:
@@ -275,7 +276,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             The model outputs (generated media).
         """
         self._require_benchmark()
-        self._require_model()
+        self._require_context()
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         self.prompt_cache.extend(inputs[0])
         self.media_cache.extend(inputs[1])
@@ -294,15 +295,15 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         collected.
         """
         self._require_benchmark()
-        self._require_model()
+        self._require_context()
         if not self.media_cache:
             raise ValueError("No data accumulated. Call update() before compute().")
 
         media = self._prepare_media_for_upload()
 
-        #  Ignoring the type error because _require_model() has already been called, but ty can't see it.
+        #  Ignoring the type error because _require_context() has already been called, but ty can't see it.
         self.benchmark.evaluate_model(
-            self.current_benchmarked_model,  # type: ignore[arg-type]
+            self.current_context,  # type: ignore[arg-type]
             media=media,
             prompts=self.prompt_cache,
         )
@@ -315,9 +316,13 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
             "Use retrieve_results() to check scores later, "
             "or monitor progress at: "
             "https://app.rapidata.ai/mri/benchmarks/%s",
-            self.current_benchmarked_model,
+            self.current_context,
             self.benchmark.id,
         )
+
+    def on_context_change(self) -> None:
+        """Reset the cache when the context changes."""
+        self.reset()
 
     @staticmethod
     def _is_not_ready_error(exc: Exception) -> bool:
@@ -518,13 +523,6 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
                 "Call create_benchmark(), or use from_benchmark() / from_benchmark_id()."
             )
 
-    def _require_model(self) -> None:
-        """Raise if no model context has been set."""
-        if self.current_benchmarked_model is None:
-            raise ValueError(
-                "No model set. Call set_current_context() first."
-            )
-
     def _prepare_media_for_upload(self, media: list[torch.Tensor | PIL.Image.Image | str] | None = None) -> list[str]:
         """
         Convert cached media to file paths that Rapidata can upload.
@@ -533,6 +531,11 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin):
         - str: assumed to be a URL or file path, passed through as-is
         - PIL.Image: saved to a temporary file
         - torch.Tensor: saved to a temporary file
+
+        Parameters
+        ----------
+        media : list[torch.Tensor | PIL.Image.Image | str] | None
+            The media to prepare for upload. If None, the media cache is used.
 
         Returns
         -------
