@@ -26,7 +26,9 @@ try:
     from enum import member
 except ImportError:
     # member was added in 3.11
-    member = lambda x: x
+    def member(x):
+        """Standard member decorator fallback for older python versions."""
+        return x
 
 import torch
 import transformers
@@ -64,7 +66,6 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
     """
-
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True, exist_ok=True)
@@ -485,19 +486,31 @@ def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: Smash
         The SmashConfig object containing the save and load functions.
     """
     model_path = Path(model_path)
-    
+
     if hasattr(model, "model_path"):
         gguf_file = Path(model.model_path)
         if gguf_file.exists():
             target_file = model_path / "model.gguf"
             if gguf_file.resolve() != target_file.resolve():
-                if hasattr(model, "_pruna_temp_dir") and Path(model._pruna_temp_dir).resolve() == gguf_file.parent.resolve():
-                    shutil.move(gguf_file, target_file)
-                    shutil.rmtree(model._pruna_temp_dir)
-                    delattr(model, "_pruna_temp_dir")
+                if (
+                    hasattr(model, "_pruna_temp_dir")
+                    and Path(model._pruna_temp_dir).resolve() == gguf_file.parent.resolve()
+                ):
+                    try:
+                        shutil.move(gguf_file, target_file)
+                        shutil.rmtree(model._pruna_temp_dir)
+                        delattr(model, "_pruna_temp_dir")
+                    except PermissionError:
+                        pruna_logger.warning(
+                            f"Could not move GGUF file from {gguf_file} to {target_file} "
+                            "(likely memory-mapped on Windows). "
+                            "Copying instead, but the temporary directory will persist "
+                            "until process exit."
+                        )
+                        shutil.copy(gguf_file, target_file)
                 else:
                     shutil.copy(gguf_file, target_file)
-            
+
             model.model_path = str(target_file)
             smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
         else:

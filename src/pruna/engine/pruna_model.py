@@ -179,14 +179,7 @@ class PrunaModel:
         set_to_eval(self.model)
 
     def save(self, model_path: str) -> None:
-        """
-        Alias for save_pretrained.
-
-        Parameters
-        ----------
-        model_path : str
-            The path to the directory where the model will be saved.
-        """
+        """Save the model."""
         self.save_pretrained(model_path)
 
     def save_pretrained(self, model_path: str) -> None:
