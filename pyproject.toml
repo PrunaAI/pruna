@@ -232,6 +232,10 @@ cpu = []
 lmharness = [
     "lm-eval>=0.4.0"
 ]
+evaluation = [
+    "pruna[rapidata]",
+    "pruna[lmharness]"
+]
 
 # Intel extension is tightly coupled with the torch version
 intel = [
