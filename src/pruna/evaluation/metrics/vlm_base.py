@@ -445,6 +445,9 @@ class TransformersVLM(BaseVLM):
             pruna_logger.warning("outlines not installed, using standard generation")
             return
         self._load_model()
+        if self._model is None or self._processor is None:
+            pruna_logger.warning("VLM model or processor failed to load, using standard generation")
+            return
         self._outlines_model = outlines.from_transformers(self._model, self._processor)
 
     def _get_outlines_output_type(
