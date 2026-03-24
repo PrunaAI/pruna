@@ -27,8 +27,8 @@ Both support structured generation for stable outputs:
 from __future__ import annotations
 
 import base64
-import json
 import io
+import json
 import math
 import os
 from abc import ABC, abstractmethod

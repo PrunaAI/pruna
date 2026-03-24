@@ -18,8 +18,8 @@ from functools import partial
 from inspect import isclass
 from typing import Any, Callable, Dict, Iterable, List
 
-from pruna.engine.utils import device_to_string, split_device
 from pruna.engine.load import filter_load_kwargs
+from pruna.engine.utils import device_to_string, split_device
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.logging.logger import pruna_logger
