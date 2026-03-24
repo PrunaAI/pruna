@@ -18,6 +18,7 @@ from functools import partial
 from inspect import isclass
 from typing import Any, Callable, Dict, Iterable, List
 
+from pruna.engine.utils import device_to_string, split_device
 from pruna.engine.load import filter_load_kwargs
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
@@ -135,7 +136,11 @@ class MetricRegistry:
             return metric_cls(**kwargs)
         elif isclass(metric_cls):
             if issubclass(metric_cls, StatefulMetric):
-                kwargs["device"] = stateful_metric_device if stateful_metric_device else device
+                metric_device = stateful_metric_device if stateful_metric_device else device
+                requested_device, _ = split_device(device_to_string(metric_device), strict=False)
+                if requested_device not in metric_cls.runs_on and "cpu" in metric_cls.runs_on:
+                    metric_device = "cpu"
+                kwargs["device"] = metric_device
             elif issubclass(metric_cls, BaseMetric):
                 kwargs["device"] = inference_device if inference_device else device
             return metric_cls(**filter_load_kwargs(metric_cls, kwargs))

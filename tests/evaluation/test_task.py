@@ -16,6 +16,7 @@ from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metric_vqa import VQAMetric
 
 @pytest.fixture(autouse=True)
 def _mock_torch_metrics():
@@ -40,6 +41,22 @@ def _mock_torch_metrics():
 def test_metric_initialization_from_metric_name(metric_name):
     datamodule = PrunaDataModule.from_string("LAION256")
     Task(request=[metric_name], datamodule=datamodule, device="cpu")
+
+
+@patch("pruna.evaluation.task.set_to_best_available_device")
+def test_vlm_metrics_fallback_to_cpu_on_auto_device(mock_set_to_best_available_device):
+    def fake_best_device(device=None, *args, **kwargs):
+        if device is None:
+            return "cuda"
+        return device
+
+    mock_set_to_best_available_device.side_effect = fake_best_device
+
+    task = Task(request=["vqa"], datamodule=PrunaDataModule.from_string("PartiPrompts"))
+
+    assert split_device(device_to_string(task.device))[0] == "cuda"
+    assert isinstance(task.metrics[0], VQAMetric)
+    assert split_device(device_to_string(task.metrics[0].device))[0] == "cpu"
 
 
 @device_parametrized

@@ -27,6 +27,7 @@ Both support structured generation for stable outputs:
 from __future__ import annotations
 
 import base64
+import json
 import io
 import math
 import os
@@ -417,6 +418,7 @@ class TransformersVLM(BaseVLM):
         self.extra_kwargs = kwargs
         self._model = None
         self._processor = None
+        self._outlines_model = None
 
     def _load_model(self) -> None:
         if self._model is not None:
@@ -432,6 +434,51 @@ class TransformersVLM(BaseVLM):
         device = self.device
         self._model.to(device)  # type: ignore[invalid-argument-type]
         self._model.eval()
+
+    def _load_outlines_model(self) -> None:
+        """Lazily wrap the loaded multimodal model for Outlines structured generation."""
+        if self._outlines_model is not None:
+            return
+        try:
+            import outlines
+        except ImportError:
+            pruna_logger.warning("outlines not installed, using standard generation")
+            return
+        self._load_model()
+        self._outlines_model = outlines.from_transformers(self._model, self._processor)
+
+    def _get_outlines_output_type(
+        self,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]],
+    ) -> Any:
+        """Map current response formats to an Outlines-compatible output type."""
+        if response_format is None:
+            return None
+        if isinstance(response_format, type) and issubclass(response_format, BaseModel):
+            return response_format
+        if response_format == "integer":
+            return int
+        if response_format == "yes_no":
+            return Literal["Yes", "No"]
+        if response_format == "json":
+            return dict
+        return None
+
+    @staticmethod
+    def _serialize_outlines_result(result: Any) -> str:
+        """Normalize Outlines results so the existing response parsers still work."""
+        if isinstance(result, BaseModel):
+            return result.model_dump_json()
+        if isinstance(result, (dict, list)):
+            return json.dumps(result)
+        return str(result)
+
+    @staticmethod
+    def _to_outlines_input(image: Image.Image, prompt: str) -> list[Any]:
+        """Build a minimal multimodal input payload for Outlines."""
+        from outlines.inputs import Image as OutlinesImage
+
+        return [prompt, OutlinesImage(image)]
 
     def generate(
         self,
@@ -462,9 +509,8 @@ class TransformersVLM(BaseVLM):
         self._load_model()
         results = []
         max_new_tokens = kwargs.get("max_new_tokens", 128)
-        format_str = response_format if isinstance(response_format, str) else None
-        if self.use_outlines and format_str:
-            results = self._generate_with_outlines(images, prompts, format_str, max_new_tokens)
+        if self.use_outlines and response_format is not None:
+            results = self._generate_with_outlines(images, prompts, response_format, max_new_tokens)
         else:
             results = self._generate_standard(images, prompts, max_new_tokens)
         return results
@@ -473,35 +519,25 @@ class TransformersVLM(BaseVLM):
         self,
         images: List[Image.Image],
         prompts: List[str],
-        format_type: str,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]],
         max_new_tokens: int,
     ) -> List[str]:
         """Generate using outlines for constrained decoding."""
-        try:
-            import outlines
-        except ImportError:
-            pruna_logger.warning("outlines not installed, using standard generation")
+        self._load_outlines_model()
+        if self._outlines_model is None:
+            return self._generate_standard(images, prompts, max_new_tokens)
+        output_type = self._get_outlines_output_type(response_format)
+        if output_type is None:
             return self._generate_standard(images, prompts, max_new_tokens)
         results = []
-        # Define format constraints
-        if format_type == "json":
-            generator = outlines.generate.json(self._model)
-        elif format_type == "integer":
-            generator = outlines.generate.format(self._model, r"\d+")
-        elif format_type == "yes_no":
-            generator = outlines.generate.format(self._model, r"(Yes|No)")
-        else:
-            return self._generate_standard(images, prompts, max_new_tokens)
-        with torch.inference_mode():
-            for image, prompt in zip(images, prompts):
-                try:
-                    inputs = self._prepare_inputs(image, prompt)
-                    output = generator(**inputs, max_tokens=max_new_tokens)
-                    response = self._decode_output(output[0])
-                    results.append(response)
-                except Exception as e:
-                    pruna_logger.warning(f"Outlines generation failed: {e}, using standard")
-                    results.append("")
+        for image, prompt in zip(images, prompts):
+            try:
+                model_input = self._to_outlines_input(image, prompt)
+                output = self._outlines_model(model_input, output_type, max_new_tokens=max_new_tokens)
+                results.append(self._serialize_outlines_result(output))
+            except Exception as e:
+                pruna_logger.warning(f"Outlines generation failed: {e}, using standard")
+                results.extend(self._generate_standard([image], [prompt], max_new_tokens))
         return results
 
     def _prepare_inputs(self, image: Image.Image, prompt: str) -> dict:
