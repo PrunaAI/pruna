@@ -4,14 +4,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
+from pydantic import BaseModel
 
+from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_alignment_score import AlignmentScoreMetric
+from pruna.evaluation.metrics.metric_vlm_utils import VQAnswer, get_answer_from_response
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
+from pruna.evaluation.task import Task
 from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_text_score import TextScoreMetric
 from pruna.evaluation.metrics.metric_viescore import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
+from pruna.evaluation.metrics.vlm_base import TransformersVLM
+from pruna.data.pruna_datamodule import PrunaDataModule
 
 SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
@@ -161,6 +167,67 @@ def test_get_vlm_returns_custom() -> None:
     custom = MagicMock(spec=BaseVLM)
     out = get_vlm(vlm=custom, vlm_type="litellm", model_name="gpt-4o")
     assert out is custom
+
+
+@pytest.mark.cpu
+def test_transformers_generate_routes_pydantic_response_format_to_outlines() -> None:
+    """Structured Pydantic responses should use the outlines path for transformers backends."""
+    vlm = TransformersVLM(model_name=SMOL_VLM, device="cpu", use_outlines=True)
+
+    with (
+        patch.object(vlm, "_load_model") as mock_load_model,
+        patch.object(vlm, "_generate_with_outlines", return_value=['{"answer":"Yes"}']) as mock_outlines,
+        patch.object(vlm, "_generate_standard", return_value=["fallback"]) as mock_standard,
+    ):
+        result = vlm.generate([MagicMock()], ["question"], response_format=VQAnswer)
+
+    mock_load_model.assert_called_once()
+    mock_outlines.assert_called_once()
+    mock_standard.assert_not_called()
+    assert result == ['{"answer":"Yes"}']
+
+
+@pytest.mark.cpu
+def test_transformers_outlines_result_serialization() -> None:
+    """Outlines outputs should be normalized into strings parseable by existing helpers."""
+
+    class DummySchema(BaseModel):
+        answer: str
+
+    schema_result = TransformersVLM._serialize_outlines_result(DummySchema(answer="Yes"))
+    dict_result = TransformersVLM._serialize_outlines_result({"answer": "No"})
+
+    assert get_answer_from_response(schema_result) == "Yes"
+    assert get_answer_from_response(dict_result) == "No"
+
+
+@pytest.mark.cpu
+def test_evaluation_agent_update_stateful_metrics_with_stub_vlm() -> None:
+    """Smoke-test the real agent stateful update path with a stub VLM-backed metric."""
+    stub_vlm = MagicMock(spec=BaseVLM)
+    stub_vlm.score.return_value = [1.0]
+    metric = VQAMetric(vlm=stub_vlm, vlm_type="litellm", device="cpu")
+    task = Task(request=[metric], datamodule=PrunaDataModule.from_string("LAION256"), device="cpu")
+    agent = EvaluationAgent(task=task)
+    agent.task.dataloader = [(["a cat"], torch.empty(0))]
+    agent.device = "cpu"
+    agent.device_map = None
+
+    class FakeModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.dummy = torch.nn.Parameter(torch.zeros(1))
+
+        def run_inference(self, batch):
+            return _dummy_image(batch=1)
+
+    agent.update_stateful_metrics(FakeModel(), agent.task.get_single_stateful_metrics(), [])
+    results = agent.compute_stateful_metrics(agent.task.get_single_stateful_metrics(), [])
+
+    assert len(results) == 1
+    assert results[0].name == "vqa"
+    assert results[0].result == 1.0
+    stub_vlm.score.assert_called_once()
 
 
 @pytest.mark.cpu
