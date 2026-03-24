@@ -174,7 +174,7 @@ for _benchmark in [
             "Covers basic skills (scene, attributes, spatial relationships) to advanced reasoning "
             "(counting, comparison, logic/negation) with over 24k human ratings."
         ),
-        metrics=[],  # Paper uses VQAScore only; not in Pruna
+        metrics=["vqa"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2406.13743",
     ),
@@ -226,7 +226,7 @@ for _benchmark in [
             "counting, colors, position, color attributes. Evaluates fine-grained alignment "
             "between prompts and generated images via VQA-style questions."
         ),
-        metrics=["clip_score"],  # §3.2: Mask2Former; not in Pruna
+        metrics=["qa_accuracy"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2310.11513",
     ),
@@ -246,7 +246,7 @@ for _benchmark in [
             "Image editing benchmark with 8 edit types: replace, add, remove, adjust, extract, "
             "style, background, compose. Evaluates instruction-following for inpainting and editing."
         ),
-        metrics=[],  # Paper uses GPT-4o/ImgEdit-Judge; not in Pruna
+        metrics=["img_edit_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2505.20275",
     ),
@@ -256,7 +256,7 @@ for _benchmark in [
             "Text-to-image benchmark for long, detailed prompts. Evaluates model ability to "
             "handle complex multi-clause descriptions and maintain coherence across long instructions."
         ),
-        metrics=[],  # Paper uses text_score/TIT-Score; not in Pruna
+        metrics=["text_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2507.22058",
     ),
@@ -267,7 +267,7 @@ for _benchmark in [
             "material alter, motion change, style change, subject add/remove/replace, text change, "
             "tone transfer, and human retouching."
         ),
-        metrics=[],  # Paper uses VIEScore; not in Pruna
+        metrics=["viescore"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2504.17761",
     ),
@@ -278,7 +278,7 @@ for _benchmark in [
             "(Anime_Stylization, General_Object, Knowledge_Reasoning, Multilingualism, Portrait, "
             "Text_Rendering) plus fine-grained style classes. Includes alignment questions."
         ),
-        metrics=[],  # Paper uses dimension-specific metrics; not in Pruna
+        metrics=["qa_accuracy"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
@@ -288,7 +288,7 @@ for _benchmark in [
             "Dense Prompt Graph benchmark. Evaluates entity, attribute, relation, "
             "global, and other descriptive aspects with natural-language questions for alignment."
         ),
-        metrics=[],  # Paper uses custom evaluation; not in Pruna
+        metrics=["qa_accuracy"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2403.05135",
     ),

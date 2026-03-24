@@ -137,9 +137,12 @@ class MetricRegistry:
         elif isclass(metric_cls):
             if issubclass(metric_cls, StatefulMetric):
                 metric_device = stateful_metric_device if stateful_metric_device else device
-                requested_device, _ = split_device(device_to_string(metric_device), strict=False)
-                if requested_device not in metric_cls.runs_on and "cpu" in metric_cls.runs_on:
+                if metric_device is None and metric_cls.runs_on == ["cpu"]:
                     metric_device = "cpu"
+                elif metric_device is not None:
+                    requested_device, _ = split_device(device_to_string(metric_device), strict=False)
+                    if requested_device not in metric_cls.runs_on and "cpu" in metric_cls.runs_on:
+                        metric_device = "cpu"
                 kwargs["device"] = metric_device
             elif issubclass(metric_cls, BaseMetric):
                 kwargs["device"] = inference_device if inference_device else device
