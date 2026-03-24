@@ -53,10 +53,11 @@ def test_to_oneig_record_knowledge_reasoning_gt() -> None:
     }
     gt_en = {"000": "The world's five tallest peaks are Mount Everest"}
     gt_zh = {"000": "中文答案"}
-    rec = prompt_mod._to_oneig_record(row, {}, gt_en, gt_zh)
-    assert rec["reasoning_gt_answer_en"] == gt_en["000"]
-    assert rec["reasoning_gt_answer_zh"] == gt_zh["000"]
+    rec = prompt_mod._to_oneig_record(row, {}, gt_en, gt_zh, "EN")
+    assert rec["reasoning_gt_answer"] == gt_en["000"]
     assert rec["questions"] == {}
+    rec_zh = prompt_mod._to_oneig_record(row, {}, gt_en, gt_zh, "ZH")
+    assert rec_zh["reasoning_gt_answer"] == gt_zh["000"]
 
 
 def test_to_oneig_record_prefers_prompt_over_prompt_en() -> None:
@@ -103,9 +104,9 @@ def test_setup_oneig_lazyloads_zh_hub_only_when_needed(monkeypatch: pytest.Monke
 
 @pytest.mark.slow
 def test_setup_oneig_knowledge_reasoning_loads_remote_gt() -> None:
-    """Integration: first reasoning sample has non-empty EN gt from the hub JSON."""
+    """Integration: first reasoning sample has non-empty gt from the hub JSON."""
     _train, _val, test = prompt_mod.setup_oneig_dataset(category="Knowledge_Reasoning", test_sample_size=1)
     row = test[0]
-    assert row["reasoning_gt_answer_en"]
-    assert isinstance(row["reasoning_gt_answer_en"], str)
-    assert len(row["reasoning_gt_answer_en"]) > 20
+    assert row["reasoning_gt_answer"]
+    assert isinstance(row["reasoning_gt_answer"], str)
+    assert len(row["reasoning_gt_answer"]) > 20

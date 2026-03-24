@@ -163,6 +163,7 @@ def _to_oneig_record(
     questions_by_key: dict[str, dict],
     reasoning_gt_en: dict[str, str],
     reasoning_gt_zh: dict[str, str],
+    reasoning_language: str = "EN",
 ) -> dict:
     """Convert OneIG row to unified record format.
 
@@ -177,11 +178,14 @@ def _to_oneig_record(
         Official ``gt_answer.json`` keyed by prompt id (e.g. ``"000"``).
     reasoning_gt_zh : dict[str, str]
         Official ``gt_answer_zh.json`` keyed by prompt id.
+    reasoning_language : str, optional
+        Which reasoning GT to use: ``"EN"`` or ``"ZH"``. Default is ``"EN"``.
 
     Returns
     -------
     dict
-        Unified record including ``questions``, ``dependencies``, and reasoning aux strings when applicable.
+        Unified record including ``questions``, ``dependencies``, and ``reasoning_gt_answer`` when
+        applicable (Knowledge_Reasoning only).
     """
     row_category = row.get("category", "")
     row_class = row.get("class", "None") or "None"
@@ -190,11 +194,12 @@ def _to_oneig_record(
     lookup_key = f"{qd_prefix}_{prompt_id}" if qd_prefix else ""
     q_info = questions_by_key.get(lookup_key, {})
     text = row.get("prompt") or row.get("prompt_en") or row.get("prompt_cn") or ""
-    reasoning_en: str | None = None
-    reasoning_zh: str | None = None
+    reasoning_gt_answer: str | None = None
     if row_category == "Knowledge_Reasoning":
-        reasoning_en = reasoning_gt_en.get(prompt_id)
-        reasoning_zh = reasoning_gt_zh.get(prompt_id)
+        if reasoning_language.upper() == "ZH":
+            reasoning_gt_answer = reasoning_gt_zh.get(prompt_id)
+        else:
+            reasoning_gt_answer = reasoning_gt_en.get(prompt_id)
     return {
         "text": text,
         "subset": "Text_Rendering" if row_category in ("Text_Rendering", "Text Rendering") else row_category,
@@ -203,8 +208,7 @@ def _to_oneig_record(
         "class": row_class,
         "questions": q_info.get("questions", {}),
         "dependencies": q_info.get("dependencies", {}),
-        "reasoning_gt_answer_en": reasoning_en,
-        "reasoning_gt_answer_zh": reasoning_zh,
+        "reasoning_gt_answer": reasoning_gt_answer,
     }
 
 
@@ -637,6 +641,7 @@ def setup_oneig_dataset(
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
     category: OneIGCategory | list[OneIGCategory] | None = None,
+    reasoning_language: str = "EN",
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the OneIG benchmark dataset.
@@ -656,13 +661,15 @@ def setup_oneig_dataset(
     category : OneIGCategory | list[OneIGCategory] | None
         Filter by dataset category (Anime_Stylization, Portrait, etc.) or class (fauvism,
         watercolor, etc.). If None, returns all subsets.
+    reasoning_language : str, optional
+        Which reasoning GT to use for Knowledge_Reasoning rows: ``"EN"`` or ``"ZH"``. Default is ``"EN"``.
 
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
         The OneIG dataset (dummy train, dummy val, test). Rows include ``questions`` and
         ``dependencies`` from official Q_D JSON (EN + ZH stems, including ``multilingualism_zh``),
-        plus ``reasoning_gt_answer_en`` / ``reasoning_gt_answer_zh`` for ``Knowledge_Reasoning``.
+        plus ``reasoning_gt_answer`` for ``Knowledge_Reasoning`` (language chosen by ``reasoning_language``).
         Rows cover EN categories from ``OneIG-Bench`` plus ``Multilingualism`` from ``OneIG-Bench-ZH``.
         Assets are downloaded over HTTP on each call (pinned commit ``_ONEIG_BENCHMARK_REF``); there is
         no local disk cache.
@@ -680,12 +687,16 @@ def setup_oneig_dataset(
     reasoning_gt_en, reasoning_gt_zh = _fetch_oneig_reasoning_gt()
 
     ds_en = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
-    records = [_to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh) for row in ds_en]
+    records = [
+        _to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh, reasoning_language)
+        for row in ds_en
+    ]
     if _oneig_needs_zh_multilingualism_hub(category):
         ds_zh = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench-ZH")["train"]  # type: ignore[index]
         ds_zh_ml = ds_zh.filter(lambda r: r["category"] == "Multilingualism")
         records.extend(
-            _to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh) for row in ds_zh_ml
+            _to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh, reasoning_language)
+            for row in ds_zh_ml
         )
     ds = Dataset.from_list(records)
 
@@ -733,6 +744,7 @@ def _oneig_fixed_category_loader(
         fraction: float = 1.0,
         train_sample_size: int | None = None,
         test_sample_size: int | None = None,
+        reasoning_language: str = "EN",
     ) -> Tuple[Dataset, Dataset, Dataset]:
         return setup_oneig_dataset(
             seed=seed,
@@ -740,6 +752,7 @@ def _oneig_fixed_category_loader(
             train_sample_size=train_sample_size,
             test_sample_size=test_sample_size,
             category=category,
+            reasoning_language=reasoning_language,
         )
 
     load_subset.__name__ = name

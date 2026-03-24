@@ -270,55 +270,42 @@ for _benchmark in [
     Benchmark(
         name="OneIG Anime Stylization",
         description="OneIG subset: anime and stylized imagery.",
-        # §4.1 DSG alignment; missing: root/leaf gating, paper VLM judge, S_style (CSD+encoder), diversity
-        metrics=["qa_accuracy"],
+        metrics=["oneig_alignment"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
         name="OneIG General Object",
         description="OneIG subset: everyday objects and scenes.",
-        metrics=["qa_accuracy"],  # §4.1 𝒪 alignment; missing: full DSG scorer details, paper judge choice
+        metrics=["oneig_alignment"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
         name="OneIG Knowledge Reasoning",
         description="OneIG subset: knowledge- and reasoning-heavy prompts.",
-        metrics=[],  # paper 𝒦ℛ scorer (GPT-4o answers + LLM2CLIP) not in MetricRegistry
+        metrics=["oneig_reasoning"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
         name="OneIG Multilingualism",
         description="OneIG subset: multilingual prompts (incl. Chinese splits).",
-        # loader: no Q_D questions for this bucket; do not default clip/vqa as stand-ins for paper alignment
-        metrics=[],
+        metrics=["oneig_alignment"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
         name="OneIG Portrait",
         description="OneIG subset: people and portraits.",
-        metrics=["qa_accuracy"],  # §4.1 𝒫 alignment; missing: full DSG aggregation, style-only rows
+        metrics=["oneig_alignment"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
         name="OneIG Text Rendering",
         description="OneIG subset: text and graphics painted into the image.",
-        # §4.1: ED-like only; missing CR, WAC, S_text, paper extract path
-        metrics=["text_score"],
-        task_type="text_to_image",
-        reference="https://arxiv.org/abs/2506.07977",
-    ),
-    Benchmark(
-        name="OneIG",
-        description=(
-            "OneIG-Bench: broad text-to-image suite (objects, people, styles, text-in-image, reasoning, languages). "
-            "Prefer a category ``OneIG …`` entry for one axis."
-        ),
-        metrics=[],  # full suite has mixed axes; subset benchmarks or explicit metrics recommended
+        metrics=["oneig_text_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),

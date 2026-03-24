@@ -72,7 +72,7 @@ class AlignmentScoreMetric(StatefulMetric):
     default_call_type: str = "y_x"
     higher_is_better: bool = True
     metric_name: str = "alignment_score"
-    runs_on: List[str] = ["cuda", "cpu", "mps"]
+    runs_on: List[str] = ["cuda", "cpu"]
 
     def __init__(
         self,

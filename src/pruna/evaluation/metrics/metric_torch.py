@@ -50,6 +50,29 @@ from pruna.evaluation.metrics.utils import (
 )
 from pruna.logging.logger import pruna_logger
 
+_PRUNA_TASK_ROUTING_KWARGS: frozenset[str] = frozenset(
+    {
+        "vlm_type",
+        "model_name",
+        "structured_output",
+        "use_outlines",
+        "vlm_kwargs",
+        "api_key",
+    }
+)
+
+
+def _strip_task_routing_kwargs(kwargs: dict[str, Any]) -> None:
+    """
+    Drop kwargs :class:`~pruna.evaluation.task.Task` passes when building mixed metric lists.
+
+    Torchmetrics classes often end with ``**kwargs`` and would otherwise accept bogus keys
+    until a lower layer raises. Stripping here keeps :class:`TorchMetricWrapper` the single
+    choke point between Pruna routing and torchmetrics constructors.
+    """
+    for key in _PRUNA_TASK_ROUTING_KWARGS:
+        kwargs.pop(key, None)
+
 
 def default_update(metric: Metric, *args, **kwargs) -> None:
     """
@@ -246,6 +269,7 @@ class TorchMetricWrapper(StatefulMetric):
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 
+            _strip_task_routing_kwargs(kwargs)
             return PairwiseClipScore(**kwargs)
         return super().__new__(cls)
 
@@ -259,6 +283,7 @@ class TorchMetricWrapper(StatefulMetric):
             If the metric name is not supported.
         """
         self.metric_name = metric_name
+        _strip_task_routing_kwargs(kwargs)
         super().__init__(kwargs.pop("device", None))
         try:
             self.metric = TorchMetrics[metric_name](**kwargs)

@@ -70,7 +70,7 @@ def get_vlm(
         Use outlines for transformers.
     **vlm_kwargs : Any
         Extra kwargs passed to LitellmVLM or TransformersVLM.
-        For TransformersVLM, use model_load_kwargs={"torch_dtype": torch.bfloat16}
+        For TransformersVLM, use model_load_kwargs={"dtype": torch.bfloat16}
         to pass options to from_pretrained.
 
     Returns
@@ -389,7 +389,7 @@ class TransformersVLM(BaseVLM):
     use_outlines : bool, optional
         Use outlines for constrained decoding. Default is False.
     model_load_kwargs : dict, optional
-        Kwargs passed to from_pretrained (e.g. torch_dtype, attn_implementation).
+        Kwargs passed to from_pretrained (e.g. dtype, attn_implementation).
     **kwargs : Any
         Additional arguments passed to model.generate.
     """
@@ -408,8 +408,6 @@ class TransformersVLM(BaseVLM):
         if device is None:
             if torch.cuda.is_available():
                 self.device = torch.device("cuda")
-            elif torch.backends.mps.is_available():
-                self.device = torch.device("mps")
             else:
                 self.device = torch.device("cpu")
         else:
