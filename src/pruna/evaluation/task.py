@@ -300,6 +300,14 @@ def _process_metric_names(
     )
 
 
+def _get_lm_eval_task_metrics(task_name: str):
+    from lm_eval.tasks import get_task_dict
+
+    task_dict = get_task_dict(task_name)
+    task = task_dict[task_name]
+    return task.config.metric_list
+
+
 def _process_single_request(
     request: str, stateful_metric_device: str, inference_device: str
 ) -> List[BaseMetric | StatefulMetric]:
@@ -315,6 +323,21 @@ def _process_single_request(
         return [
             TorchMetricWrapper("perplexity", device=stateful_metric_device),
         ]
+
+    elif request.startswith("lm_eval:"):
+        try:
+            from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
+
+            task_name = request.split(":", 1)[1]
+            metrics = _get_lm_eval_task_metrics(task_name)
+        except ImportError:
+            pruna_logger.error(
+                "lm-eval is required for lm_eval:* request types. "
+                "Install optional dependencies with: pip install 'pruna[lmharness]'."
+            )
+            raise
+
+        return [LMEvalMetric(metric_name=metric["metric"]) for metric in metrics]
     else:
         msg = f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
         pruna_logger.error(msg)

@@ -224,6 +224,9 @@ dev = [
     "pruna[evaluation]",
 ]
 cpu = []
+lmharness = [
+    "lm-eval>=0.4.0"
+]
 intel = [
     "intel-extension-for-pytorch>=2.7.0",
 ]
