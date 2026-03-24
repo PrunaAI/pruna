@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
+from datasets import Dataset
 from pydantic import BaseModel
 
+from pruna.data import base_datasets
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_alignment_score import AlignmentScoreMetric
 from pruna.evaluation.metrics.metric_vlm_utils import VQAnswer, get_answer_from_response
@@ -24,6 +26,11 @@ SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
 def _dummy_image(batch: int = 1, size: int = 224) -> torch.Tensor:
     return torch.rand(batch, 3, size, size)
+
+
+def _prompt_benchmark_datamodule(records: list[dict]) -> PrunaDataModule:
+    dataset = Dataset.from_list(records)
+    return PrunaDataModule.from_datasets((dataset, dataset, dataset), "prompt_with_auxiliaries_collate")
 
 
 def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
@@ -170,6 +177,14 @@ def test_get_vlm_returns_custom() -> None:
 
 
 @pytest.mark.cpu
+def test_vlm_metric_defaults_enable_structured_local_generation() -> None:
+    """Transformers-backed VLM metrics should default to outlines-based structured generation."""
+    metric = VQAMetric(vlm_type="transformers", model_name=SMOL_VLM)
+    assert metric.vlm.use_outlines is True
+    assert metric.device == "cpu"
+
+
+@pytest.mark.cpu
 def test_transformers_generate_routes_pydantic_response_format_to_outlines() -> None:
     """Structured Pydantic responses should use the outlines path for transformers backends."""
     vlm = TransformersVLM(model_name=SMOL_VLM, device="cpu", use_outlines=True)
@@ -228,6 +243,112 @@ def test_evaluation_agent_update_stateful_metrics_with_stub_vlm() -> None:
     assert results[0].name == "vqa"
     assert results[0].result == 1.0
     stub_vlm.score.assert_called_once()
+
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    ("benchmark_name", "dataset_key", "records", "module_patch", "score_value", "expected_name"),
+    [
+        (
+            "GenAI Bench",
+            "GenAIBench",
+            [{"text": "a cat"}],
+            "pruna.evaluation.metrics.metric_vqa.get_vlm",
+            [1.0],
+            "vqa",
+        ),
+        (
+            "GenEval",
+            "GenEval",
+            [{"text": "a cat", "questions": ["Is there a cat?"]}],
+            "pruna.evaluation.metrics.metric_qa_accuracy.get_vlm",
+            [1.0],
+            "qa_accuracy",
+        ),
+        (
+            "Long Text Bench",
+            "LongTextBench",
+            [{"text": "draw text", "text_content": "HELLO"}],
+            "pruna.evaluation.metrics.metric_text_score.get_vlm",
+            ["HELLO"],
+            "text_score",
+        ),
+        (
+            "GEditBench",
+            "GEditBench",
+            [{"text": "add a hat", "category": "subject_add"}],
+            "pruna.evaluation.metrics.metric_viescore.get_vlm",
+            ['{"score": 8}'],
+            "viescore",
+        ),
+        (
+            "OneIG",
+            "OneIG",
+            [{"text": "a cat", "questions": {"q1": "Is there a cat?"}, "category": "General_Object"}],
+            "pruna.evaluation.metrics.metric_qa_accuracy.get_vlm",
+            [1.0],
+            "qa_accuracy",
+        ),
+        (
+            "DPG",
+            "DPG",
+            [{"text": "a cat", "questions": ["Is there a cat?"], "category": "entity"}],
+            "pruna.evaluation.metrics.metric_qa_accuracy.get_vlm",
+            [1.0],
+            "qa_accuracy",
+        ),
+        (
+            "ImgEdit",
+            "ImgEdit",
+            [{"text": "make it blue", "category": "adjust", "judge_prompt": "score the edit"}],
+            "pruna.evaluation.metrics.metric_img_edit_score.get_vlm",
+            ['{"score": 8}'],
+            "img_edit_score",
+        ),
+    ],
+)
+def test_benchmark_vlm_metrics_end_to_end(
+    monkeypatch,
+    benchmark_name: str,
+    dataset_key: str,
+    records: list[dict],
+    module_patch: str,
+    score_value,
+    expected_name: str,
+) -> None:
+    """Benchmark wiring should exercise VLM metrics end to end with benchmark auxiliaries."""
+    datamodule = _prompt_benchmark_datamodule(records)
+    monkeypatch.setitem(base_datasets, dataset_key, (lambda dm=datamodule: (dm.train_dataset, dm.val_dataset, dm.test_dataset), "prompt_with_auxiliaries_collate", {}))
+
+    stub_vlm = MagicMock(spec=BaseVLM)
+    if expected_name in {"vqa", "qa_accuracy"}:
+        stub_vlm.score.return_value = score_value
+    else:
+        stub_vlm.generate.return_value = score_value
+
+    with patch(module_patch, return_value=stub_vlm):
+        agent = EvaluationAgent.from_benchmark(benchmark_name, device="cpu")
+
+    class FakeModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.dummy = torch.nn.Parameter(torch.zeros(1))
+
+        def run_inference(self, batch):
+            return _dummy_image(batch=1)
+
+    agent.device = "cpu"
+    agent.device_map = None
+    agent.update_stateful_metrics(FakeModel(), agent.task.get_single_stateful_metrics(), [])
+    results = agent.compute_stateful_metrics(agent.task.get_single_stateful_metrics(), [])
+
+    assert len(results) == 1
+    assert results[0].name == expected_name
+    assert isinstance(results[0].result, float)
+    if expected_name == "text_score":
+        assert results[0].result == 0.0
+    else:
+        assert results[0].result > 0.0
 
 
 @pytest.mark.cpu
