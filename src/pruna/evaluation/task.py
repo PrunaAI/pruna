@@ -17,14 +17,12 @@ from __future__ import annotations
 from typing import Any, List, cast
 
 import torch
-from lm_eval.tasks import get_task_dict
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
 from pruna.evaluation.benchmarks import BenchmarkRegistry
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
-from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -303,12 +301,8 @@ def _process_metric_names(
 
 
 def _get_lm_eval_task_metrics(task_name: str):
-    task_dict = get_task_dict(task_name)
-    task = task_dict[task_name]
-    return task.config.metric_list
+    from lm_eval.tasks import get_task_dict
 
-
-def _get_lm_eval_task_metrics(task_name: str):
     task_dict = get_task_dict(task_name)
     task = task_dict[task_name]
     return task.config.metric_list
@@ -331,8 +325,18 @@ def _process_single_request(
         ]
 
     elif request.startswith("lm_eval:"):
-        task_name = request.split(":", 1)[1]
-        metrics = _get_lm_eval_task_metrics(task_name)
+        try:
+            from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
+
+            task_name = request.split(":", 1)[1]
+            metrics = _get_lm_eval_task_metrics(task_name)
+        except ImportError:
+            pruna_logger.error(
+                "lm-eval is required for lm_eval:* request types. "
+                "Install optional dependencies with: pip install 'pruna[lmharness]'."
+            )
+            raise
+
         return [LMEvalMetric(metric_name=metric["metric"]) for metric in metrics]
     else:
         msg = f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
