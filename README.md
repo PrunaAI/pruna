@@ -10,7 +10,7 @@
 <br>
 
 [![Documentation](https://img.shields.io/badge/Pruna_documentation-purple?style=for-the-badge)][documentation] &nbsp;
-[![Try our optimized models](https://img.shields.io/badge/Try_our_optimized_models-purple?style=for-the-badge)][api_dashboard]
+[![Try our Performance Models](https://img.shields.io/badge/Try_our_Performance_Models-purple?style=for-the-badge)][api_dashboard]
 
 <br>
 
