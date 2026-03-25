@@ -28,7 +28,13 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
 from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
-from pruna.config.target_modules import TargetModules, filter_targeted_modules, map_targeted_nn_roots
+from pruna.config.target_modules import (
+    TARGET_MODULES_TYPE,
+    TargetModules,
+    filter_targeted_modules,
+    map_targeted_nn_roots,
+    target_backbone,
+)
 from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.logging.logger import pruna_logger
 
@@ -110,7 +116,10 @@ class FlashAttn3(PrunaAlgorithmBase):
         """
         kernel = self.import_algorithm_packages()["flash_attention_3"]
         use_fp8 = smash_config["fp8"]
-        target_modules = smash_config["target_modules"]
+        target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
+        if target_modules is None:
+            defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
+            target_modules = defaults["target_modules"]
 
         # Always register the standard (non-FP8) kernel with torch ops
         register_pruna_flash_attn_op(kernel, use_fp8=False)
@@ -196,11 +205,33 @@ class FlashAttn3(PrunaAlgorithmBase):
             configuration system.
         """
         return [
-            # We do not set specific default target modules as FA3 is lossless if not used with FP8 quantization
-            # and therefore can be applied to any attn module without any performance degradation.
-            TargetModules(name="target_modules", default_value={"include": ["*"], "exclude": []}),
+            TargetModules(name="target_modules", default_value=None),
             Boolean("fp8", default=False, meta=dict(desc="Apply FlashAttention3 with FP8 quantization.")),
         ]
+
+    def get_model_dependent_hyperparameter_defaults(
+        self, model: Any, smash_config: SmashConfigPrefixWrapper
+    ) -> dict[str, Any]:
+        """
+        Provide default `target_modules` using `target_backbone` when FP8 is enabled.
+
+        Parameters
+        ----------
+        model : Any
+            The model to derive defaults from.
+        smash_config : SmashConfigPrefixWrapper
+            The algorithm-prefixed configuration.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary with a `target_modules` key mapping to include/exclude patterns.
+        """
+        if smash_config["fp8"]:
+            # Only target the model backbone when FP8 is enabled
+            return {"target_modules": target_backbone(model)}
+        # Otherwise, target all modules
+        return {"target_modules": {"include": ["*"], "exclude": []}}
 
 
 def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = False) -> str:
