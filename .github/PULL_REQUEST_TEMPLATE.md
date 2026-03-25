@@ -40,3 +40,21 @@ New to contributing? Check out our
 
 > **Note:** Draft PRs or PRs without sufficient description may be delayed.  
 > Please mark your PR as **Ready for Review** and ensure the sections above are filled out.
+
+---
+
+## First Prune (one-year OSS anniversary)
+
+If you’d like your contribution to count toward **First Prune**, here’s a quick overview:
+
+You **earn** credits you can use on our **performance models** through the **API**. Have a look at [all models](https://www.pruna.ai/all-models). You’ll need to **sign up** on the [dashboard](https://dashboard.pruna.ai/login) before you can redeem your credits.
+
+- **Open for review:** Please **open your PR and mark it ready for review by April 30** (end of April).
+- **Merge window:** PRs **merged by May 15** (within about 15 days after that April cutoff) are still included in the initiative.
+- **Credits:** We’ll tally qualifying **merged** PRs per contributor after **May 15**. The amounts below are **total credits per contributor** for the initiative (not credits **per** merged PR):
+
+| Qualifying merged PRs | Total credits |
+| --------------------- | ------------- |
+| 1                     | 30            |
+| 2                     | 40            |
+| 3 or more             | 50            |
