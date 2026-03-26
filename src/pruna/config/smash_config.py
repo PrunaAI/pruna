@@ -84,7 +84,7 @@ class SmashConfig:
         self.cache_dir_prefix = Path(cache_dir_prefix)
         if not self.cache_dir_prefix.exists():
             self.cache_dir_prefix.mkdir(parents=True, exist_ok=True)
-        self.cache_dir = Path(tempfile.mkdtemp(dir=cache_dir_prefix))
+        self.cache_dir = Path(tempfile.mkdtemp(dir=self.cache_dir_prefix))
 
         self.save_fns: list[str] = []
         self.load_fns: list[str] = []
@@ -217,8 +217,12 @@ class SmashConfig:
 
     def cleanup_cache_dir(self) -> None:
         """Clean up the cache directory."""
-        if self.cache_dir.exists():
-            shutil.rmtree(self.cache_dir)
+        try:
+            if hasattr(self, "cache_dir") and self.cache_dir is not None:
+                if isinstance(self.cache_dir, Path) and self.cache_dir.exists():
+                    shutil.rmtree(self.cache_dir, ignore_errors=True)
+        except Exception:
+            pass
 
     def reset_cache_dir(self) -> None:
         """Reset the cache directory."""
