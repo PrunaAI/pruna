@@ -218,9 +218,13 @@ class SmashConfig:
     def cleanup_cache_dir(self) -> None:
         """Clean up the cache directory."""
         try:
-            if hasattr(self, "cache_dir") and self.cache_dir is not None:
-                if isinstance(self.cache_dir, Path) and self.cache_dir.exists():
-                    shutil.rmtree(self.cache_dir, ignore_errors=True)
+            if (
+                hasattr(self, "cache_dir")
+                and self.cache_dir is not None
+                and isinstance(self.cache_dir, Path)
+                and self.cache_dir.exists()
+            ):
+                shutil.rmtree(self.cache_dir, ignore_errors=True)
         except Exception:
             pass
 
