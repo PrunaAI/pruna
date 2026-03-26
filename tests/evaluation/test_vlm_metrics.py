@@ -36,7 +36,7 @@ def _prompt_benchmark_datamodule(records: list[dict]) -> PrunaDataModule:
 def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
     """Update metric with appropriate gt type per metric contract."""
     if isinstance(metric, QAAccuracyMetric):
-        metric.update(prompts, [["Is there a cat?"]], images)
+        metric.update(prompts, [{"questions": ["Is there a cat?"]}], images)
     elif isinstance(metric, TextScoreMetric):
         metric.update(prompts, ["cat"], images)
     else:
