@@ -27,7 +27,7 @@ For full setup and testing instructions, see the [Contributing Guide](https://do
 ## Checklist
 <!-- Mark items with "x" (no spaces around the "x") -->
 - [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my code
+- [ ] I have performed a self-review of my code, especially for agent-assisted changes
 - [ ] I updated the documentation where necessary
 
 ---
@@ -51,11 +51,6 @@ Have a look at [all models](https://www.pruna.ai/all-models). You’ll need to *
 
 - **Initiative window:** First Prune starts on **March 31**.
 - **Open for review:** Please **open your PR and mark it ready for review by April 30** (end of April).
-- **Merge window:** PRs **merged by May 15** (within about 15 days after that April cutoff) are still included in the initiative.
-- **Credits:** We’ll tally qualifying **merged** PRs per contributor after **May 15**. The amounts below are **total credits per contributor** for the initiative (not credits **per** merged PR):
-
-| Qualifying merged PRs | Total credits |
-| --------------------- | ------------- |
-| 1                     | 30            |
-| 2                     | 40            |
-| 3 or more             | 50            |
+- **Issue assignment:** For your PR to count toward First Prune, the related issue must be assigned to the contributor opening the PR.
+**Review priority:** We’ll make our best effort to review quickly any PR that is open and has a review request before April 30.
+- **Credits:** Each qualifying merged PR earns **30 credits**. We’ll be in touch after all qualifying PRs for **First Prune** have been merged.
