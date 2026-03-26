@@ -78,7 +78,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "OpenImage": (
         setup_open_image_dataset,
         "image_generation_collate",
-        {"img_size": 1024},
+        {"img_size": 1024, "column_map": {"image": "image_quality_dev", "text": "quality_prompt"}},
     ),
     "CIFAR10": (
         setup_cifar10_dataset,
