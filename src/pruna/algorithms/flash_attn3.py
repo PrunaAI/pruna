@@ -16,7 +16,7 @@ from __future__ import annotations
 import functools
 import inspect
 from collections.abc import Iterable
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import torch
 from aenum import extend_enum
@@ -119,7 +119,7 @@ class FlashAttn3(PrunaAlgorithmBase):
         target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
         if target_modules is None:
             defaults = self.get_model_dependent_hyperparameter_defaults(model, smash_config)
-            target_modules = defaults["target_modules"]
+            target_modules = cast(TARGET_MODULES_TYPE, defaults["target_modules"])
 
         # Always register the standard (non-FP8) kernel with torch ops
         register_pruna_flash_attn_op(kernel, use_fp8=False)
