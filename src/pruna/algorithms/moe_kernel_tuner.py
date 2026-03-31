@@ -200,6 +200,13 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
 
+        # (ii.b) Extract block quantization shape so the tuned config file
+        # name matches what vLLM looks for at serving time (e.g.
+        # ``E=256,N=512,...,block_shape=[128,128].json``).
+        block_quant_shape = _get_block_quant_shape(getattr(model, "config", None))
+        if block_quant_shape is None:
+            block_quant_shape = _get_block_quant_shape(model_config)
+
         # (iii) Tune the kernel over a range of batch sizes (single GPU per Ray worker).
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
         ray = imported_packages["ray"]
@@ -211,6 +218,16 @@ class MoeKernelTuner(PrunaAlgorithmBase):
 
         ray.init(ignore_reinit_error=True)
         search_space = get_configs_compute_bound(smash_config)
+
+        # Remove configs incompatible with block quantisation constraints
+        # (BLOCK_SIZE_K must be divisible by block_k, BLOCK_SIZE_N by block_n).
+        if block_quant_shape is not None and use_fp8_w8a8:
+            bq_n, bq_k = block_quant_shape[0], block_quant_shape[1]
+            search_space = [
+                cfg for cfg in search_space
+                if cfg["BLOCK_SIZE_K"] % bq_k == 0 and cfg["BLOCK_SIZE_N"] % bq_n == 0
+            ]
+
         pruna_logger.info(f"Start tuning over {len(search_space)} configurations...")
 
         start = time.time()
@@ -231,7 +248,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                     use_fp8_w8a8,
                     use_int8_w8a16,
                     search_space,
-                    None,
+                    block_quant_shape,
                     False,
                     imported_packages,
                     0,  # fixed seed for reproducibility
@@ -271,7 +288,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             dtype,
             use_fp8_w8a8,
             use_int8_w8a16,
-            None,
+            block_quant_shape,
             smash_config["path_to_huggingface_hub_cache"],
             smash_config["path_to_vllm_cache"],
             imported_packages,
@@ -343,6 +360,44 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             NoValidConfigError=NoValidConfigError,
             BenchmarkConfig=BenchmarkConfig,
         )
+
+
+def _get_block_quant_shape(config: Any) -> list[int] | None:
+    """
+    Extract block quantisation shape from a HuggingFace model config.
+
+    Mirrors vLLM's ``get_weight_block_size_safety`` in
+    ``benchmarks/kernels/benchmark_moe.py``.  Checks ``weight_block_size``
+    (AWQ / GPTQ / FP8 style) and ``config_groups.*.weights.block_structure``
+    (compressed-tensors style).
+
+    Parameters
+    ----------
+    config : Any
+        A HuggingFace ``PretrainedConfig`` (or its ``text_config``).
+
+    Returns
+    -------
+    list[int] | None
+        ``[block_n, block_k]`` if found, else ``None``.
+    """
+    if config is None:
+        return None
+    quantization_config = getattr(config, "quantization_config", None)
+    if quantization_config is None:
+        return None
+    if isinstance(quantization_config, dict):
+        wbs = quantization_config.get("weight_block_size")
+        if wbs is not None:
+            return list(wbs)
+        config_groups = quantization_config.get("config_groups", {})
+        for group_cfg in config_groups.values():
+            if isinstance(group_cfg, dict):
+                weights = group_cfg.get("weights", {})
+                bs = weights.get("block_structure")
+                if bs is not None:
+                    return list(bs)
+    return None
 
 
 def extract_hunyuan_dimensions(
