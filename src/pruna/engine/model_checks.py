@@ -25,7 +25,7 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING,
 )
 from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
-#from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
+from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
 from transformers.pipelines.text_generation import TextGenerationPipeline
 
 from pruna.engine.utils import ModelContext
