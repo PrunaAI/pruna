@@ -36,8 +36,10 @@ Thanks for contributing to **Pruna**! We're excited to review your work.
 
 New to contributing? Check out our [Contributing Guide](https://docs.pruna.ai/en/stable/docs_pruna/contributions/how_to_contribute.html) for everything you need to get started.
 
-> **Note:** Draft PRs or PRs without a clear and detailed overview may be delayed.  
-> Please mark your PR as **Ready for Review** and ensure the sections above are filled out.
+> **Note:** 
+> - Draft PRs or PRs without a clear and detailed overview may be delayed.  
+> - Please mark your PR as **Ready for Review** and ensure the sections above are filled out.
+> - Contributions that are entirely AI-generated without meaningful human review are discouraged.
 
 ---
 
