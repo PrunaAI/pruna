@@ -211,10 +211,15 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
-        block_quant_shape = [
-            smash_config["block_quant_shape_n"],
-            smash_config["block_quant_shape_k"],
-        ]
+        block_quant_shape = None
+        if (
+            smash_config["block_quant_shape_n"] is not None
+            and smash_config["block_quant_shape_k"] is not None
+        ):
+            block_quant_shape = [
+                smash_config["block_quant_shape_n"],
+                smash_config["block_quant_shape_k"],
+            ]
 
         # (iii) Tune the kernel over a range of batch sizes (single GPU per Ray worker).
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
