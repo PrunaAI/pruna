@@ -178,6 +178,11 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         model_config = getattr(model, "config", None)
         if model_config is None:
             raise ValueError(f"Model {model.__class__.__name__} has no config.")
+        # Multimodal MoE (e.g. Qwen3_5MoeForConditionalGeneration): MoE parameters live on text_config.
+        if getattr(model_config, "num_experts", None) is None:
+            text_cfg = getattr(model_config, "text_config", None)
+            if text_cfg is not None and getattr(text_cfg, "num_experts", None) is not None:
+                model_config = text_cfg
 
         tensor_parallel_size = int(smash_config["tensor_parallel_size"])
         if model.__class__.__name__ == "HunyuanImage3ForCausalMM":
