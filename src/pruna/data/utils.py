@@ -34,6 +34,36 @@ from torch.utils.data import DataLoader
 from pruna.logging.logger import pruna_logger
 
 
+def _extract_literal_values(annotation: Any) -> list[str] | None:
+    if _is_none_annotation(annotation):
+        return None
+    literal_values = _literal_string_values(annotation)
+    if literal_values is not None:
+        return literal_values
+    for arg in _annotation_args(annotation):
+        found = _extract_literal_values(arg)
+        if found is not None:
+            return found
+    return None
+
+
+def _is_none_annotation(annotation: Any) -> bool:
+    return annotation is None or annotation is type(None)
+
+
+def _literal_string_values(annotation: Any) -> list[str] | None:
+    if get_origin(annotation) is not Literal:
+        return None
+    args = get_args(annotation)
+    if args and all(isinstance(arg, str) for arg in args):
+        return list(args)
+    return None
+
+
+def _annotation_args(annotation: Any) -> tuple[Any, ...]:
+    return get_args(annotation) or ()
+
+
 def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> list[str] | None:
     """
     Extract Literal values from a function parameter's type annotation (handles Union).
@@ -64,18 +94,7 @@ def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> 
         except Exception:
             return None
 
-    def extract(annotation: Any) -> list[str] | None:
-        if annotation is None or annotation is type(None):
-            return None
-        if get_origin(annotation) is Literal:
-            args = get_args(annotation)
-            return list(args) if args and all(isinstance(a, str) for a in args) else None
-        for arg in get_args(annotation) or ():
-            if (r := extract(arg)) is not None:
-                return r
-        return None
-
-    return extract(ann)
+    return _extract_literal_values(ann)
 
 
 class TokenizerMissingError(Exception):

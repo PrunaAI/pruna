@@ -91,7 +91,7 @@ class StatefulMetric(ABC):
         **kwargs : Any
             The keyword arguments to pass to the metric.
         """
-        pass
+        ...
 
     def reset(self) -> None:
         """
@@ -109,16 +109,18 @@ class StatefulMetric(ABC):
                 getattr(self, attr).clear()
 
     @abstractmethod
-    def update(self, *args, **kwargs) -> None:
+    def update(self, x: Any, gt: Any, outputs: Any) -> None:
         """
         Override this method to update the state variables of your metric.
 
         Parameters
         ----------
-        *args : Any
-            The arguments to pass to the metric.
-        **kwargs : Any
-            The keyword arguments to pass to the metric.
+        x : Any
+            Input/prompt data for the metric.
+        gt : Any
+            Ground-truth or auxiliary data for the metric.
+        outputs : Any
+            Model outputs to evaluate.
         """
 
     @abstractmethod

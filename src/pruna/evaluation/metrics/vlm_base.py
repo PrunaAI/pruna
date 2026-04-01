@@ -123,7 +123,7 @@ class BaseVLM(ABC):
         List[str]
             Generated responses.
         """
-        pass
+        ...
 
     @abstractmethod
     def score(
@@ -159,7 +159,7 @@ class BaseVLM(ABC):
         List[float]
             Scores for each image-question pair (0-1, or probability when use_probability).
         """
-        pass
+        ...
 
 
 class LitellmVLM(BaseVLM):
@@ -226,36 +226,10 @@ class LitellmVLM(BaseVLM):
         results = []
         for image, prompt in zip(images, prompts):
             try:
-                # Prepare message content
-                content = [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": self._image_to_data_url(image)}},
-                ]
-                # Prepare completion kwargs
-                completion_kwargs = {
-                    "model": self.model_name,
-                    "messages": [{"role": "user", "content": content}],
-                    "api_key": self.api_key,
-                    **self.extra_kwargs,
-                    **kwargs,
-                }
-                # Add structured generation if requested (litellm uses pydantic models only)
-                if response_format is not None and isinstance(response_format, type):
-                    completion_kwargs["response_format"] = response_format
-                # Use synchronous completion
+                content = self._build_litellm_content(image, prompt)
+                completion_kwargs = self._build_completion_kwargs(content, kwargs, response_format)
                 response = self._litellm.completion(**completion_kwargs)
-                content_result = response.choices[0].message.content
-                # If using pydantic, content is already parsed
-                use_pydantic = (
-                    response_format is not None
-                    and isinstance(response_format, type)
-                    and isinstance(content_result, response_format)
-                )
-                if use_pydantic:
-                    # Return JSON string representation
-                    results.append(content_result.model_dump_json())
-                else:
-                    results.append(content_result)
+                results.append(self._extract_content_result(response, response_format))
             except Exception as e:
                 pruna_logger.error(f"Litellm generation failed: {e}")
                 results.append("")
@@ -297,20 +271,16 @@ class LitellmVLM(BaseVLM):
         List[float]
             Scores for each image-question pair (0-1, or probability when use_probability).
         """
-        from pruna.evaluation.metrics.metric_vlm_utils import get_answer_from_response
-
         scores = []
         for image, question, answer in zip(images, questions, answers):
             prompt = f"{question} Please answer yes or no."
             if use_probability:
                 score = self._score_with_logprobs(image, prompt, answer, **kwargs)
             elif response_format is not None:
-                raw = self.generate([image], [prompt], response_format=response_format, **kwargs)[0]
-                response_answer = get_answer_from_response(raw)
-                score = 1.0 if answer.lower() in response_answer.lower() else 0.0
+                score = self._score_structured_response(image, prompt, answer, response_format, **kwargs)
             else:
-                response = self.generate([image], [prompt], **kwargs)[0].lower()
-                score = 1.0 if answer.lower() in response else 0.0
+                raw = self.generate([image], [prompt], **kwargs)[0]
+                score = self._normalize_binary_match(raw, answer)
             scores.append(score)
         return scores
 
@@ -334,10 +304,7 @@ class LitellmVLM(BaseVLM):
         float
             Probability of expected answer (0-1), or binary 0/1 on fallback.
         """
-        content = [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": self._image_to_data_url(image)}},
-        ]
+        content = self._build_litellm_content(image, prompt)
         completion_kwargs = {
             "model": self.model_name,
             "messages": [{"role": "user", "content": content}],
@@ -350,22 +317,106 @@ class LitellmVLM(BaseVLM):
         try:
             response = self._litellm.completion(**completion_kwargs)
             choice = response.choices[0]
-            logprobs = getattr(choice, "logprobs", None) or getattr(choice.message, "logprobs", None)
-            if logprobs and hasattr(logprobs, "content"):
-                for tok in logprobs.content or []:
-                    top = getattr(tok, "top_logprobs", None) or []
-                    for t in top:
-                        token_str = getattr(t, "token", "") or str(t).lower()
-                        if token_str and expected.lower() in token_str.lower():
-                            logprob = float(getattr(t, "logprob", -1e9) or -1e9)
-                            return min(1.0, max(0.0, math.exp(logprob)))
-            content_str = (choice.message.content or "").lower()
-            if expected.lower() in content_str:
-                return 1.0
-            return 0.0
+            logprobs = self._extract_logprobs(choice)
+            prob = self._prob_from_top_logprobs(logprobs, expected)
+            if prob is not None:
+                return prob
+            return self._binary_fallback_from_choice(choice, expected)
         except Exception:
             response = self.generate([image], [prompt], **kwargs)[0].lower()
             return 1.0 if expected.lower() in response else 0.0
+
+    def _build_litellm_content(self, image: Image.Image, prompt: str) -> list[dict[str, Any]]:
+        return [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": self._image_to_data_url(image)}},
+        ]
+
+    def _build_completion_kwargs(
+        self,
+        content: list[dict[str, Any]],
+        kwargs: dict[str, Any],
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]],
+    ) -> dict[str, Any]:
+        completion_kwargs: dict[str, Any] = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": content}],
+            "api_key": self.api_key,
+            **self.extra_kwargs,
+            **kwargs,
+        }
+        if response_format is not None and isinstance(response_format, type):
+            completion_kwargs["response_format"] = response_format
+        return completion_kwargs
+
+    def _extract_content_result(
+        self,
+        response: Any,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]],
+    ) -> str:
+        content_result = response.choices[0].message.content
+        use_pydantic = response_format is not None and isinstance(response_format, type) and isinstance(
+            content_result, response_format
+        )
+        if use_pydantic:
+            return content_result.model_dump_json()
+        return content_result
+
+    @staticmethod
+    def _normalize_binary_match(response_text: str, expected: str) -> float:
+        return 1.0 if expected.lower() in response_text.lower() else 0.0
+
+    def _score_structured_response(
+        self,
+        image: Image.Image,
+        prompt: str,
+        expected: str,
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]],
+        **kwargs: Any,
+    ) -> float:
+        from pruna.evaluation.metrics.metric_vlm_utils import get_answer_from_response
+
+        raw = self.generate([image], [prompt], response_format=response_format, **kwargs)[0]
+        response_answer = get_answer_from_response(raw)
+        return self._normalize_binary_match(response_answer, expected)
+
+    @staticmethod
+    def _extract_logprobs(choice: Any) -> Any:
+        return getattr(choice, "logprobs", None) or getattr(choice.message, "logprobs", None)
+
+    @staticmethod
+    def _prob_from_top_logprobs(logprobs: Any, expected: str) -> Optional[float]:
+        token_logprobs = LitellmVLM._iter_top_logprobs(logprobs)
+        if token_logprobs is None:
+            return None
+        expected_lower = expected.lower()
+        for token_logprob in token_logprobs:
+            if LitellmVLM._token_matches_expected(token_logprob, expected_lower):
+                return LitellmVLM._logprob_to_probability(token_logprob)
+        return None
+
+    @staticmethod
+    def _iter_top_logprobs(logprobs: Any) -> Optional[list[Any]]:
+        if not (logprobs and hasattr(logprobs, "content")):
+            return None
+        flattened: list[Any] = []
+        for tok in logprobs.content or []:
+            flattened.extend(getattr(tok, "top_logprobs", None) or [])
+        return flattened
+
+    @staticmethod
+    def _token_matches_expected(token_logprob: Any, expected_lower: str) -> bool:
+        token_str = getattr(token_logprob, "token", "") or str(token_logprob)
+        return bool(token_str and expected_lower in token_str.lower())
+
+    @staticmethod
+    def _logprob_to_probability(token_logprob: Any) -> float:
+        logprob = float(getattr(token_logprob, "logprob", -1e9) or -1e9)
+        return min(1.0, max(0.0, math.exp(logprob)))
+
+    def _binary_fallback_from_choice(self, choice: Any, expected: str) -> float:
+        content_str = (choice.message.content or "")
+        return self._normalize_binary_match(content_str, expected)
 
     def _image_to_data_url(self, image: Image.Image) -> str:
         buffer = io.BytesIO()
@@ -510,13 +561,26 @@ class TransformersVLM(BaseVLM):
             Generated responses.
         """
         self._load_model()
-        results = []
+        max_new_tokens, gen_kwargs = self._prepare_transformers_generation_args(kwargs)
+        return self._run_structured_or_standard_generation(images, prompts, response_format, max_new_tokens, gen_kwargs)
+
+    @staticmethod
+    def _prepare_transformers_generation_args(kwargs: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         max_new_tokens = kwargs.get("max_new_tokens", 128)
+        gen_kwargs = {k: v for k, v in kwargs.items() if k != "max_new_tokens"}
+        return max_new_tokens, gen_kwargs
+
+    def _run_structured_or_standard_generation(
+        self,
+        images: List[Image.Image],
+        prompts: List[str],
+        response_format: Optional[Union[Type[BaseModel], Literal["integer"], Literal["yes_no"], Literal["json"]]],
+        max_new_tokens: int,
+        gen_kwargs: dict[str, Any],
+    ) -> List[str]:
         if self.use_outlines and response_format is not None:
-            results = self._generate_with_outlines(images, prompts, response_format, max_new_tokens)
-        else:
-            results = self._generate_standard(images, prompts, max_new_tokens)
-        return results
+            return self._generate_with_outlines(images, prompts, response_format, max_new_tokens)
+        return self._generate_standard(images, prompts, max_new_tokens, **gen_kwargs)
 
     def _generate_with_outlines(
         self,
@@ -567,13 +631,14 @@ class TransformersVLM(BaseVLM):
         images: List[Image.Image],
         prompts: List[str],
         max_new_tokens: int,
+        **kwargs: Any,
     ) -> List[str]:
         """Standard generation without outlines."""
         results = []
         with torch.inference_mode():
             for image, prompt in zip(images, prompts):
                 inputs = self._prepare_inputs(image, prompt)
-                output = self._model.generate(**inputs, max_new_tokens=max_new_tokens, **self.extra_kwargs)
+                output = self._model.generate(**inputs, max_new_tokens=max_new_tokens, **self.extra_kwargs, **kwargs)
                 response = self._decode_output(output[0])
                 results.append(response)
         return results

@@ -121,23 +121,35 @@ def get_text_from_response(response: str | BaseModel | dict) -> str:
     str
         Extracted text, or empty string.
     """
+    text = _extract_text_payload(response)
+    return _strip_no_text_markers(text)
+
+
+def _extract_text_payload(response: str | BaseModel | dict) -> str:
     if response is None:
         return ""
     if isinstance(response, TextOutput):
-        text = response.text
-    elif isinstance(response, dict):
-        text = response.get("text", "")
-    else:
-        text = (response or "").strip()
-        if text.startswith("{"):
-            try:
-                data = json.loads(text)
-                text = data.get("text", text)
-            except (json.JSONDecodeError, TypeError):
-                pass
-        for phrase in ("No text recognized", "no text recognized", "No text"):
-            text = text.replace(phrase, "").strip()
-    return (text or "").strip()
+        return response.text
+    if isinstance(response, dict):
+        return str(response.get("text", "") or "")
+    return _parse_json_text(str(response or "").strip())
+
+
+def _parse_json_text(text: str) -> str:
+    if not text.startswith("{"):
+        return text
+    try:
+        data = json.loads(text)
+        return str(data.get("text", text))
+    except (json.JSONDecodeError, TypeError):
+        return text
+
+
+def _strip_no_text_markers(text: str) -> str:
+    cleaned = text or ""
+    for phrase in ("No text recognized", "no text recognized", "No text"):
+        cleaned = cleaned.replace(phrase, "").strip()
+    return cleaned.strip()
 
 
 def get_score_from_response(response: str | BaseModel | dict) -> float:

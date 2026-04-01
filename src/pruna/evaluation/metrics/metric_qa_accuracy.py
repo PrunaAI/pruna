@@ -76,18 +76,17 @@ class QAAccuracyMetric(StatefulMetric):
 
     def __init__(
         self,
-        *args,
         vlm: Optional[BaseVLM] = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
-        structured_output: bool = True,
-        use_outlines: bool = True,
-        device="cpu",
-        api_key: Optional[str] = None,
-        call_type: str = SINGLE,
         **kwargs,
     ):
+        structured_output = kwargs.pop("structured_output", True)
+        use_outlines = kwargs.pop("use_outlines", True)
+        device = kwargs.pop("device", "cpu")
+        api_key = kwargs.pop("api_key", None)
+        call_type = kwargs.pop("call_type", SINGLE)
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 
