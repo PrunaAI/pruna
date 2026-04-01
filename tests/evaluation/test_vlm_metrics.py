@@ -24,6 +24,11 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
 
+def _require(condition: bool, message: str = "test condition failed") -> None:
+    if not condition:
+        pytest.fail(message)
+
+
 def _dummy_image(batch: int = 1, size: int = 224) -> torch.Tensor:
     return torch.rand(batch, 3, size, size)
 
@@ -69,12 +74,12 @@ def test_vlm_metrics_transformers_smolvlm(metric_cls: type, structured_output: b
     prompts = ["a cat"]
     _update_metric(metric, prompts, images)
     result = metric.compute()
-    assert result.name == metric.metric_name
-    assert isinstance(result.result, float)
+    _require(result.name == metric.metric_name)
+    _require(isinstance(result.result, float))
     if metric.higher_is_better:
-        assert 0.0 <= result.result <= 1.0
+        _require(0.0 <= result.result <= 1.0)
     else:
-        assert result.result >= 0.0
+        _require(result.result >= 0.0)
 
 
 @pytest.mark.cpu
@@ -118,9 +123,9 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
         _update_metric(metric, prompts, images)
         result = metric.compute()
 
-    assert result.name == metric.metric_name
-    assert isinstance(result.result, float)
-    assert mock_completion.called
+    _require(result.name == metric.metric_name)
+    _require(isinstance(result.result, float))
+    _require(mock_completion.called)
 
 
 @pytest.mark.cpu
@@ -145,7 +150,7 @@ def test_vlm_metrics_empty_score(metric_cls: type, structured_output: bool) -> N
         structured_output=structured_output,
     )
     result = metric.compute()
-    assert result.result == 0.0
+    _require(result.result == 0.0)
 
 
 @pytest.mark.cpu
@@ -164,7 +169,7 @@ def test_vlm_metrics_custom_vlm(structured_output: bool) -> None:
     metric.update(prompts, images, images)
     result = metric.compute()
 
-    assert result.result == 1.0
+    _require(result.result == 1.0)
     mock_vlm.score.assert_called()
 
 
@@ -173,15 +178,15 @@ def test_get_vlm_returns_custom() -> None:
     """Test get_vlm returns provided vlm as-is."""
     custom = MagicMock(spec=BaseVLM)
     out = get_vlm(vlm=custom, vlm_type="litellm", model_name="gpt-4o")
-    assert out is custom
+    _require(out is custom)
 
 
 @pytest.mark.cpu
 def test_vlm_metric_defaults_enable_structured_local_generation() -> None:
     """Transformers-backed VLM metrics should default to outlines-based structured generation."""
     metric = VQAMetric(vlm_type="transformers", model_name=SMOL_VLM)
-    assert metric.vlm.use_outlines is True
-    assert metric.device == "cpu"
+    _require(metric.vlm.use_outlines is True)
+    _require(metric.device == "cpu")
 
 
 @pytest.mark.cpu
@@ -199,7 +204,7 @@ def test_transformers_generate_routes_pydantic_response_format_to_outlines() -> 
     mock_load_model.assert_called_once()
     mock_outlines.assert_called_once()
     mock_standard.assert_not_called()
-    assert result == ['{"answer":"Yes"}']
+    _require(result == ['{"answer":"Yes"}'])
 
 
 @pytest.mark.cpu
@@ -212,8 +217,8 @@ def test_transformers_outlines_result_serialization() -> None:
     schema_result = TransformersVLM._serialize_outlines_result(DummySchema(answer="Yes"))
     dict_result = TransformersVLM._serialize_outlines_result({"answer": "No"})
 
-    assert get_answer_from_response(schema_result) == "Yes"
-    assert get_answer_from_response(dict_result) == "No"
+    _require(get_answer_from_response(schema_result) == "Yes")
+    _require(get_answer_from_response(dict_result) == "No")
 
 
 @pytest.mark.cpu
@@ -239,9 +244,9 @@ def test_evaluation_agent_update_stateful_metrics_with_stub_vlm() -> None:
     agent.update_stateful_metrics(FakeModel(), agent.task.get_single_stateful_metrics(), [])
     results = agent.compute_stateful_metrics(agent.task.get_single_stateful_metrics(), [])
 
-    assert len(results) == 1
-    assert results[0].name == "vqa"
-    assert results[0].result == 1.0
+    _require(len(results) == 1)
+    _require(results[0].name == "vqa")
+    _require(results[0].result == 1.0)
     stub_vlm.score.assert_called_once()
 
 
@@ -318,7 +323,15 @@ def test_benchmark_vlm_metrics_end_to_end(
 ) -> None:
     """Benchmark wiring should exercise VLM metrics end to end with benchmark auxiliaries."""
     datamodule = _prompt_benchmark_datamodule(records)
-    monkeypatch.setitem(base_datasets, dataset_key, (lambda dm=datamodule: (dm.train_dataset, dm.val_dataset, dm.test_dataset), "prompt_with_auxiliaries_collate", {}))
+    monkeypatch.setitem(
+        base_datasets,
+        dataset_key,
+        (
+            lambda dm=datamodule: (dm.train_dataset, dm.val_dataset, dm.test_dataset),
+            "prompt_with_auxiliaries_collate",
+            {},
+        ),
+    )
 
     stub_vlm = MagicMock(spec=BaseVLM)
     if expected_name in {"vqa", "qa_accuracy"}:
@@ -342,13 +355,13 @@ def test_benchmark_vlm_metrics_end_to_end(
     agent.update_stateful_metrics(FakeModel(), agent.task.get_single_stateful_metrics(), [])
     results = agent.compute_stateful_metrics(agent.task.get_single_stateful_metrics(), [])
 
-    assert len(results) == 1
-    assert results[0].name == expected_name
-    assert isinstance(results[0].result, float)
+    _require(len(results) == 1)
+    _require(results[0].name == expected_name)
+    _require(isinstance(results[0].result, float))
     if expected_name == "text_score":
-        assert results[0].result == 0.0
+        _require(results[0].result == 0.0)
     else:
-        assert results[0].result > 0.0
+        _require(results[0].result > 0.0)
 
 
 @pytest.mark.cpu
@@ -362,7 +375,7 @@ def test_text_score_with_list_str_gt() -> None:
     metric.update(["a prompt"], ["hello world"], images)
     result = metric.compute()
 
-    assert result.result == 0.0
+    _require(result.result == 0.0)
     mock_vlm.generate.assert_called_once()
 
 
@@ -387,4 +400,4 @@ def test_vlm_metrics_litellm_api(structured_output: bool) -> None:
     prompts = ["a cat"]
     metric.update(prompts, images, images)
     result = metric.compute()
-    assert 0.0 <= result.result <= 1.0
+    _require(0.0 <= result.result <= 1.0)

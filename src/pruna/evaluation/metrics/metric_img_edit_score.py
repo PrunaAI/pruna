@@ -83,7 +83,9 @@ class ImageEditScoreMetric(StatefulMetric):
     metric_name: str = "img_edit_score"
     runs_on: List[str] = ["cpu"]
 
-    def __init__(
+    # Preserve explicit constructor API for backward compatibility with Task/registry instantiation.
+    # pylint: disable=too-many-arguments
+    def __init__(  # noqa: PLR0913
         self,
         *args,
         vlm: Optional[BaseVLM] = None,

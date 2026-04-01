@@ -18,6 +18,12 @@ from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 
+
+def _require(condition: bool, message: str = "test condition failed") -> None:
+    if not condition:
+        pytest.fail(message)
+
+
 @pytest.fixture(autouse=True)
 def _mock_torch_metrics():
     """Mock TorchMetrics enum values for accuracy, perplexity and recall only for this test."""
@@ -54,22 +60,22 @@ def test_vlm_metrics_fallback_to_cpu_on_auto_device(mock_set_to_best_available_d
 
     task = Task(request=["vqa"], datamodule=PrunaDataModule.from_string("PartiPrompts"))
 
-    assert split_device(device_to_string(task.device))[0] == "cuda"
-    assert isinstance(task.metrics[0], VQAMetric)
-    assert split_device(device_to_string(task.metrics[0].device))[0] == "cpu"
+    _require(split_device(device_to_string(task.device))[0] == "cuda")
+    _require(isinstance(task.metrics[0], VQAMetric))
+    _require(split_device(device_to_string(task.metrics[0].device))[0] == "cpu")
 
 
 @device_parametrized
 def test_device_is_set_correctly_for_metrics(device:str):
     task = Task(request=['latency', 'cmmd', 'pairwise_clip_score'], datamodule=PrunaDataModule.from_string("LAION256"), device = device)
-    assert split_device(device_to_string(task.device)) == split_device(device_to_string(device))
+    _require(split_device(device_to_string(task.device)) == split_device(device_to_string(device)))
     for metric in task.metrics:
         if isinstance(metric, BaseMetric):
-            assert split_device(device_to_string(metric.device)) == split_device(device_to_string(device))
+            _require(split_device(device_to_string(metric.device)) == split_device(device_to_string(device)))
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, 'metric'):
-                assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
-            assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+                _require(split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device)))
+            _require(split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device)))
 
 
 @pytest.mark.cuda
@@ -106,15 +112,15 @@ def test_metric_device_adapts_to_task_device(inference_device: str, stateful_met
     psnr = TorchMetricWrapper('psnr', device=stateful_metric_device)
 
     task = Task(request=[latency, cmmd, pairwise_clip_score, psnr], datamodule=PrunaDataModule.from_string("LAION256"), device = task_device)
-    assert split_device(device_to_string(task.device)) == split_device(device_to_string(task_device))
+    _require(split_device(device_to_string(task.device)) == split_device(device_to_string(task_device)))
     for metric in task.metrics:
         if isinstance(metric, BaseMetric):
-            assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device))
+            _require(split_device(device_to_string(metric.device)) == split_device(device_to_string(task.device)))
         elif isinstance(metric, StatefulMetric):
             if hasattr(metric, "device"):
-                assert split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+                _require(split_device(device_to_string(metric.device)) == split_device(device_to_string(task.stateful_metric_device)))
             if hasattr(metric, "metric") and hasattr(metric.metric, "device"): # Wrapper metric
-                assert split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device))
+                _require(split_device(device_to_string(metric.metric.device)) == split_device(device_to_string(task.stateful_metric_device)))
             if not hasattr(metric, "device") and not hasattr(metric.metric, "device"):
                 raise ValueError("Could not find device for metric.")
 
@@ -122,9 +128,9 @@ def test_metric_device_adapts_to_task_device(inference_device: str, stateful_met
 def test_task_from_string_request():
     request = ["cmmd", "pairwise_clip_score", "psnr"]
     task = Task(request=request, datamodule=PrunaDataModule.from_string("LAION256"), device = "cpu")
-    assert isinstance(task.metrics[0], CMMD)
-    assert isinstance(task.metrics[1], PairwiseClipScore)
-    assert isinstance(task.metrics[2], TorchMetricWrapper)
+    _require(isinstance(task.metrics[0], CMMD))
+    _require(isinstance(task.metrics[1], PairwiseClipScore))
+    _require(isinstance(task.metrics[2], TorchMetricWrapper))
 
 
 @pytest.mark.cpu
@@ -132,9 +138,9 @@ def test_task_text_generation_quality_request():
     """Test that 'text_generation_quality' named request creates perplexity metric."""
     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
     task = Task(request="text_generation_quality", datamodule=PrunaDataModule.from_string("TinyWikiText", tokenizer=tokenizer), device="cpu")
-    assert len(task.metrics) == 1
-    assert isinstance(task.metrics[0], TorchMetricWrapper)
-    assert task.metrics[0].metric_name == "perplexity"
+    _require(len(task.metrics) == 1)
+    _require(isinstance(task.metrics[0], TorchMetricWrapper))
+    _require(task.metrics[0].metric_name == "perplexity")
 
 
 @pytest.mark.cpu
