@@ -44,8 +44,6 @@ class QAAccuracyMetric(StatefulMetric):
 
     Parameters
     ----------
-    *args : Any
-        Additional positional arguments.
     vlm : BaseVLM | None, optional
         Custom VLM instance. If provided, vlm_type and model_name are ignored.
     vlm_type : {"litellm", "transformers"}, optional
@@ -54,18 +52,9 @@ class QAAccuracyMetric(StatefulMetric):
         Model name. Default is "gpt-4o".
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
-    structured_output : bool, optional
-        Use structured generation. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
-    device : str | torch.device | None, optional
-        Device for transformers VLM.
-    api_key : str | None, optional
-        API key for litellm.
-    call_type : str, optional
-        Call type for the metric.
     **kwargs : Any
-        Additional arguments.
+        Additional keyword options controlling structured output, outlines usage,
+        backend device selection, API key, and metric call type.
     """
 
     scores: List[float]

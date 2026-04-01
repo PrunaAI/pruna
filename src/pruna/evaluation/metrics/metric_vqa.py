@@ -56,8 +56,6 @@ class VQAMetric(StatefulMetric):
 
     Parameters
     ----------
-    *args : Any
-        Additional positional arguments.
     vlm : BaseVLM | None, optional
         Custom VLM instance. If provided, vlm_type and model_name are ignored.
     vlm_type : {"litellm", "transformers"}, optional
@@ -66,21 +64,10 @@ class VQAMetric(StatefulMetric):
         Model name (gpt-4o for litellm, model path for transformers).
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
-    structured_output : bool, optional
-        Use structured generation for stable outputs. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
-    device : str | torch.device | None, optional
-        Device for transformers VLM.
-    api_key : str | None, optional
-        API key for litellm.
-    call_type : str, optional
-        Call type for the metric.
-    use_probability : bool, optional
-        If True, use P(Yes) when backend supports logprobs (litellm). Otherwise binary 0/1.
-        Default is True for paper alignment.
     **kwargs : Any
-        Additional arguments.
+        Additional keyword options controlling structured output, outlines usage,
+        backend device selection, API key, metric call type, and probability
+        scoring behavior.
     """
 
     scores: List[float]
