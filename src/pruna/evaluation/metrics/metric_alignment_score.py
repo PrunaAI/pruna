@@ -52,9 +52,18 @@ class AlignmentScoreMetric(StatefulMetric):
         Model name. Default is "gpt-4o".
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
+    structured_output : bool, optional
+        Use structured generation. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is True.
+    device : str | torch.device | None, optional
+        Device for transformers VLM. Default is "cpu".
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
     **kwargs : Any
-        Additional keyword options controlling structured output, outlines usage,
-        backend device selection, API key, and metric call type.
+        Additional arguments forwarded to the VLM backend constructor.
     """
 
     scores: List[float]
@@ -69,13 +78,13 @@ class AlignmentScoreMetric(StatefulMetric):
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
+        structured_output: bool = True,
+        use_outlines: bool = True,
+        device: str | torch.device = "cpu",
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
         **kwargs,
     ):
-        structured_output = kwargs.pop("structured_output", True)
-        use_outlines = kwargs.pop("use_outlines", True)
-        device = kwargs.pop("device", "cpu")
-        api_key = kwargs.pop("api_key", None)
-        call_type = kwargs.pop("call_type", SINGLE)
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
 

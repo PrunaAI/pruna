@@ -64,10 +64,21 @@ class VQAMetric(StatefulMetric):
         Model name (gpt-4o for litellm, model path for transformers).
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
+    structured_output : bool, optional
+        Use structured generation for stable outputs. Default is True.
+    use_outlines : bool, optional
+        Use outlines for transformers. Default is True.
+    device : str | torch.device | None, optional
+        Device for transformers VLM. Default is "cpu".
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    use_probability : bool, optional
+        If True, use P(Yes) when backend supports logprobs (litellm). Otherwise binary 0/1.
+        Default is True for paper alignment.
     **kwargs : Any
-        Additional keyword options controlling structured output, outlines usage,
-        backend device selection, API key, metric call type, and probability
-        scoring behavior.
+        Additional arguments forwarded to the VLM backend constructor.
     """
 
     scores: List[float]
@@ -82,14 +93,14 @@ class VQAMetric(StatefulMetric):
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
+        structured_output: bool = True,
+        use_outlines: bool = True,
+        device: str | torch.device = "cpu",
+        api_key: Optional[str] = None,
+        call_type: str = SINGLE,
+        use_probability: bool = True,
         **kwargs,
     ):
-        structured_output = kwargs.pop("structured_output", True)
-        use_outlines = kwargs.pop("use_outlines", True)
-        device = kwargs.pop("device", "cpu")
-        api_key = kwargs.pop("api_key", None)
-        call_type = kwargs.pop("call_type", SINGLE)
-        use_probability = kwargs.pop("use_probability", True)
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.structured_output = structured_output
