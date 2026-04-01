@@ -386,16 +386,33 @@ class LitellmVLM(BaseVLM):
 
     @staticmethod
     def _prob_from_top_logprobs(logprobs: Any, expected: str) -> Optional[float]:
+        token_logprobs = LitellmVLM._iter_top_logprobs(logprobs)
+        if token_logprobs is None:
+            return None
+        expected_lower = expected.lower()
+        for token_logprob in token_logprobs:
+            if LitellmVLM._token_matches_expected(token_logprob, expected_lower):
+                return LitellmVLM._logprob_to_probability(token_logprob)
+        return None
+
+    @staticmethod
+    def _iter_top_logprobs(logprobs: Any) -> Optional[list[Any]]:
         if not (logprobs and hasattr(logprobs, "content")):
             return None
+        flattened: list[Any] = []
         for tok in logprobs.content or []:
-            top = getattr(tok, "top_logprobs", None) or []
-            for token_logprob in top:
-                token_str = getattr(token_logprob, "token", "") or str(token_logprob)
-                if token_str and expected.lower() in token_str.lower():
-                    logprob = float(getattr(token_logprob, "logprob", -1e9) or -1e9)
-                    return min(1.0, max(0.0, math.exp(logprob)))
-        return None
+            flattened.extend(getattr(tok, "top_logprobs", None) or [])
+        return flattened
+
+    @staticmethod
+    def _token_matches_expected(token_logprob: Any, expected_lower: str) -> bool:
+        token_str = getattr(token_logprob, "token", "") or str(token_logprob)
+        return bool(token_str and expected_lower in token_str.lower())
+
+    @staticmethod
+    def _logprob_to_probability(token_logprob: Any) -> float:
+        logprob = float(getattr(token_logprob, "logprob", -1e9) or -1e9)
+        return min(1.0, max(0.0, math.exp(logprob)))
 
     def _binary_fallback_from_choice(self, choice: Any, expected: str) -> float:
         content_str = (choice.message.content or "")

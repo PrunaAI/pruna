@@ -89,23 +89,20 @@ class VQAMetric(StatefulMetric):
     metric_name: str = "vqa"
     runs_on: List[str] = ["cpu"]
 
-    # Preserve explicit constructor API for backward compatibility with Task/registry instantiation.
-    # pylint: disable=too-many-arguments
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
-        *args,
         vlm: Optional[BaseVLM] = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
-        structured_output: bool = True,
-        use_outlines: bool = True,
-        device="cpu",
-        api_key: Optional[str] = None,
-        call_type: str = SINGLE,
-        use_probability: bool = True,
         **kwargs,
     ):
+        structured_output = kwargs.pop("structured_output", True)
+        use_outlines = kwargs.pop("use_outlines", True)
+        device = kwargs.pop("device", "cpu")
+        api_key = kwargs.pop("api_key", None)
+        call_type = kwargs.pop("call_type", SINGLE)
+        use_probability = kwargs.pop("use_probability", True)
         super().__init__(device=device)
         self.device = set_to_best_available_device(device)
         self.structured_output = structured_output
