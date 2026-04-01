@@ -217,16 +217,14 @@ class SmashConfig:
 
     def cleanup_cache_dir(self) -> None:
         """Clean up the cache directory."""
-        try:
-            if (
-                hasattr(self, "cache_dir")
-                and self.cache_dir is not None
-                and isinstance(self.cache_dir, Path)
-                and self.cache_dir.exists()
-            ):
-                shutil.rmtree(self.cache_dir, ignore_errors=True)
-        except Exception:
-            pass
+        if hasattr(self, "cache_dir") and self.cache_dir is not None:
+            cache_path = Path(self.cache_dir)
+
+            if not isinstance(cache_path, Path):
+                raise TypeError(f"cache_dir must be path-like, got {type(self.cache_dir)}")
+
+            if cache_path.exists() and cache_path.is_dir():
+                shutil.rmtree(cache_path, ignore_errors=True)
 
     def reset_cache_dir(self) -> None:
         """Reset the cache directory."""
