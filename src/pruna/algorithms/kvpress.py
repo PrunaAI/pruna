@@ -39,6 +39,7 @@ PRESS_TYPES = [
     "DuoAttentionPress",
     "ExpectedAttentionPress",
     "ExpectedAttentionStatsPress",
+    "FastKVzipPress",
     "FinchPress",
     "KnormPress",
     "KVzapPress",

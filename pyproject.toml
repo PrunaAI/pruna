@@ -250,7 +250,7 @@ intel = [
     "torchvision>=0.22.0,<0.24.0",
 ]
 kvpress = [
-    "kvpress>=0.4.3,<0.5.0",
+    "kvpress>=0.5.2",
 ]
 
 [build-system]
