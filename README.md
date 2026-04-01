@@ -9,7 +9,8 @@
 
 <br>
 
-[![Documentation](https://img.shields.io/badge/Pruna_documentation-purple?style=for-the-badge)][documentation]
+[![Documentation](https://img.shields.io/badge/Pruna_documentation-purple?style=for-the-badge)][documentation] &nbsp;
+[![Try our Performance Models](https://img.shields.io/badge/Try_our_Performance_Models-purple?style=for-the-badge)][api_dashboard]
 
 <br>
 
@@ -126,10 +127,14 @@ Since Pruna offers a broad range of optimization algorithms, the following table
 |--------------|-----------------------------------------------------------------------------------------------|:-----:|:------:|:-------:|
 | `batcher`    | Groups multiple inputs together to be processed simultaneously, improving computational efficiency and reducing processing time. | ✅    | ❌     | ➖      |
 | `cacher`     | Stores intermediate results of computations to speed up subsequent operations.               | ✅    | ➖     | ➖      |
-| `compiler`   | Optimises the model with instructions for specific hardware.                                 | ✅    | ➖     | ➖      |
+| `compiler`   | Optimizes the model with instructions for specific hardware.                                 | ✅    | ➖     | ➖      |
+| `distiller` | Trains a smaller, simpler model to mimic a larger, more complex model. | ✅ | ✅ | ❌ |
 | `quantizer`  | Reduces the precision of weights and activations, lowering memory requirements.              | ✅    | ✅     | ❌      |
 | `pruner`     | Removes less important or redundant connections and neurons, resulting in a sparser, more efficient network. | ✅    | ✅     | ❌      |
+| `recoverer`  | Restores the performance of a model after compression. | ➖ | ➖ | ✅ |
 | `factorizer` | Factorization batches several small matrix multiplications into one large fused operation. | ✅ | ➖ | ➖ |
+| `enhancer` | Enhances the model output by applying post-processing algorithms such as denoising or upscaling. | ❌ | ➖ | ✅ |
+| `distributer` | Distributes the inference, the model or certain calculations across multiple devices. | ✅ | ❌ | ➖ |
 | `kernel`   | Kernels are specialized GPU routines that speed up parts of the computation.  | ✅ | ➖ | ➖ |
 
 ✅ (improves), ➖ (approx. the same), ❌ (worsens)
@@ -180,3 +185,4 @@ If you use Pruna in your research, feel free to cite the project! 💜
 [docs-faq]: https://docs.pruna.ai/en/stable/resources/faq.html
 [docs-office-hours]: https://docs.pruna.ai/en/stable/resources/office_hours.html
 [docs-contributing]: https://docs.pruna.ai/en/stable/docs_pruna/contributions/how_to_contribute.html
+[api_dashboard]: https://dashboard.pruna.ai/login?utm_source=github&utm_medium=readme&utm_campaign=github_traffic

@@ -1,5 +1,9 @@
+<!--
+Please fill out the sections below so maintainers can review your PR efficiently.
+-->
+
 ## Description
-<!-- Provide a brief description of the changes in this PR -->
+<!-- What does this PR do and why? A sentence or two is fine. -->
 
 ## Related Issue
 <!-- If this PR addresses an existing issue, please link to it here -->
@@ -9,20 +13,45 @@ Fixes #(issue number)
 <!-- Mark the appropriate option with an "x" (no spaces around the "x") -->
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] New feature (non-breaking change which adds functionality)
+- [ ] Refactor (no functional change)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
+- [ ] Documentation update
 
-## How Has This Been Tested?
-<!-- Describe the tests you ran to verify your changes -->
+## Testing
+<!-- How did you verify your changes? Which tests did you run? -->
+- [ ] I added or updated tests covering my changes
+- [ ] Existing tests pass locally (`uv run pytest -m "cpu and not slow"`)
+
+For full setup and testing instructions, see the [Contributing Guide](https://docs.pruna.ai/en/stable/docs_pruna/contributions/how_to_contribute.html).
 
 ## Checklist
 <!-- Mark items with "x" (no spaces around the "x") -->
 - [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
+- [ ] I have performed a self-review of my code, especially for agent-assisted changes
+- [ ] I updated the documentation where necessary
 
-## Additional Notes
-<!-- Add any other information about the PR here -->
+---
+
+Thanks for contributing to **Pruna**! We're excited to review your work.
+
+New to contributing? Check out our [Contributing Guide](https://docs.pruna.ai/en/stable/docs_pruna/contributions/how_to_contribute.html) for everything you need to get started.
+
+> **Note:** 
+> - Draft PRs or PRs without a clear and detailed overview may be delayed.  
+> - Please mark your PR as **Ready for Review** and ensure the sections above are filled out.
+> - Contributions that are entirely AI-generated without meaningful human review are discouraged.
+
+---
+
+## First Prune (1-year OSS anniversary)
+
+**First Prune** marks one year of Pruna’s open-source work. During the initiative window, qualifying merged contributions count toward **First Prune**. You can earn credits for our **performance models** via our **API**.
+
+If you’d like your contribution to count toward **First Prune**, here’s how it works:
+
+- **Initiative window:** First Prune starts on **March 31**.
+- **Issue assignment:** For your PR to count toward First Prune, the related issue must be assigned to the contributor opening the PR. Issues are labeled with **first-prune**.
+- **Open for review:** Please **open your PR and mark it ready for review by April 30** (end of April).
+- **Review priority:** We’ll make our best effort to review quickly any PR that is open and has a review request before April 30.
+- **Credits:** Each qualifying merged PR earns **30 credits**. We’ll be in touch after all qualifying PRs for **First Prune** have been merged.
+- **To get started:** Have a look at [all models](https://www.pruna.ai/all-models). You’ll need to **sign up** on the [dashboard](https://dashboard.pruna.ai/login) before you can redeem your credits.
