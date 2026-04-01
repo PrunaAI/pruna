@@ -99,6 +99,7 @@ class Torchao(PrunaAlgorithmBase):
         "fora",
         "torch_compile",
         "sage_attn",
+        "kvpress",
         "img2img_denoise",
         "realesrgan_upscale",
         "moe_kernel_tuner",
