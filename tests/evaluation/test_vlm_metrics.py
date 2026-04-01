@@ -8,18 +8,17 @@ from datasets import Dataset
 from pydantic import BaseModel
 
 from pruna.data import base_datasets
+from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.evaluation_agent import EvaluationAgent
 from pruna.evaluation.metrics.metric_alignment_score import AlignmentScoreMetric
-from pruna.evaluation.metrics.metric_vlm_utils import VQAnswer, get_answer_from_response
-from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
-from pruna.evaluation.task import Task
 from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_text_score import TextScoreMetric
 from pruna.evaluation.metrics.metric_viescore import VieScoreMetric
+from pruna.evaluation.metrics.metric_vlm_utils import VQAnswer, get_answer_from_response
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
-from pruna.evaluation.metrics.vlm_base import TransformersVLM
-from pruna.data.pruna_datamodule import PrunaDataModule
+from pruna.evaluation.metrics.vlm_base import BaseVLM, TransformersVLM, get_vlm
+from pruna.evaluation.task import Task
 
 SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
