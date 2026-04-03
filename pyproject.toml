@@ -64,19 +64,21 @@ testpaths = [
 
 [[tool.uv.index]]
 name = "pypi"
-url = "https://pypi.org/simple"  # regular PyPI
+url = "https://pypi.org/simple"
+default = true
 
 [[tool.uv.index]]
 name = "pruna_internal"
-url = "https://prunaai.pythonanywhere.com/simple/"  # Pruna Pythonanywhere
-default = true # default = True makes this index the lowest prio
+url = "https://prunaai.pythonanywhere.com/simple/"
+explicit = true
 
 [[tool.uv.index]]
 name = "intel-pytorch-extension"
 url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
+explicit = true
 
 [tool.uv]
-index-strategy = "unsafe-best-match"
+index-strategy = "first-index"
 
 conflicts = [
     [
@@ -87,12 +89,25 @@ conflicts = [
         { extra = "vllm" },
         { extra = "vbench" },
     ],
+    [
+        { extra = "stable-fast-extraindex" },
+        { extra = "stable-fast" },
+    ],
+    [
+        { extra = "stable-fast-extraindex" },
+        { extra = "full" },
+    ],
 ]
 
 [tool.uv.sources]
 gptqmodel = [
   { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
   { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
+]
+intel-extension-for-pytorch = { index = "intel-pytorch-extension" }
+stable-fast-pruna = [
+  { index = "pruna_internal", extra = "stable-fast-extraindex" },
+  { index = "pypi", extra = "stable-fast" },
 ]
 
 [project]
@@ -167,7 +182,13 @@ vllm = [
 ]
 stable-fast = [
     "xformers>=0.0.30",
-    "stable-fast-pruna==1.0.8",
+    "stable-fast-pruna>=1.0.8,<1.0.9",
+]
+# stable-fast-pruna from pythonanywhere (torch/CUDA line wheels); same version band as stable-fast, different index via [tool.uv.sources].
+# Linux x86_64 only where those wheels are published; mutually exclusive with stable-fast/full.
+stable-fast-extraindex = [
+    "xformers>=0.0.30",
+    "stable-fast-pruna>=1.0.8,<1.0.9; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 # dependencies are added here because the wheels aren't bundling them
 gptq = [
@@ -185,8 +206,7 @@ awq = [
     "torch>=2.9.0"
 ]
 full = [
-    "xformers>=0.0.30",
-    "stable-fast-pruna==1.0.8",
+    "pruna[stable-fast]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
