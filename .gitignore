@@ -167,3 +167,4 @@ cython_debug/
 /resources/llama.cpp/
 
 tests/openai
+.aider*
