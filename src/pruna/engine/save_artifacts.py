@@ -13,7 +13,12 @@
 # limitations under the License.
 import shutil
 from enum import Enum
-from functools import partial
+
+try:
+    from enum import member
+except ImportError:
+    # Python 3.10 compat: partial prevents Enum from treating functions as methods
+    from functools import partial as member
 from pathlib import Path
 from typing import Any
 
@@ -147,8 +152,8 @@ class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     # Torch artifacts saved alongside the main model
     """
 
-    torch_artifacts = partial(save_torch_artifacts)
-    moe_kernel_tuner_artifacts = partial(save_moe_kernel_tuner_artifacts)
+    torch_artifacts = member(save_torch_artifacts)
+    moe_kernel_tuner_artifacts = member(save_moe_kernel_tuner_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """
