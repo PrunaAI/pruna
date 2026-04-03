@@ -150,44 +150,48 @@ def ssim_update(
 # Available metrics
 class TorchMetrics(Enum):
     """
-    Enum for available torchmetrics.
+    Enumeration of torchmetrics metrics for evaluation.
 
-    The enum contains triplets of the metric class, the update function and the call type.
+    This enum provides a tuple per member (metric_factory, update_fn, call_type):
+    metric_factory builds the metric (typically a torchmetrics class, or
+    functools.partial when some constructor arguments are fixed); update_fn is
+    an optional custom update handler; call_type describes how inputs are paired
+    for the metric.
 
     Parameters
     ----------
-    value : Callable
-        The function or class constructor for the metric.
-    names : List[str]
-        The available metric names.
+    value : tuple
+        Tuple holding metric_factory, update_fn, and call_type as described above.
+    names : str
+        The name of the enum member.
     module : str
-        The module in which the metric is defined.
+        The module where the enum is defined.
     qualname : str
-        Qualified name of the metric.
-    type : Type
-        The type of the enum value.
+        The qualified name of the enum.
+    type : type
+        The type of the enum.
     start : int
-        The starting value for the enum.
+        The start index for auto-numbering enum values.
     boundary : enum.FlagBoundary or None
         Boundary handling mode used by the Enum functional API for Flag and
         IntFlag enums.
     """
 
-    fid = (partial(FrechetInceptionDistance), fid_update, "gt_y")
-    accuracy = (partial(Accuracy), None, "y_gt")
-    perplexity = (partial(Perplexity), None, "y_gt")
-    clip_score = (partial(CLIPScore), None, "y_x")
-    precision = (partial(Precision), None, "y_gt")
-    recall = (partial(Recall), None, "y_gt")
+    fid = (FrechetInceptionDistance, fid_update, "gt_y")
+    accuracy = (Accuracy, None, "y_gt")
+    perplexity = (Perplexity, None, "y_gt")
+    clip_score = (CLIPScore, None, "y_x")
+    precision = (Precision, None, "y_gt")
+    recall = (Recall, None, "y_gt")
     psnr = (partial(PeakSignalNoiseRatio, data_range=255.0), None, "pairwise_y_gt")
-    ssim = (partial(StructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
-    msssim = (partial(MultiScaleStructuralSimilarityIndexMeasure), ssim_update, "pairwise_y_gt")
-    lpips = (partial(LearnedPerceptualImagePatchSimilarity), lpips_update, "pairwise_y_gt")
-    arniqa = (partial(ARNIQA), arniqa_update, "y")
-    clipiqa = (partial(CLIPImageQualityAssessment), None, "y")
+    ssim = (StructuralSimilarityIndexMeasure, ssim_update, "pairwise_y_gt")
+    msssim = (MultiScaleStructuralSimilarityIndexMeasure, ssim_update, "pairwise_y_gt")
+    lpips = (LearnedPerceptualImagePatchSimilarity, lpips_update, "pairwise_y_gt")
+    arniqa = (ARNIQA, arniqa_update, "y")
+    clipiqa = (CLIPImageQualityAssessment, None, "y")
 
     def __init__(self, *args, **kwargs) -> None:
-        self.tm = self.value[0]
+        self.tm: Callable[..., Metric] = self.value[0]
         self.update_fn = self.value[1] or default_update
         self.call_type = self.value[2]
 
