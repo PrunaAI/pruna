@@ -52,7 +52,7 @@ class LLMCompressor(PrunaAlgorithmBase):
     dataset_required: bool = True
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = ["moe_kernel_tuner"]
-    compatible_after: Iterable[str] = ["sage_attn", "kvpress", "moe_kernel_tuner"]
+    compatible_after: Iterable[str | tags] = ["sage_attn", tags.KV_CACHER, "moe_kernel_tuner"]
     required_install = "``uv pip install 'pruna[awq]'``"
 
     def get_hyperparameters(self) -> list:

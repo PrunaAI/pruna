@@ -57,7 +57,7 @@ class TorchCompile(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
-    compatible_before: Iterable[str] = [
+    compatible_before: Iterable[str | tags] = [
         "qkv_diffusers",
         "torch_structured",
         "half",
@@ -74,7 +74,7 @@ class TorchCompile(PrunaAlgorithmBase):
         "hyper",
         "padding_pruning",
         "ring_attn",
-        "kvpress",
+        tags.KV_CACHER,
         "text_to_image_distillation_inplace_perp",
         "text_to_image_distillation_lora",
         "text_to_image_distillation_perp",

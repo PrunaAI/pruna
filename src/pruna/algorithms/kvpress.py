@@ -62,7 +62,7 @@ class KVPress(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "kvpress"
-    group_tags: list[tags] = [tags.CACHER]
+    group_tags: list[tags] = [tags.KV_CACHER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/NVIDIA/kvpress",
@@ -74,12 +74,10 @@ class KVPress(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = [
-        "awq", "gptq", "half", "hqq", "hyper", "llm_int8",
-        "padding_pruning", "quanto", "sage_attn", "torchao", "moe_kernel_tuner",
+        "awq", "gptq", "half", "hqq", "llm_int8",
+        "quanto", "sage_attn", "torchao", "moe_kernel_tuner",
     ]
-    compatible_after: Iterable[str] = [
-        "img2img_denoise", "realesrgan_upscale", "torch_compile", "moe_kernel_tuner",
-    ]
+    compatible_after: Iterable[str] = ["torch_compile", "moe_kernel_tuner"]
 
     def get_hyperparameters(self) -> list:
         """

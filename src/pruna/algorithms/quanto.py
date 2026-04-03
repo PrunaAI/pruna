@@ -50,9 +50,9 @@ class Quanto(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = ["qkv_diffusers", "moe_kernel_tuner"]
-    compatible_after: Iterable[str] = [
+    compatible_after: Iterable[str | tags] = [
         "deepcache",
-        "kvpress",
+        tags.KV_CACHER,
         "sage_attn",
         "text_to_image_distillation_inplace_perp",
         "text_to_image_distillation_lora",
