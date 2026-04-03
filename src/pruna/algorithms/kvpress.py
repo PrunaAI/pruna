@@ -28,16 +28,8 @@ from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_wit
 from pruna.engine.save import SAVE_FUNCTIONS
 
 PRESS_TYPES = [
-    "AdaKVPress",
-    "BlockPress",
-    "ChunkKVPress",
-    "ChunkPress",
     "CompactorPress",
-    "CriticalAdaKVPress",
-    "CriticalKVPress",
     "CURPress",
-    "DMSPress",
-    "DuoAttentionPress",
     "ExpectedAttentionPress",
     "ExpectedAttentionStatsPress",
     "FastKVzipPress",
@@ -46,19 +38,15 @@ PRESS_TYPES = [
     "KVzapPress",
     "KVzipPress",
     "KeyDiffPress",
-    "KeyRerotationPress",
     "LagKVPress",
     "LeverageScorePress",
     "NonCausalAttnPress",
     "ObservedAttentionPress",
-    "PerLayerCompressionPress",
     "PyramidKVPress",
     "QFilterPress",
     "RandomPress",
-    "SimLayerKVPress",
     "SnapKVPress",
     "StreamingLLMPress",
-    "ThinKPress",
     "TOVAPress",
 ]
 
@@ -85,8 +73,13 @@ class KVPress(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
-    compatible_before: Iterable[str | tags] = [tags.QUANTIZER, "moe_kernel_tuner"]
-    compatible_after: Iterable[str | tags] = ["torch_compile", "sage_attn", "moe_kernel_tuner"]
+    compatible_before: Iterable[str] = [
+        "awq", "gptq", "half", "hqq", "hyper", "llm_int8",
+        "padding_pruning", "quanto", "sage_attn", "torchao", "moe_kernel_tuner",
+    ]
+    compatible_after: Iterable[str] = [
+        "img2img_denoise", "realesrgan_upscale", "torch_compile", "moe_kernel_tuner",
+    ]
 
     def get_hyperparameters(self) -> list:
         """
