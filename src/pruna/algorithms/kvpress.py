@@ -22,6 +22,7 @@ from ConfigSpace import CategoricalHyperparameter, UniformFloatHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
+from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_causal_lm, is_transformers_pipeline_with_causal_lm
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -110,6 +111,11 @@ class KVPress(PrunaAlgorithmBase):
                 default_value=0.5,
                 meta={"desc": "Fraction of KV pairs to remove. 0.0 means no compression."},
             ),
+            UnconstrainedHyperparameter(
+                "press_kwargs",
+                default_value=None,
+                meta={"desc": "Additional keyword arguments passed to the press constructor."},
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -148,9 +154,10 @@ class KVPress(PrunaAlgorithmBase):
 
         press_type = smash_config["press_type"]
         compression_ratio = smash_config["compression_ratio"]
+        press_kwargs = smash_config["press_kwargs"] or {}
 
         press_cls = imported_modules[press_type]
-        press = press_cls(compression_ratio=compression_ratio)
+        press = press_cls(compression_ratio=compression_ratio, **press_kwargs)
 
         original_generate = model.generate
 
