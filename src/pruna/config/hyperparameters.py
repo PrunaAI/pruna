@@ -16,8 +16,48 @@ from __future__ import annotations
 
 from typing import Any
 
-from ConfigSpace import CategoricalHyperparameter, Constant
+from ConfigSpace import CategoricalHyperparameter, Constant, UniformIntegerHyperparameter
 from typing_extensions import override
+
+
+class Int(UniformIntegerHyperparameter):
+    """
+    Represents an integer hyperparameter.
+
+    Parameters
+    ----------
+    name : str
+        The name of the hyperparameter.
+    lower : int
+        The lower bound of the hyperparameter.
+    upper : int
+        The upper bound of the hyperparameter.
+    default : int
+        The default value of the hyperparameter.
+    meta : Any
+        The metadata for the hyperparameter.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        lower: int = 0,
+        upper: int = 2**31 - 1,
+        default: int = 0,
+        meta: Any = None,
+    ) -> None:
+        super().__init__(name, lower=lower, upper=upper, default_value=default, meta=meta)
+
+    def __new__(
+        cls,
+        name: str,
+        lower: int = 0,
+        upper: int = 2**31 - 1,
+        default: int = 0,
+        meta: Any = None,
+    ) -> UniformIntegerHyperparameter:
+        """Create a new integer hyperparameter."""
+        return UniformIntegerHyperparameter(name, lower=lower, upper=upper, default_value=default, meta=meta)
 
 
 class Boolean(CategoricalHyperparameter):

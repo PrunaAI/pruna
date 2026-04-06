@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import weakref
 from pathlib import Path
 from typing import Any, Dict
 
@@ -26,6 +27,7 @@ from ConfigSpace import OrdinalHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
+from pruna.config.hyperparameters import Int
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_causal_lm,
@@ -36,7 +38,9 @@ from pruna.engine.utils import verify_sha256
 from pruna.logging.logger import pruna_logger
 
 # SHA256 hash for the pinned version (b3600) of convert_hf_to_gguf.py
+LLAMA_CPP_CONVERSION_SCRIPT_URL = "https://raw.githubusercontent.com/ggml-org/llama.cpp/b3600/convert_hf_to_gguf.py"
 LLAMA_CPP_CONVERSION_SCRIPT_SHA256 = "f62ab712618231b3e76050f94e45dcf94567312c209b4b99bfc142229360b018"
+LLAMA_CPP_CACHE_DIR = Path.home() / ".cache" / "pruna" / "scripts" / "llama_cpp"
 
 
 class LlamaCpp(PrunaAlgorithmBase):
@@ -81,6 +85,17 @@ class LlamaCpp(PrunaAlgorithmBase):
                 ],
                 default_value="q4_k_m",
                 meta={"desc": "Quantization method for llama.cpp. Examples: q4_k_m, q8_0, f16."},
+            ),
+            OrdinalHyperparameter(
+                "n_gpu_layers",
+                sequence=[0, 1, 4, 8, 16, 32, 999],
+                default_value=0,
+                meta={"desc": "Number of layers to offload to GPU. Use 999 for all layers."},
+            ),
+            Int(
+                "main_gpu",
+                default=0,
+                meta={"desc": "The GPU to use for the main model tensors."},
             ),
         ]
 
@@ -136,37 +151,49 @@ class LlamaCpp(PrunaAlgorithmBase):
             pruna_logger.info("Tiny model detected. Bypassing quantized block sizes and using f16.")
             quantization_method = "f16"
 
-        # Create a temp directory to hold HF model, f16 GGUF, and optimized GGUF
+        # Create a cache directory for llama.cpp models
+        llama_cpp_cache = Path(smash_config.cache_dir) / "llama_cpp"
+        llama_cpp_cache.mkdir(parents=True, exist_ok=True)
+
+        # Generate a unique name for the model if possible
+        model_id = "model"
+        if hasattr(model_to_export, "config") and hasattr(model_to_export.config, "_name_or_path"):
+            model_id = Path(model_to_export.config._name_or_path).name
+
+        f16_gguf_path = llama_cpp_cache / f"{model_id}-f16.gguf"
+        quant_gguf_path = llama_cpp_cache / f"{model_id}-{quantization_method}.gguf"
+
+        # Create a temp directory to hold HF model if needed
         temp_dir = tempfile.mkdtemp()
-        f16_gguf_path = Path(temp_dir) / "model-f16.gguf"
-        quant_gguf_path = Path(temp_dir) / f"model-{quantization_method}.gguf"
+        # Ensure cleanup even if save() is not called
+        weakref.finalize(self, shutil.rmtree, temp_dir, ignore_errors=True)
 
         try:
-            # Use a TemporaryDirectory for the HF model to ensure automatic cleanup
-            with tempfile.TemporaryDirectory(dir=temp_dir) as hf_model_dir:
-                model_to_export.save_pretrained(hf_model_dir)
-                if hasattr(smash_config, "tokenizer") and smash_config.tokenizer:
-                    smash_config.tokenizer.save_pretrained(hf_model_dir)
+            if not f16_gguf_path.exists():
+                # Use a TemporaryDirectory for the HF model to ensure automatic cleanup
+                with tempfile.TemporaryDirectory(dir=temp_dir) as hf_model_dir:
+                    model_to_export.save_pretrained(hf_model_dir)
+                    if hasattr(smash_config, "tokenizer") and smash_config.tokenizer:
+                        smash_config.tokenizer.save_pretrained(hf_model_dir)
 
-                # download the conversion script directly from llama.cpp
-                script_url = "https://raw.githubusercontent.com/ggml-org/llama.cpp/b3600/convert_hf_to_gguf.py"
-                script_path = Path(hf_model_dir) / "convert_hf_to_gguf.py"
-                urllib.request.urlretrieve(script_url, script_path)
+                    # get the conversion script (cached)
+                    script_path = self._get_conversion_script()
 
-                if not verify_sha256(script_path, LLAMA_CPP_CONVERSION_SCRIPT_SHA256):
-                    raise ValueError(
-                        f"Integrity verification failed for {script_url}. "
-                        "The downloaded script may have been tampered with or the pinned version has changed."
-                    )
+                    pruna_logger.info(f"Converting Hugging Face model to GGUF format at {f16_gguf_path}...")
+                    convert_cmd = [
+                        sys.executable, str(script_path),
+                        hf_model_dir,
+                        "--outfile", str(f16_gguf_path),
+                        "--outtype", "f16"
+                    ]
+                    subprocess.run(convert_cmd, check=True, capture_output=True, text=True)
+            else:
+                pruna_logger.info(f"Using cached F16 GGUF model at {f16_gguf_path}")
 
-                pruna_logger.info("Converting Hugging Face model to GGUF format...")
-                convert_cmd = [
-                    sys.executable, script_path,
-                    hf_model_dir,
-                    "--outfile", f16_gguf_path,
-                    "--outtype", "f16"
-                ]
-                subprocess.run(convert_cmd, check=True)
+            # quantize the GGUF model
+            if quantization_method != "f16":
+                if not quant_gguf_path.exists():
+                    pruna_logger.info(f"Quantizing GGUF model to {quantization_method} at {quant_gguf_path}...")
 
             # quantize the GGUF model
             if quantization_method != "f16":
@@ -190,28 +217,57 @@ class LlamaCpp(PrunaAlgorithmBase):
                         params,
                     )
                 else:
-                    raise RuntimeError("llama-cpp-python does not have llama_model_quantize available")
+                    pruna_logger.info(f"Using cached quantized model at {quant_gguf_path}")
             else:
                 quant_gguf_path = f16_gguf_path
 
             # Load the quantized model
             pruna_logger.info(f"Loading quantized model from {quant_gguf_path}")
-            quantized_model = llama_cpp.Llama(model_path=str(quant_gguf_path))
+            n_gpu_layers = smash_config["n_gpu_layers"]
+            if n_gpu_layers == 999:
+                n_gpu_layers = -1  # llama-cpp-python uses -1 for all layers
+            quantized_model = llama_cpp.Llama(
+                model_path=str(quant_gguf_path),
+                n_gpu_layers=n_gpu_layers,
+                main_gpu=smash_config["main_gpu"],
+            )
 
             # Keep a reference to the temp file path so the save function can move it
             quantized_model._pruna_temp_dir = temp_dir
             quantized_model.model_path = str(quant_gguf_path)
-
-            if quantization_method != "f16":
-                f16_gguf_path.unlink(missing_ok=True)
+            quantized_model._pruna_device = smash_config["device"]
 
             return quantized_model
 
         except Exception as e:
             pruna_logger.error(f"Error during llama.cpp quantization: {e}")
-            if "temp_dir" in locals() and Path(temp_dir).exists():
-                shutil.rmtree(temp_dir)
+            shutil.rmtree(temp_dir, ignore_errors=True)
             raise
+
+    def _get_conversion_script(self) -> Path:
+        """
+        Get the conversion script from cache or download it.
+
+        Returns
+        -------
+        Path
+            The path to the conversion script.
+        """
+        LLAMA_CPP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        script_path = LLAMA_CPP_CACHE_DIR / "convert_hf_to_gguf.py"
+
+        if not script_path.exists() or not verify_sha256(script_path, LLAMA_CPP_CONVERSION_SCRIPT_SHA256):
+            pruna_logger.info(f"Downloading conversion script from {LLAMA_CPP_CONVERSION_SCRIPT_URL}")
+            urllib.request.urlretrieve(LLAMA_CPP_CONVERSION_SCRIPT_URL, script_path)
+
+            if not verify_sha256(script_path, LLAMA_CPP_CONVERSION_SCRIPT_SHA256):
+                script_path.unlink(missing_ok=True)
+                raise ValueError(
+                    f"Integrity verification failed for {LLAMA_CPP_CONVERSION_SCRIPT_URL}. "
+                    "The downloaded script may have been tampered with or the pinned version has changed."
+                )
+
+        return script_path
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """

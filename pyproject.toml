@@ -169,8 +169,8 @@ vllm = [
     "ray",
 ]
 llamacpp = [
-    "llama-cpp-python>=0.2.78",
-    "gguf>=0.6.0",
+    "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
+    "gguf>=0.6.0", # Required for converting HF models to GGUF format
 ]
 stable-fast = [
     "xformers>=0.0.30",
@@ -198,8 +198,8 @@ awq = [
 ]
 full = [
     "pruna[stable-fast]",
-    "llama-cpp-python>=0.2.78",
-    "gguf>=0.6.0",
+    "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
+    "gguf>=0.6.0", # Required for converting HF models to GGUF format
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",

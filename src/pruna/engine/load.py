@@ -543,6 +543,7 @@ def load_llama_cpp(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
 
     model = llama_cpp.Llama(model_path=str(model_path), **filter_load_kwargs(llama_cpp.Llama.__init__, kwargs))
     model.model_path = str(model_path)
+    model._pruna_device = smash_config["device"]
     return model
 
 
