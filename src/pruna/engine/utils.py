@@ -28,7 +28,6 @@ import torch
 import torch.nn as nn
 from accelerate import dispatch_model
 from accelerate.hooks import remove_hook_from_module
-from pruna.engine.model_checks import is_llama_cpp_model
 from diffusers.models.modeling_utils import ModelMixin
 from transformers import Pipeline
 
@@ -409,11 +408,11 @@ def get_device(model: Any) -> str:
     if safe_is_instance(model, Pipeline):
         return get_device(model.model)
 
+    # function scored import due to model_check's import of ModelContext
+    from pruna.engine.model_checks import is_llama_cpp_model
+
     if is_llama_cpp_model(model):
-        # Determine device for llama.cpp models
-        if hasattr(model, "_pruna_device"):
-            return device_to_string(model._pruna_device)
-        return "cpu" # Default for now, as it's the safest.
+        return _get_llama_cpp_device(model)
 
     # a device map that points the whole model to the same device (only key is "") is not considered distributed
     # when casting a model like this with "to" the device map is not maintained, so we rely on the model.device attribute
@@ -434,6 +433,25 @@ def get_device(model: Any) -> str:
     model_device = device_to_string(model_device)
 
     return model_device
+
+
+def _get_llama_cpp_device(model: Any) -> str:
+    """
+    Determine device for llama.cpp models.
+
+    Parameters
+    ----------
+    model : Any
+        The llama.cpp model.
+
+    Returns
+    -------
+    str
+        The device string.
+    """
+    if hasattr(model, "_pruna_device"):
+        return device_to_string(model._pruna_device)
+    return "cpu"  # Default for now, as it's the safest.
 
 
 def get_device_map(model: Any, subset_key: str | None = None) -> dict[str, str]:

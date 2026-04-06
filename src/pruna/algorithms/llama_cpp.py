@@ -155,7 +155,7 @@ class LlamaCpp(PrunaAlgorithmBase):
         llama_cpp_cache = Path(smash_config.cache_dir) / "llama_cpp"
         llama_cpp_cache.mkdir(parents=True, exist_ok=True)
 
-        # Generate a unique name for the model if possible
+        # Generate a unique name for the model
         model_id = "model"
         if hasattr(model_to_export, "config") and hasattr(model_to_export.config, "_name_or_path"):
             model_id = Path(model_to_export.config._name_or_path).name
@@ -164,58 +164,21 @@ class LlamaCpp(PrunaAlgorithmBase):
         quant_gguf_path = llama_cpp_cache / f"{model_id}-{quantization_method}.gguf"
 
         # Create a temp directory to hold HF model if needed
-        temp_dir = tempfile.mkdtemp()
+        temp_dir = Path(tempfile.mkdtemp())
         # Ensure cleanup even if save() is not called
-        weakref.finalize(self, shutil.rmtree, temp_dir, ignore_errors=True)
+        weakref.finalize(self, shutil.rmtree, str(temp_dir), ignore_errors=True)
 
         try:
+            # Convert to F16 GGUF if needed
             if not f16_gguf_path.exists():
-                # Use a TemporaryDirectory for the HF model to ensure automatic cleanup
-                with tempfile.TemporaryDirectory(dir=temp_dir) as hf_model_dir:
-                    model_to_export.save_pretrained(hf_model_dir)
-                    if hasattr(smash_config, "tokenizer") and smash_config.tokenizer:
-                        smash_config.tokenizer.save_pretrained(hf_model_dir)
-
-                    # get the conversion script (cached)
-                    script_path = self._get_conversion_script()
-
-                    pruna_logger.info(f"Converting Hugging Face model to GGUF format at {f16_gguf_path}...")
-                    convert_cmd = [
-                        sys.executable, str(script_path),
-                        hf_model_dir,
-                        "--outfile", str(f16_gguf_path),
-                        "--outtype", "f16"
-                    ]
-                    subprocess.run(convert_cmd, check=True, capture_output=True, text=True)
+                self._convert_to_gguf(model_to_export, f16_gguf_path, temp_dir, smash_config)
             else:
                 pruna_logger.info(f"Using cached F16 GGUF model at {f16_gguf_path}")
 
-            # quantize the GGUF model
+            # Quantize GGUF if needed
             if quantization_method != "f16":
                 if not quant_gguf_path.exists():
-                    pruna_logger.info(f"Quantizing GGUF model to {quantization_method} at {quant_gguf_path}...")
-
-            # quantize the GGUF model
-            if quantization_method != "f16":
-                pruna_logger.info(f"Quantizing GGUF model to {quantization_method}...")
-
-                # Retrieve quantize CLI from llama.cpp
-                if hasattr(llama_cpp, "llama_model_quantize"):
-                    # Using API
-                    params = llama_cpp.llama_model_quantize_default_params()
-
-                    # Convert string to enum, e.g. "q4_k_m" -> llama_cpp.LLAMA_FTYPE_MOSTLY_Q4_K_M
-                    ftype_name = f"LLAMA_FTYPE_MOSTLY_{quantization_method.upper()}"
-                    if hasattr(llama_cpp, ftype_name):
-                        params.ftype = getattr(llama_cpp, ftype_name)
-                    else:
-                        raise ValueError(f"Unknown quantization method: {quantization_method}")
-
-                    llama_cpp.llama_model_quantize(
-                        str(f16_gguf_path).encode("utf-8"),
-                        str(quant_gguf_path).encode("utf-8"),
-                        params,
-                    )
+                    self._quantize_gguf(llama_cpp, f16_gguf_path, quant_gguf_path, quantization_method)
                 else:
                     pruna_logger.info(f"Using cached quantized model at {quant_gguf_path}")
             else:
@@ -226,14 +189,15 @@ class LlamaCpp(PrunaAlgorithmBase):
             n_gpu_layers = smash_config["n_gpu_layers"]
             if n_gpu_layers == 999:
                 n_gpu_layers = -1  # llama-cpp-python uses -1 for all layers
+
             quantized_model = llama_cpp.Llama(
                 model_path=str(quant_gguf_path),
                 n_gpu_layers=n_gpu_layers,
                 main_gpu=smash_config["main_gpu"],
             )
 
-            # Keep a reference to the temp file path so the save function can move it
-            quantized_model._pruna_temp_dir = temp_dir
+            # Metadata for Pruna save/load
+            quantized_model._pruna_temp_dir = str(temp_dir)
             quantized_model.model_path = str(quant_gguf_path)
             quantized_model._pruna_device = smash_config["device"]
 
@@ -243,6 +207,61 @@ class LlamaCpp(PrunaAlgorithmBase):
             pruna_logger.error(f"Error during llama.cpp quantization: {e}")
             shutil.rmtree(temp_dir, ignore_errors=True)
             raise
+
+    def _convert_to_gguf(
+        self,
+        model: Any,
+        outfile: Path,
+        temp_dir: Path,
+        smash_config: SmashConfigPrefixWrapper
+    ) -> None:
+        """Save HF model and convert it to GGUF format."""
+        with tempfile.TemporaryDirectory(dir=str(temp_dir)) as hf_model_dir:
+            model.save_pretrained(hf_model_dir)
+            if hasattr(smash_config, "tokenizer") and smash_config.tokenizer:
+                smash_config.tokenizer.save_pretrained(hf_model_dir)
+
+            script_path = self._get_conversion_script()
+            pruna_logger.info(f"Converting Hugging Face model to GGUF format at {outfile}...")
+
+            convert_cmd = [
+                sys.executable, str(script_path),
+                hf_model_dir,
+                "--outfile", str(outfile),
+                "--outtype", "f16"
+            ]
+            try:
+                subprocess.run(convert_cmd, check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as e:
+                pruna_logger.error(f"Conversion script failed with error: {e.stderr}")
+                raise
+
+    def _quantize_gguf(
+        self,
+        llama_cpp: Any,
+        infile: Path,
+        outfile: Path,
+        method: str
+    ) -> None:
+        """Quantize a GGUF file using llama-cpp-python API."""
+        pruna_logger.info(f"Quantizing GGUF model to {method} at {outfile}...")
+
+        if not hasattr(llama_cpp, "llama_model_quantize"):
+            raise RuntimeError("llama_model_quantize API not available in llama-cpp-python.")
+
+        params = llama_cpp.llama_model_quantize_default_params()
+        ftype_name = f"LLAMA_FTYPE_MOSTLY_{method.upper()}"
+
+        if hasattr(llama_cpp, ftype_name):
+            params.ftype = getattr(llama_cpp, ftype_name)
+        else:
+            raise ValueError(f"Unknown quantization method: {method}")
+
+        llama_cpp.llama_model_quantize(
+            str(infile).encode("utf-8"),
+            str(outfile).encode("utf-8"),
+            params,
+        )
 
     def _get_conversion_script(self) -> Path:
         """
@@ -255,6 +274,10 @@ class LlamaCpp(PrunaAlgorithmBase):
         """
         LLAMA_CPP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         script_path = LLAMA_CPP_CACHE_DIR / "convert_hf_to_gguf.py"
+
+        # Validate URL scheme for security
+        if not LLAMA_CPP_CONVERSION_SCRIPT_URL.startswith("https://"):
+            raise ValueError(f"Insecure conversion script URL: {LLAMA_CPP_CONVERSION_SCRIPT_URL}")
 
         if not script_path.exists() or not verify_sha256(script_path, LLAMA_CPP_CONVERSION_SCRIPT_SHA256):
             pruna_logger.info(f"Downloading conversion script from {LLAMA_CPP_CONVERSION_SCRIPT_URL}")

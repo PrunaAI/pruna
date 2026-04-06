@@ -27,14 +27,6 @@ except ImportError:
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, cast
 
-try:
-    from enum import member
-except ImportError:
-    # member was added in 3.11
-    def member(x):
-        """Standard member decorator fallback for older python versions."""
-        return x
-
 import torch
 import transformers
 from huggingface_hub import ModelCard, ModelCardData, login, repo_exists, upload_large_folder
