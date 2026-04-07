@@ -63,11 +63,6 @@ testpaths = [
 ]
 
 [[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple"
-default = true
-
-[[tool.uv.index]]
 name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"
 explicit = true
@@ -100,15 +95,9 @@ conflicts = [
 ]
 
 [tool.uv.sources]
-gptqmodel = [
-  { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
-  { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
-]
+gptqmodel = { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" }
 intel-extension-for-pytorch = { index = "intel-pytorch-extension" }
-stable-fast-pruna = [
-  { index = "pruna_internal", extra = "stable-fast-extraindex" },
-  { index = "pypi", extra = "stable-fast" },
-]
+stable-fast-pruna = { index = "pruna_internal", extra = "stable-fast-extraindex" }
 
 [project]
 name = "pruna"
@@ -184,8 +173,7 @@ stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna>=1.0.8,<1.0.9",
 ]
-# stable-fast-pruna from pythonanywhere (torch/CUDA line wheels); same version band as stable-fast, different index via [tool.uv.sources].
-# Linux x86_64 only where those wheels are published; mutually exclusive with stable-fast/full.
+# stable-fast-pruna from pythonanywhere (per torch / CUDA versions wheels)
 stable-fast-extraindex = [
     "xformers>=0.0.30",
     "stable-fast-pruna>=1.0.8,<1.0.9; sys_platform == 'linux' and platform_machine == 'x86_64'",
