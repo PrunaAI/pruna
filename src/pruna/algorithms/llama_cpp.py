@@ -140,7 +140,7 @@ class LlamaCpp(PrunaAlgorithmBase):
         quantization_method = self._get_quantization_method(model_to_export, smash_config["quantization_method"])
         pruna_logger.info(f"Quantizing model with llama.cpp using method {quantization_method}")
 
-        llama_cpp_cache, f16_gguf_path, quant_gguf_path = self._get_cache_paths(
+        _, f16_gguf_path, quant_gguf_path = self._get_cache_paths(
             model_to_export, smash_config, quantization_method
         )
 
@@ -165,24 +165,7 @@ class LlamaCpp(PrunaAlgorithmBase):
             else:
                 quant_gguf_path = f16_gguf_path
 
-            # Load the quantized model
-            pruna_logger.info(f"Loading quantized model from {quant_gguf_path}")
-            n_gpu_layers = smash_config["n_gpu_layers"]
-            if n_gpu_layers == 999:
-                n_gpu_layers = -1  # llama-cpp-python uses -1 for all layers
-
-            quantized_model = llama_cpp.Llama(
-                model_path=str(quant_gguf_path),
-                n_gpu_layers=n_gpu_layers,
-                main_gpu=smash_config["main_gpu"],
-            )
-
-            # Metadata for Pruna save/load
-            quantized_model._pruna_temp_dir = str(temp_dir)
-            quantized_model.model_path = str(quant_gguf_path)
-            quantized_model._pruna_device = smash_config["device"]
-
-            return quantized_model
+            return self._load_quantized_model(llama_cpp, quant_gguf_path, smash_config, temp_dir)
 
         except Exception as e:
             pruna_logger.error(f"Error during llama.cpp quantization: {e}")
@@ -199,6 +182,22 @@ class LlamaCpp(PrunaAlgorithmBase):
             pruna_logger.info("Tiny model detected. Bypassing quantized block sizes and using f16.")
             return "f16"
         return default_method
+
+    def _load_quantized_model(self, llama_cpp: Any, quant_gguf_path: Path, smash_config: Any, temp_dir: Path) -> Any:
+        pruna_logger.info(f"Loading quantized model from {quant_gguf_path}")
+        n_gpu_layers = smash_config["n_gpu_layers"]
+        if n_gpu_layers == 999:
+            n_gpu_layers = -1  # llama-cpp-python uses -1 for all layers
+        quantized_model = llama_cpp.Llama(
+            model_path=str(quant_gguf_path),
+            n_gpu_layers=n_gpu_layers,
+            main_gpu=smash_config["main_gpu"],
+        )
+        quantized_model._pruna_temp_dir = str(temp_dir)
+        quantized_model.model_path = str(quant_gguf_path)
+        quantized_model._pruna_device = smash_config["device"]
+        return quantized_model
+
 
     def _get_cache_paths(
         self, model: Any, smash_config: SmashConfigPrefixWrapper, q_method: str
