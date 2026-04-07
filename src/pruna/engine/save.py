@@ -489,25 +489,7 @@ def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: Smash
         if gguf_file.exists():
             target_file = model_path / "model.gguf"
             if gguf_file.resolve() != target_file.resolve():
-                if (
-                    hasattr(model, "_pruna_temp_dir")
-                    and Path(model._pruna_temp_dir).resolve() == gguf_file.parent.resolve()
-                ):
-                    try:
-                        shutil.move(gguf_file, target_file)
-                        shutil.rmtree(model._pruna_temp_dir)
-                        delattr(model, "_pruna_temp_dir")
-                    except PermissionError:
-                        pruna_logger.warning(
-                            f"Could not move GGUF file from {gguf_file} to {target_file} "
-                            "(likely memory-mapped on Windows). "
-                            "Copying instead, but the temporary directory will persist "
-                            "until process exit."
-                        )
-                        shutil.copy(gguf_file, target_file)
-                else:
-                    shutil.copy(gguf_file, target_file)
-
+                shutil.copy(gguf_file, target_file)
             model.model_path = str(target_file)
             smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
         else:

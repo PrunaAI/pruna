@@ -193,11 +193,9 @@ class LlamaCpp(PrunaAlgorithmBase):
             n_gpu_layers=n_gpu_layers,
             main_gpu=smash_config["main_gpu"],
         )
-        quantized_model._pruna_temp_dir = str(temp_dir)
         quantized_model.model_path = str(quant_gguf_path)
         quantized_model._pruna_device = smash_config["device"]
         return quantized_model
-
 
     def _get_cache_paths(
         self, model: Any, smash_config: SmashConfigPrefixWrapper, q_method: str
