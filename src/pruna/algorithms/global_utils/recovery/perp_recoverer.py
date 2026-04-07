@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import shutil
 from typing import Any, Dict
 
 import torch
@@ -23,7 +24,7 @@ from pruna.algorithms.global_utils.recovery.adapters.utils import freeze_paramet
 from pruna.algorithms.global_utils.recovery.finetuners import PrunaFinetuner
 from pruna.algorithms.global_utils.recovery.finetuners.diffusers.utils import get_denoiser_attr
 from pruna.algorithms.global_utils.recovery.utils import get_trainable_parameters
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_causal_lm,
     is_flux_pipeline,
@@ -31,7 +32,7 @@ from pruna.engine.model_checks import (
     is_sd_pipeline,
     is_sdxl_pipeline,
 )
-from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.save import SAVE_FUNCTIONS, save_pruna_model
 from pruna.logging.logger import pruna_logger
 
 
@@ -52,7 +53,7 @@ class PERPRecoverer(PrunaAlgorithmBase):
     """
 
     group_tags: list[AlgorithmTag] = [AlgorithmTag.RECOVERER]  # type: ignore[attr-defined]
-    save_fn = SAVE_FUNCTIONS.pickled
+    save_fn = None
     references: dict[str, str] = {
         "GitHub": "https://github.com/huggingface/peft",
         "Paper": "https://arxiv.org/pdf/2312.15230",
@@ -180,6 +181,45 @@ class PERPRecoverer(PrunaAlgorithmBase):
         for adapter, adapter_seed in zip(adapters, adapter_seeds):
             adapter_smash_config = SmashConfigPrefixWrapper(smash_config, adapter.adapter_prefix + "_")
             adapter.pre_smash_hook(model_recovery, adapter_smash_config, seed=adapter_seed)
+
+    def apply(self, model: Any, smash_config: SmashConfig) -> Any:
+        """
+        Apply the recovery algorithm and refresh the save cache if needed.
+
+        Recovery modifies weights in-place without changing the model's serialization
+        format. If a prior algorithm used ``save_before_apply`` (caching the model before
+        its transformation), the cached snapshot is now stale because recovery changed
+        the weights. This override refreshes that cache so the already saved model includes
+        the recovered weights.
+
+        Parameters
+        ----------
+        model : Any
+            The model to apply the algorithm to.
+        smash_config : SmashConfig
+            The SmashConfig object containing the save and load functions.
+
+        Returns
+        -------
+        Any
+            The model after recovery has been applied.
+        """
+        result = super().apply(model, smash_config)
+
+        if smash_config.prepare_saving:
+            save_dir = self.get_save_before_smash_dir(smash_config)
+            if not save_dir.exists():
+                return result
+
+            ori_save_fns = smash_config.save_fns[:]
+            smash_config.save_fns = [fn for fn in smash_config.save_fns if fn != SAVE_FUNCTIONS.save_before_apply.name]
+            # Re-save with recovered weights
+            shutil.rmtree(save_dir, ignore_errors=True)
+            save_dir.mkdir(parents=True)
+            save_pruna_model(model, save_dir, smash_config)
+            # Restore save_fns
+            smash_config.save_fns = ori_save_fns
+        return result
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
