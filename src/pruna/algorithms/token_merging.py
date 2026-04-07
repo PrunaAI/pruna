@@ -355,7 +355,8 @@ class ToMeModelWrapper(torch.nn.Module):
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         """Initialise ToMe state and forward through the wrapped model."""
-        self._tome_info["r"] = self.parsed_r
+        # Make a copy of the list to avoid modifying the original
+        self._tome_info["r"] = list(self.parsed_r)
         self._tome_info["size"] = None
         self._tome_info["source"] = None
         self._tome_info["metric"] = None
