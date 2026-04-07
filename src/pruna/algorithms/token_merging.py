@@ -248,9 +248,7 @@ try:
                 attn_weights = attn_weights * head_mask
 
             attn_weights = attn_weights.softmax(dim=-1)
-            attn_probs = torch.nn.functional.dropout(
-                attn_weights, p=self.dropout_prob if self.training else 0.0
-            )
+            attn_probs = torch.nn.functional.dropout(attn_weights, p=self.dropout_prob if self.training else 0.0)
 
             context_layer = (attn_probs @ value_layer).transpose(1, 2)
             context_layer = context_layer.reshape(batch_size, -1, self.all_head_size)

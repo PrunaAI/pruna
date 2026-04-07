@@ -148,7 +148,7 @@ def is_vit(model: Any) -> bool:
     -------
     bool
         True if the model is a ViT model, False otherwise.
-     """
+    """
     return model.__class__.__name__ == "ViTForImageClassification"
 
 
@@ -167,6 +167,7 @@ def is_transformers_pipeline_with_vit(model: Any) -> bool:
         True if the model is a transformers pipeline, False otherwise.
     """
     return isinstance(model, ImageClassificationPipeline) and is_vit(getattr(model, "model", None))
+
 
 def is_transformers_pipeline_with_causal_lm(model: Any) -> bool:
     """
