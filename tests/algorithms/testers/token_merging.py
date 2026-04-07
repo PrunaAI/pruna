@@ -1,7 +1,7 @@
 from typing import Any
 
+from datasets import load_dataset
 import torch
-from PIL import Image
 
 from pruna import PrunaModel
 from pruna.algorithms.token_merging import TokenMerging
@@ -22,7 +22,9 @@ class TestTokenMerging(AlgorithmTesterBase):
 
     def pre_smash_hook(self, model: Any) -> None:
         """Hook to modify the model before smashing."""
-        self.input_image = Image.open("husky.png")
+        dataset = load_dataset("timm/mini-imagenet", split="test")
+        sample = dataset[2]
+        self.input_image = sample["image"]
         # Necessary to set the device to the same device as the model
         model.device = torch.device(get_device(model))
         self.original_pred = model(self.input_image)
