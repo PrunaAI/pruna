@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 import urllib.request
@@ -134,34 +134,15 @@ class LlamaCpp(PrunaAlgorithmBase):
         imported_modules = self.import_algorithm_packages()
         llama_cpp = imported_modules["llama_cpp"]
 
-        quantization_method = smash_config["quantization_method"]
-
-        pruna_logger.info(f"Quantizing model with llama.cpp using method {quantization_method}")
-
         # Ensure we have the causal lm if it's a pipeline
         model_to_export = model.model if is_transformers_pipeline_with_causal_lm(model) else model
 
-        # llama.cpp requires tensor dimensions to be divisible by a block size (usually 32)
-        # fallback to f16 for tiny test models avoiding crashes
-        if (
-            hasattr(model_to_export, "config")
-            and hasattr(model_to_export.config, "hidden_size")
-            and model_to_export.config.hidden_size < 32
-        ):
-            pruna_logger.info("Tiny model detected. Bypassing quantized block sizes and using f16.")
-            quantization_method = "f16"
+        quantization_method = self._get_quantization_method(model_to_export, smash_config["quantization_method"])
+        pruna_logger.info(f"Quantizing model with llama.cpp using method {quantization_method}")
 
-        # Create a cache directory for llama.cpp models
-        llama_cpp_cache = Path(smash_config.cache_dir) / "llama_cpp"
-        llama_cpp_cache.mkdir(parents=True, exist_ok=True)
-
-        # Generate a unique name for the model
-        model_id = "model"
-        if hasattr(model_to_export, "config") and hasattr(model_to_export.config, "_name_or_path"):
-            model_id = Path(model_to_export.config._name_or_path).name
-
-        f16_gguf_path = llama_cpp_cache / f"{model_id}-f16.gguf"
-        quant_gguf_path = llama_cpp_cache / f"{model_id}-{quantization_method}.gguf"
+        llama_cpp_cache, f16_gguf_path, quant_gguf_path = self._get_cache_paths(
+            model_to_export, smash_config, quantization_method
+        )
 
         # Create a temp directory to hold HF model if needed
         temp_dir = Path(tempfile.mkdtemp())
@@ -208,6 +189,32 @@ class LlamaCpp(PrunaAlgorithmBase):
             shutil.rmtree(temp_dir, ignore_errors=True)
             raise
 
+    def _get_quantization_method(self, model: Any, default_method: str) -> str:
+        """Get the quantization method, defaulting to f16 for tiny models."""
+        if (
+            hasattr(model, "config")
+            and hasattr(model.config, "hidden_size")
+            and model.config.hidden_size < 32
+        ):
+            pruna_logger.info("Tiny model detected. Bypassing quantized block sizes and using f16.")
+            return "f16"
+        return default_method
+
+    def _get_cache_paths(
+        self, model: Any, smash_config: SmashConfigPrefixWrapper, q_method: str
+    ) -> tuple[Path, Path, Path]:
+        """Generate cache paths for the models."""
+        llama_cpp_cache = Path(smash_config.cache_dir) / "llama_cpp"
+        llama_cpp_cache.mkdir(parents=True, exist_ok=True)
+
+        model_id = "model"
+        if hasattr(model, "config") and hasattr(model.config, "_name_or_path"):
+            model_id = Path(model.config._name_or_path).name
+
+        f16_gguf_path = llama_cpp_cache / f"{model_id}-f16.gguf"
+        quant_gguf_path = llama_cpp_cache / f"{model_id}-{q_method}.gguf"
+        return llama_cpp_cache, f16_gguf_path, quant_gguf_path
+
     def _convert_to_gguf(
         self,
         model: Any,
@@ -224,6 +231,12 @@ class LlamaCpp(PrunaAlgorithmBase):
             script_path = self._get_conversion_script()
             pruna_logger.info(f"Converting Hugging Face model to GGUF format at {outfile}...")
 
+            # Ensure inputs are properly sanitized and validated to prevent arg injection.
+            for param in (script_path, hf_model_dir, outfile):
+                param_str = str(param)
+                if any(c in param_str for c in ("\0", "\n", "\r", ";", "&", "|", "`", "$")):
+                    raise ValueError(f"Unsafe characters detected in subprocess argument: {param_str}")
+
             convert_cmd = [
                 sys.executable, str(script_path),
                 hf_model_dir,
@@ -231,7 +244,8 @@ class LlamaCpp(PrunaAlgorithmBase):
                 "--outtype", "f16"
             ]
             try:
-                subprocess.run(convert_cmd, check=True, capture_output=True, text=True)
+                # subprocess needed because convert_hf_to_gguf.py is a standalone CLI script
+                subprocess.run(convert_cmd, check=True, capture_output=True, text=True)  # nosec B603
             except subprocess.CalledProcessError as e:
                 pruna_logger.error(f"Conversion script failed with error: {e.stderr}")
                 raise
@@ -281,7 +295,7 @@ class LlamaCpp(PrunaAlgorithmBase):
 
         if not script_path.exists() or not verify_sha256(script_path, LLAMA_CPP_CONVERSION_SCRIPT_SHA256):
             pruna_logger.info(f"Downloading conversion script from {LLAMA_CPP_CONVERSION_SCRIPT_URL}")
-            urllib.request.urlretrieve(LLAMA_CPP_CONVERSION_SCRIPT_URL, script_path)
+            urllib.request.urlretrieve(LLAMA_CPP_CONVERSION_SCRIPT_URL, script_path)  # nosec B310
 
             if not verify_sha256(script_path, LLAMA_CPP_CONVERSION_SCRIPT_SHA256):
                 script_path.unlink(missing_ok=True)

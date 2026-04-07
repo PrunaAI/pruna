@@ -15,5 +15,6 @@ class TestLlamaCpp(AlgorithmTesterBase):
     metrics = []
 
     def pre_smash_hook(self, model):
+        """Skip test if llama_cpp is not installed."""
         import pytest
         pytest.importorskip("llama_cpp")
