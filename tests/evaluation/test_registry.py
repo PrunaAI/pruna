@@ -5,6 +5,8 @@ import pytest
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 
+pytestmark = pytest.mark.cpu
+
 
 class MockMetric(BaseMetric):
     """A simple mock metric for testing the registry."""

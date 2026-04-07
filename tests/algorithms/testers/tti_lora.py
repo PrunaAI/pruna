@@ -27,7 +27,7 @@ def assert_no_nan_values(module: Any) -> None:
 
 # Our nightlies machine does not support efficient attention mechanisms and causes OOM errors with this test.
 # This test do pass on modern architectures.
-@pytest.mark.high
+@pytest.mark.high_vram
 @pytest.mark.slow
 class TestTTILoRA(AlgorithmTesterBase):
     """Test the TTI LoRA recovery algorithm."""

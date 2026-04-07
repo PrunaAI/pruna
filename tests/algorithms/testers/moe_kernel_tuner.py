@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import torch
 
 from pruna import PrunaModel, SmashConfig
@@ -11,6 +12,7 @@ from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_vllm
 class TestMoeKernelTuner(AlgorithmTesterBase):
     """Test the MoeKernelTuner."""
 

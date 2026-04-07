@@ -5,7 +5,7 @@ from pruna.algorithms.sage_attn import SageAttn
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.high
+@pytest.mark.high_vram
 class TestSageAttn(AlgorithmTesterBase):
     """Test the sage attention kernel."""
 

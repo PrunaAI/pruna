@@ -26,7 +26,7 @@ def assert_no_nan_values(module: Any) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.high
+@pytest.mark.high_vram
 class TestTTIPerp(AlgorithmTesterBase):
     """Test the TTI Perp recovery algorithm."""
 
