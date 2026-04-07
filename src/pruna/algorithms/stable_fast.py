@@ -42,7 +42,10 @@ class StableFast(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["half", "deepcache", "fora", "hyper", "padding_pruning"]
     compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale"]
-    required_install: str = "``pip install pruna[stable-fast]``"
+    required_install: str = (
+        "``pip install pruna[stable-fast]`` or ``pip install pruna[stable-fast] "
+        "--extra-index-url https://prunaai.pythonanywhere.com/`` for other torch versions"
+    )
 
     def model_check_fn(self, model: Any) -> bool:
         """
