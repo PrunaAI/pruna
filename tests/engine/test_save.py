@@ -10,7 +10,7 @@ from transformers import AutoModelForCausalLM
 
 from pruna import smash
 from pruna.config.smash_config import SmashConfig
-from pruna.engine.load import PICKLED_FILE_NAME, load_pruna_model
+from pruna.engine.load import load_pruna_model
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.save import SAVE_FUNCTIONS, save_pruna_model, save_pruna_model_to_hub
 
