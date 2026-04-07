@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
+
 import math
 from typing import Any, Callable, Optional, Tuple
 
-from ConfigSpace import UniformIntegerHyperparameter
 import torch
+from ConfigSpace import UniformIntegerHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -24,6 +25,7 @@ from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_transformers_pipeline_with_vit, is_vit
 from pruna.engine.save import SAVE_FUNCTIONS
+
 # ---------------------------------------------------------------------------
 # Token merging utility functions (adapted from facebook/ToMe)
 # ---------------------------------------------------------------------------
@@ -408,7 +410,6 @@ class TokenMerging(PrunaAlgorithmBase):
         bool
             ``True`` if the model contains at least one ``ViTLayer``.
         """
-
         return is_vit(model) or is_transformers_pipeline_with_vit(model)
 
     def import_algorithm_packages(self) -> dict[str, Any]:
