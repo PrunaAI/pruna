@@ -88,13 +88,11 @@ def main():
     # Skipping exceptions
     existing_reviews = list(pr.get_reviews())
     if existing_reviews:
-        print(f"Already has reviews: {[r.user.login for r in existing_reviews]}")
         return
 
     users_requested, teams_requested = pr.get_review_requests()
     users_requested = list(users_requested)
     if users_requested:
-        print(f"Reviewers already requested: {users_requested}")
         return
 
     # Counting recent owner matches
@@ -122,11 +120,10 @@ def main():
             owner for owner in get_dispatch_owners(codeowners_lines)
             if owner != pr_author
         ]
-    print("Top owners", top_owners)
     try:
         pr.create_review_request(top_owners)
     except github.GithubException as e:
-        print(f"Failed to request review for {top_owners}: {e}")
+        raise e
 
 
 if __name__ == "__main__":
