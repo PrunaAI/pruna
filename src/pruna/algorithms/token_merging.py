@@ -222,6 +222,11 @@ try:
         - Stores the mean of *k* over heads in ``self._tome_info["metric"]`` so that
           the enclosing ``ToMeViTLayer`` can use it for bipartite matching without
           requiring changes to the intermediate ``ViTAttention`` wrapper.
+
+        Parameters
+        ----------
+        config : object
+            The ViT model configuration.
         """
 
         _tome_info: dict[str, Any]
@@ -231,7 +236,21 @@ try:
             hidden_states: torch.Tensor,
             head_mask: Optional[torch.Tensor] = None,
         ) -> Tuple[torch.Tensor, torch.Tensor]:
-            """Forward pass with proportional attention and key-metric storage."""
+            """
+            Forward pass with proportional attention and key-metric storage.
+
+            Parameters
+            ----------
+            hidden_states : torch.Tensor
+                Input token tensor of shape ``[batch, tokens, channels]``.
+            head_mask : torch.Tensor, optional
+                Mask for attention heads.
+
+            Returns
+            -------
+            Tuple[torch.Tensor, torch.Tensor]
+                Context layer and attention probabilities.
+            """
             batch_size = hidden_states.shape[0]
             new_shape = (batch_size, -1, self.num_attention_heads, self.attention_head_size)
 
@@ -268,6 +287,11 @@ try:
         performs bipartite soft matching on the key-metric stored in
         ``self._tome_info["metric"]`` and merges the ``r`` most similar token
         pairs before proceeding to the MLP sub-layer.
+
+        Parameters
+        ----------
+        config : object
+            The ViT model configuration.
         """
 
         _tome_info: dict[str, Any]
@@ -277,7 +301,21 @@ try:
             hidden_states: torch.Tensor,
             head_mask: Optional[torch.Tensor] = None,
         ) -> torch.Tensor:
-            """Forward pass with token merging between attention and MLP."""
+            """
+            Forward pass with token merging between attention and MLP.
+
+            Parameters
+            ----------
+            hidden_states : torch.Tensor
+                Input token tensor of shape ``[batch, tokens, channels]``.
+            head_mask : torch.Tensor, optional
+                Mask for attention heads.
+
+            Returns
+            -------
+            torch.Tensor
+                Output tensor after attention, token merging, and MLP.
+            """
             # --- self-attention + first residual ---
             attention_output = self.attention(
                 self.layernorm_before(hidden_states),
@@ -354,7 +392,21 @@ class ToMeModelWrapper(torch.nn.Module):
         self.parsed_r = _parse_r(self.num_layers, self.r)
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
-        """Initialise ToMe state and forward through the wrapped model."""
+        """
+        Initialise ToMe state and forward through the wrapped model.
+
+        Parameters
+        ----------
+        *args : Any
+            Positional arguments forwarded to the wrapped model.
+        **kwargs : Any
+            Keyword arguments forwarded to the wrapped model.
+
+        Returns
+        -------
+        Any
+            The output of the wrapped model's forward pass.
+        """
         # Make a copy of the list to avoid modifying the original
         self._tome_info["r"] = list(self.parsed_r)
         self._tome_info["size"] = None
