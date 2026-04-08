@@ -31,7 +31,24 @@ def pytest_configure(config: Any) -> None:
 
 def pytest_collection_modifyitems(session: Any, config: Any, items: list) -> None:
     """Hook that is called after test collection."""
+    selected = []
+    deselected = []
     for item in items:
         # Auto-tag unmarked tests as CPU
         if not any(mark in item.keywords for mark in HARDWARE_MARKS):
             item.add_marker(pytest.mark.cpu)
+        # device_parametrized generates cpu/cuda/accelerate variants for every
+        # algorithm test, even when the algorithm's runs_on excludes that device.
+        # The incompatible variants get collected by the CI (e.g. -m "cpu") and
+        # skip at runtime after expensive fixture setup. Deselecting them here
+        # avoids that wasted overhead.
+        if hasattr(item, "callspec") and "algorithm_tester" in item.callspec.params:
+            tester = item.callspec.params["algorithm_tester"]
+            device = item.callspec.params.get("device")
+            if device and device not in tester.compatible_devices():
+                deselected.append(item)
+                continue
+        selected.append(item)
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
