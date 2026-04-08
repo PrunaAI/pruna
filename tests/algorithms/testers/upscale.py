@@ -5,7 +5,8 @@ from pruna.algorithms.upscale import RealESRGAN
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.cuda
+# Takes too long to run on CPU, so we mark it as slow
+@pytest.mark.slow
 class TestUpscale(AlgorithmTesterBase):
     """Test the Upscale algorithm."""
 
