@@ -25,12 +25,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-uv-project
         with:
           python-version: ${{ matrix.python-version }}
-
-      - uses: ./.github/actions/setup-uv-project
 
       - name: Run generation script
         run: python docs/utils/gen_docs.py
