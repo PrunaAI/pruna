@@ -307,8 +307,8 @@ try:
             return layer_output
 
 except ImportError:
-    ToMeViTSelfAttention = None
-    ToMeViTLayer = None
+    ToMeViTSelfAttention: type | None = None
+    ToMeViTLayer: type | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +385,7 @@ class TokenMerging(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "token_merging"
-    group_tags: list[str] = [tags.KERNEL]
+    group_tags: list[tags] = [tags.KERNEL]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2210.09461",
@@ -505,12 +505,12 @@ class TokenMerging(PrunaAlgorithmBase):
                 lower=0,
                 upper=128,
                 default_value=16,
-                meta=dict(
-                    desc=(
+                meta={
+                    "desc": (
                         "Number of tokens to merge per transformer layer. "
                         "Higher values speed up inference but may reduce accuracy."
                     )
-                ),
+                },
             ),
             Boolean(
                 name="trace_source",
