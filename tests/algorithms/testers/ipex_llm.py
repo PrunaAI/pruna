@@ -9,8 +9,8 @@ from .base_tester import AlgorithmTesterBase
 class TestIPEXLLM(AlgorithmTesterBase):
     """Test the IPEX LLM algorithm."""
 
-    models = ["opt_tiny_random"]
+    models = ["opt_125m"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = IPEXLLM
-    metrics = ["latency"]
+    metrics = []

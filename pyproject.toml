@@ -76,22 +76,14 @@ explicit = true
 index-strategy = "first-index"
 
 conflicts = [
-    [
-        { extra = "awq" },
-        { extra = "vbench" },
-    ],
-    [
-        { extra = "vllm" },
-        { extra = "vbench" },
-    ],
-    [
-        { extra = "stable-fast-extraindex" },
-        { extra = "stable-fast" },
-    ],
-    [
-        { extra = "stable-fast-extraindex" },
-        { extra = "full" },
-    ],
+    [{ extra = "awq" }, { extra = "vbench" }],
+    [{ extra = "vllm" }, { extra = "vbench" }],
+    [{ extra = "intel" }, { extra = "awq" }],
+    [{ extra = "gptq" }, { extra = "awq" }],
+    # intel is incompatible with all stable-fast variants and vllm
+    [{ extra = "intel" }, { extra = "stable-fast" }, { extra = "stable-fast-extraindex" }],
+    [{ extra = "intel" }, { extra = "full" }, { extra = "stable-fast-extraindex" }],
+    [{ extra = "intel" }, { extra = "vllm" }],
 ]
 
 [tool.uv.sources]
@@ -235,8 +227,12 @@ cpu = []
 lmharness = [
     "lm-eval>=0.4.0"
 ]
+
+# Intel extension is tightly coupled with the torch version
 intel = [
     "intel-extension-for-pytorch>=2.7.0",
+    "torch>=2.7.0,<2.9.0",
+    "torchvision>=0.22.0,<0.24.0",
 ]
 
 [build-system]
