@@ -450,8 +450,20 @@ class PrunaAlgorithmBase(ABC):
 
     @staticmethod
     def get_save_before_smash_dir(smash_config: SmashConfig) -> Path:
-        """Get the save directory for the algorithm caches."""
-        return smash_config.cache_dir / SAVE_BEFORE_SMASH_CACHE_DIR
+        """
+        Get the save directory for the algorithm caches.
+
+        Parameters
+        ----------
+        smash_config : SmashConfig
+            The SmashConfig to check the cache directory against.
+
+        Returns
+        -------
+        Path
+            The absolute path of "SAVE_BEFORE_SMASH_CACHE_DIR".
+        """
+        return (smash_config.cache_dir / SAVE_BEFORE_SMASH_CACHE_DIR).resolve()
 
 
 def wrap_handle_imports(func):
