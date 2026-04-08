@@ -19,4 +19,4 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - shell: bash
-      run: uv sync --extra dev --extra lmharness
+      run: uv sync --extra dev --extra lmharness --extra intel
