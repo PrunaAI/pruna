@@ -36,7 +36,6 @@ class TestMoeKernelTuner(AlgorithmTesterBase):
 
     def _resolve_hf_cache_config_path(self) -> Path:
         """Read the saved artifact and compute the expected HF cache config path."""
-
         imported_packages = MoeKernelTuner().import_algorithm_packages()
 
         smash_cfg = SmashConfig()

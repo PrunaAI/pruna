@@ -5,7 +5,7 @@ from pruna.algorithms.flash_attn3 import FlashAttn3
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.high_vram
+@pytest.mark.high_gpu
 class TestFlashAttn3(AlgorithmTesterBase):
     """Test the flash attention 3 kernel."""
 

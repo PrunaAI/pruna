@@ -13,7 +13,7 @@ TUTORIAL_PATH = Path(__file__).parent.parent.parent / "docs"
 @pytest.mark.parametrize(
     "notebook_name",
     [
-        pytest.param(notebook_name, marks=(pytest.mark.cuda, pytest.mark.high_vram))
+        pytest.param(notebook_name, marks=(pytest.mark.cuda, pytest.mark.high_gpu))
         for notebook_name in glob.glob(str(TUTORIAL_PATH / "tutorials" / "*.ipynb"))
     ],
 )

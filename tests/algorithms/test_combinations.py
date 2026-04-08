@@ -60,7 +60,7 @@ class CombinationsTester(AlgorithmTesterBase):
         ("flux_tiny_random", ["fora", "torch_compile"], False, 'cmmd'),
         ("flux_tiny_random", ["fora", "stable_fast"], False, 'cmmd'),
         ("tiny_janus", ["hqq", "torch_compile"], False, 'cmmd'),
-        pytest.param("flux_tiny", ["fora", "flash_attn3", "torch_compile"], False, 'cmmd', marks=pytest.mark.high_vram),
+        pytest.param("flux_tiny", ["fora", "flash_attn3", "torch_compile"], False, 'cmmd', marks=pytest.mark.high_gpu),
     ],
     indirect=["model_fixture"],
     ids=lambda val: "+".join(val) if isinstance(val, list) else None,

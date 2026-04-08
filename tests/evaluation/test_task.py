@@ -56,7 +56,7 @@ def test_device_is_set_correctly_for_metrics(device:str):
 
 
 @pytest.mark.cuda
-@pytest.mark.high_vram
+@pytest.mark.high_gpu
 @pytest.mark.parametrize(
     "inference_device, stateful_metric_device, task_device",
     [

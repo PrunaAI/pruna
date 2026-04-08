@@ -7,7 +7,7 @@ from .base_tester import AlgorithmTesterBase
 
 
 @pytest.mark.slow
-@pytest.mark.high_vram
+@pytest.mark.high_gpu
 @pytest.mark.requires_gptq
 class TestGPTQ(AlgorithmTesterBase):
     """Test the GPTQ quantizer."""
