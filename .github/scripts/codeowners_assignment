@@ -1,0 +1,28 @@
+# For more information on how to use this file, see:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#about-code-owners
+
+# If no one is pinged, in charge of dispatching reviewers
+* @sdiazlor @minettekaum
+
+# CI and GitHub config
+/.github/workflows/ @SaboniAmine @johannaSommer @gsprochette
+/.github/scripts/ @sdiazlor
+/.github/ISSUE_TEMPLATE/ @sdiazlor @minettekaum
+/.github/PULL_REQUEST_TEMPLATE/ @minettekaum @sdiazlor
+
+# Dependencies and packaging
+/pyproject.toml @gsprochette @begumcig
+
+# Docs
+/docs/ @sdiazlor @minettekaum
+
+# Source
+/src/pruna/algorithms/ @johannaSommer @begumcig @gsprochette @simlang @llcnt
+/src/pruna/config/ @gsprochette @johannaSommer
+/src/pruna/data/ @begumcig
+/src/pruna/engine/ @gsprochette @johannaSommer
+/src/pruna/evaluation/ @begumcig @davidberenstein1957 @johannaSommer
+/src/pruna/logging/ @johannaSommer
+
+# Tests
+/tests/ @johannaSommer @begumcig @gsprochette @simlang @llcnt
