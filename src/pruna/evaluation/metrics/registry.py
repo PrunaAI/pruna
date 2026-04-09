@@ -106,11 +106,7 @@ class MetricRegistry:
         bool
             True if the metric is registered, False otherwise.
         """
-        if name in cls._registry:
-            return True
-        if name in cls._lazy_metrics:
-            return True
-        return False
+        return name in cls._registry or name in cls._lazy_metrics
 
     @classmethod
     def get_metric(cls, name: str, **kwargs) -> BaseMetric | StatefulMetric:

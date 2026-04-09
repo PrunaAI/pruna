@@ -137,11 +137,7 @@ def clean_oneig_ocr_hallucinations(text: str) -> str:
     """
     out = text or ""
     for keyword in _OCR_HALLUCINATION_KEYWORDS:
-        out = (
-            out.replace(keyword, "")
-            .replace(f"\n{keyword}", "")
-            .replace(f"{keyword}\n", "")
-        )
+        out = out.replace(keyword, "").replace(f"\n{keyword}", "").replace(f"{keyword}\n", "")
     return out
 
 

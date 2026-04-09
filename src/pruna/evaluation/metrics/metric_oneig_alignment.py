@@ -21,9 +21,9 @@ from typing import Any, Mapping
 import torch
 
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
-from pruna.evaluation.metrics.vlm_utils import _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import metric_data_processor
+from pruna.evaluation.metrics.vlm_utils import _process_images
 
 
 def _int_dict_keys(mapping: Mapping[Any, Any]) -> dict[int, Any]:
@@ -179,8 +179,7 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
             qs = aux.get("questions")
             if not isinstance(qs, dict) or not qs:
                 raise ValueError(
-                    "oneig_alignment requires 'questions' as a non-empty dict on aux. "
-                    f"Got keys: {list(aux.keys())}."
+                    f"oneig_alignment requires 'questions' as a non-empty dict on aux. Got keys: {list(aux.keys())}."
                 )
             qmap = _int_dict_keys(qs)
             qids = sorted(qmap)

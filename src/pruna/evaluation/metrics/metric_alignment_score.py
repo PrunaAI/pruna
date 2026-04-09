@@ -23,7 +23,6 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.vlm_utils import VQAnswer, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -32,6 +31,7 @@ from pruna.evaluation.metrics.utils import (
     metric_data_processor,
 )
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
+from pruna.evaluation.metrics.vlm_utils import VQAnswer, _process_images
 
 
 @MetricRegistry.register("alignment_score")

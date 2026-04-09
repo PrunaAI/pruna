@@ -35,7 +35,6 @@ from typing import Any
 import torch
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.vlm_utils import _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -43,6 +42,7 @@ from pruna.evaluation.metrics.utils import (
     get_call_type_for_single_metric,
     metric_data_processor,
 )
+from pruna.evaluation.metrics.vlm_utils import _process_images
 from pruna.logging.logger import pruna_logger
 
 
@@ -71,20 +71,16 @@ def _prepare_huggingface_hub_for_oneig_downloads() -> None:
         return
 
     import hf_transfer  # noqa: F401  # type: ignore[import-not-found]
-
     import huggingface_hub.constants as hf_constants
 
     hf_constants.HF_HUB_ENABLE_HF_TRANSFER = True
-    pruna_logger.info(
-        "oneig_reasoning: enabled hf_transfer downloads (PRUNA_ONEIG_HF_FAST_DOWNLOAD=1)."
-    )
+    pruna_logger.info("oneig_reasoning: enabled hf_transfer downloads (PRUNA_ONEIG_HF_FAST_DOWNLOAD=1).")
 
 
 def _to_pil_list(images: list) -> list:
     """Convert images to list of PIL.Image (RGB)."""
-    from PIL import Image
-
     import numpy as np
+    from PIL import Image
 
     out: list = []
     for img in images:
@@ -133,8 +129,7 @@ class _LLM2CLIPScorer:
         if self._clip_model is not None:
             return
         _prepare_huggingface_hub_for_oneig_downloads()
-        from transformers import AutoConfig, AutoModel, AutoTokenizer
-        from transformers import CLIPImageProcessor
+        from transformers import AutoConfig, AutoModel, AutoTokenizer, CLIPImageProcessor
 
         from pruna.evaluation.metrics.vendor.oneig_llm2vec import LLM2Vec
         from pruna.evaluation.metrics.vendor.oneig_llm2vec.modeling_llama_encoder import LlamaEncoderModel
@@ -325,15 +320,11 @@ class OneIGReasoningMetric(StatefulMetric):
         for i, image in enumerate(images):
             aux = aux_list[i] if i < len(aux_list) else {}
             if not isinstance(aux, dict):
-                raise ValueError(
-                    f"oneig_reasoning requires aux[{i}] to be a dict. Got: {type(aux)}."
-                )
+                raise ValueError(f"oneig_reasoning requires aux[{i}] to be a dict. Got: {type(aux)}.")
             text = self._get_gt_text(aux)
             result = scorer.score([image], text)
             if result is None or len(result) == 0:
-                raise RuntimeError(
-                    f"oneig_reasoning: LLM2CLIP scorer returned no scores for sample {i}."
-                )
+                raise RuntimeError(f"oneig_reasoning: LLM2CLIP scorer returned no scores for sample {i}.")
             self.scores.append(float(sum(result) / len(result)))
 
     def compute(self) -> MetricResult:

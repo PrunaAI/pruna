@@ -33,7 +33,6 @@ from pruna.evaluation.metrics.metric_text_score_utils import (
     oneig_mean_text_score,
     oneig_per_sample_contributions,
 )
-from pruna.evaluation.metrics.vlm_utils import TextOutput, _process_images, get_text_from_response
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -42,6 +41,7 @@ from pruna.evaluation.metrics.utils import (
     metric_data_processor,
 )
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
+from pruna.evaluation.metrics.vlm_utils import TextOutput, _process_images, get_text_from_response
 
 OCR_PROMPT = (
     "Extract all text visible in this image. Include logos, stylized fonts, handwritten text, "
