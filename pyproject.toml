@@ -122,7 +122,6 @@ dependencies = [
     "transformers<5.0.0",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
-    "hf_transfer>=0.1.9",
     "datasets>=3.0",
     "numpy>=1.24.4",
     "numpydoc>=1.6.0",
@@ -151,7 +150,6 @@ dependencies = [
     "gliner; python_version >= '3.11'",
     "piq",
     "opencv-python",
-    "realesrgan",
     "kernels",
     "aenum",
     "imageio-ffmpeg",
@@ -159,7 +157,7 @@ dependencies = [
     "peft>=0.18.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
-    "tqdm",
+    "realesrgan",
 ]
 
 [project.optional-dependencies]

@@ -62,8 +62,9 @@ class VieScoreMetric(StatefulMetric):
         Custom VLM instance. If provided, vlm_type and model_name are ignored.
     vlm_type : {"litellm", "transformers"}, optional
         VLM backend. Default is "litellm".
-    model_name : str, optional
-        Model name. Default is "gpt-4o".
+    model_name : str | None, optional
+        Litellm model id or HuggingFace checkpoint id. **Required** when ``vlm`` is not
+        provided (e.g. ``openai/gpt-4o``).
     vlm_kwargs : dict, optional
         Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
         set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
@@ -96,7 +97,7 @@ class VieScoreMetric(StatefulMetric):
         *args,
         vlm: Optional[BaseVLM] = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
-        model_name: str = "gpt-4o",
+        model_name: str | None = None,
         vlm_kwargs: Optional[dict] = None,
         structured_output: bool = True,
         device=None,

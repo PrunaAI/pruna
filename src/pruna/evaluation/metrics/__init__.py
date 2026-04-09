@@ -44,7 +44,7 @@ from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
-from pruna.evaluation.metrics.metric_viescore import VieScoreMetric
+from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import (
     BaseVLM,

@@ -119,8 +119,8 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
     masked when any non-root parent is ``No``, then the mean over all questions
     is stored per image.
 
-    Numerical parity with upstream also depends on the VLM (default ``gpt-4o``
-    vs reference Qwen2.5-VL).
+    Numerical parity with upstream also depends on the VLM (e.g. ``openai/gpt-4o`` via
+    litellm vs reference Qwen2.5-VL).
 
     Parameters
     ----------
@@ -130,8 +130,9 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
         Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
     vlm_type : {"litellm", "transformers"}, optional
         VLM backend. Default is ``"litellm"``.
-    model_name : str, optional
-        Model name. Default is ``"gpt-4o"``.
+    model_name : str | None, optional
+        Litellm model id or HuggingFace checkpoint id. **Required** when ``vlm`` is not
+        provided (e.g. ``openai/gpt-4o``).
     vlm_kwargs : dict, optional
         Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
         set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.

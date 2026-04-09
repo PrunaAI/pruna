@@ -41,11 +41,27 @@ from pruna.logging.logger import pruna_logger
 
 T = TypeVar("T", bound=BaseModel)
 
+VLM_METRIC_REGISTRY_NAMES: frozenset[str] = frozenset(
+    (
+        "vqa",
+        "qa_accuracy",
+        "alignment_score",
+        "img_edit_score",
+        "text_score",
+        "ocr_levenshtein",
+        "ocr_text_score",
+        "oneig_text_score",
+        "oneig_alignment",
+        "vie_score",
+    )
+)
+
 
 def get_vlm(
     vlm: Optional[BaseVLM] = None,
     vlm_type: Literal["litellm", "transformers"] = "litellm",
-    model_name: str = "gpt-4o",
+    *,
+    model_name: Optional[str] = None,
     device: Optional[str | torch.device] = None,
     api_key: Optional[str] = None,
     structured_output: bool = True,
@@ -60,8 +76,9 @@ def get_vlm(
         If provided, returned as-is. Otherwise a VLM is created.
     vlm_type : {"litellm", "transformers"}
         Backend when creating a VLM.
-    model_name : str
-        Model name for litellm or HuggingFace.
+    model_name : str | None
+        Model name for litellm (e.g. ``openai/gpt-4o``) or HuggingFace ``from_pretrained`` id.
+        **Required** when ``vlm`` is not provided. Ignored when ``vlm`` is provided.
     device : str | torch.device | None
         Device for transformers VLM.
     api_key : str | None
@@ -84,6 +101,11 @@ def get_vlm(
     """
     if vlm is not None:
         return vlm
+    if not model_name:
+        raise ValueError(
+            "get_vlm requires model_name when vlm is not provided "
+            '(pass model_name explicitly, e.g. model_name="openai/gpt-4o").'
+        )
     if vlm_type == "litellm":
         return LitellmVLM(model_name=model_name, api_key=api_key, **vlm_kwargs)
     model_load_kwargs = vlm_kwargs.pop("model_load_kwargs", {})
@@ -170,12 +192,11 @@ class LitellmVLM(BaseVLM):
     VLM using litellm for API-based inference.
 
     Supports 100+ LLM providers (OpenAI, Anthropic, Azure, etc.)
-    Default model is gpt-4o.
 
     Parameters
     ----------
-    model_name : str, optional
-        Model name (e.g., gpt-4o). Default is "gpt-4o".
+    model_name : str
+        Model name (e.g. ``openai/gpt-4o`` for litellm). Passed from :func:`get_vlm`.
     api_key : str | None, optional
         API key for the provider. Uses LITELLM_API_KEY or OPENAI_API_KEY env if None.
     **kwargs : Any
@@ -184,7 +205,7 @@ class LitellmVLM(BaseVLM):
 
     def __init__(
         self,
-        model_name: str = "gpt-4o",
+        model_name: str,
         api_key: Optional[str] = None,
         **kwargs: Any,
     ) -> None:

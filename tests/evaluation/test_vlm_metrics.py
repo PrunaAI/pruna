@@ -10,7 +10,7 @@ from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
-from pruna.evaluation.metrics.metric_viescore import VieScoreMetric
+from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
@@ -186,6 +186,13 @@ def test_get_vlm_returns_custom() -> None:
 
 
 @pytest.mark.cpu
+def test_get_vlm_requires_model_name_without_vlm() -> None:
+    """Building a default VLM requires an explicit model_name."""
+    with pytest.raises(ValueError, match="model_name"):
+        get_vlm(vlm=None, vlm_type="litellm")
+
+
+@pytest.mark.cpu
 def test_text_score_with_list_str_gt() -> None:
     """Test TextScoreMetric accepts List[str] ground truth from text_score_collate."""
     mock_vlm = MagicMock(spec=BaseVLM)
@@ -221,8 +228,8 @@ def test_text_score_registry_aliases() -> None:
     """Descriptive OCR metric names are aliases for the same classes."""
     from pruna.evaluation.metrics.registry import MetricRegistry
 
-    lev = MetricRegistry.get_metric("ocr_levenshtein", device="cpu")
-    comp = MetricRegistry.get_metric("ocr_text_score", device="cpu")
+    lev = MetricRegistry.get_metric("ocr_levenshtein", device="cpu", model_name="openai/gpt-4o")
+    comp = MetricRegistry.get_metric("ocr_text_score", device="cpu", model_name="openai/gpt-4o")
     assert type(lev).__name__ == "TextScoreMetric"
     assert type(comp).__name__ == "OneIGTextScoreMetric"
     assert lev.metric_name == "text_score"
