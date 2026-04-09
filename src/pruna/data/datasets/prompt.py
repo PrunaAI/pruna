@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Literal, Tuple, get_args
+from typing import Literal, Tuple, get_args
 
 from datasets import Dataset, load_dataset
 
@@ -715,91 +715,253 @@ def setup_oneig_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
-def _oneig_fixed_category_loader(
+def _setup_oneig_subset_with_fixed_category(
     category: OneIGCategory,
-    *,
-    name: str,
-) -> Callable[..., Tuple[Dataset, Dataset, Dataset]]:
-    """
-    Build a ``base_datasets`` entry that pins ``category`` without exposing it on the signature.
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category=category,
+        reasoning_language=reasoning_language,
+    )
 
-    ``functools.partial(setup_oneig_dataset, category=...)`` is avoided: ``get_literal_values_from_param``
-    unwraps to ``setup_oneig_dataset`` and would enumerate every ``OneIGCategory`` in category-filter tests.
+
+def setup_oneig_anime_stylization_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Anime_Stylization``.
+
+    ``functools.partial`` is not used so ``get_literal_values_from_param`` does not unwrap to
+    :func:`setup_oneig_dataset` and enumerate every ``OneIGCategory``.
 
     Parameters
     ----------
-    category : OneIGCategory
-        Row filter passed through to ``setup_oneig_dataset``.
-    name : str
-        ``__name__`` of the returned callable (for tracebacks).
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
 
     Returns
     -------
-    Callable[..., Tuple[Dataset, Dataset, Dataset]]
-        Loader with only seed / fraction / sample-size parameters.
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for this subset.
     """
-
-    def load_subset(
-        seed: int | None = None,
-        fraction: float = 1.0,
-        train_sample_size: int | None = None,
-        test_sample_size: int | None = None,
-        reasoning_language: str = "EN",
-    ) -> Tuple[Dataset, Dataset, Dataset]:
-        return setup_oneig_dataset(
-            seed=seed,
-            fraction=fraction,
-            train_sample_size=train_sample_size,
-            test_sample_size=test_sample_size,
-            category=category,
-            reasoning_language=reasoning_language,
-        )
-
-    load_subset.__name__ = name
-    load_subset.__doc__ = (
-        f"Load OneIG-Bench with ``category`` fixed to ``{category}``. See ``setup_oneig_dataset``.\n\n"
-        "Parameters\n"
-        "----------\n"
-        "seed : int | None, optional\n"
-        "    Ignored; see ``setup_oneig_dataset``.\n"
-        "fraction : float\n"
-        "    Fraction of the subset to use.\n"
-        "train_sample_size : int | None\n"
-        "    Unused; train/val are dummy.\n"
-        "test_sample_size : int | None\n"
-        "    Test sample size cap for the subset.\n\n"
-        "Returns\n"
-        "-------\n"
-        "Tuple[Dataset, Dataset, Dataset]\n"
-        "    Dummy train, dummy val, and test split for this subset."
+    return _setup_oneig_subset_with_fixed_category(
+        "Anime_Stylization",
+        seed,
+        fraction,
+        train_sample_size,
+        test_sample_size,
+        reasoning_language,
     )
-    return load_subset
 
 
-setup_oneig_anime_stylization_dataset = _oneig_fixed_category_loader(
-    "Anime_Stylization",
-    name="setup_oneig_anime_stylization_dataset",
-)
-setup_oneig_general_object_dataset = _oneig_fixed_category_loader(
-    "General_Object",
-    name="setup_oneig_general_object_dataset",
-)
-setup_oneig_knowledge_reasoning_dataset = _oneig_fixed_category_loader(
-    "Knowledge_Reasoning",
-    name="setup_oneig_knowledge_reasoning_dataset",
-)
-setup_oneig_multilingualism_dataset = _oneig_fixed_category_loader(
-    "Multilingualism",
-    name="setup_oneig_multilingualism_dataset",
-)
-setup_oneig_portrait_dataset = _oneig_fixed_category_loader(
-    "Portrait",
-    name="setup_oneig_portrait_dataset",
-)
-setup_oneig_text_rendering_dataset = _oneig_fixed_category_loader(
-    "Text_Rendering",
-    name="setup_oneig_text_rendering_dataset",
-)
+def setup_oneig_general_object_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``General_Object``.
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for this subset.
+    """
+    return _setup_oneig_subset_with_fixed_category(
+        "General_Object",
+        seed,
+        fraction,
+        train_sample_size,
+        test_sample_size,
+        reasoning_language,
+    )
+
+
+def setup_oneig_knowledge_reasoning_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Knowledge_Reasoning``.
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for this subset.
+    """
+    return _setup_oneig_subset_with_fixed_category(
+        "Knowledge_Reasoning",
+        seed,
+        fraction,
+        train_sample_size,
+        test_sample_size,
+        reasoning_language,
+    )
+
+
+def setup_oneig_multilingualism_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Multilingualism``.
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for this subset.
+    """
+    return _setup_oneig_subset_with_fixed_category(
+        "Multilingualism",
+        seed,
+        fraction,
+        train_sample_size,
+        test_sample_size,
+        reasoning_language,
+    )
+
+
+def setup_oneig_portrait_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Portrait``.
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for this subset.
+    """
+    return _setup_oneig_subset_with_fixed_category(
+        "Portrait",
+        seed,
+        fraction,
+        train_sample_size,
+        test_sample_size,
+        reasoning_language,
+    )
+
+
+def setup_oneig_text_rendering_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Text_Rendering``.
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for this subset.
+    """
+    return _setup_oneig_subset_with_fixed_category(
+        "Text_Rendering",
+        seed,
+        fraction,
+        train_sample_size,
+        test_sample_size,
+        reasoning_language,
+    )
 
 
 def setup_gedit_dataset(

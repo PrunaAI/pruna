@@ -195,8 +195,15 @@ def check_docstrings_content(file: str) -> None:
     file : str
         The import statement to check.
     """
+    # Nested callables use ``.<locals>.`` in ``__qualname__`` (numpydoc cannot load them).
+    # Vendored ``llm2vec`` mirrors upstream docstrings; skip strict numpydoc for that module.
     n_invalid, report = numpydoc_validation.validate_recursive(
-        file, checks={"all", "ES01", "SA01", "EX01"}, exclude=set()
+        file,
+        checks={"all", "ES01", "SA01", "EX01"},
+        exclude={
+            r"\.<locals>\.",
+            r"vendor\.oneig_llm2vec\.llm2vec",
+        },
     )
     if n_invalid != 0:
         raise ValueError(report)

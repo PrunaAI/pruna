@@ -25,11 +25,14 @@ logger = logging.get_logger(__name__)
 
 
 def is_transformers_attn_greater_or_equal_4_56_2() -> bool:
-    """Return whether the installed ``transformers`` package is at least 4.56.2.
+    """
+    Check whether the installed ``transformers`` package is at least 4.56.2.
 
-    Returns:
+    Returns
     -------
-        True if ``transformers`` is installed and its version is >= 4.56.2; False otherwise.
+    bool
+        True if ``transformers`` is installed and its version is >= 4.56.2;
+        False otherwise.
     """
     if not _is_package_available("transformers"):
         return False
@@ -37,7 +40,14 @@ def is_transformers_attn_greater_or_equal_4_56_2() -> bool:
 
 
 class ModifiedLlamaAttention(LlamaAttention):
-    """Llama self-attention with ``is_causal`` disabled for encoder-style use."""
+    """
+    Llama self-attention with ``is_causal`` disabled for encoder-style use.
+
+    Parameters
+    ----------
+    *args, **kwargs
+        Forwarded to :class:`~transformers.models.llama.modeling_llama.LlamaAttention`.
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,7 +55,16 @@ class ModifiedLlamaAttention(LlamaAttention):
 
 
 class ModifiedLlamaDecoderLayer(LlamaDecoderLayer):
-    """Decoder block using :class:`ModifiedLlamaAttention` for bidirectional encoding."""
+    """
+    Decoder block using :class:`ModifiedLlamaAttention` for bidirectional encoding.
+
+    Parameters
+    ----------
+    config : LlamaConfig
+        Model configuration.
+    layer_idx : int
+        Index of this decoder layer.
+    """
 
     def __init__(self, config: LlamaConfig, layer_idx: int):
         GradientCheckpointingLayer.__init__(self)
@@ -57,7 +76,14 @@ class ModifiedLlamaDecoderLayer(LlamaDecoderLayer):
 
 
 class LlamaEncoderModel(LlamaModel):
-    """Bidirectional Llama stack for LLM2Vec-style encoding (eager, SDPA, or flash attention)."""
+    """
+    Bidirectional Llama stack for LLM2Vec-style encoding (eager, SDPA, or flash attention).
+
+    Parameters
+    ----------
+    config : LlamaConfig
+        Model configuration (requires transformers >= 4.56.2 layout).
+    """
 
     def __init__(self, config: LlamaConfig) -> None:
         if not is_transformers_attn_greater_or_equal_4_56_2():
