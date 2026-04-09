@@ -28,11 +28,14 @@ logger = logging.get_logger(__name__)
 
 
 def is_transformers_attn_greater_or_equal_4_38() -> bool:
-    """Return whether the installed ``transformers`` package is at least 4.38.0.
+    """
+    Check whether the installed ``transformers`` package is at least 4.38.0.
 
-    Returns:
+    Returns
     -------
-        True if ``transformers`` is installed and its version is >= 4.38.0; False otherwise.
+    bool
+        True if ``transformers`` is installed and its version is >= 4.38.0;
+        False otherwise.
     """
     if not _is_package_available("transformers"):
         return False
@@ -40,11 +43,14 @@ def is_transformers_attn_greater_or_equal_4_38() -> bool:
 
 
 def is_transformers_attn_greater_or_equal_4_40() -> bool:
-    """Return whether the installed ``transformers`` package is at least 4.40.0.
+    """
+    Check whether the installed ``transformers`` package is at least 4.40.0.
 
-    Returns:
+    Returns
     -------
-        True if ``transformers`` is installed and its version is >= 4.40.0; False otherwise.
+    bool
+        True if ``transformers`` is installed and its version is >= 4.40.0;
+        False otherwise.
     """
     if not _is_package_available("transformers"):
         return False
@@ -52,7 +58,16 @@ def is_transformers_attn_greater_or_equal_4_40() -> bool:
 
 
 class ModifiedLlamaDecoderLayer(LlamaDecoderLayer):
-    """Decoder layer with non-causal self-attention when supported by the attention module."""
+    """
+    Decoder layer with non-causal self-attention when supported by the attention module.
+
+    Parameters
+    ----------
+    config : LlamaConfig
+        Model configuration.
+    layer_idx : int
+        Index of this decoder layer.
+    """
 
     def __init__(self, config: LlamaConfig, layer_idx: int):
         super().__init__(config, layer_idx)
@@ -61,7 +76,14 @@ class ModifiedLlamaDecoderLayer(LlamaDecoderLayer):
 
 
 class LlamaBiModel(LlamaModel):
-    """Bidirectional Llama backbone for MNTP-style training (transformers >= 4.38)."""
+    """
+    Bidirectional Llama backbone for MNTP-style training (transformers >= 4.38).
+
+    Parameters
+    ----------
+    config : LlamaConfig
+        Model configuration.
+    """
 
     _no_split_modules = ["ModifiedLlamaDecoderLayer"]
 
@@ -164,7 +186,14 @@ class LlamaBiModel(LlamaModel):
 
 
 class LlamaBiForMNTP(LlamaForCausalLM):
-    """Causal LM wrapper around :class:`LlamaBiModel` for MNTP with optional PEFT."""
+    """
+    Causal LM wrapper around :class:`LlamaBiModel` for MNTP with optional PEFT.
+
+    Parameters
+    ----------
+    config : LlamaConfig
+        Model configuration.
+    """
 
     def __init__(self, config: LlamaConfig):
         LlamaPreTrainedModel.__init__(self, config)
@@ -175,26 +204,34 @@ class LlamaBiForMNTP(LlamaForCausalLM):
         self.post_init()
 
     def get_model_for_peft(self) -> LlamaBiModel | PeftModel:
-        """Return the inner model for PEFT wrapping (base or wrapped).
+        """
+        Return the inner model for PEFT wrapping (base or wrapped).
 
-        Returns:
+        Returns
         -------
+        LlamaBiModel or PeftModel
             ``self.model``, either a :class:`LlamaBiModel` or a :class:`peft.PeftModel`.
         """
         return self.model
 
     def set_model_for_peft(self, model: PeftModel) -> None:
-        """Replace the inner model with a PEFT-wrapped model.
+        """
+        Replace the inner model with a PEFT-wrapped model.
 
-        Args:
-            model: A :class:`peft.PeftModel` whose base matches the expected backbone.
+        Parameters
+        ----------
+        model : PeftModel
+            PEFT model whose base matches the expected backbone.
         """
         self.model = model
 
     def save_peft_model(self, path: str) -> None:
-        """Save the (possibly PEFT-wrapped) inner model to ``path``.
+        """
+        Save the (possibly PEFT-wrapped) inner model to disk.
 
-        Args:
-            path: Directory path passed to ``save_pretrained`` on the inner model.
+        Parameters
+        ----------
+        path : str
+            Directory path passed to ``save_pretrained`` on the inner model.
         """
         self.model.save_pretrained(path)

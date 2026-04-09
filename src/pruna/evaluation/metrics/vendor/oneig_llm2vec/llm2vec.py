@@ -22,7 +22,7 @@ from transformers import (
     PretrainedConfig,
 )
 
-from pruna.evaluation.metrics.vendor.oneig_llm2vec.models import LlamaBiModel
+from pruna.evaluation.metrics.vendor.oneig_llm2vec.models.bidirectional_llama import LlamaBiModel
 
 logger = logging.getLogger(__name__)
 
