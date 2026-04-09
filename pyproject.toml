@@ -151,6 +151,7 @@ dependencies = [
     "gliner; python_version >= '3.11'",
     "piq",
     "opencv-python",
+    "realesrgan",
     "kernels",
     "aenum",
     "imageio-ffmpeg",
@@ -158,6 +159,7 @@ dependencies = [
     "peft>=0.18.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
@@ -168,8 +170,6 @@ vllm = [
 evaluation = [
     "outlines>1.2.0,<2.0.0",
     "litellm>=1.0.0",
-    "realesrgan",
-    "tqdm",
 ]
 stable-fast = [
     "xformers>=0.0.30",

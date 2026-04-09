@@ -21,7 +21,7 @@ from typing import Any, Mapping
 import torch
 
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
-from pruna.evaluation.metrics.metric_vlm_utils import _process_images
+from pruna.evaluation.metrics.vlm_utils import _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import metric_data_processor
 
@@ -133,7 +133,8 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
     model_name : str, optional
         Model name. Default is ``"gpt-4o"``.
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init.
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
     structured_output : bool, optional
         Use structured generation (litellm pydantic; transformers outlines when applicable).
         Default is True.

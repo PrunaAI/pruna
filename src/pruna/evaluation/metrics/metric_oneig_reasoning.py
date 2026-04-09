@@ -35,7 +35,7 @@ from typing import Any
 import torch
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import _process_images
+from pruna.evaluation.metrics.vlm_utils import _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (

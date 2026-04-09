@@ -22,7 +22,6 @@ ADIEE (ICCV 2025).
 
 from __future__ import annotations
 
-import re
 from typing import Any, List, Literal, Optional
 
 import numpy as np
@@ -30,7 +29,7 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import FloatOutput, _process_images
+from pruna.evaluation.metrics.vlm_utils import FloatOutput, _process_images, get_score_from_response
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -62,7 +61,8 @@ class ImageEditScoreMetric(StatefulMetric):
     model_name : str, optional
         Model name. Default is "gpt-4o".
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
     structured_output : bool, optional
         Use structured generation (litellm pydantic; transformers outlines when applicable).
         Default is True.
@@ -80,7 +80,6 @@ class ImageEditScoreMetric(StatefulMetric):
     default_call_type: str = "y_x"
     higher_is_better: bool = True
     metric_name: str = "img_edit_score"
-    runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
         self,
@@ -135,14 +134,7 @@ class ImageEditScoreMetric(StatefulMetric):
                 "0 = instruction not followed at all, 10 = perfectly executed. Reply with a single number."
             )
             responses = self.vlm.generate([image], [question], response_format=self.response_format)
-            score = self._parse_score(responses[0])
-            self.scores.append(score)
-
-    def _parse_score(self, response: str) -> float:
-        if isinstance(response, str):
-            numbers = re.findall(r"\d+", response)
-            return min(float(numbers[0]), 10.0) / 10.0 if numbers else 0.0
-        return 0.0
+            self.scores.append(get_score_from_response(responses[0]))
 
     def compute(self) -> MetricResult:
         """

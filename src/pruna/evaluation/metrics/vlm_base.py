@@ -71,9 +71,11 @@ def get_vlm(
         ``transformers``, enables outlines-based constrained decoding when a string
         format is passed to ``generate``/``score``.
     **vlm_kwargs : Any
-        Extra kwargs passed to LitellmVLM or TransformersVLM.
-        For TransformersVLM, use model_load_kwargs={"dtype": torch.bfloat16}
-        to pass options to from_pretrained.
+        Same dict as ``vlm_kwargs`` on VLM metrics: forwarded to the backend chosen by
+        ``vlm_type``. For ``"litellm"``, kwargs go to ``LitellmVLM`` (e.g. provider-specific
+        options). For ``"transformers"``, use ``model_load_kwargs`` for
+        ``AutoModelForImageTextToText.from_pretrained``; any other keys are passed to
+        ``TransformersVLM`` after ``model_load_kwargs`` is popped.
 
     Returns
     -------
@@ -298,7 +300,7 @@ class LitellmVLM(BaseVLM):
         List[float]
             Scores for each image-question pair (0-1, or probability when use_probability).
         """
-        from pruna.evaluation.metrics.metric_vlm_utils import get_answer_from_response
+        from pruna.evaluation.metrics.vlm_utils import get_answer_from_response
 
         scores = []
         for image, question, answer in zip(images, questions, answers):
@@ -575,7 +577,7 @@ class TransformersVLM(BaseVLM):
         List[float]
             Scores for each image-question pair (0 or 1).
         """
-        from pruna.evaluation.metrics.metric_vlm_utils import get_answer_from_response
+        from pruna.evaluation.metrics.vlm_utils import get_answer_from_response
 
         scores = []
         for image, question, answer in zip(images, questions, answers):

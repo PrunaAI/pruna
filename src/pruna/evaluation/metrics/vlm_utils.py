@@ -144,6 +144,13 @@ def get_score_from_response(response: str | BaseModel | dict) -> float:
     """
     Extract numeric score (0-10) from a VLM generate() response.
 
+    Handles:
+
+    * ``FloatOutput`` instances (local / parsed Pydantic).
+    * ``dict`` with a ``"score"`` key.
+    * JSON **strings** (e.g. LitellmVLM returns ``model_dump_json()`` for structured output).
+    * Plain text with a number (first decimal or integer matched).
+
     Parameters
     ----------
     response : str | BaseModel | dict
@@ -157,8 +164,18 @@ def get_score_from_response(response: str | BaseModel | dict) -> float:
     if response is None:
         return 0.0
     if isinstance(response, FloatOutput):
-        return min(response.score, 10.0) / 10.0
+        return min(float(response.score), 10.0) / 10.0
     if isinstance(response, dict):
         return min(float(response.get("score", 0)), 10.0) / 10.0
-    numbers = re.findall(r"\d+", str(response or ""))
-    return min(float(numbers[0]), 10.0) / 10.0 if numbers else 0.0
+    text = str(response or "").strip()
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict) and "score" in data:
+                return min(float(data["score"]), 10.0) / 10.0
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    match = re.search(r"\d+(?:\.\d+)?", text)
+    if match:
+        return min(float(match.group(0)), 10.0) / 10.0
+    return 0.0

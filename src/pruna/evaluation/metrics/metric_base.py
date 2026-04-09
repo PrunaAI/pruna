@@ -30,7 +30,7 @@ class BaseMetric(ABC):
     metric_name: str
     metric_units: str
     higher_is_better: bool
-    runs_on: list[str] = ["cuda", "cpu"]
+    runs_on: list[str] = ["cuda", "cpu", "mps"]
 
     @property
     def device(self) -> str:

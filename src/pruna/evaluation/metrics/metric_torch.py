@@ -50,14 +50,12 @@ from pruna.evaluation.metrics.utils import (
 )
 from pruna.logging.logger import pruna_logger
 
-_PRUNA_TASK_ROUTING_KWARGS: frozenset[str] = frozenset(
-    {
-        "vlm_type",
-        "model_name",
-        "structured_output",
-        "vlm_kwargs",
-        "api_key",
-    }
+_PRUNA_TASK_ROUTING_KWARGS: tuple[str, ...] = (
+    "vlm_type",
+    "model_name",
+    "structured_output",
+    "vlm_kwargs",
+    "api_key",
 )
 
 

@@ -32,7 +32,7 @@ import torch
 
 from pruna.engine.utils import set_to_best_available_device
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.metric_vlm_utils import VQAnswer, _process_images
+from pruna.evaluation.metrics.vlm_utils import VQAnswer, _process_images
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -65,7 +65,8 @@ class VQAMetric(StatefulMetric):
     model_name : str, optional
         Model name (gpt-4o for litellm, model path for transformers).
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
     structured_output : bool, optional
         Use structured generation for stable outputs (litellm pydantic; transformers outlines
         when a string format is used). Default is True.
@@ -86,7 +87,6 @@ class VQAMetric(StatefulMetric):
     default_call_type: str = "y_x"
     higher_is_better: bool = True
     metric_name: str = "vqa"
-    runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
         self,

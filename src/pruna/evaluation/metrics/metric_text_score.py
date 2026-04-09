@@ -33,7 +33,7 @@ from pruna.evaluation.metrics.metric_text_score_utils import (
     oneig_mean_text_score,
     oneig_per_sample_contributions,
 )
-from pruna.evaluation.metrics.metric_vlm_utils import TextOutput, _process_images, get_text_from_response
+from pruna.evaluation.metrics.vlm_utils import TextOutput, _process_images, get_text_from_response
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -68,7 +68,8 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
     model_name : str, optional
         Model name. Default is ``'gpt-4o'``.
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init.
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
     structured_output : bool, optional
         Use structured generation (litellm pydantic; transformers outlines when applicable).
         Default is True.
@@ -83,7 +84,6 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
     """
 
     default_call_type: str = "y_gt"
-    runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
         self,
@@ -186,7 +186,8 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
     model_name : str, optional
         Model name. Default is ``'gpt-4o'``.
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init.
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
     structured_output : bool, optional
         Use structured generation (litellm pydantic; transformers outlines when applicable).
         Default is True.
@@ -266,7 +267,8 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
     model_name : str, optional
         Model name. Default is ``'gpt-4o'``.
     vlm_kwargs : dict, optional
-        Extra kwargs for VLM init (e.g. ``model_load_kwargs`` for transformers).
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
     structured_output : bool, optional
         Use structured generation (litellm pydantic; transformers outlines when applicable).
         Default is True.
