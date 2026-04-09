@@ -102,6 +102,16 @@ class Task:
             dataloader_args=dataloader_args or {},
             **kwargs,
         )
+        if benchmark.lookup_key == "GenEval":
+            return cls(
+                request=[
+                    MetricRegistry.get_metric("qa_accuracy", aggregation="all_or_nothing"),
+                    MetricRegistry.get_metric("clip_score"),
+                ],
+                datamodule=datamodule,
+                device=device,
+                low_memory=low_memory,
+            )
         return cls(
             request=benchmark.metrics,
             datamodule=datamodule,

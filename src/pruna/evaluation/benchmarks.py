@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 from pruna.data import base_datasets
@@ -84,9 +86,7 @@ class BenchmarkRegistry:
     def _register(cls, benchmark: Benchmark) -> None:
         missing = [m for m in benchmark.metrics if not MetricRegistry.has_metric(m)]
         if missing:
-            raise ValueError(
-                f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}."
-            )
+            raise ValueError(f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}.")
         if benchmark.lookup_key not in base_datasets:
             available = ", ".join(base_datasets.keys())
             raise ValueError(
@@ -219,10 +219,12 @@ for _benchmark in [
         name="GenEval",
         description=(
             "Compositional text-to-image benchmark with 6 categories: single object, two object, "
-            "counting, colors, position, color attributes. Evaluates fine-grained alignment "
-            "between prompts and generated images via VQA-style questions."
+            "counting, colors, position, color attributes. Uses atomic yes/no questions per prompt; "
+            "``Task.from_benchmark`` wires ``qa_accuracy`` with strict per-image aggregation "
+            "(all questions must pass) plus ``clip_score``. For holistic VQAScore-style scoring "
+            "use GenAI Bench with ``vqa``."
         ),
-        metrics=["vqa", "clip_score"],
+        metrics=["qa_accuracy", "clip_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2310.11513",
     ),
@@ -249,8 +251,10 @@ for _benchmark in [
     Benchmark(
         name="Long Text Bench",
         description=(
-            "Text-to-image benchmark for long, detailed prompts. Evaluates model ability to "
-            "handle complex multi-clause descriptions and maintain coherence across long instructions."
+            "Text rendering benchmark evaluating whether T2I models correctly render specific text strings "
+            "specified in prompts. Provides ``text_content`` ground truth for OCR comparison via ``text_score`` "
+            "(default: mean character error rate; optional raw Levenshtein via ``text_distance='levenshtein'``). "
+            "Not to be confused with text-to-image alignment for long descriptive prompts."
         ),
         metrics=["text_score"],
         task_type="text_to_image",
@@ -261,9 +265,15 @@ for _benchmark in [
         description=(
             "General image editing benchmark with 11 task types: background change, color alter, "
             "material alter, motion change, style change, subject add/remove/replace, text change, "
-            "tone transfer, and human retouching."
+            "tone transfer, and human retouching. "
+            "When using VieScoreMetric with this benchmark, pass ``task_type='image_editing'`` to apply "
+            "the paper's 2-criterion SC scoring (execution success + overediting) instead of the default "
+            "text-to-image single-criterion SC. "
+            "The default metric implementation scores the edited image and instruction only; "
+            "full parity with reference VIEScore pipelines that condition on a source image may require "
+            "dataset fields and metric extensions not included here."
         ),
-        metrics=["viescore"],  # VIEScore named in GEdit-Bench section
+        metrics=["vie_score"],  # VIEScore named in GEdit-Bench section
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2504.17761",
     ),
