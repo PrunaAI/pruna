@@ -26,19 +26,33 @@ from transformers.utils.import_utils import _is_package_available
 logger = logging.get_logger(__name__)
 
 
-def is_transformers_attn_greater_or_equal_4_38():
+def is_transformers_attn_greater_or_equal_4_38() -> bool:
+    """Return whether the installed ``transformers`` package is at least 4.38.0.
+
+    Returns:
+    -------
+        True if ``transformers`` is installed and its version is >= 4.38.0; False otherwise.
+    """
     if not _is_package_available("transformers"):
         return False
     return version.parse(importlib.metadata.version("transformers")) >= version.parse("4.38.0")
 
 
-def is_transformers_attn_greater_or_equal_4_40():
+def is_transformers_attn_greater_or_equal_4_40() -> bool:
+    """Return whether the installed ``transformers`` package is at least 4.40.0.
+
+    Returns:
+    -------
+        True if ``transformers`` is installed and its version is >= 4.40.0; False otherwise.
+    """
     if not _is_package_available("transformers"):
         return False
     return version.parse(importlib.metadata.version("transformers")) >= version.parse("4.40.0")
 
 
 class ModifiedLlamaDecoderLayer(LlamaDecoderLayer):
+    """Decoder layer with non-causal self-attention when supported by the attention module."""
+
     def __init__(self, config: LlamaConfig, layer_idx: int):
         super().__init__(config, layer_idx)
         if hasattr(self.self_attn, "is_causal"):
@@ -46,6 +60,8 @@ class ModifiedLlamaDecoderLayer(LlamaDecoderLayer):
 
 
 class LlamaBiModel(LlamaModel):
+    """Bidirectional Llama backbone for MNTP-style training (transformers >= 4.38)."""
+
     _no_split_modules = ["ModifiedLlamaDecoderLayer"]
 
     def __init__(self, config: LlamaConfig):
@@ -78,7 +94,10 @@ class LlamaBiModel(LlamaModel):
         past_seen_tokens=None,
         output_attentions=False,
     ):
-        if getattr(self.config, "_attn_implementation", getattr(self.config, "attn_implementation", "eager")) == "flash_attention_2":
+        attn_impl = getattr(
+            self.config, "_attn_implementation", getattr(self.config, "attn_implementation", "eager")
+        )
+        if attn_impl == "flash_attention_2":
             if attention_mask is not None and 0.0 in attention_mask:
                 return attention_mask
             return None
@@ -112,22 +131,37 @@ class LlamaBiModel(LlamaModel):
                 padding_mask = causal_mask[..., :mask_length].eq(0.0) * attention_mask[:, None, None, :].eq(0.0)
                 causal_mask[..., :mask_length] = causal_mask[..., :mask_length].masked_fill(padding_mask, min_dtype)
             elif attention_mask.dim() == 4:
-                if attention_mask.shape[-2] < cache_position[0] + sequence_length:
-                    offset = cache_position[0]
-                else:
-                    offset = 0
+                offset = (
+                    cache_position[0]
+                    if attention_mask.shape[-2] < cache_position[0] + sequence_length
+                    else 0
+                )
                 mask_shape = attention_mask.shape
                 mask_slice = (attention_mask.eq(0.0)).to(dtype=dtype) * min_dtype
-                causal_mask[: mask_shape[0], : mask_shape[1], offset : mask_shape[2] + offset, : mask_shape[3]] = mask_slice
+                causal_mask[
+                    : mask_shape[0],
+                    : mask_shape[1],
+                    offset : mask_shape[2] + offset,
+                    : mask_shape[3],
+                ] = mask_slice
 
-        attn_impl = getattr(self.config, "_attn_implementation", getattr(self.config, "attn_implementation", "eager"))
-        if attn_impl == "sdpa" and attention_mask is not None and attention_mask.device.type == "cuda" and not output_attentions:
+        attn_impl = getattr(
+            self.config, "_attn_implementation", getattr(self.config, "attn_implementation", "eager")
+        )
+        if (
+            attn_impl == "sdpa"
+            and attention_mask is not None
+            and attention_mask.device.type == "cuda"
+            and not output_attentions
+        ):
             causal_mask = AttentionMaskConverter._unmask_unattended(causal_mask, min_dtype)
 
         return causal_mask
 
 
 class LlamaBiForMNTP(LlamaForCausalLM):
+    """Causal LM wrapper around :class:`LlamaBiModel` for MNTP with optional PEFT."""
+
     def __init__(self, config: LlamaConfig):
         LlamaPreTrainedModel.__init__(self, config)
         self.model = LlamaBiModel(config)
@@ -136,11 +170,27 @@ class LlamaBiForMNTP(LlamaForCausalLM):
 
         self.post_init()
 
-    def get_model_for_peft(self):
+    def get_model_for_peft(self) -> LlamaBiModel | PeftModel:
+        """Return the inner model for PEFT wrapping (base or wrapped).
+
+        Returns:
+        -------
+            ``self.model``, either a :class:`LlamaBiModel` or a :class:`peft.PeftModel`.
+        """
         return self.model
 
-    def set_model_for_peft(self, model: PeftModel):
+    def set_model_for_peft(self, model: PeftModel) -> None:
+        """Replace the inner model with a PEFT-wrapped model.
+
+        Args:
+            model: A :class:`peft.PeftModel` whose base matches the expected backbone.
+        """
         self.model = model
 
-    def save_peft_model(self, path):
+    def save_peft_model(self, path: str) -> None:
+        """Save the (possibly PEFT-wrapped) inner model to ``path``.
+
+        Args:
+            path: Directory path passed to ``save_pretrained`` on the inner model.
+        """
         self.model.save_pretrained(path)
