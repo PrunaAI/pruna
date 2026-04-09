@@ -54,7 +54,7 @@ class VQAnswer(BaseModel):
 
 class FloatOutput(BaseModel):
     """
-    Structured output for numeric scoring (img_edit_score, viescore).
+    Structured output for numeric scoring (img_edit_score, VieScoreMetric).
 
     Parameters
     ----------

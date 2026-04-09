@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Text rendering via OCR: mean Levenshtein (``text_score`` / ``ocr_levenshtein``) and OneIG composite (``oneig_text_score`` / ``ocr_text_score``)."""
+"""Text rendering via OCR: mean Levenshtein (``text_score`` / ``ocr_levenshtein``).
+
+OneIG composite: ``oneig_text_score`` / ``ocr_text_score``.
+"""
 
 from __future__ import annotations
 
@@ -67,9 +70,8 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init.
     structured_output : bool, optional
-        Use structured generation. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
+        Use structured generation (litellm pydantic; transformers outlines when applicable).
+        Default is True.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -91,7 +93,6 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
         structured_output: bool = True,
-        use_outlines: bool = False,
         device: str | torch.device | None = None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
@@ -106,7 +107,7 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
             model_name=model_name,
             device=device,
             api_key=api_key,
-            use_outlines=use_outlines,
+            structured_output=structured_output,
             **(vlm_kwargs or {}),
         )
         self.response_format = TextOutput if structured_output else None
@@ -187,9 +188,8 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init.
     structured_output : bool, optional
-        Use structured generation. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
+        Use structured generation (litellm pydantic; transformers outlines when applicable).
+        Default is True.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -212,7 +212,6 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict[str, Any]] = None,
         structured_output: bool = True,
-        use_outlines: bool = False,
         device: str | torch.device | None = None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
@@ -225,7 +224,6 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
             model_name=model_name,
             vlm_kwargs=vlm_kwargs,
             structured_output=structured_output,
-            use_outlines=use_outlines,
             device=device,
             api_key=api_key,
             call_type=call_type,
@@ -270,9 +268,8 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. ``model_load_kwargs`` for transformers).
     structured_output : bool, optional
-        Use structured generation. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
+        Use structured generation (litellm pydantic; transformers outlines when applicable).
+        Default is True.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -300,7 +297,6 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict[str, Any]] = None,
         structured_output: bool = True,
-        use_outlines: bool = False,
         device: str | torch.device | None = None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
@@ -313,7 +309,6 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
             model_name=model_name,
             vlm_kwargs=vlm_kwargs,
             structured_output=structured_output,
-            use_outlines=use_outlines,
             device=device,
             api_key=api_key,
             call_type=call_type,

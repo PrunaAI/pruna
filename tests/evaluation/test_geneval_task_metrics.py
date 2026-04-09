@@ -9,6 +9,7 @@ import pytest
 from pruna.evaluation.task import Task
 
 
+@pytest.mark.cpu
 @pytest.mark.slow
 @patch("pruna.evaluation.task.PrunaDataModule.from_string")
 def test_geneval_from_benchmark_uses_qa_accuracy_all_or_nothing(mock_from_string: MagicMock) -> None:

@@ -135,9 +135,8 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init.
     structured_output : bool, optional
-        Use structured generation. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
+        Use structured generation (litellm pydantic; transformers outlines when applicable).
+        Default is True.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional

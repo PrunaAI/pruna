@@ -67,9 +67,8 @@ class VQAMetric(StatefulMetric):
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
     structured_output : bool, optional
-        Use structured generation for stable outputs. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
+        Use structured generation for stable outputs (litellm pydantic; transformers outlines
+        when a string format is used). Default is True.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -97,7 +96,6 @@ class VQAMetric(StatefulMetric):
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
         structured_output: bool = True,
-        use_outlines: bool = False,
         device=None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
@@ -115,7 +113,7 @@ class VQAMetric(StatefulMetric):
             model_name=model_name,
             device=device,
             api_key=api_key,
-            use_outlines=use_outlines,
+            structured_output=structured_output,
             **(vlm_kwargs or {}),
         )
         self.response_format = VQAnswer if structured_output else None

@@ -55,7 +55,6 @@ _PRUNA_TASK_ROUTING_KWARGS: frozenset[str] = frozenset(
         "vlm_type",
         "model_name",
         "structured_output",
-        "use_outlines",
         "vlm_kwargs",
         "api_key",
     }

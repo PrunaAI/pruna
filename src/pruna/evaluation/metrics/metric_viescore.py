@@ -41,7 +41,7 @@ from pruna.evaluation.metrics.utils import (
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
 
-@MetricRegistry.register("viescore")
+@MetricRegistry.register("vie_score")
 class VieScoreMetric(StatefulMetric):
     """
     VIEScore metric for evaluating conditional image synthesis (semantic + quality).
@@ -67,9 +67,8 @@ class VieScoreMetric(StatefulMetric):
     vlm_kwargs : dict, optional
         Extra kwargs for VLM init (e.g. model_load_kwargs for transformers).
     structured_output : bool, optional
-        Use structured generation. Default is True.
-    use_outlines : bool, optional
-        Use outlines for transformers. Default is False.
+        Use structured generation (litellm pydantic; transformers outlines when applicable).
+        Default is True.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
@@ -89,7 +88,7 @@ class VieScoreMetric(StatefulMetric):
     scores: List[float]
     default_call_type: str = "y_x"
     higher_is_better: bool = True
-    metric_name: str = "viescore"
+    metric_name: str = "vie_score"
     runs_on: List[str] = ["cuda", "cpu", "mps"]
 
     def __init__(
@@ -100,7 +99,6 @@ class VieScoreMetric(StatefulMetric):
         model_name: str = "gpt-4o",
         vlm_kwargs: Optional[dict] = None,
         structured_output: bool = True,
-        use_outlines: bool = False,
         device=None,
         api_key: Optional[str] = None,
         call_type: str = SINGLE,
@@ -115,7 +113,7 @@ class VieScoreMetric(StatefulMetric):
             model_name=model_name,
             device=device,
             api_key=api_key,
-            use_outlines=use_outlines,
+            structured_output=structured_output,
             **(vlm_kwargs or {}),
         )
         self.response_format = FloatOutput if structured_output else None

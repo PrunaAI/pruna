@@ -48,7 +48,7 @@ def get_vlm(
     model_name: str = "gpt-4o",
     device: Optional[str | torch.device] = None,
     api_key: Optional[str] = None,
-    use_outlines: bool = False,
+    structured_output: bool = True,
     **vlm_kwargs: Any,
 ) -> BaseVLM:
     """
@@ -66,8 +66,10 @@ def get_vlm(
         Device for transformers VLM.
     api_key : str | None
         API key for litellm.
-    use_outlines : bool
-        Use outlines for transformers.
+    structured_output : bool
+        When True, litellm uses pydantic ``response_format`` from the metric; for
+        ``transformers``, enables outlines-based constrained decoding when a string
+        format is passed to ``generate``/``score``.
     **vlm_kwargs : Any
         Extra kwargs passed to LitellmVLM or TransformersVLM.
         For TransformersVLM, use model_load_kwargs={"dtype": torch.bfloat16}
@@ -86,7 +88,7 @@ def get_vlm(
     return TransformersVLM(
         model_name=model_name,
         device=device,
-        use_outlines=use_outlines,
+        use_outlines=structured_output,
         model_load_kwargs=model_load_kwargs,
         **vlm_kwargs,
     )
@@ -387,7 +389,8 @@ class TransformersVLM(BaseVLM):
     device : str | torch.device | None, optional
         Device for inference. Auto-detected if None.
     use_outlines : bool, optional
-        Use outlines for constrained decoding. Default is False.
+        Whether to use outlines for constrained decoding when the caller passes a string
+        ``response_format``. Usually set from ``structured_output`` via :func:`get_vlm`.
     model_load_kwargs : dict, optional
         Kwargs passed to from_pretrained (e.g. dtype, attn_implementation).
     **kwargs : Any
