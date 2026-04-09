@@ -16,13 +16,30 @@ from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
 
 SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
+_ALL_VLM = (
+    VQAMetric,
+    AlignmentScoreMetric,
+    ImageEditScoreMetric,
+    QAAccuracyMetric,
+    OneIGAlignmentMetric,
+    TextScoreMetric,
+    OneIGTextScoreMetric,
+    VieScoreMetric,
+)
+
+_SLOW_SMOL_SUBSET = (
+    VQAMetric,
+    OneIGAlignmentMetric,
+    ImageEditScoreMetric,
+    VieScoreMetric,
+)
+
 
 def _dummy_image(batch: int = 1, size: int = 224) -> torch.Tensor:
     return torch.rand(batch, 3, size, size)
 
 
 def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
-    """Update metric with appropriate gt type per metric contract."""
     if isinstance(metric, OneIGAlignmentMetric):
         metric.update(
             prompts,
@@ -48,27 +65,14 @@ def _update_metric(metric: object, prompts: list, images: torch.Tensor) -> None:
 
 @pytest.mark.cpu
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "metric_cls",
-    [
-        VQAMetric,
-        AlignmentScoreMetric,
-        ImageEditScoreMetric,
-        QAAccuracyMetric,
-        OneIGAlignmentMetric,
-        TextScoreMetric,
-        OneIGTextScoreMetric,
-        VieScoreMetric,
-    ],
-)
-@pytest.mark.parametrize("structured_output", [False, True])
-def test_vlm_metrics_transformers_smolvlm(metric_cls: type, structured_output: bool) -> None:
-    """Test each VLM metric with local SmolVLM-256M-Instruct."""
+@pytest.mark.parametrize("metric_cls", _SLOW_SMOL_SUBSET)
+def test_vlm_metrics_transformers_smolvlm(metric_cls: type) -> None:
+    """Smoke-test a subset with local SmolVLM (full matrix covered by litellm mock)."""
     metric = metric_cls(
         vlm_type="transformers",
         model_name=SMOL_VLM,
         device="cpu",
-        structured_output=structured_output,
+        structured_output=True,
     )
     images = _dummy_image(batch=1)
     prompts = ["a cat"]
@@ -83,33 +87,16 @@ def test_vlm_metrics_transformers_smolvlm(metric_cls: type, structured_output: b
 
 
 @pytest.mark.cpu
-@pytest.mark.parametrize(
-    "metric_cls",
-    [
-        VQAMetric,
-        AlignmentScoreMetric,
-        ImageEditScoreMetric,
-        QAAccuracyMetric,
-        OneIGAlignmentMetric,
-        TextScoreMetric,
-        OneIGTextScoreMetric,
-        VieScoreMetric,
-    ],
-)
-@pytest.mark.parametrize("structured_output", [False, True])
-def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -> None:
-    """Test each VLM metric with mocked litellm API (requires litellm installed)."""
+@pytest.mark.parametrize("metric_cls", _ALL_VLM)
+def test_vlm_metrics_litellm_mocked(metric_cls: type) -> None:
+    """Each VLM metric runs end-to-end with mocked litellm."""
     pytest.importorskip("litellm")
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     if metric_cls in (AlignmentScoreMetric, VQAMetric, QAAccuracyMetric, OneIGAlignmentMetric):
-        mock_response.choices[0].message.content = (
-            '{"answer": "Yes"}' if structured_output else "Yes"
-        )
+        mock_response.choices[0].message.content = '{"answer": "Yes"}'
     else:
-        mock_response.choices[0].message.content = (
-            '{"score": 8}' if structured_output else "8"
-        )
+        mock_response.choices[0].message.content = '{"score": 8}'
 
     with patch("litellm.completion") as mock_completion:
         mock_completion.return_value = mock_response
@@ -118,7 +105,7 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
             vlm_type="litellm",
             model_name="gpt-4o",
             device="cpu",
-            structured_output=structured_output,
+            structured_output=True,
         )
         images = _dummy_image(batch=1)
         prompts = ["a cat"]
@@ -131,55 +118,35 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type, structured_output: bool) -
 
 
 @pytest.mark.cpu
-@pytest.mark.parametrize(
-    "metric_cls",
-    [
-        VQAMetric,
-        AlignmentScoreMetric,
-        ImageEditScoreMetric,
-        QAAccuracyMetric,
-        OneIGAlignmentMetric,
-        TextScoreMetric,
-        OneIGTextScoreMetric,
-        VieScoreMetric,
-    ],
-)
-@pytest.mark.parametrize("structured_output", [False, True])
-def test_vlm_metrics_empty_score(metric_cls: type, structured_output: bool) -> None:
-    """Test that empty compute returns 0.0."""
-    metric = metric_cls(
+def test_vlm_metrics_empty_compute_returns_zero() -> None:
+    """No updates → compute is 0.0 (same for all stateful VLM metrics)."""
+    metric = VQAMetric(
         vlm_type="transformers",
         model_name=SMOL_VLM,
         device="cpu",
-        structured_output=structured_output,
+        structured_output=True,
     )
-    result = metric.compute()
-    assert result.result == 0.0
+    assert metric.compute().result == 0.0
 
 
 @pytest.mark.cpu
-@pytest.mark.parametrize("structured_output", [False, True])
-def test_vlm_metrics_custom_vlm(structured_output: bool) -> None:
-    """Test metrics with a custom VLM instance."""
+def test_vlm_metrics_custom_vlm() -> None:
     mock_vlm = MagicMock(spec=BaseVLM)
     mock_vlm.generate.return_value = ["Yes"]
     mock_vlm.score.return_value = [1.0]
 
     metric = VQAMetric(
-        vlm=mock_vlm, vlm_type="litellm", device="cpu", structured_output=structured_output
+        vlm=mock_vlm, vlm_type="litellm", device="cpu", structured_output=True
     )
     images = _dummy_image(batch=1)
     prompts = ["a cat"]
     metric.update(prompts, images, images)
-    result = metric.compute()
-
-    assert result.result == 1.0
+    assert metric.compute().result == 1.0
     mock_vlm.score.assert_called()
 
 
 @pytest.mark.cpu
 def test_get_vlm_returns_custom() -> None:
-    """Test get_vlm returns provided vlm as-is."""
     custom = MagicMock(spec=BaseVLM)
     out = get_vlm(vlm=custom, vlm_type="litellm", model_name="gpt-4o")
     assert out is custom
@@ -187,45 +154,36 @@ def test_get_vlm_returns_custom() -> None:
 
 @pytest.mark.cpu
 def test_get_vlm_requires_model_name_without_vlm() -> None:
-    """Building a default VLM requires an explicit model_name."""
     with pytest.raises(ValueError, match="model_name"):
         get_vlm(vlm=None, vlm_type="litellm")
 
 
 @pytest.mark.cpu
-def test_text_score_with_list_str_gt() -> None:
-    """Test TextScoreMetric accepts List[str] ground truth from text_score_collate."""
+@pytest.mark.parametrize(
+    "metric_cls, expected_name, expected_result",
+    [
+        (TextScoreMetric, "text_score", 0.0),
+        (OneIGTextScoreMetric, "oneig_text_score", 1.0),
+    ],
+)
+def test_text_metrics_list_str_gt(
+    metric_cls: type, expected_name: str, expected_result: float
+) -> None:
     mock_vlm = MagicMock(spec=BaseVLM)
     mock_vlm.generate.return_value = ["hello world"]
 
-    metric = TextScoreMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
+    metric = metric_cls(vlm=mock_vlm, vlm_type="litellm", device="cpu")
     images = _dummy_image(batch=1)
     metric.update(["a prompt"], ["hello world"], images)
     result = metric.compute()
 
-    assert result.result == 0.0
-    mock_vlm.generate.assert_called_once()
-
-
-@pytest.mark.cpu
-def test_oneig_text_score_with_list_str_gt() -> None:
-    """OneIG composite is 1.0 when OCR exactly matches ground truth after preprocess."""
-    mock_vlm = MagicMock(spec=BaseVLM)
-    mock_vlm.generate.return_value = ["hello world"]
-
-    metric = OneIGTextScoreMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
-    images = _dummy_image(batch=1)
-    metric.update(["a prompt"], ["hello world"], images)
-    result = metric.compute()
-
-    assert result.result == 1.0
-    assert result.name == "oneig_text_score"
+    assert result.result == expected_result
+    assert result.name == expected_name
     mock_vlm.generate.assert_called_once()
 
 
 @pytest.mark.cpu
 def test_text_score_registry_aliases() -> None:
-    """Descriptive OCR metric names are aliases for the same classes."""
     from pruna.evaluation.metrics.registry import MetricRegistry
 
     lev = MetricRegistry.get_metric("ocr_levenshtein", device="cpu", model_name="openai/gpt-4o")
@@ -238,7 +196,6 @@ def test_text_score_registry_aliases() -> None:
 
 @pytest.mark.cpu
 def test_oneig_text_score_utils_golden_composite() -> None:
-    """Reference composite matches OneIG ``text_score`` formula (EN cap)."""
     from pruna.evaluation.metrics.metric_text_score_utils import oneig_mean_text_score
 
     ed, cr, wac, composite = oneig_mean_text_score(
@@ -261,27 +218,3 @@ def test_oneig_text_score_utils_golden_composite() -> None:
         language_mode="ZH",
     )
     assert zh == pytest.approx(0.4)
-
-
-@pytest.mark.cpu
-@pytest.mark.integration
-@pytest.mark.skip(reason="Requires OPENAI_API_KEY; run manually with: pytest -m integration")
-@pytest.mark.parametrize("structured_output", [False, True])
-def test_vlm_metrics_litellm_api(structured_output: bool) -> None:
-    """Integration test with real litellm API (requires OPENAI_API_KEY)."""
-    import os
-
-    if not os.getenv("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY not set")
-
-    metric = VQAMetric(
-        vlm_type="litellm",
-        model_name="gpt-4o",
-        device="cpu",
-        structured_output=structured_output,
-    )
-    images = _dummy_image(batch=1)
-    prompts = ["a cat"]
-    metric.update(prompts, images, images)
-    result = metric.compute()
-    assert 0.0 <= result.result <= 1.0

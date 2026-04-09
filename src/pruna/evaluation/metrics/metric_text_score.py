@@ -132,7 +132,8 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
         x : List[Any] | torch.Tensor
             Batch prompts or metadata.
         gt : list of dict or list of str
-            Auxiliaries with ``'text_content'`` or plain strings.
+            Auxiliaries with ``'text_content'`` as a string, a list of strings (joined with
+            newlines), or plain strings per batch item.
         outputs : torch.Tensor
             Rendered images.
         """
@@ -145,6 +146,8 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
             ocr_text = get_text_from_response(raw)
             aux = auxiliaries[i] if i < len(auxiliaries) else {}
             text_gt = aux.get("text_content") if isinstance(aux, dict) else (aux if isinstance(aux, str) else None)
+            if isinstance(text_gt, list):
+                text_gt = "\n".join(str(x) for x in text_gt)
             if text_gt is None:
                 raise ValueError(
                     f"{self.metric_name} requires 'text_content' in auxiliaries. "
