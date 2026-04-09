@@ -2,29 +2,26 @@
 #
 # Vendored from OneIG-Benchmark (commit 41b49831e79e6dde5323618c164da1c4cf0f699d).
 
-import torch
-from packaging import version
 import importlib.metadata
 
+import torch
+from packaging import version
+from peft import PeftModel
+from torch import nn
 from transformers import (
-    LlamaModel,
-    LlamaForCausalLM,
-    LlamaPreTrainedModel,
     LlamaConfig,
+    LlamaForCausalLM,
+    LlamaModel,
+    LlamaPreTrainedModel,
 )
+from transformers.modeling_attn_mask_utils import AttentionMaskConverter
 from transformers.models.llama.modeling_llama import (
     LlamaDecoderLayer,
-    LlamaMLP,
     LlamaRMSNorm,
     LlamaRotaryEmbedding,
 )
-from torch import nn
 from transformers.utils import logging
-
-from transformers.modeling_attn_mask_utils import AttentionMaskConverter
 from transformers.utils.import_utils import _is_package_available
-
-from peft import PeftModel
 
 logger = logging.get_logger(__name__)
 

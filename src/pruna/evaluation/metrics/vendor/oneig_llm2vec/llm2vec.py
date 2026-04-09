@@ -5,7 +5,7 @@
 
 import json
 import logging
-import os
+import pathlib
 from typing import Dict, List, Optional, Union
 
 import numpy as np
@@ -15,11 +15,11 @@ from peft import PeftModel
 from torch import Tensor, device, nn
 from tqdm import trange
 from transformers import (
-    AutoModel,
     AutoConfig,
-    PretrainedConfig,
+    AutoModel,
     AutoTokenizer,
     LlamaConfig,
+    PretrainedConfig,
 )
 
 from pruna.evaluation.metrics.vendor.oneig_llm2vec.models import LlamaBiModel
@@ -92,9 +92,7 @@ class LLM2Vec(nn.Module):
         )
         model = model_class.from_pretrained(base_model_name_or_path, **kwargs)
 
-        if os.path.isdir(base_model_name_or_path) and os.path.exists(
-            f"{base_model_name_or_path}/config.json"
-        ):
+        if pathlib.Path(base_model_name_or_path).is_dir() and pathlib.Path(f"{base_model_name_or_path}/config.json").exists():
             with open(f"{base_model_name_or_path}/config.json", "r") as fIn:
                 config_dict = json.load(fIn)
             config = PretrainedConfig.from_dict(config_dict)
@@ -143,7 +141,7 @@ class LLM2Vec(nn.Module):
             if peft_model_name_or_path is not None
             else base_model_name_or_path
         )
-        if os.path.exists(f"{config_addr}/llm2vec_config.json"):
+        if pathlib.Path(f"{config_addr}/llm2vec_config.json").exists():
             with open(f"{config_addr}/llm2vec_config.json", "r") as fIn:
                 llm2vec_config = json.load(fIn)
             config.update(llm2vec_config)
@@ -372,7 +370,7 @@ class LLM2Vec(nn.Module):
         }
 
         if save_config:
-            os.makedirs(output_path, exist_ok=True)
+            pathlib.Path(output_path).mkdir(exist_ok=True, parents=True)
             with open(f"{output_path}/llm2vec_config.json", "w") as fOut:
                 json.dump(llm2vec_config, fOut, indent=4)
 
