@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 from dataclasses import dataclass, field
 
 from pruna.data import base_datasets
@@ -121,7 +122,7 @@ class BenchmarkRegistry:
         return cls._registry[key]
 
     @classmethod
-    def list(cls, task_type: str | None = None) -> list[str]:
+    def list(cls, task_type: str | None = None) -> builtins.list[str]:
         """
         List available benchmark names.
 

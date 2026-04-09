@@ -3,6 +3,7 @@
 # Vendored from OneIG-Benchmark (commit 41b49831e79e6dde5323618c164da1c4cf0f699d).
 
 import importlib.metadata
+from typing import cast
 
 import torch
 from packaging import version
@@ -154,7 +155,10 @@ class LlamaBiModel(LlamaModel):
             and attention_mask.device.type == "cuda"
             and not output_attentions
         ):
-            causal_mask = AttentionMaskConverter._unmask_unattended(causal_mask, min_dtype)
+            causal_mask = AttentionMaskConverter._unmask_unattended(
+                cast(torch.FloatTensor, causal_mask.to(dtype=torch.float32)),
+                min_dtype,
+            )
 
         return causal_mask
 

@@ -6,7 +6,7 @@
 import json
 import logging
 import pathlib
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
@@ -27,7 +27,7 @@ from pruna.evaluation.metrics.vendor.oneig_llm2vec.models import LlamaBiModel
 logger = logging.getLogger(__name__)
 
 
-def batch_to_device(batch, target_device: device):
+def batch_to_device(batch, target_device: device | str):
     """Send a pytorch batch to a device (CPU/GPU)."""
     for key in batch:
         if isinstance(batch[key], Tensor):
@@ -214,7 +214,8 @@ class LLM2Vec(nn.Module):
         if "embed_mask" in sentence_feature:
             embed_mask = sentence_feature.pop("embed_mask")
         reps = self.model(**sentence_feature)
-        sentence_feature["embed_mask"] = embed_mask
+        if embed_mask is not None:
+            sentence_feature["embed_mask"] = embed_mask
 
         return self.get_pooling(sentence_feature, reps.last_hidden_state)
 
@@ -281,16 +282,17 @@ class LLM2Vec(nn.Module):
         device: Optional[str] = None,
     ):
         """Encode sentences (optionally instruction + document) to embedding tensors."""
-        if isinstance(sentences[0], str) and isinstance(sentences[-1], int):
-            sentences = [sentences]
-        if isinstance(sentences[0], str):
-            sentences = [[""] + [sentence] for sentence in sentences]
+        seq: Any = sentences
+        if isinstance(seq[0], str) and isinstance(seq[-1], int):
+            seq = [seq]
+        if isinstance(seq[0], str):
+            seq = [[""] + [sentence] for sentence in seq]
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
         concatenated_input_texts = []
-        for sentence in sentences:
+        for sentence in seq:
             assert isinstance(sentence[0], str)
             assert isinstance(sentence[1], str)
             concatenated_input_texts.append(self._convert_to_str(sentence[0], sentence[1]))
@@ -327,7 +329,7 @@ class LLM2Vec(nn.Module):
         if merge_before_save and isinstance(self.model, PeftModel):
             self.model = self.model.merge_and_unload()
         if hasattr(self.model, "_hf_peft_config_loaded"):
-            self.model._hf_peft_config_loaded = False
+            setattr(self.model, "_hf_peft_config_loaded", False)
 
         self.model.save_pretrained(output_path)
         self.tokenizer.save_pretrained(output_path)
@@ -357,9 +359,10 @@ class LLM2Vec(nn.Module):
             if device is None and torch.cuda.is_available():
                 device = f"cuda:{rank % torch.cuda.device_count()}"
 
-        self.to(device)
+        use_device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(use_device)
         features = self.tokenize([self.prepare_for_tokenization(sentence) for sentence in sentences_batch])
-        features = batch_to_device(features, device)
+        features = batch_to_device(features, use_device)
 
         with torch.no_grad():
             embeddings = self.forward(features)
@@ -373,7 +376,7 @@ class LLM2Vec(nn.Module):
         elif not hasattr(text, "__len__"):
             return 1
         else:
-            return sum(len(t) for t in text)
+            return sum(len(t) if not isinstance(t, int) else 1 for t in text)
 
     def resize_token_embeddings(
         self,
