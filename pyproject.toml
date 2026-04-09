@@ -103,7 +103,7 @@ authors = [
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
 classifiers = [
     "Development Status :: 4 - Beta",
