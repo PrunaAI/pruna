@@ -134,13 +134,27 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 "block_quant_shape_n",
                 sequence=[32, 64, 128, 256, 512, 1024, 2048, 4096, None],
                 default_value=None,
-                meta={"desc": "Block size for quantization through input dimension."},
+                meta={
+                    "desc": (
+                        "Block size for quantization along the N dimension when weight_dtype is "
+                        "fp8_w8a8. Must be set together with block_quant_shape_k: either both "
+                        "None or both an integer (mixing None with a value is invalid). "
+                        "Default None: no block-wise quant tiling."
+                    )
+                },
             ),
             OrdinalHyperparameter(
                 "block_quant_shape_k",
                 sequence=[32, 64, 128, 256, 512, 1024, 2048, 4096, None],
                 default_value=None,
-                meta={"desc": "Block size for quantization through intermediate dimension."},
+                meta={
+                    "desc": (
+                        "Block size for quantization along the K (intermediate) dimension when "
+                        "weight_dtype is fp8_w8a8. Must be set together with block_quant_shape_n: "
+                        "either both None or both an integer (mixing None with a value is invalid). "
+                        "Default None: no block-wise quant tiling."
+                    )
+                },
             ),
         ]
 
@@ -195,6 +209,14 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             text_cfg = getattr(model_config, "text_config", None)
             if text_cfg is not None and getattr(text_cfg, "num_experts", None) is not None:
                 model_config = text_cfg
+            else:
+                raise ValueError(
+                    f"Cannot resolve MoE layout for {model.__class__.__name__}: "
+                    "`config.num_experts` is missing and no `config.text_config.num_experts` was "
+                    "found. This tuner expects a supported MoE model (e.g. Mixtral, Qwen-MoE, "
+                    "or multimodal MoE with experts in `text_config`). For custom or future "
+                    "architectures, extend config resolution in MoeKernelTuner._apply."
+                )
 
         tensor_parallel_size = int(smash_config["tensor_parallel_size"])
         if model.__class__.__name__ == "HunyuanImage3ForCausalMM":
@@ -211,15 +233,17 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
+        block_quant_shape_n = smash_config["block_quant_shape_n"]
+        block_quant_shape_k = smash_config["block_quant_shape_k"]
+        if (block_quant_shape_n is None) ^ (block_quant_shape_k is None):
+            raise ValueError(
+                "block_quant_shape_n and block_quant_shape_k must both be None (default, "
+                "per-expert FP8 scales and no quant-block filtering) or both set to an integer; "
+                "setting only one 'None' is not supported."
+            )
         block_quant_shape = None
-        if (
-            smash_config["block_quant_shape_n"] is not None
-            and smash_config["block_quant_shape_k"] is not None
-        ):
-            block_quant_shape = [
-                smash_config["block_quant_shape_n"],
-                smash_config["block_quant_shape_k"],
-            ]
+        if block_quant_shape_n is not None and block_quant_shape_k is not None:
+            block_quant_shape = [block_quant_shape_n, block_quant_shape_k]
 
         # (iii) Tune the kernel over a range of batch sizes (single GPU per Ray worker).
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
@@ -236,16 +260,12 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         # Remove configs incompatible with block quantisation constraints:
         # - BLOCK_SIZE_K must be divisible by block_quant_shape_k
         # - BLOCK_SIZE_N must be divisible by block_quant_shape_n
-        if (
-            smash_config["block_quant_shape_n"] is not None
-            and smash_config["block_quant_shape_k"] is not None
-            and use_fp8_w8a8
-        ):
+        if block_quant_shape is not None and use_fp8_w8a8:
             search_space = [
                 cfg
                 for cfg in search_space
-                if cfg["BLOCK_SIZE_K"] % smash_config["block_quant_shape_k"] == 0
-                and cfg["BLOCK_SIZE_N"] % smash_config["block_quant_shape_n"] == 0
+                if cfg["BLOCK_SIZE_K"] % block_quant_shape_k == 0
+                and cfg["BLOCK_SIZE_N"] % block_quant_shape_n == 0
             ]
 
         pruna_logger.info(f"Start tuning over {len(search_space)} configurations...")
