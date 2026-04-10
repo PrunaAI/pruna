@@ -156,7 +156,6 @@ dependencies = [
     "peft>=0.18.0,<0.19.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
-    "realesrgan"
 ]
 
 [project.optional-dependencies]
@@ -194,6 +193,9 @@ awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
     "torch>=2.9.0"
+]
+upscale = [
+    "realesrgan",
 ]
 full = [
     "pruna[stable-fast]",
