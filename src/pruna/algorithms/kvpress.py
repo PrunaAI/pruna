@@ -58,6 +58,11 @@ class KVPress(PrunaAlgorithmBase):
     KVPress is a library by NVIDIA that provides over 20 compression strategies (presses) for
     reducing the memory footprint of the key-value cache during long-context inference. Each press
     scores and prunes KV pairs after the prefill phase according to a chosen importance criterion.
+
+    This integration covers all scorer and standalone presses. Wrapper presses (e.g., ChunkPress,
+    AdaKVPress, PerLayerCompressionPress) that require a nested scorer press as input are not
+    included, as well as ThinKPress which compresses along the channel dimension with a different
+    parameter interface.
     """
 
     algorithm_name: str = "kvpress"
