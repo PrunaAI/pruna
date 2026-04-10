@@ -26,9 +26,6 @@ from pruna.telemetry.metrics import (
     set_opentelemetry_log_level,
 )
 
-pytestmark = pytest.mark.cpu
-
-
 @pytest.fixture
 def mock_config():
     return {
