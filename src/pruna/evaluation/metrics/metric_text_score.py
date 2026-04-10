@@ -172,7 +172,7 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
 @MetricRegistry.register("text_score")
 class TextScoreMetric(_BaseVLMOCRTextMetric):
     """
-    OCR then mean Levenshtein distance to ground truth (lower is better).
+    OCR then mean normalized Levenshtein distance (character error rate, lower is better).
 
     Registry: ``ocr_levenshtein`` (descriptive) and ``text_score`` (legacy).
 
@@ -240,7 +240,8 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
     def _accumulate_sample(self, text_gt: str, ocr_text: str) -> None:
         norm_gt = normalize_text_simple(text_gt)
         norm_ocr = normalize_text_simple(ocr_text)
-        self.scores.append(levenshtein(norm_ocr, norm_gt))
+        gt_len = max(len(norm_gt), 1)
+        self.scores.append(float(levenshtein(norm_ocr, norm_gt) / gt_len))
 
     def _compute_result_value(self) -> float:
         if not self.scores:

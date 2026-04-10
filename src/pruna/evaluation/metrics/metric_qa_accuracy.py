@@ -105,6 +105,11 @@ class QAAccuracyMetric(StatefulMetric):
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("scores", [])
         self.aggregation = kwargs.pop("aggregation", "mean")
+        if self.aggregation not in {"mean", "all_or_nothing"}:
+            raise ValueError(
+                "qa_accuracy aggregation must be one of {'mean', 'all_or_nothing'}. "
+                f"Got: {self.aggregation!r}."
+            )
 
     def _extract_questions(self, gt: Any, n: int) -> List[List[str]]:
         if isinstance(gt, (list, tuple)) and len(gt) >= n:
@@ -151,7 +156,10 @@ class QAAccuracyMetric(StatefulMetric):
                 ["Yes"] * len(questions),
                 response_format=self.response_format,
             )
-            score = float(np.mean(scores))
+            if self.aggregation == "all_or_nothing":
+                score = float(all(float(s) == 1.0 for s in scores))
+            else:
+                score = float(np.mean(scores))
             self.scores.append(score)
 
     def compute(self) -> MetricResult:

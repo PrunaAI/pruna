@@ -139,11 +139,15 @@ def _oneig_alignment_language_zh(row: dict) -> bool:
     lang = row.get("language") or row.get("lang")
     if isinstance(lang, str) and lang.lower() in {"zh", "zh-cn", "zh_cn", "chinese", "cn"}:
         return True
-    if row.get("prompt_zh"):
+    if row.get("prompt_zh") or row.get("prompt_cn"):
         return True
     prompt = row.get("prompt")
     prompt_en = row.get("prompt_en")
-    return bool(prompt and not (isinstance(prompt_en, str) and prompt_en.strip()))
+    if not (isinstance(prompt, str) and prompt.strip()):
+        return False
+    if isinstance(prompt_en, str) and prompt_en.strip():
+        return False
+    return any("\u4e00" <= ch <= "\u9fff" for ch in prompt)
 
 
 def _oneig_qd_prefix(row: dict) -> str:

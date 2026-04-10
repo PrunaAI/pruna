@@ -146,6 +146,22 @@ def test_vlm_metrics_custom_vlm() -> None:
 
 
 @pytest.mark.cpu
+def test_qa_accuracy_aggregation_modes() -> None:
+    mock_vlm = MagicMock(spec=BaseVLM)
+    mock_vlm.score.return_value = [1.0, 0.0]
+    images = _dummy_image(batch=1)
+    aux = [{"questions": {"1": "Q1", "2": "Q2"}}]
+
+    mean_metric = QAAccuracyMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu", aggregation="mean")
+    mean_metric.update(["a prompt"], aux, images)
+    assert mean_metric.compute().result == pytest.approx(0.5)
+
+    strict_metric = QAAccuracyMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu", aggregation="all_or_nothing")
+    strict_metric.update(["a prompt"], aux, images)
+    assert strict_metric.compute().result == pytest.approx(0.0)
+
+
+@pytest.mark.cpu
 def test_get_vlm_returns_custom() -> None:
     custom = MagicMock(spec=BaseVLM)
     out = get_vlm(vlm=custom, vlm_type="litellm", model_name="gpt-4o")
@@ -180,6 +196,19 @@ def test_text_metrics_list_str_gt(
     assert result.result == expected_result
     assert result.name == expected_name
     mock_vlm.generate.assert_called_once()
+
+
+@pytest.mark.cpu
+def test_text_score_uses_normalized_edit_distance() -> None:
+    mock_vlm = MagicMock(spec=BaseVLM)
+    mock_vlm.generate.side_effect = [["abxde"], ["ax"]]
+    metric = TextScoreMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
+
+    metric.update(["p1"], ["abcde"], _dummy_image(batch=1))
+    metric.update(["p2"], ["ab"], _dummy_image(batch=1))
+
+    assert metric.scores == pytest.approx([0.2, 0.5])
+    assert metric.compute().result == pytest.approx(0.35)
 
 
 @pytest.mark.cpu

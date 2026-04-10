@@ -34,6 +34,18 @@ def test_oneig_qd_prefix_anime_zh_hint() -> None:
     assert prompt_mod._oneig_qd_prefix(row) == "anime_zh"
 
 
+def test_oneig_qd_prefix_prompt_only_en_row_stays_en() -> None:
+    """Prompt-only EN rows must not be misclassified as Chinese."""
+    row = {
+        "category": "General_Object",
+        "id": "001",
+        "prompt": "a red apple on a table",
+        "prompt_en": "",
+        "class": "None",
+    }
+    assert prompt_mod._oneig_qd_prefix(row) == "object"
+
+
 def test_to_oneig_record_multilingualism_fills_questions() -> None:
     """Synthetic Multilingualism row resolves Q_D from merged index."""
     qb = {"multilingualism_zh_000": {"questions": {"1": "现场是不是颁奖典礼？"}, "dependencies": {"1": [0]}}}
