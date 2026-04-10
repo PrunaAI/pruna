@@ -74,7 +74,7 @@ class TorchCompile(PrunaAlgorithmBase):
         "hyper",
         "padding_pruning",
         "ring_attn",
-        tags.KV_CACHER,
+        tags.KV_COMPRESSOR,
         "text_to_image_distillation_inplace_perp",
         "text_to_image_distillation_lora",
         "text_to_image_distillation_perp",

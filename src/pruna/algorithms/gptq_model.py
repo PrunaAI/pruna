@@ -46,7 +46,7 @@ class GPTQ(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = True
-    compatible_after: Iterable[str | tags] = ["torch_compile", "sage_attn", tags.KV_CACHER]
+    compatible_after: Iterable[str | tags] = ["torch_compile", "sage_attn", tags.KV_COMPRESSOR]
     required_install: str = (
         "You must first install the base package with ``pip install pruna`` "
         "before installing the GPTQ extension with ``pip install pruna[gptq] --extra-index-url https://prunaai.pythonanywhere.com/``"

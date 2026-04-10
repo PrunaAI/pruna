@@ -50,13 +50,13 @@ class MoeKernelTuner(PrunaAlgorithmBase):
     dataset_required: bool = False
     compatible_before: Iterable[str | tags] = [
         "awq", "deepcache", "diffusers_int8", "fastercache", "flash_attn3",
-        "fora", "hqq", "hqq_diffusers", tags.KV_CACHER, "llm_int8", "pab", "padding_pruning",
+        "fora", "hqq", "hqq_diffusers", tags.KV_COMPRESSOR, "llm_int8", "pab", "padding_pruning",
         "qkv_diffusers", "quanto", "reduce_noe", "ring_attn", "sage_attn",
         "torch_compile", "torchao",
     ]
     compatible_after: Iterable[str | tags] = [
         "awq", "deepcache", "diffusers_int8", "fastercache", "flash_attn3",
-        "fora", "hqq", "hqq_diffusers", tags.KV_CACHER, "llm_int8", "pab", "padding_pruning",
+        "fora", "hqq", "hqq_diffusers", tags.KV_COMPRESSOR, "llm_int8", "pab", "padding_pruning",
         "qkv_diffusers", "quanto", "ring_attn", "sage_attn",
         "torch_compile", "torchao",
     ]

@@ -53,16 +53,15 @@ PRESS_TYPES = [
 
 class KVPress(PrunaAlgorithmBase):
     """
-    Integrate KVPress for KV cache compression in causal language models.
+    Compress the KV cache of causal language models using KVPress.
 
-    KVPress is a library by NVIDIA that compresses the key-value cache during the prefill phase
-    of autoregressive generation, reducing memory usage for long-context inference. It provides
-    over 30 compression strategies (presses) that score and prune KV pairs based on different
-    importance criteria.
+    KVPress is a library by NVIDIA that provides over 20 compression strategies (presses) for
+    reducing the memory footprint of the key-value cache during long-context inference. Each press
+    scores and prunes KV pairs after the prefill phase according to a chosen importance criterion.
     """
 
     algorithm_name: str = "kvpress"
-    group_tags: list[tags] = [tags.KV_CACHER]
+    group_tags: list[tags] = [tags.KV_COMPRESSOR]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/NVIDIA/kvpress",
@@ -111,7 +110,7 @@ class KVPress(PrunaAlgorithmBase):
 
     def model_check_fn(self, model: Any) -> bool:
         """
-        Check if the model is a causal language model.
+        Check if the model is a causal language model or a pipeline wrapping one.
 
         Parameters
         ----------
@@ -121,25 +120,25 @@ class KVPress(PrunaAlgorithmBase):
         Returns
         -------
         bool
-            True if the model is a causal language model, False otherwise.
+            True if the model is compatible with KV cache compression, False otherwise.
         """
         return is_causal_lm(model) or is_transformers_pipeline_with_causal_lm(model)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Apply KV cache compression to the model.
+        Wrap the model's generate method to apply KV cache compression via a press context manager.
 
         Parameters
         ----------
         model : Any
-            The model to apply KV cache compression to.
+            The causal language model to compress.
         smash_config : SmashConfigPrefixWrapper
-            The configuration for the compression.
+            The algorithm-prefixed configuration containing press_type, compression_ratio, and press_kwargs.
 
         Returns
         -------
         Any
-            The model with KV cache compression applied to its generate method.
+            The model with its generate method wrapped to compress the KV cache on each call.
         """
         imported_modules = self.import_algorithm_packages()
 
@@ -165,7 +164,7 @@ class KVPress(PrunaAlgorithmBase):
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
         """
-        Import the kvpress package lazily.
+        Lazily import kvpress and collect all supported press classes.
 
         Returns
         -------
