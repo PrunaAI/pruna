@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import torch
 
 from pruna import PrunaModel, SmashConfig
@@ -11,6 +12,7 @@ from pruna.algorithms.moe_kernel_tuner import MoeKernelTuner
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_vllm
 class TestMoeKernelTuner(AlgorithmTesterBase):
     """Test the MoeKernelTuner."""
 
@@ -34,7 +36,6 @@ class TestMoeKernelTuner(AlgorithmTesterBase):
 
     def _resolve_hf_cache_config_path(self) -> Path:
         """Read the saved artifact and compute the expected HF cache config path."""
-
         imported_packages = MoeKernelTuner().import_algorithm_packages()
 
         smash_cfg = SmashConfig()

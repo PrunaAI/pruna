@@ -13,9 +13,6 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.load import load_diffusers_model
 from pruna.engine.utils import safe_memory_cleanup
 
-HIGH_RESOURCE_FIXTURES = []
-HIGH_RESOURCE_FIXTURES_CPU = HIGH_RESOURCE_FIXTURES + []
-
 
 @pytest.fixture(scope="function")
 def model_fixture(request: pytest.FixtureRequest) -> Any:

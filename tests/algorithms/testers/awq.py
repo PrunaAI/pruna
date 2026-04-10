@@ -5,7 +5,7 @@ from pruna.algorithms.llm_compressor import LLMCompressor
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.slow
+@pytest.mark.requires_awq
 class TestLLMCompressor(AlgorithmTesterBase):
     """Test the LLM Compressor quantizer."""
 

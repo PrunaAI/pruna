@@ -1,9 +1,12 @@
+import pytest
+
 from pruna import PrunaModel
 from pruna.algorithms.c_translate import CGenerate
 
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_whisper
 class TestCGenerate(AlgorithmTesterBase):
     """Test the c_generate algorithm."""
 
