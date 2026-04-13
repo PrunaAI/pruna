@@ -232,7 +232,7 @@ lmharness = [
 intel = [
     "intel-extension-for-pytorch>=2.7.0",
     "torch>=2.7.0,<2.9.0",
-    "torchvision>=0.22.0,<0.24.0",
+    "torchvision>=0.22.0,<0.27.0",
 ]
 
 [build-system]
