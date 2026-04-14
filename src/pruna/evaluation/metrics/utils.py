@@ -56,13 +56,17 @@ def metric_data_processor(
     This function determines the order and selection of inputs to be passed to various metrics.
 
     The function supports different input arrangements through the 'call_type' configuration:
-    - 'x_y': Uses input data (x) and model outputs
-    - 'gt_y': Uses ground truth (gt) and model outputs
-    - 'y_x': Uses model outputs and input data (x)
-    - 'y_gt': Uses model outputs and ground truth (gt)
-    - 'pairwise_gt_y': Uses cached base model outputs (gt) and smashed model outputs (y).
-    - 'pairwise_y_gt': Uses smashed model outputs (y) and cached base model outputs (gt).
-    The evaluation agent is expected to pass the cached base model outputs as gt.
+
+    - 'y_gt': Model's output first, then ground truth. Returns [outputs, gt].
+    - 'gt_y': Ground truth first, then model's output. Returns [gt, outputs].
+    - 'y_x': Model's output first, then input data. Returns [outputs, x].
+      Used by CLIPScore, AlignmentScore, VQA, ImageEditScore, VIEScore.
+    - 'x_y': Input data first, then model's output. Returns [x, outputs].
+    - 'x_gt': Input data first, then ground truth. Returns [x, gt].
+    - 'gt_x': Ground truth first, then input data. Returns [gt, x].
+    - 'pairwise_y_gt': Base model's output first, then subsequent model's output.
+    - 'pairwise_gt_y': Subsequent model's output first, then base model's output.
+    - 'y': Only the output is used; the metric has an internal dataset. Returns [outputs].
 
     Parameters
     ----------
@@ -85,7 +89,8 @@ def metric_data_processor(
     Raises
     ------
     ValueError
-        If the specified call_type is not one of: 'x_y', 'gt_y', 'y_x', 'y_gt', 'pairwise'.
+        If the specified call_type is not one of: 'y_gt', 'gt_y', 'y_x', 'x_y',
+        'x_gt', 'gt_x', 'pairwise_y_gt', 'pairwise_gt_y', 'y'.
 
     Examples
     --------
@@ -106,11 +111,15 @@ def metric_data_processor(
         return [outputs, x]
     elif call_type == "y_gt":
         return [outputs, gt]
+    elif call_type == "x_gt":
+        return [x, gt]
+    elif call_type == "gt_x":
+        return [gt, x]
     elif call_type == "pairwise_gt_y":
         return [gt, outputs]
     elif call_type == "pairwise_y_gt":
         return [outputs, gt]
-    elif call_type == "y":  # IQA metrics that have an internal dataset
+    elif call_type == "y":
         return [outputs]
     else:
         raise ValueError(f"Invalid call type: {call_type}")

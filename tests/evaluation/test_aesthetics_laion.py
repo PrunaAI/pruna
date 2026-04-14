@@ -1,15 +1,14 @@
-import requests
-from PIL import Image
 from io import BytesIO
-from typing import Literal, cast
 
-import torch
 import numpy as np
-
 import pytest
+import requests
+import torch
+from PIL import Image
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.aesthetic_laion import AestheticLAION
+
 
 @pytest.mark.parametrize(
     "device, clip_model",

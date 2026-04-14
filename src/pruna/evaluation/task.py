@@ -20,12 +20,14 @@ import torch
 
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.engine.utils import device_to_string, find_bytes_free_per_gpu, set_to_best_available_device, split_device
+from pruna.evaluation.benchmarks import BenchmarkRegistry
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import get_hyperparameters
+from pruna.evaluation.metrics.vlm_base import VLM_METRIC_REGISTRY_NAMES
 from pruna.logging.logger import pruna_logger
 
 AVAILABLE_REQUESTS = ("image_generation_quality", "text_generation_quality")
@@ -54,6 +56,73 @@ class Task:
         If False, we will run stateful metrics on the best available device.
         Default is False.
     """
+
+    @classmethod
+    def from_benchmark(
+        cls,
+        benchmark_name: str,
+        tokenizer: Any = None,
+        device: str | torch.device | None = None,
+        low_memory: bool = False,
+        dataloader_args: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> "Task":
+        """
+        Create a Task from a benchmark name in BenchmarkRegistry.
+
+        Parameters
+        ----------
+        benchmark_name : str
+            Benchmark name (e.g. "Parti Prompts", "DrawBench").
+        tokenizer : Any, optional
+            Tokenizer for text-generation benchmarks (e.g. WikiText). Required when
+            benchmark_name is "WikiText".
+        device : str | torch.device | None, optional
+            Device for evaluation.
+        low_memory : bool, optional
+            If True, run stateful metrics on cpu.
+        dataloader_args : dict | None, optional
+            Args passed to the dataloader (e.g. batch_size).
+        **kwargs : Any
+            Additional args for PrunaDataModule.from_string (e.g. category, fraction).
+
+        Returns
+        -------
+        Task
+            Task configured with the benchmark's metrics and datamodule.
+        """
+        benchmark = BenchmarkRegistry.get(benchmark_name)
+        if benchmark.lookup_key == "WikiText" and tokenizer is None:
+            raise ValueError(
+                "Tokenizer is required for WikiText benchmark. "
+                "Pass tokenizer=AutoTokenizer.from_pretrained('bert-base-uncased') or similar."
+            )
+        datamodule = PrunaDataModule.from_string(
+            benchmark.lookup_key,
+            tokenizer=tokenizer,
+            dataloader_args=dataloader_args or {},
+            **kwargs,
+        )
+        if benchmark.lookup_key == "GenEval":
+            return cls(
+                request=[
+                    MetricRegistry.get_metric(
+                        "qa_accuracy",
+                        aggregation="all_or_nothing",
+                        model_name="openai/gpt-4o",
+                    ),
+                    MetricRegistry.get_metric("clip_score"),
+                ],
+                datamodule=datamodule,
+                device=device,
+                low_memory=low_memory,
+            )
+        return cls(
+            request=benchmark.metrics,
+            datamodule=datamodule,
+            device=device,
+            low_memory=low_memory,
+        )
 
     def __init__(
         self,
@@ -241,9 +310,24 @@ def _process_metric_names(
     for metric_name in request:
         metric_name = cast(str, metric_name)
         new_requests.append(cast(str, metric_name))
-    return MetricRegistry.get_metrics(
-        names=new_requests, inference_device=inference_device, stateful_metric_device=stateful_metric_device
-    )
+    out: List[BaseMetric | StatefulMetric] = []
+    for name in new_requests:
+        kwargs: dict[str, Any] = {
+            "inference_device": inference_device,
+            "stateful_metric_device": stateful_metric_device,
+        }
+        if name in VLM_METRIC_REGISTRY_NAMES:
+            kwargs["model_name"] = "openai/gpt-4o"
+        out.append(MetricRegistry.get_metric(name, **kwargs))
+    return out
+
+
+def _get_lm_eval_task_metrics(task_name: str):
+    from lm_eval.tasks import get_task_dict
+
+    task_dict = get_task_dict(task_name)
+    task = task_dict[task_name]
+    return task.config.metric_list
 
 
 def _process_single_request(
@@ -261,6 +345,21 @@ def _process_single_request(
         return [
             TorchMetricWrapper("perplexity", device=stateful_metric_device),
         ]
+
+    elif request.startswith("lm_eval:"):
+        try:
+            from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
+
+            task_name = request.split(":", 1)[1]
+            metrics = _get_lm_eval_task_metrics(task_name)
+        except ImportError:
+            pruna_logger.error(
+                "lm-eval is required for lm_eval:* request types. "
+                "Install optional dependencies with: pip install 'pruna[lmharness]'."
+            )
+            raise
+
+        return [LMEvalMetric(metric_name=metric["metric"]) for metric in metrics]
     else:
         msg = f"Metric {request} not found. Available requests: {AVAILABLE_REQUESTS}."
         pruna_logger.error(msg)

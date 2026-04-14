@@ -135,8 +135,11 @@ class PrunaDataModule(LightningDataModule):
         tokenizer: AutoTokenizer | None = None,
         collate_fn_args: dict = dict(),
         dataloader_args: dict = dict(),
-        seed: int = 42,
+        seed: int | None = None,
         category: str | list[str] | None = None,
+        fraction: float = 1.0,
+        train_sample_size: int | None = None,
+        test_sample_size: int | None = None,
     ) -> "PrunaDataModule":
         """
         Create a PrunaDataModule from the dataset name with preimplemented dataset loading.
@@ -151,11 +154,18 @@ class PrunaDataModule(LightningDataModule):
             Any additional arguments for the collate function.
         dataloader_args : dict
             Any additional arguments for the dataloader.
-        seed : int
-            The seed to use.
-
+        seed : int | None, optional
+            Passed to dataset setup when the loader uses shuffled sampling.
+            If None, setups that require a seed default to 42; test-only benchmarks
+            omit seed so ordering stays deterministic without warnings.
         category : str | list[str] | None
             The category of the dataset.
+        fraction : float
+            Fraction of dataset to use (when setup fn accepts it).
+        train_sample_size : int | None
+            Train sample size (when setup fn accepts it).
+        test_sample_size : int | None
+            Test sample size (when setup fn accepts it).
 
         Returns
         -------
@@ -169,10 +179,24 @@ class PrunaDataModule(LightningDataModule):
         collate_fn_args = default_collate_fn_args
 
         if "seed" in inspect.signature(setup_fn).parameters:
-            setup_fn = partial(setup_fn, seed=seed)
+            seed_param = inspect.signature(setup_fn).parameters["seed"]
+            has_default = seed_param.default is not inspect.Parameter.empty
+            if seed is not None:
+                setup_fn = partial(setup_fn, seed=seed)
+            elif not has_default:
+                setup_fn = partial(setup_fn, seed=42)
 
         if "category" in inspect.signature(setup_fn).parameters:
             setup_fn = partial(setup_fn, category=category)
+
+        sampling_params = {
+            "fraction": fraction,
+            "train_sample_size": train_sample_size,
+            "test_sample_size": test_sample_size,
+        }
+        for param, value in sampling_params.items():
+            if param in inspect.signature(setup_fn).parameters:
+                setup_fn = partial(setup_fn, **{param: value})
 
         train_ds, val_ds, test_ds = setup_fn()
 

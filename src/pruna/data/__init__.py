@@ -26,8 +26,21 @@ from pruna.data.datasets.image import (
     setup_mnist_dataset,
 )
 from pruna.data.datasets.prompt import (
+    setup_dpg_dataset,
     setup_drawbench_dataset,
+    setup_gedit_dataset,
     setup_genai_bench_dataset,
+    setup_geneval_dataset,
+    setup_hps_dataset,
+    setup_imgedit_dataset,
+    setup_long_text_bench_dataset,
+    setup_oneig_anime_stylization_dataset,
+    setup_oneig_dataset,
+    setup_oneig_general_object_dataset,
+    setup_oneig_knowledge_reasoning_dataset,
+    setup_oneig_multilingualism_dataset,
+    setup_oneig_portrait_dataset,
+    setup_oneig_text_rendering_dataset,
     setup_parti_prompts_dataset,
 )
 from pruna.data.datasets.question_answering import setup_polyglot_dataset
@@ -71,7 +84,7 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
     "OpenImage": (
         setup_open_image_dataset,
         "image_generation_collate",
-        {"img_size": 1024},
+        {"img_size": 1024, "column_map": {"image": "image_quality_dev", "text": "quality_prompt"}},
     ),
     "CIFAR10": (
         setup_cifar10_dataset,
@@ -96,9 +109,34 @@ base_datasets: dict[str, Tuple[Callable, str, dict[str, Any]]] = {
         "image_classification_collate",
         {"img_size": 224},
     ),
-    "DrawBench": (setup_drawbench_dataset, "prompt_collate", {}),
-    "PartiPrompts": (setup_parti_prompts_dataset, "prompt_collate", {}),
-    "GenAIBench": (setup_genai_bench_dataset, "prompt_collate", {}),
+    "DrawBench": (setup_drawbench_dataset, "prompt_with_auxiliaries_collate", {}),
+    "PartiPrompts": (
+        setup_parti_prompts_dataset,
+        "prompt_with_auxiliaries_collate",
+        {},
+    ),
+    "GenAIBench": (setup_genai_bench_dataset, "prompt_with_auxiliaries_collate", {}),
+    "GenEval": (setup_geneval_dataset, "prompt_with_auxiliaries_collate", {}),
+    "HPS": (setup_hps_dataset, "prompt_with_auxiliaries_collate", {}),
+    "ImgEdit": (setup_imgedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "LongTextBench": (setup_long_text_bench_dataset, "prompt_with_auxiliaries_collate", {}),
+    "GEditBench": (setup_gedit_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIG": (setup_oneig_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIGAnimeStylization": (
+        setup_oneig_anime_stylization_dataset,
+        "prompt_with_auxiliaries_collate",
+        {},
+    ),
+    "OneIGGeneralObject": (setup_oneig_general_object_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIGKnowledgeReasoning": (
+        setup_oneig_knowledge_reasoning_dataset,
+        "prompt_with_auxiliaries_collate",
+        {},
+    ),
+    "OneIGMultilingualism": (setup_oneig_multilingualism_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIGPortrait": (setup_oneig_portrait_dataset, "prompt_with_auxiliaries_collate", {}),
+    "OneIGTextRendering": (setup_oneig_text_rendering_dataset, "prompt_with_auxiliaries_collate", {}),
+    "DPG": (setup_dpg_dataset, "prompt_with_auxiliaries_collate", {}),
     "TinyIMDB": (setup_tiny_imdb_dataset, "text_generation_collate", {}),
     "VBench": (setup_vbench_dataset, "prompt_with_auxiliaries_collate", {}),
 }
