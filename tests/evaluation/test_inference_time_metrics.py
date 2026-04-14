@@ -30,7 +30,7 @@ def test_latency_metric(model_fixture: tuple[Any, SmashConfig], device: str) -> 
     assert results.result > 0  # Assuming latency should be positive
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="needs ≥2 GPUs to build a split model")
 @pytest.mark.parametrize(
     "model_fixture",
@@ -55,7 +55,7 @@ def test_latency_metric_distributed(model_fixture: tuple[Any, SmashConfig]):
     assert get_device_map(model) == device_map
     assert results.result > 0  # Assuming latency should be positive
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="needs ≥2 GPUs to build a split model")
 @pytest.mark.parametrize(
     "model_fixture",

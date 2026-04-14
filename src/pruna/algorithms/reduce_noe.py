@@ -46,7 +46,7 @@ class ReduceNOE(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda", "accelerate"]
     save_fn: None = None
-    compatible_after: Iterable[str] = ["*"]
+    compatible_after: Iterable[str] = ["*", "moe_kernel_tuner"]
 
     def get_hyperparameters(self) -> list:
         """

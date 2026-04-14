@@ -63,33 +63,33 @@ testpaths = [
 ]
 
 [[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple"  # regular PyPI
-
-[[tool.uv.index]]
 name = "pruna_internal"
-url = "https://prunaai.pythonanywhere.com/simple/"  # Pruna Pythonanywhere
-default = true # default = True makes this index the lowest prio
+url = "https://prunaai.pythonanywhere.com/simple/"
+explicit = true
 
 [[tool.uv.index]]
 name = "intel-pytorch-extension"
 url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
+explicit = true
 
 [tool.uv]
-index-strategy = "unsafe-best-match"
+index-strategy = "first-index"
 
 conflicts = [
-    [
-        { extra = "awq" },
-        { extra = "vbench" },
-    ]
+    [{ extra = "awq" }, { extra = "vbench" }],
+    [{ extra = "vllm" }, { extra = "vbench" }],
+    [{ extra = "intel" }, { extra = "awq" }],
+    [{ extra = "gptq" }, { extra = "awq" }],
+    # intel is incompatible with all stable-fast variants and vllm
+    [{ extra = "intel" }, { extra = "stable-fast" }, { extra = "stable-fast-extraindex" }],
+    [{ extra = "intel" }, { extra = "full" }, { extra = "stable-fast-extraindex" }],
+    [{ extra = "intel" }, { extra = "vllm" }],
 ]
 
 [tool.uv.sources]
-gptqmodel = [
-  { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'"},
-  { index = "pypi", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'"},
-]
+gptqmodel = { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" }
+intel-extension-for-pytorch = { index = "intel-pytorch-extension" }
+stable-fast-pruna = { index = "pruna_internal", extra = "stable-fast-extraindex" }
 
 [project]
 name = "pruna"
@@ -139,8 +139,6 @@ dependencies = [
     "timm",
     "bitsandbytes; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "optimum-quanto>=0.2.5",
-    "ctranslate2==4.6.0",
-    "whisper-s2t==1.3.1",
     "hqq==0.2.7.post1",
     "torchao>=0.12.0,<0.16.0", # 0.16.0 breaks diffusers 0.36.0, torch+torch: https://github.com/pytorch/ao/issues/2919#issue-3375688762
     "gliner; python_version >= '3.11'",
@@ -157,9 +155,25 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# whisper-s2t and ctranslate2 are isolated because importing whisper_s2t
+# at test time causes side-effects that break unrelated tests.
+
+whisper = [
+    "ctranslate2==4.6.0",
+    "whisper-s2t==1.3.1",
+]
+vllm = [
+    "vllm>=0.16.0",
+    "ray",
+]
 stable-fast = [
     "xformers>=0.0.30",
-    "stable-fast-pruna==1.0.8",
+    "stable-fast-pruna>=1.0.8,<1.0.9",
+]
+# stable-fast-pruna from pythonanywhere (per torch / CUDA versions wheels)
+stable-fast-extraindex = [
+    "xformers>=0.0.30",
+    "stable-fast-pruna>=1.0.8,<1.0.9; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 # dependencies are added here because the wheels aren't bundling them
 gptq = [
@@ -177,8 +191,7 @@ awq = [
     "torch>=2.9.0"
 ]
 full = [
-    "xformers>=0.0.30",
-    "stable-fast-pruna==1.0.8",
+    "pruna[stable-fast]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
@@ -211,8 +224,15 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 cpu = []
+lmharness = [
+    "lm-eval>=0.4.0"
+]
+
+# Intel extension is tightly coupled with the torch version
 intel = [
     "intel-extension-for-pytorch>=2.7.0",
+    "torch>=2.7.0,<2.9.0",
+    "torchvision>=0.22.0,<0.24.0",
 ]
 
 [build-system]

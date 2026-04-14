@@ -42,6 +42,7 @@ class QKVFusing(PrunaAlgorithmBase):
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
+    compatible_before: Iterable[str] = ["moe_kernel_tuner"]
     compatible_after: Iterable[str] = [
         "diffusers_int8",
         "hqq_diffusers",
@@ -54,6 +55,7 @@ class QKVFusing(PrunaAlgorithmBase):
         "img2img_denoise",
         "padding_pruning",
         "realesrgan_upscale",
+        "moe_kernel_tuner",
     ]
 
     def model_check_fn(self, model: Any) -> bool:

@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch
+from transformers import AutoTokenizer
 from pruna.evaluation.task import Task
 from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -55,8 +56,7 @@ def test_device_is_set_correctly_for_metrics(device:str):
 
 
 @pytest.mark.cuda
-# We need to mark this test as cuda because it requires modern architectures
-@pytest.mark.high
+@pytest.mark.high_gpu
 @pytest.mark.parametrize(
     "inference_device, stateful_metric_device, task_device",
     [
@@ -107,3 +107,20 @@ def test_task_from_string_request():
     assert isinstance(task.metrics[0], CMMD)
     assert isinstance(task.metrics[1], PairwiseClipScore)
     assert isinstance(task.metrics[2], TorchMetricWrapper)
+
+
+@pytest.mark.cpu
+def test_task_text_generation_quality_request():
+    """Test that 'text_generation_quality' named request creates perplexity metric."""
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    task = Task(request="text_generation_quality", datamodule=PrunaDataModule.from_string("TinyWikiText", tokenizer=tokenizer), device="cpu")
+    assert len(task.metrics) == 1
+    assert isinstance(task.metrics[0], TorchMetricWrapper)
+    assert task.metrics[0].metric_name == "perplexity"
+
+
+@pytest.mark.cpu
+def test_task_invalid_named_request():
+    """Test that an invalid named request raises a ValueError."""
+    with pytest.raises(ValueError, match="not found"):
+        Task(request="nonexistent_quality", datamodule=PrunaDataModule.from_string("LAION256"), device="cpu")

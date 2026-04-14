@@ -30,12 +30,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-uv-project
         with:
           python-version: ${{ matrix.python-version }}
-
-      - uses: ./.github/actions/setup-uv-project
 
       - name: Get changed Python files
         id: changed-files
@@ -63,11 +60,20 @@ jobs:
         run: echo "success=true" >> $GITHUB_OUTPUT
 
   test:
+    needs: linting
     runs-on: pruna-cpu
 
     strategy:
       matrix:
         python-version: ["3.11"]
+        name: ["base", 'lmharness']
+        include:
+        - name: base
+          extras: ""
+          mark_filter: "cpu and not slow and not style and not requires_intel and not requires_lmharness"
+        - name: lmharness
+          extras: "--extra lmharness"
+          mark_filter: "requires_lmharness"
 
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -79,12 +85,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-uv-project
         with:
           python-version: ${{ matrix.python-version }}
-
-      - uses: ./.github/actions/setup-uv-project
+      
+      - name: Install additional extras
+        if: matrix.extras != ''
+        run: uv sync --extra dev ${{ matrix.extras }}
 
       - name: Cache Hugging Face datasets and models
         uses: actions/cache@v5
@@ -128,4 +135,4 @@ jobs:
       - name: Run tests with pytest-rerunfailures
         run: |
           echo "Running tests with up to 3 reruns on failure using $PYTEST_WORKERS workers..."
-          uv run pytest -n $PYTEST_WORKERS -m "not (slow or style or high_cpu or cuda or distributed)" --reruns 3 --reruns-delay 10 --maxfail=1
+          uv run pytest -n $PYTEST_WORKERS -m "${{ matrix.mark_filter }}" --reruns 3 --reruns-delay 10 --maxfail=1
