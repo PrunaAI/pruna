@@ -161,9 +161,6 @@ evaluation = [
     "outlines>1.2.0,<2.0.0",
     "litellm>=1.0.0",
 ]
-lmharness = [
-    "lm-eval>=0.4.0"
-]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna==1.0.8",

@@ -27,7 +27,6 @@ from pruna.evaluation.metrics.metric_energy import (
     CO2EmissionsMetric,
     EnergyConsumedMetric,
 )
-from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_memory import (
     DiskMemoryMetric,
@@ -71,7 +70,6 @@ __all__ = [
     "DinoScore",
     "SharpnessMetric",
     "AestheticLAION",
-    "LMEvalMetric",
     "VQAMetric",
     "AlignmentScoreMetric",
     "ImageEditScoreMetric",
