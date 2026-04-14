@@ -3,9 +3,8 @@
 Since you landed on this part of the repository, we want to first of all say thank you! 💜
 Contributions from the community are essential to improving Pruna, we appreciate your effort in making the repository better for everyone!
 
-Please make sure to review and adhere to the [Pruna Code of Conduct](https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md) before contributing to Pruna.
-Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms.
-Contributions that do not adhere to the code of conduct will be ignored.
+Please make sure to review and adhere to the [Pruna Code of Conduct](https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md) and [AI Contribution Policy](https://github.com/PrunaAI/pruna/blob/main/AI_CONTRIBUTION_POLICY.md) before contributing to Pruna.
+Contributions that do not adhere to the code of conduct or AI contribution policy will be ignored.
 
 There are various ways you can contribute:
 
