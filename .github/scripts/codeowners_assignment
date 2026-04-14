@@ -12,6 +12,7 @@
 
 # Dependencies and packaging
 /pyproject.toml @gsprochette @begumcig
+/.pre-commit-config.yaml @gsprochette @begumcig
 
 # Docs
 /docs/ @sdiazlor @minettekaum

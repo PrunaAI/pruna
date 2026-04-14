@@ -57,16 +57,14 @@ def get_file_owners(file_path, codeowners_lines):
 def get_dispatch_owners(codeowners_lines):
     """Return fallback owners from the catch-all ``*`` CODEOWNERS rule."""
     for line in codeowners_lines:
-        line = line.split("#")[0].strip()
+        line = line.split("#", 1)[0].strip()
         if not line:
             continue
 
         parts = line.split()
-        pattern = parts[0]
-        owners = [owner.removeprefix("@") for owner in parts[1:]]
+        if parts[0] == "*":
+            return [owner.removeprefix("@") for owner in parts[1:]]
 
-        if pattern == "*":
-            return owners
     return []
 
 
