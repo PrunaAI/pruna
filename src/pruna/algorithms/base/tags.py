@@ -62,10 +62,6 @@ class AlgorithmTag(Enum):
         "cacher",
         "Caching is a technique used to store intermediate results of computations to speed up subsequent operations, particularly useful in reducing inference time for machine learning models by reusing previously computed results.",
     )
-    KV_COMPRESSOR = (
-        "kv_compressor",
-        "KV cache compression reduces the memory footprint of the key-value cache during autoregressive generation.",
-    )
     COMPILER = ("compiler", "Compilation optimizes the model for specific hardware.")
     BATCHER = (
         "batcher",

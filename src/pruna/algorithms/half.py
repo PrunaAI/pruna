@@ -42,7 +42,7 @@ class Half(PrunaAlgorithmBase):
     runs_on: list[str] = ["cpu", "cuda", "accelerate"]
     dataset_required: bool = False
     compatible_before: Iterable[str] = ["torch_structured", "torch_unstructured"]
-    compatible_after: Iterable[str | tags] = [
+    compatible_after: Iterable[str] = [
         "deepcache",
         "c_translate",
         "c_generate",
@@ -50,7 +50,7 @@ class Half(PrunaAlgorithmBase):
         "stable_fast",
         "torch_compile",
         "ifw",
-        tags.KV_COMPRESSOR,
+        "kvpress",
         "whisper_s2t",
         "sage_attn",
         "hyper",

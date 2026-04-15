@@ -66,7 +66,7 @@ class KVPress(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "kvpress"
-    group_tags: list[tags] = [tags.KV_COMPRESSOR]
+    group_tags: list[tags] = [tags.PRUNER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "GitHub": "https://github.com/NVIDIA/kvpress",
