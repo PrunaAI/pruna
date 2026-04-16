@@ -196,9 +196,7 @@ def check_docstrings_content(file: str) -> None:
         The import statement to check.
     """
     n_invalid, report = numpydoc_validation.validate_recursive(
-        file,
-        checks={"all", "ES01", "SA01", "EX01"},
-        exclude={r"\.<locals>\."},
+        file, checks={"all", "ES01", "SA01", "EX01"}, exclude=set()
     )
     if n_invalid != 0:
         raise ValueError(report)

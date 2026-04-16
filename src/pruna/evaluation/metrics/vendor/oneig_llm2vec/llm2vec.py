@@ -28,7 +28,22 @@ logger = logging.getLogger(__name__)
 
 
 def batch_to_device(batch, target_device: device | str):
-    """Send a pytorch batch to a device (CPU/GPU)."""
+    """
+    Move tensor values in a batch dict to ``target_device``.
+
+    Parameters
+    ----------
+    batch : dict[str, Any]
+        Mapping of feature names to tensors or other values; only ``torch.Tensor``
+        values are moved.
+    target_device : torch.device or str
+        Device to move tensors to.
+
+    Returns
+    -------
+    dict[str, Any]
+        The same ``batch`` object with tensors updated in place.
+    """
     for key in batch:
         if isinstance(batch[key], Tensor):
             batch[key] = batch[key].to(target_device)
@@ -36,7 +51,24 @@ def batch_to_device(batch, target_device: device | str):
 
 
 class LLM2Vec(nn.Module):
-    """Bidirectional LLM wrapper with configurable pooling for dense embeddings."""
+    """
+    Bidirectional LLM wrapper with configurable pooling for dense embeddings.
+
+    Parameters
+    ----------
+    model : transformers.AutoModel
+        Encoder model used for hidden states.
+    tokenizer : transformers.AutoTokenizer
+        Tokenizer aligned with ``model``.
+    pooling_mode : str, optional
+        How to pool token hidden states (e.g. ``mean``, ``eos_token``).
+    max_length : int, optional
+        Maximum sequence length for tokenization.
+    doc_max_length : int, optional
+        Soft cap used when shortening document segments during encoding.
+    skip_instruction : bool, optional
+        If True, restrict attention to embed regions when pooling.
+    """
 
     def __init__(
         self,
@@ -75,10 +107,32 @@ class LLM2Vec(nn.Module):
         extra_model_name_or_path=None,
         **kwargs,
     ):
-        """Load tokenizer and encoder from Hub or a local path and return ``LLM2Vec``.
+        """
+        Load tokenizer and encoder weights and return an ``LLM2Vec`` instance.
 
-        Supports optional PEFT adapters, bidirectional Llama, and extra adapter paths;
-        keyword args are forwarded to Hugging Face ``from_pretrained`` calls.
+        Optional PEFT adapters, bidirectional Llama, and extra adapter paths are
+        supported; keyword arguments are forwarded to Hugging Face
+        ``from_pretrained`` calls.
+
+        Parameters
+        ----------
+        base_model_name_or_path : str or pathlib.Path
+            Hub id or local directory for the base model.
+        peft_model_name_or_path : str or pathlib.Path, optional
+            Optional PEFT adapter to load on top of the base model.
+        merge_peft : bool, optional
+            If True, merge PEFT weights into the base weights after loading.
+        enable_bidirectional : bool, optional
+            If True, use bidirectional Llama when the config is ``LlamaConfig``.
+        extra_model_name_or_path : str, list of str, or None, optional
+            Additional PEFT checkpoint(s) applied sequentially when set.
+        **kwargs
+            Forwarded to Hugging Face ``from_pretrained`` (and related) calls.
+
+        Returns
+        -------
+        LLM2Vec
+            Configured wrapper around the loaded encoder and tokenizer.
         """
         keys = ["pooling_mode", "max_length", "doc_max_length", "skip_instruction"]
         encoder_args = {key: kwargs.pop(key, None) for key in keys if kwargs.get(key) is not None}
@@ -150,7 +204,19 @@ class LLM2Vec(nn.Module):
         return cls(model=model, tokenizer=tokenizer, **config)
 
     def prepare_for_tokenization(self, text):
-        """Apply model-specific chat or EOS wrappers so tokenization matches training."""
+        """
+        Apply model-specific chat or EOS wrappers so tokenization matches training.
+
+        Parameters
+        ----------
+        text : str
+            Raw input text before tokenization.
+
+        Returns
+        -------
+        str
+            Text with any required special tokens or chat template prefixes or suffixes.
+        """
         if "Llama-3" in self.model.config._name_or_path and "Instruct" in self.model.config._name_or_path:
             text = "<|start_header_id|>user<|end_header_id|>\n\n" + text.strip() + "<|eot_id|>"
             return text
@@ -165,7 +231,19 @@ class LLM2Vec(nn.Module):
         return text
 
     def tokenize(self, texts):
-        """Tokenize texts with optional embed-region markers for instruction/document split."""
+        """
+        Tokenize texts with optional embed-region markers for instruction/document split.
+
+        Parameters
+        ----------
+        texts : list of str
+            Strings that may contain the ``!@#$%^&*()`` delimiter between instruction and document.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Tokenizer outputs including ``embed_mask`` when the delimiter is present.
+        """
         texts_2 = []
         original_texts = []
         for text in texts:
@@ -209,7 +287,19 @@ class LLM2Vec(nn.Module):
         sentence_feature["attention_mask"] = sentence_feature["embed_mask"]
 
     def forward(self, sentence_feature: Dict[str, Tensor]):
-        """Run the encoder and return pooled sentence embeddings."""
+        """
+        Run the encoder and return pooled sentence embeddings.
+
+        Parameters
+        ----------
+        sentence_feature : dict[str, torch.Tensor]
+            Batch of tokenizer outputs; may include ``embed_mask`` for instruction masking.
+
+        Returns
+        -------
+        torch.Tensor
+            Pooled embeddings with shape ``(batch_size, hidden_size)``.
+        """
         embed_mask = None
         if "embed_mask" in sentence_feature:
             embed_mask = sentence_feature.pop("embed_mask")
@@ -220,7 +310,21 @@ class LLM2Vec(nn.Module):
         return self.get_pooling(sentence_feature, reps.last_hidden_state)
 
     def get_pooling(self, features, last_hidden_states):
-        """Pool token hidden states according to ``pooling_mode``."""
+        """
+        Pool token hidden states according to ``pooling_mode``.
+
+        Parameters
+        ----------
+        features : dict[str, torch.Tensor]
+            Tokenizer batch (attention mask, optional ``embed_mask``, etc.).
+        last_hidden_states : torch.Tensor
+            Sequence hidden states from the encoder, shape ``(batch, seq, hidden)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Pooled embeddings, shape ``(batch, hidden)``.
+        """
         assert self.tokenizer.padding_side == "left", "Pooling modes are implemented for padding from left."
         if self.skip_instruction:
             self._skip_instruction(features)
@@ -281,7 +385,29 @@ class LLM2Vec(nn.Module):
         convert_to_tensor: bool = True,
         device: Optional[str] = None,
     ):
-        """Encode sentences (optionally instruction + document) to embedding tensors."""
+        """
+        Encode sentences (optionally instruction + document) to embedding tensors.
+
+        Parameters
+        ----------
+        sentences : str, list of str, or nested list
+            Plain strings, or ``[instruction, document]`` pairs, or batches thereof.
+        batch_size : int, optional
+            Micro-batch size during encoding.
+        show_progress_bar : bool, optional
+            Ignored; progress is disabled in the implementation.
+        convert_to_numpy : bool, optional
+            If True, return a NumPy array instead of a tensor (mutually exclusive with ``convert_to_tensor``).
+        convert_to_tensor : bool, optional
+            If True (default), return a ``torch.Tensor`` of dtype float32.
+        device : str, optional
+            Device name; defaults to CUDA when available else CPU.
+
+        Returns
+        -------
+        torch.Tensor or numpy.ndarray
+            Stacked embeddings for all inputs, reordered to the original sentence order.
+        """
         seq: Any = sentences
         if isinstance(seq[0], str) and isinstance(seq[-1], int):
             seq = [seq]
@@ -325,7 +451,18 @@ class LLM2Vec(nn.Module):
         return all_embeddings
 
     def save(self, output_path, merge_before_save=False, save_config=True):
-        """Persist model, tokenizer, and optional ``llm2vec_config.json`` to ``output_path``."""
+        """
+        Persist model, tokenizer, and optional ``llm2vec_config.json`` to ``output_path``.
+
+        Parameters
+        ----------
+        output_path : str or pathlib.Path
+            Directory to write weights and tokenizer files into.
+        merge_before_save : bool, optional
+            If True and the inner model is a ``PeftModel``, merge adapters before saving.
+        save_config : bool, optional
+            If True, write ``llm2vec_config.json`` with pooling and length settings.
+        """
         if merge_before_save and isinstance(self.model, PeftModel):
             self.model = self.model.merge_and_unload()
         if hasattr(self.model, "_hf_peft_config_loaded"):
@@ -383,9 +520,30 @@ class LLM2Vec(nn.Module):
         new_num_tokens: Optional[int] = None,
         pad_to_multiple_of: Optional[int] = None,
     ) -> nn.Embedding:
-        """Resize the underlying model token embedding matrix."""
+        """
+        Resize the underlying model token embedding matrix.
+
+        Parameters
+        ----------
+        new_num_tokens : int, optional
+            New vocabulary size for the embedding table.
+        pad_to_multiple_of : int, optional
+            Pad vocabulary size to a multiple of this value when resizing.
+
+        Returns
+        -------
+        torch.nn.Embedding
+            The resized embedding module from the wrapped model.
+        """
         return self.model.resize_token_embeddings(new_num_tokens=new_num_tokens, pad_to_multiple_of=pad_to_multiple_of)
 
     def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
-        """Enable gradient checkpointing on the wrapped model."""
+        """
+        Enable gradient checkpointing on the wrapped model.
+
+        Parameters
+        ----------
+        gradient_checkpointing_kwargs : dict, optional
+            Keyword arguments forwarded to the underlying ``gradient_checkpointing_enable`` call.
+        """
         self.model.gradient_checkpointing_enable(gradient_checkpointing_kwargs=gradient_checkpointing_kwargs)
