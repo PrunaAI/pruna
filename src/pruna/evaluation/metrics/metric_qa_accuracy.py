@@ -21,7 +21,7 @@ from typing import Any, Literal
 import numpy as np
 import torch
 
-from pruna.evaluation.metrics.metric_vlm_base import StatefulVLMMeanScoresMetric
+from pruna.evaluation.metrics.vlm_base import StatefulVLMMeanScoresMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (

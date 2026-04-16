@@ -65,7 +65,7 @@ Minimal LiteLLM and local ``transformers`` construction is shown under :func:`ge
 (``Examples`` section). **Registry metrics** (``vqa``, ``qa_accuracy``,
 ``img_edit_score``, OCR/text metrics, ``oneig_alignment``, ``vie_score``, …) take the same
 ``vlm_type``, ``model_name``, ``api_key``, and ``vlm_kwargs`` pattern; see
-``StatefulVLMMeanScoresMetric`` in ``metric_vlm_base`` and each metric class docstring.
+:class:`StatefulVLMMeanScoresMetric` below and each metric class docstring.
 
 For VIEScore-style **text--image editing** metrics that pass two PIL images per prompt (source
 then edited), call :meth:`LitellmVLM.generate_with_image_lists` or
@@ -104,10 +104,14 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, List, Literal, Optional, Type, TypeVar, Union
 
+import numpy as np
 import torch
 from PIL import Image
 from pydantic import BaseModel
 
+from pruna.evaluation.metrics.metric_stateful import StatefulMetric
+from pruna.evaluation.metrics.result import MetricResult
+from pruna.evaluation.metrics.utils import get_call_type_for_single_metric
 from pruna.logging.logger import pruna_logger
 
 T = TypeVar("T", bound=BaseModel)
@@ -989,3 +993,126 @@ class TransformersVLM(BaseVLM):
             score = 1.0 if answer.lower() in response_answer.lower() else 0.0
             scores.append(score)
         return scores
+
+
+def auxiliary_dicts_from_gt(gt: Any, batch_size: int) -> list[dict[str, Any]]:
+    """
+    Map batch ``gt`` to per-row auxiliary dicts when using ``prompt_with_auxiliaries_collate``.
+
+    For ``y_x`` metrics, :func:`~pruna.evaluation.metrics.utils.metric_data_processor` does not
+    include ``gt`` in its output; pass the batch ``gt`` argument here so fields such as
+    ``source_image_bytes`` are visible to editing metrics.
+
+    Parameters
+    ----------
+    gt : Any
+        Second element of the dataloader batch: typically a ``list[dict]`` of aux columns.
+    batch_size : int
+        Number of samples in the batch.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        One dict per row; empty dicts when ``gt`` is not a list of dicts (e.g. tensor placeholders
+        in tests).
+    """
+    if batch_size <= 0:
+        return []
+    if isinstance(gt, (list, tuple)) and gt and isinstance(gt[0], dict):
+        out: list[dict[str, Any]] = []
+        for i in range(batch_size):
+            row = gt[i] if i < len(gt) else {}
+            out.append(row if isinstance(row, dict) else {})
+        return out
+    return [{} for _ in range(batch_size)]
+
+
+def prompts_from_y_x_inputs(inputs: Any, batch_len: int) -> list[str]:
+    """
+    Extract per-row prompts from :func:`~pruna.evaluation.metrics.utils.metric_data_processor` output.
+
+    Parameters
+    ----------
+    inputs : Any
+        Return value of ``metric_data_processor`` for ``y_x`` call types.
+    batch_len : int
+        Number of samples in the batch.
+
+    Returns
+    -------
+    list[str]
+        Prompt list from ``inputs[1]`` when present; otherwise ``batch_len`` empty strings.
+    """
+    if len(inputs) > 1 and isinstance(inputs[1], list):
+        return inputs[1]
+    return [""] * batch_len
+
+
+class StatefulVLMMeanScoresMetric(StatefulMetric):
+    """
+    Base for VLM metrics that accumulate ``scores`` and report the batch mean in :meth:`compute`.
+
+    Subclasses set ``default_call_type`` and ``metric_name``, then call :meth:`_init_vlm_scores`
+    from ``__init__`` after any metric-specific attributes (e.g. ``use_probability``).
+
+    Parameters
+    ----------
+    device : str | torch.device | None
+        Device forwarded to :class:`~pruna.evaluation.metrics.metric_stateful.StatefulMetric`.
+    **kwargs : Any
+        Additional keyword arguments forwarded to the parent class.
+
+    Notes
+    -----
+    User guide: :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>` (Vision-language judge metrics).
+    Registry metrics (``VQAMetric``, ``VieScoreMetric``, …) pass ``vlm_type`` and ``model_name``
+    into :meth:`_init_vlm_scores`; see :func:`get_vlm`.
+
+    For **auxiliary image bytes** (editing benchmarks), use
+    :func:`~pruna.evaluation.metrics.vlm_utils.pil_rgb_from_aux_image_bytes` and
+    :data:`~pruna.evaluation.metrics.vlm_utils.VLM_AUX_IMAGE_BYTES_KEY_ORDER`.
+    """
+
+    scores: list[float]
+    default_call_type: str = "y_x"
+    higher_is_better: bool = True
+    metric_name: str = ""
+
+    def _init_vlm_scores(
+        self,
+        *,
+        vlm: Optional[BaseVLM],
+        vlm_type: Literal["litellm", "transformers"],
+        model_name: Optional[str],
+        vlm_kwargs: Optional[dict[str, Any]],
+        structured_output: bool,
+        device: Optional[str | torch.device],
+        api_key: Optional[str],
+        call_type: str,
+    ) -> None:
+        """Attach ``self.vlm``, ``self.call_type``, and the ``scores`` state."""
+        self.vlm = get_vlm(
+            vlm=vlm,
+            vlm_type=vlm_type,
+            model_name=model_name,
+            device=device,
+            api_key=api_key,
+            structured_output=structured_output,
+            **(vlm_kwargs or {}),
+        )
+        self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
+        self.add_state("scores", [])
+        self.higher_is_better = type(self).higher_is_better
+
+    def compute_mean_of_scores(self) -> MetricResult:
+        """
+        Return the mean of accumulated ``scores``, or ``0.0`` when empty.
+
+        Returns
+        -------
+        MetricResult
+            Aggregated result for this metric.
+        """
+        if not self.scores:
+            return MetricResult(self.metric_name, self.__dict__, 0.0)
+        return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))

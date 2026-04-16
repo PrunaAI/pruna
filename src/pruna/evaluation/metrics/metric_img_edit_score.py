@@ -34,7 +34,7 @@ from typing import Any, Literal
 
 import torch
 
-from pruna.evaluation.metrics.metric_vlm_base import (
+from pruna.evaluation.metrics.vlm_base import (
     StatefulVLMMeanScoresMetric,
     auxiliary_dicts_from_gt,
     prompts_from_y_x_inputs,

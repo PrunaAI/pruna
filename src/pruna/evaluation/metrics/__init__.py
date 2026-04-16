@@ -48,6 +48,7 @@ from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import (
     BaseVLM,
     LitellmVLM,
+    StatefulVLMMeanScoresMetric,
     TransformersVLM,
     get_vlm,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "VieScoreMetric",
     "BaseVLM",
     "LitellmVLM",
+    "StatefulVLMMeanScoresMetric",
     "TransformersVLM",
     "get_vlm",
 ]
