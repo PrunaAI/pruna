@@ -345,6 +345,27 @@ def viescore_min_scores_0_10(response: str | BaseModel | dict) -> list[float]:
     return []
 
 
+def pad_viescore_subscores_to_two(values: list[float]) -> list[float]:
+    """
+    Pad or truncate VIEScore sub-score lists to length two for :func:`viescore_tie_overall_unit`.
+
+    Parameters
+    ----------
+    values : list[float]
+        Parsed sub-scores from :func:`viescore_min_scores_0_10`.
+
+    Returns
+    -------
+    list[float]
+        Exactly two values in ``[0, 10]``, padding with ``0.0`` when fewer than two are present.
+    """
+    if len(values) >= 2:
+        return values[:2]
+    if not values:
+        return [0.0, 0.0]
+    return values + [0.0] * (2 - len(values))
+
+
 def viescore_tie_overall_unit(sc_scores: Sequence[float], pq_scores: Sequence[float]) -> float:
     """
     Overall VIEScore for text-image editing (``tie`` task): ``sqrt(min(SC)*min(PQ))/10`` in ``[0, 1]``.

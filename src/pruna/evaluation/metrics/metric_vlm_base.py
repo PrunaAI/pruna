@@ -70,6 +70,27 @@ def auxiliary_dicts_from_gt(gt: Any, batch_size: int) -> list[dict[str, Any]]:
     return [{} for _ in range(batch_size)]
 
 
+def prompts_from_y_x_inputs(inputs: Any, batch_len: int) -> list[str]:
+    """
+    Extract per-row prompts from :func:`~pruna.evaluation.metrics.utils.metric_data_processor` output.
+
+    Parameters
+    ----------
+    inputs : Any
+        Return value of ``metric_data_processor`` for ``y_x`` call types.
+    batch_len : int
+        Number of samples in the batch.
+
+    Returns
+    -------
+    list[str]
+        Prompt list from ``inputs[1]`` when present; otherwise ``batch_len`` empty strings.
+    """
+    if len(inputs) > 1 and isinstance(inputs[1], list):
+        return inputs[1]
+    return [""] * batch_len
+
+
 class StatefulVLMMeanScoresMetric(StatefulMetric):
     """
     Base for VLM metrics that accumulate ``scores`` and report the batch mean in :meth:`compute`.

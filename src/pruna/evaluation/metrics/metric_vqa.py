@@ -35,7 +35,7 @@ from typing import Any, Literal
 
 import torch
 
-from pruna.evaluation.metrics.metric_vlm_base import StatefulVLMMeanScoresMetric
+from pruna.evaluation.metrics.metric_vlm_base import StatefulVLMMeanScoresMetric, prompts_from_y_x_inputs
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import SINGLE, metric_data_processor
@@ -134,7 +134,7 @@ class VQAMetric(StatefulVLMMeanScoresMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
+        prompts = prompts_from_y_x_inputs(inputs, len(images))
         for i, image in enumerate(images):
             prompt = prompts[i] if i < len(prompts) else ""
             question = f'Does this image show "{prompt}"?'

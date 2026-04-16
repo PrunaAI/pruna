@@ -37,6 +37,7 @@ from PIL import Image
 from pruna.evaluation.metrics.metric_vlm_base import (
     StatefulVLMMeanScoresMetric,
     auxiliary_dicts_from_gt,
+    prompts_from_y_x_inputs,
 )
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
@@ -53,6 +54,7 @@ from pruna.evaluation.metrics.vlm_base import BaseVLM
 from pruna.evaluation.metrics.vlm_utils import (
     VIEScoreJsonOutput,
     _process_images,
+    pad_viescore_subscores_to_two,
     pil_rgb_from_aux_image_bytes,
     viescore_min_scores_0_10,
     viescore_tie_overall_unit,
@@ -178,14 +180,9 @@ class VieScoreMetric(StatefulVLMMeanScoresMetric):
         sc_raw = self.vlm.generate([image], [sc_prompt], response_format=rf)[0]
         pq_raw = self.vlm.generate([image], [pq_prompt], response_format=rf)[0]
 
-        sc_list = viescore_min_scores_0_10(sc_raw)
-        pq_list = viescore_min_scores_0_10(pq_raw)
-        if len(sc_list) < 2:
-            sc_list = sc_list + [0.0] * (2 - len(sc_list)) if sc_list else [0.0, 0.0]
-        if len(pq_list) < 2:
-            pq_list = pq_list + [0.0] * (2 - len(pq_list)) if pq_list else [0.0, 0.0]
-
-        return viescore_tie_overall_unit(sc_list[:2], pq_list[:2])
+        sc_list = pad_viescore_subscores_to_two(viescore_min_scores_0_10(sc_raw))
+        pq_list = pad_viescore_subscores_to_two(viescore_min_scores_0_10(pq_raw))
+        return viescore_tie_overall_unit(sc_list, pq_list)
 
     def _score_tie_gedit(self, source: Image.Image, edited: Image.Image, instruction: str) -> float:
         """VIEScore ``tie``: two-image SC, single-image PQ, overall geometric mean on 0--10 mins."""
@@ -205,14 +202,9 @@ class VieScoreMetric(StatefulVLMMeanScoresMetric):
 
         pq_raw = self.vlm.generate([edited], [pq_prompt], response_format=rf)[0]
 
-        sc_list = viescore_min_scores_0_10(sc_raw)
-        pq_list = viescore_min_scores_0_10(pq_raw)
-        if len(sc_list) < 2:
-            sc_list = sc_list + [0.0] * (2 - len(sc_list)) if sc_list else [0.0, 0.0]
-        if len(pq_list) < 2:
-            pq_list = pq_list + [0.0] * (2 - len(pq_list)) if pq_list else [0.0, 0.0]
-
-        return viescore_tie_overall_unit(sc_list[:2], pq_list[:2])
+        sc_list = pad_viescore_subscores_to_two(viescore_min_scores_0_10(sc_raw))
+        pq_list = pad_viescore_subscores_to_two(viescore_min_scores_0_10(pq_raw))
+        return viescore_tie_overall_unit(sc_list, pq_list)
 
     def update(self, x: list[Any] | torch.Tensor, gt: Any, outputs: torch.Tensor) -> None:
         """
@@ -230,7 +222,7 @@ class VieScoreMetric(StatefulVLMMeanScoresMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
+        prompts = prompts_from_y_x_inputs(inputs, len(images))
         aux_list = auxiliary_dicts_from_gt(gt, len(images))
 
         for i, image in enumerate(images):

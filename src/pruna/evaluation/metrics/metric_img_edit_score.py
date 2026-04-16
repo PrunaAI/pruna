@@ -30,11 +30,15 @@ Without these auxiliaries the metric falls back to a single-image generic 0-10 p
 
 from __future__ import annotations
 
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import torch
 
-from pruna.evaluation.metrics.metric_vlm_base import StatefulVLMMeanScoresMetric
+from pruna.evaluation.metrics.metric_vlm_base import (
+    StatefulVLMMeanScoresMetric,
+    auxiliary_dicts_from_gt,
+    prompts_from_y_x_inputs,
+)
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
@@ -56,12 +60,6 @@ _FALLBACK_QUESTION = (
     "0 = instruction not followed at all, 10 = perfectly executed. Reply with a single number."
 )
 
-# ImgEdit judge_prompts use a 1-5 scale per criterion and embed a ``<edit_prompt>``
-# placeholder that must be filled before sending.  We append a JSON suffix so that
-# the three criterion scores are returned in a parseable ``{"score": [s1, s2, s3]}``
-# structure rather than free text.  The mean of the three 1-5 scores is divided by 5
-# to produce a normalised [0, 1] value — matching the ImgEdit paper's per-sample
-# aggregation.
 _JUDGE_JSON_SUFFIX = (
     '\n\nProvide your three criterion scores as JSON: {"score": [score1, score2, score3]} '
     "where each score is a number from 1 to 5."
@@ -178,40 +176,33 @@ class ImageEditScoreMetric(StatefulVLMMeanScoresMetric):
         outputs : torch.Tensor
             The output (edited) images.
         """
-        # y_x gives [outputs, x]; auxiliaries come from gt directly.
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
-        auxiliaries = gt if isinstance(gt, (list, tuple)) else [{}] * len(images)
+        prompts = prompts_from_y_x_inputs(inputs, len(images))
+        aux_list = auxiliary_dicts_from_gt(gt, len(images))
 
         for i, image in enumerate(images):
             prompt = prompts[i] if i < len(prompts) else ""
-            raw_aux = auxiliaries[i] if i < len(auxiliaries) else {}
-            aux_row = cast(dict[str, Any], raw_aux) if isinstance(raw_aux, dict) else {}
+            aux_row = aux_list[i]
 
             judge_prompt = aux_row.get("judge_prompt", "") or ""
             source_image = pil_rgb_from_aux_image_bytes(aux_row, min_bytes_in_value_scan=100)
 
             if judge_prompt and source_image is not None:
-                # Paper-aligned: fill <edit_prompt> placeholder, ask for 3 criterion scores
-                # (1-5 scale each), take minimum and normalise to [0, 1] by dividing by 5.
-                # Using min (not mean) is consistent with VIEScore methodology: the worst
-                # criterion governs so a single failure cannot be averaged away.
                 filled = judge_prompt.replace("<edit_prompt>", prompt).strip()
                 question = filled + _JUDGE_JSON_SUFFIX
                 try:
                     responses = self.vlm.generate_with_image_lists(
                         [[source_image, image]], [question], response_format=VIEScoreJsonOutput
                     )
-                    raw = viescore_min_scores_0_10(responses[0])  # parses {"score": [...]}
+                    raw = viescore_min_scores_0_10(responses[0])
                     if raw:
                         score = max(0.0, min(1.0, float(min(raw)) / 5.0))
                         self.scores.append(score)
                         continue
                 except (NotImplementedError, AttributeError):
-                    pass  # backend doesn't support multi-image; fall through to fallback
+                    pass
 
-            # Fallback: generic single-image rating.
             question = _FALLBACK_QUESTION.format(prompt=prompt)
             responses = self.vlm.generate([image], [question], response_format=self.response_format)
             self.scores.append(get_score_from_response(responses[0]))
