@@ -34,17 +34,17 @@ from typing import Any, Literal
 import torch
 from PIL import Image
 
-from pruna.evaluation.metrics.vlm_base import (
-    BaseVLM,
-    StatefulVLMMeanScoresMetric,
-    auxiliary_dicts_from_gt,
-    prompts_from_y_x_inputs,
-)
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
     SINGLE,
     metric_data_processor,
+)
+from pruna.evaluation.metrics.vlm_base import (
+    BaseVLM,
+    StatefulVLMMeanScoresMetric,
+    auxiliary_dicts_from_gt,
+    prompts_from_y_x_inputs,
 )
 from pruna.evaluation.metrics.vlm_utils import (
     VIEScoreJsonOutput,
@@ -139,6 +139,7 @@ def _build_viescore_tie_sc_prompt(instruction: str) -> str:
         instruction: Editing instruction embedded in the prompt.
 
     Returns:
+    -------
         Full prompt aligned with TIGER-AI-Lab/VIEScore ``tie`` SC.
     """
     return "\n".join(
@@ -158,6 +159,7 @@ def _build_viescore_t2i_sc_prompt(prompt: str) -> str:
         prompt: Text prompt used to generate the image.
 
     Returns:
+    -------
         Full prompt aligned with TIGER-AI-Lab/VIEScore ``t2i`` SC.
     """
     return "\n".join(

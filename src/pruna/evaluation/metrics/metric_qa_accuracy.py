@@ -21,14 +21,13 @@ from typing import Any, Literal
 import numpy as np
 import torch
 
-from pruna.evaluation.metrics.vlm_base import StatefulVLMMeanScoresMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import (
     SINGLE,
     metric_data_processor,
 )
-from pruna.evaluation.metrics.vlm_base import BaseVLM
+from pruna.evaluation.metrics.vlm_base import BaseVLM, StatefulVLMMeanScoresMetric
 from pruna.evaluation.metrics.vlm_utils import VQAnswer, _process_images
 
 
