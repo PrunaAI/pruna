@@ -111,16 +111,8 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: str, collate_fn_args: d
     iterate_dataloaders(datamodule)
 
 
-_PREFERRED_SMOKE_CATEGORY: dict[str, str] = {
-    # Prefer top-level categories that are guaranteed to have many samples.
-    # Fine-grained art styles (e.g. "3d rendering") sort first alphabetically
-    # but may have < 4 samples, which would break the batch-size assertion.
-    "OneIG": "Anime_Stylization",
-}
-
-
 def _benchmark_category_smoke() -> list[tuple[str, str]]:
-    """One (dataset, category) per benchmark that supports ``category`` (stable, small smoke set)."""
+    """One (dataset, category) per benchmark that exposes a ``category`` parameter."""
     result = []
     for name in sorted(base_datasets):
         if name == "VBench" and importlib.util.find_spec("vbench") is None:
@@ -128,8 +120,7 @@ def _benchmark_category_smoke() -> list[tuple[str, str]]:
         setup_fn = base_datasets[name][0]
         literal_values = get_literal_values_from_param(setup_fn, "category")
         if literal_values:
-            category = _PREFERRED_SMOKE_CATEGORY.get(name) or sorted(literal_values)[0]
-            result.append((name, category))
+            result.append((name, sorted(literal_values)[0]))
     return result
 
 

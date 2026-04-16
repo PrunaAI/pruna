@@ -1,4 +1,4 @@
-"""Tests for VLM metrics (VQA, ImageEditScore, QAAccuracy, TextScore, VieScore)."""
+"""Tests for VLM metrics (VQA, ImageEditScore, QAAccuracy, TextScore, VieScore) and vlm_utils helpers."""
 
 from unittest.mock import MagicMock, patch
 
@@ -13,11 +13,17 @@ from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
-from pruna.evaluation.metrics.vlm_utils import yes_no_first_token_id_groups
-from pruna.evaluation.vlm_benchmark_helpers import (
+from pruna.evaluation.metrics.vlm_utils import (
+    FloatOutput,
+    VLM_AUX_IMAGE_BYTES_KEY_ORDER,
+    get_score_from_response,
+    yes_no_first_token_id_groups,
+)
+
+from ._vlm_batch_snapshot_helpers import (
     BenchmarkVlmBatchOutcome,
-    _pred_from_auxiliaries,
-    _safe_json,
+    pred_tensor_from_auxiliaries,
+    safe_json_for_snapshot,
     vlm_benchmark_batch_to_json_record,
 )
 
@@ -39,6 +45,23 @@ _SLOW_SMOL_SUBSET = (
     ImageEditScoreMetric,
     VieScoreMetric,
 )
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (FloatOutput(score=8.0), 0.8),
+        ({"score": 5.0}, 0.5),
+        ('{"score": 7.5}', 0.75),
+        ('{"score": 10}', 1.0),
+        ("8", 0.8),
+        ("Score: 7.5 out of 10", 0.75),
+        ("", 0.0),
+    ],
+)
+def test_get_score_from_response(raw: object, expected: float) -> None:
+    """``get_score_from_response`` maps pydantic, dict, JSON, and text to ``[0, 1]``."""
+    assert get_score_from_response(raw) == pytest.approx(expected)
 
 
 def _dummy_image(batch: int = 1, size: int = 224) -> torch.Tensor:
@@ -542,7 +565,7 @@ def test_vlm_benchmark_batch_to_json_record_serializes_batch() -> None:
 
 def test_safe_json_handles_bytes_without_expanding() -> None:
     """Bytes values in aux (e.g. source_image_bytes) are summarized, not expanded to str repr."""
-    result = _safe_json({"source_image_bytes": b"\xff\xd8\xff" * 1000, "name": "test"})
+    result = safe_json_for_snapshot({"source_image_bytes": b"\xff\xd8\xff" * 1000, "name": "test"})
     assert result["source_image_bytes"] == {"bytes_len": 3000}
     assert result["name"] == "test"
 
@@ -571,7 +594,7 @@ def test_vlm_benchmark_batch_to_json_record_preserves_null_question_slots() -> N
 
 
 # ---------------------------------------------------------------------------
-# _pred_from_auxiliaries tests
+# pred_tensor_from_auxiliaries (test helper, wraps pil_rgb_from_aux_image_bytes) tests
 # ---------------------------------------------------------------------------
 
 
@@ -590,10 +613,10 @@ def _make_jpeg_bytes(h: int = 32, w: int = 32) -> bytes:
 
 @pytest.mark.cpu
 def test_pred_from_auxiliaries_uses_source_image_bytes() -> None:
-    """_pred_from_auxiliaries decodes source_image_bytes into a float tensor in [0, 1]."""
+    """pred_tensor_from_auxiliaries decodes source_image_bytes into a float tensor in [0, 1]."""
     src_bytes = _make_jpeg_bytes()
     aux = [{"source_image_bytes": src_bytes, "category": "background_change"}]
-    pred = _pred_from_auxiliaries(aux, size=64)
+    pred = pred_tensor_from_auxiliaries(aux, size=64)
 
     assert pred.shape == (1, 3, 64, 64), f"Expected (1,3,64,64), got {pred.shape}"
     assert pred.min() >= 0.0 and pred.max() <= 1.0, "Pixel values must be in [0, 1]"
@@ -601,9 +624,9 @@ def test_pred_from_auxiliaries_uses_source_image_bytes() -> None:
 
 @pytest.mark.cpu
 def test_pred_from_auxiliaries_falls_back_to_noise_without_source_image() -> None:
-    """_pred_from_auxiliaries returns random noise when no source_image_bytes is present."""
+    """pred_tensor_from_auxiliaries returns random noise when no source_image_bytes is present."""
     aux = [{"category": "single_object"}]
-    pred = _pred_from_auxiliaries(aux, size=32)
+    pred = pred_tensor_from_auxiliaries(aux, size=32)
     assert pred.shape == (1, 3, 32, 32)
     assert pred.min() >= 0.0 and pred.max() <= 1.0
 
@@ -616,18 +639,17 @@ def test_pred_from_auxiliaries_mixed_batch() -> None:
         {"source_image_bytes": src_bytes, "category": "color_alter"},
         {"category": "style_change"},  # no source image
     ]
-    pred = _pred_from_auxiliaries(aux, size=32)
+    pred = pred_tensor_from_auxiliaries(aux, size=32)
     assert pred.shape == (2, 3, 32, 32)
     assert pred.min() >= 0.0 and pred.max() <= 1.0
 
 
 @pytest.mark.cpu
 def test_pred_from_auxiliaries_generic_bytes_scan() -> None:
-    """_pred_from_auxiliaries discovers image bytes under an unknown field name (generic scan)."""
+    """pred_tensor_from_auxiliaries discovers image bytes under an unknown field name (generic scan)."""
     src_bytes = _make_jpeg_bytes()
-    # Use a field name not in _IMAGE_BYTES_FIELD_NAMES to exercise the generic scan
     aux = [{"my_custom_image_bytes": src_bytes, "category": "motion_change"}]
-    pred = _pred_from_auxiliaries(aux, size=32)
+    pred = pred_tensor_from_auxiliaries(aux, size=32)
     assert pred.shape == (1, 3, 32, 32)
     assert pred.min() >= 0.0 and pred.max() <= 1.0
 
@@ -635,14 +657,11 @@ def test_pred_from_auxiliaries_generic_bytes_scan() -> None:
 @pytest.mark.cpu
 def test_pred_from_auxiliaries_known_names_take_priority() -> None:
     """Known field names are resolved before the generic bytes scan."""
-    from pruna.evaluation.vlm_benchmark_helpers import _IMAGE_BYTES_FIELD_NAMES
-
     src_bytes_known = _make_jpeg_bytes(16, 16)
     src_bytes_unknown = _make_jpeg_bytes(32, 32)
-    # Put the known key AND an unknown bytes key in the same aux dict
-    first_known = _IMAGE_BYTES_FIELD_NAMES[0]
+    first_known = VLM_AUX_IMAGE_BYTES_KEY_ORDER[0]
     aux = [{"other_bytes": src_bytes_unknown, first_known: src_bytes_known}]
-    pred = _pred_from_auxiliaries(aux, size=16)
+    pred = pred_tensor_from_auxiliaries(aux, size=16)
     # Should use the known key (16x16 image → 16x16 crop); generic scan would pick 32x32
     assert pred.shape == (1, 3, 16, 16)
 
@@ -652,7 +671,7 @@ def test_pred_from_auxiliaries_require_source_image_raises_when_missing() -> Non
     """require_source_image=True raises ValueError instead of silently returning noise."""
     aux = [{"category": "replace"}]  # no image bytes
     with pytest.raises(ValueError, match="require_source_image=True"):
-        _pred_from_auxiliaries(aux, size=32, require_source_image=True)
+        pred_tensor_from_auxiliaries(aux, size=32, require_source_image=True)
 
 
 @pytest.mark.cpu
@@ -660,6 +679,6 @@ def test_pred_from_auxiliaries_require_source_image_succeeds_when_present() -> N
     """require_source_image=True succeeds and decodes bytes when source_image_bytes is present."""
     src_bytes = _make_jpeg_bytes()
     aux = [{"source_image_bytes": src_bytes, "category": "replace"}]
-    pred = _pred_from_auxiliaries(aux, size=32, require_source_image=True)
+    pred = pred_tensor_from_auxiliaries(aux, size=32, require_source_image=True)
     assert pred.shape == (1, 3, 32, 32)
     assert pred.min() >= 0.0 and pred.max() <= 1.0

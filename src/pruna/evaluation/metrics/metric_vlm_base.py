@@ -18,8 +18,7 @@ Concrete metrics call :func:`~pruna.evaluation.metrics.vlm_base.get_vlm` via
 :class:`StatefulVLMMeanScoresMetric` with ``vlm_type`` of ``"litellm"`` (hosted) or
 ``"transformers"`` (local Hugging Face). See :mod:`~pruna.evaluation.metrics.vlm_base`.
 
-For **auxiliary image bytes** (editing benchmarks, ``pred`` tensors in
-:mod:`~pruna.evaluation.vlm_benchmark_helpers`), use
+For **auxiliary image bytes** (editing benchmarks), use
 :func:`~pruna.evaluation.metrics.vlm_utils.pil_rgb_from_aux_image_bytes` and
 :data:`~pruna.evaluation.metrics.vlm_utils.VLM_AUX_IMAGE_BYTES_KEY_ORDER` instead of ad-hoc
 key scans. User-facing overview:

@@ -36,8 +36,7 @@ For ``vlm_type="litellm"``, the key passed to the provider is resolved in this o
 Routes such as ``openai/gpt-4o`` use the OpenAI-compatible key. Other providers follow
 LiteLLM’s environment conventions (for example ``ANTHROPIC_API_KEY`` for ``anthropic/...``).
 The same ``OPENAI_API_KEY`` you use for other OpenAI-hosted judges (for example in pbench)
-applies here. Replicate and similar tokens used by ``mine/`` demos or image backends are not
-read by ``LitellmVLM``; configure those only for scripts that document them.
+applies here.
 
 For a short user-facing summary of key order, hosted vs local, and a minimal ``transformers``
 example, see :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>` (Vision-language judge
@@ -47,8 +46,8 @@ Choosing local vs API
 ---------------------
 Metrics in :data:`VLM_METRIC_REGISTRY_NAMES` take ``vlm_type`` and ``model_name``:
 
-- **API** (``vlm_type="litellm"``, default) — use a vision-capable route (e.g. ``openai/gpt-4o``;
-  see :data:`~pruna.evaluation.vlm_benchmark_helpers.DEFAULT_LITELLM` in helpers).
+- **API** (``vlm_type="litellm"``, default) — use a vision-capable route (e.g.
+  :data:`DEFAULT_LITELLM_MODEL`).
 - **Local** (``vlm_type="transformers"``) — e.g. SmolVLM for offline or CI.
 
 The ``oneig_reasoning`` metric is separate: it runs the LLM2CLIP stack locally; see
@@ -112,6 +111,8 @@ from pydantic import BaseModel
 from pruna.logging.logger import pruna_logger
 
 T = TypeVar("T", bound=BaseModel)
+
+DEFAULT_LITELLM_MODEL: str = "openai/gpt-4o"
 
 VLM_METRIC_REGISTRY_NAMES: frozenset[str] = frozenset(
     (

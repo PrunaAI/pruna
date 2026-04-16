@@ -65,8 +65,8 @@ def pil_rgb_from_aux_image_bytes(
         Per-sample auxiliary dict (e.g. from ``prompt_with_auxiliaries_collate``).
     min_bytes_in_value_scan : int, optional
         Minimum length for blobs discovered only in the generic ``aux.values()`` pass.
-        Named keys use any non-empty ``bytes`` / ``bytearray``. Default ``0`` matches
-        benchmark helpers that accept any non-empty blob.
+        Named keys use any non-empty ``bytes`` / ``bytearray``. Use ``0`` when any
+        non-trivial blob in ``aux.values()`` should be tried (e.g. tests building preds from aux).
 
     Returns
     -------

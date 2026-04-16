@@ -241,9 +241,6 @@ intel = [
     "torch>=2.7.0,<2.9.0",
     "torchvision>=0.22.0,<0.24.0",
 ]
-mine-replicate = [
-    "replicate>=0.26.0",
-]
 
 [build-system]
 requires = ["hatchling"]
