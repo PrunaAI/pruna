@@ -18,4 +18,5 @@ from pruna.evaluation.metrics.vlm_utils import FloatOutput, get_score_from_respo
     ],
 )
 def test_get_score_from_response(raw: object, expected: float) -> None:
+    """``get_score_from_response`` maps pydantic, dict, JSON, and text to ``[0, 1]``."""
     assert get_score_from_response(raw) == pytest.approx(expected)
