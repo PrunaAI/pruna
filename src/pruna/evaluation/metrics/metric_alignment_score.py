@@ -2,12 +2,23 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Alignment Score metric using VLM for image-text alignment evaluation."""
 
 from __future__ import annotations
 
 from typing import Any, Literal
+
+import torch
 
 from pruna.evaluation.metrics.metric_vlm_base import _DoesThisImageShowPromptMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -75,11 +86,11 @@ class AlignmentScoreMetric(_DoesThisImageShowPromptMetric):
         model_name: str | None = None,
         vlm_kwargs: dict | None = None,
         structured_output: bool = True,
-        device=None,
+        device: str | torch.device | None = None,
         api_key: str | None = None,
         call_type: str = SINGLE,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(device=device)
         self.use_probability = False
         self.response_format = VQAnswer if structured_output else None

@@ -20,7 +20,7 @@ OneIG composite: ``oneig_text_score`` / ``ocr_text_score``.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, List, Literal, Optional
+from typing import Any, Literal
 
 import numpy as np
 import torch
@@ -112,13 +112,13 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
     def __init__(
         self,
         *args: Any,
-        vlm: Optional[BaseVLM] = None,
+        vlm: BaseVLM | None = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str | None = None,
-        vlm_kwargs: Optional[dict] = None,
+        vlm_kwargs: dict | None = None,
         structured_output: bool = True,
         device: str | torch.device | None = None,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         call_type: str = SINGLE,
         **kwargs: Any,
     ) -> None:
@@ -147,7 +147,7 @@ class _BaseVLMOCRTextMetric(StatefulMetric):
     def _compute_result_value(self) -> float:
         """Return the scalar reported as ``MetricResult.result``."""
 
-    def update(self, x: List[Any] | torch.Tensor, gt: List[str], outputs: torch.Tensor) -> None:
+    def update(self, x: list[Any] | torch.Tensor, gt: list[str], outputs: torch.Tensor) -> None:
         """
         Run OCR on outputs and score against ``text_content`` (or string list) auxiliaries.
 
@@ -230,20 +230,20 @@ class TextScoreMetric(_BaseVLMOCRTextMetric):
         Additional keyword arguments forwarded to :class:`_BaseVLMOCRTextMetric`.
     """
 
-    scores: List[float]
+    scores: list[float]
     higher_is_better: bool = True
     metric_name: str = "text_score"
 
     def __init__(
         self,
         *args: Any,
-        vlm: Optional[BaseVLM] = None,
+        vlm: BaseVLM | None = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str | None = None,
-        vlm_kwargs: Optional[dict[str, Any]] = None,
+        vlm_kwargs: dict[str, Any] | None = None,
         structured_output: bool = True,
         device: str | torch.device | None = None,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         call_type: str = SINGLE,
         **kwargs: Any,
     ) -> None:
@@ -314,10 +314,10 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
         Additional keyword arguments forwarded to :class:`_BaseVLMOCRTextMetric`.
     """
 
-    edit_distances: List[float]
-    completion_ratios: List[float]
-    match_counts: List[int]
-    gt_totals: List[int]
+    edit_distances: list[float]
+    completion_ratios: list[float]
+    match_counts: list[int]
+    gt_totals: list[int]
 
     higher_is_better: bool = True
     metric_name: str = "oneig_text_score"
@@ -326,13 +326,13 @@ class OneIGTextScoreMetric(_BaseVLMOCRTextMetric):
         self,
         *args: Any,
         language_mode: Literal["EN", "ZH"] = "EN",
-        vlm: Optional[BaseVLM] = None,
+        vlm: BaseVLM | None = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str | None = None,
-        vlm_kwargs: Optional[dict[str, Any]] = None,
+        vlm_kwargs: dict[str, Any] | None = None,
         structured_output: bool = True,
         device: str | torch.device | None = None,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         call_type: str = SINGLE,
         **kwargs: Any,
     ) -> None:

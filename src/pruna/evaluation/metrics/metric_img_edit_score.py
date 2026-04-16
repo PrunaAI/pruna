@@ -30,7 +30,7 @@ Without these auxiliaries the metric falls back to a single-image generic 0-10 p
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import torch
 
@@ -142,11 +142,11 @@ class ImageEditScoreMetric(StatefulVLMMeanScoresMetric):
         model_name: str | None = None,
         vlm_kwargs: dict | None = None,
         structured_output: bool = True,
-        device=None,
+        device: str | torch.device | None = None,
         api_key: str | None = None,
         call_type: str = SINGLE,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(device=device)
         self.response_format = FloatOutput if structured_output else None
 
@@ -186,11 +186,11 @@ class ImageEditScoreMetric(StatefulVLMMeanScoresMetric):
 
         for i, image in enumerate(images):
             prompt = prompts[i] if i < len(prompts) else ""
-            aux = auxiliaries[i] if i < len(auxiliaries) else {}
-            aux = aux if isinstance(aux, dict) else {}
+            raw_aux = auxiliaries[i] if i < len(auxiliaries) else {}
+            aux_row = cast(dict[str, Any], raw_aux) if isinstance(raw_aux, dict) else {}
 
-            judge_prompt = aux.get("judge_prompt", "") or ""
-            source_image = pil_rgb_from_aux_image_bytes(aux, min_bytes_in_value_scan=100)
+            judge_prompt = aux_row.get("judge_prompt", "") or ""
+            source_image = pil_rgb_from_aux_image_bytes(aux_row, min_bytes_in_value_scan=100)
 
             if judge_prompt and source_image is not None:
                 # Paper-aligned: fill <edit_prompt> placeholder, ask for 3 criterion scores

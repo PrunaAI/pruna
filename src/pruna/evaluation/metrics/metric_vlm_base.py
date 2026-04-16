@@ -2,6 +2,15 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Shared helpers and base class for VLM-backed stateful metrics with mean-over-``scores``.
 
@@ -13,7 +22,8 @@ For **auxiliary image bytes** (editing benchmarks, ``pred`` tensors in
 :mod:`~pruna.evaluation.vlm_benchmark_helpers`), use
 :func:`~pruna.evaluation.metrics.vlm_utils.pil_rgb_from_aux_image_bytes` and
 :data:`~pruna.evaluation.metrics.vlm_utils.VLM_AUX_IMAGE_BYTES_KEY_ORDER` instead of ad-hoc
-key scans. User-facing overview: :doc:`Evaluate a model (vision-language judge metrics) </docs_pruna/user_manual/evaluate>`.
+key scans. User-facing overview:
+:doc:`Evaluate a model (vision-language judge metrics) </docs_pruna/user_manual/evaluate>`.
 """
 
 from __future__ import annotations
