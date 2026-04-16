@@ -27,6 +27,7 @@ from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import get_hyperparameters
+from pruna.evaluation.metrics.vlm_base import VLM_METRIC_REGISTRY_NAMES
 from pruna.logging.logger import pruna_logger
 
 AVAILABLE_REQUESTS = ("image_generation_quality", "text_generation_quality")
@@ -102,6 +103,20 @@ class Task:
             dataloader_args=dataloader_args or {},
             **kwargs,
         )
+        if benchmark.lookup_key == "GenEval":
+            return cls(
+                request=[
+                    MetricRegistry.get_metric(
+                        "qa_accuracy",
+                        aggregation="all_or_nothing",
+                        model_name="openai/gpt-4o",
+                    ),
+                    MetricRegistry.get_metric("clip_score"),
+                ],
+                datamodule=datamodule,
+                device=device,
+                low_memory=low_memory,
+            )
         return cls(
             request=benchmark.metrics,
             datamodule=datamodule,
@@ -295,9 +310,16 @@ def _process_metric_names(
     for metric_name in request:
         metric_name = cast(str, metric_name)
         new_requests.append(cast(str, metric_name))
-    return MetricRegistry.get_metrics(
-        names=new_requests, inference_device=inference_device, stateful_metric_device=stateful_metric_device
-    )
+    out: List[BaseMetric | StatefulMetric] = []
+    for name in new_requests:
+        kwargs: dict[str, Any] = {
+            "inference_device": inference_device,
+            "stateful_metric_device": stateful_metric_device,
+        }
+        if name in VLM_METRIC_REGISTRY_NAMES:
+            kwargs["model_name"] = "openai/gpt-4o"
+        out.append(MetricRegistry.get_metric(name, **kwargs))
+    return out
 
 
 def _get_lm_eval_task_metrics(task_name: str):

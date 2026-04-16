@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from transformers import AutoTokenizer
 from pruna.evaluation.task import Task
 from pruna.data.pruna_datamodule import PrunaDataModule
@@ -36,10 +36,10 @@ def _mock_torch_metrics():
     with patch.object(TorchMetrics, '_member_map_', {**TorchMetrics._member_map_, **mock_metrics}):
         yield
 
-@pytest.mark.parametrize("metric_name", MetricRegistry()._registry)
+@pytest.mark.parametrize("metric_name", sorted(MetricRegistry._registry))
 def test_metric_initialization_from_metric_name(metric_name):
     datamodule = PrunaDataModule.from_string("LAION256")
-    Task(request=[metric_name], datamodule=datamodule)
+    Task(request=[metric_name], datamodule=datamodule, device="cpu")
 
 
 @device_parametrized
@@ -124,3 +124,16 @@ def test_task_invalid_named_request():
     """Test that an invalid named request raises a ValueError."""
     with pytest.raises(ValueError, match="not found"):
         Task(request="nonexistent_quality", datamodule=PrunaDataModule.from_string("LAION256"), device="cpu")
+
+
+@pytest.mark.cpu
+@patch("pruna.evaluation.task.PrunaDataModule.from_string")
+def test_geneval_from_benchmark_uses_qa_accuracy_all_or_nothing(mock_from_string: MagicMock) -> None:
+    """GenEval uses strict per-image QA aggregation and CLIP."""
+    mock_dm = MagicMock()
+    mock_dm.test_dataloader.return_value = iter([])
+    mock_from_string.return_value = mock_dm
+    task = Task.from_benchmark("GenEval", dataloader_args={"batch_size": 1})
+    qa = next(m for m in task.metrics if getattr(m, "metric_name", None) == "qa_accuracy")
+    assert qa.aggregation == "all_or_nothing"
+    assert any(getattr(m, "metric_name", None) == "clip_score" for m in task.metrics)
