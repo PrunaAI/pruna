@@ -1,0 +1,109 @@
+# Copyright 2025 - Pruna AI GmbH. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+
+"""
+VQA (Visual Question Answering) metric.
+
+Reference: VQAScore - Evaluating Text-to-Visual Generation with Image-to-Text Generation
+https://arxiv.org/abs/2404.01291
+
+Note: VQAScore uses P(Yes) (probability of "Yes" answer) for ranking. With litellm,
+use_probability=True (default) requests logprobs for soft scores when the provider supports it.
+Set use_probability=False for binary 0/1. With ``transformers``, ``use_probability=True``
+uses next-token softmax mass on yes/no prefix tokens (VQAScore-style); ``False`` uses
+generation plus binary matching.
+
+For API keys, LiteLLM vs local ``transformers``, and hosted vs local construction, see
+:doc:`Evaluate a model </docs_pruna/user_manual/evaluate>` (Vision-language judge metrics) and
+:func:`~pruna.evaluation.metrics.vlm_base.get_vlm`.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pruna.evaluation.metrics.metric_vlm_base import _DoesThisImageShowPromptMetric
+from pruna.evaluation.metrics.registry import MetricRegistry
+from pruna.evaluation.metrics.utils import SINGLE
+from pruna.evaluation.metrics.vlm_base import BaseVLM
+from pruna.evaluation.metrics.vlm_utils import VQAnswer
+
+
+@MetricRegistry.register("vqa")
+class VQAMetric(_DoesThisImageShowPromptMetric):
+    """
+    VQA (Visual Question Answering) metric.
+
+    Uses VLM to answer "Does this image show '{prompt}'?" and scores alignment.
+    Higher scores indicate better image-text alignment.
+
+    VQAScore (arXiv:2404.01291) uses P(Yes) for ranking. Default ``use_probability=True``
+    with litellm requests logprobs for soft scores when supported.
+
+    Parameters
+    ----------
+    vlm : BaseVLM | None, optional
+        Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
+    vlm_type : {"litellm", "transformers"}, optional
+        VLM backend to use. Default is "litellm".
+    model_name : str | None, optional
+        Litellm model id or HuggingFace checkpoint id. **Required** when ``vlm`` is not
+        provided (e.g. ``openai/gpt-4o``).
+    vlm_kwargs : dict, optional
+        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
+        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
+    structured_output : bool, optional
+        Use structured generation for stable outputs (litellm pydantic; transformers outlines
+        when a string format is used). Default is True.
+    device : str | torch.device | None, optional
+        Device for transformers VLM.
+    api_key : str | None, optional
+        API key for litellm.
+    call_type : str, optional
+        Call type for the metric.
+    use_probability : bool, optional
+        If True, use P(Yes) when backend supports logprobs (litellm). Otherwise binary 0/1.
+        Default is True for paper alignment.
+    **kwargs : Any
+        Additional arguments.
+
+    Notes
+    -----
+    For strict binary scoring without logprobs, use
+    :class:`~pruna.evaluation.metrics.metric_alignment_score.AlignmentScoreMetric`. Hosted vs
+    local setup: :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>` (Vision-language judge metrics).
+    """
+
+    scores: list[float]
+    default_call_type: str = "y_x"
+    higher_is_better: bool = True
+    metric_name: str = "vqa"
+
+    def __init__(
+        self,
+        vlm: BaseVLM | None = None,
+        vlm_type: Literal["litellm", "transformers"] = "litellm",
+        model_name: str | None = None,
+        vlm_kwargs: dict | None = None,
+        structured_output: bool = True,
+        device=None,
+        api_key: str | None = None,
+        call_type: str = SINGLE,
+        use_probability: bool = True,
+        **kwargs: Any,
+    ):
+        super().__init__(device=device)
+        self.use_probability = use_probability
+        self.response_format = VQAnswer if structured_output else None
+        self._init_vlm_scores(
+            vlm=vlm,
+            vlm_type=vlm_type,
+            model_name=model_name,
+            vlm_kwargs=vlm_kwargs,
+            structured_output=structured_output,
+            device=device,
+            api_key=api_key,
+            call_type=call_type,
+        )

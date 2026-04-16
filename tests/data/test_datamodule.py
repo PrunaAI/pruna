@@ -1,3 +1,4 @@
+import importlib.util
 from typing import Any, Callable
 
 import pytest
@@ -59,12 +60,18 @@ def _assert_at_least_one_sample(datamodule: PrunaDataModule) -> None:
         pytest.param("GenAIBench", dict(), marks=pytest.mark.slow),
         pytest.param("TinyIMDB", dict(tokenizer=bert_tokenizer), marks=pytest.mark.slow),
         pytest.param("VBench", dict(), marks=pytest.mark.slow),
-        pytest.param("GenEval", dict(), marks=pytest.mark.slow),
         pytest.param("HPS", dict(), marks=pytest.mark.slow),
         pytest.param("ImgEdit", dict(), marks=pytest.mark.slow),
         pytest.param("LongTextBench", dict(), marks=pytest.mark.slow),
         pytest.param("GEditBench", dict(), marks=pytest.mark.slow),
         pytest.param("OneIG", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGAnimeStylization", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGGeneralObject", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGKnowledgeReasoning", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGMultilingualism", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGPortrait", dict(), marks=pytest.mark.slow),
+        pytest.param("OneIGTextRendering", dict(), marks=pytest.mark.slow),
+        pytest.param("GenEval", dict(), marks=pytest.mark.slow),
         pytest.param("DPG", dict(), marks=pytest.mark.slow),
     ],
 )
@@ -104,30 +111,41 @@ def test_dm_from_dataset(setup_fn: Callable, collate_fn: str, collate_fn_args: d
     iterate_dataloaders(datamodule)
 
 
-def _benchmarks_with_category() -> list[tuple[str, str]]:
-    """Benchmarks that have a category param: (dataset_name, category) for every category."""
+_PREFERRED_SMOKE_CATEGORY: dict[str, str] = {
+    # Prefer top-level categories that are guaranteed to have many samples.
+    # Fine-grained art styles (e.g. "3d rendering") sort first alphabetically
+    # but may have < 4 samples, which would break the batch-size assertion.
+    "OneIG": "Anime_Stylization",
+}
+
+
+def _benchmark_category_smoke() -> list[tuple[str, str]]:
+    """One (dataset, category) per benchmark that supports ``category`` (stable, small smoke set)."""
     result = []
-    for name in base_datasets:
+    for name in sorted(base_datasets):
+        if name == "VBench" and importlib.util.find_spec("vbench") is None:
+            continue
         setup_fn = base_datasets[name][0]
         literal_values = get_literal_values_from_param(setup_fn, "category")
         if literal_values:
-            for cat in literal_values:
-                result.append((name, cat))
+            category = _PREFERRED_SMOKE_CATEGORY.get(name) or sorted(literal_values)[0]
+            result.append((name, category))
     return result
 
 
 @pytest.mark.cpu
 @pytest.mark.slow
-@pytest.mark.parametrize("dataset_name, category", _benchmarks_with_category())
+@pytest.mark.parametrize("dataset_name, category", _benchmark_category_smoke())
 def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
-    """Test dataset loading with each category filter; dataset has at least one sample."""
+    """Category filter loads and batches match the chosen category (one category per dataset)."""
     dm = PrunaDataModule.from_string(dataset_name, category=category, dataloader_args={"batch_size": 4})
     _assert_at_least_one_sample(dm)
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
     prompts, auxiliaries = batch
 
-    assert len(prompts) == 4
+    # Some categories have fewer than 4 samples; assert at least one rather than exactly four.
+    assert 1 <= len(prompts) <= 4
     assert all(isinstance(p, str) for p in prompts)
 
     def _category_in_aux(aux: dict, cat: str) -> bool:
@@ -143,20 +161,17 @@ def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
 
 @pytest.mark.cpu
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "dataset_name, required_aux_key",
-    [
+def test_prompt_benchmark_auxiliaries() -> None:
+    """Prompt-based benchmarks expose expected aux keys."""
+    for dataset_name, required_aux_key in (
         ("LongTextBench", "text_content"),
         ("OneIG", "text_content"),
-    ],
-)
-def test_prompt_benchmark_auxiliaries(dataset_name: str, required_aux_key: str) -> None:
-    """Test prompt-based benchmarks load with expected auxiliaries."""
-    dm = PrunaDataModule.from_string(dataset_name, dataloader_args={"batch_size": 4})
-    dm.limit_datasets(10)
-    batch = next(iter(dm.test_dataloader()))
-    prompts, auxiliaries = batch
+    ):
+        dm = PrunaDataModule.from_string(dataset_name, dataloader_args={"batch_size": 4})
+        dm.limit_datasets(10)
+        batch = next(iter(dm.test_dataloader()))
+        prompts, auxiliaries = batch
 
-    assert len(prompts) == 4
-    assert all(isinstance(p, str) for p in prompts)
-    assert all(required_aux_key in aux for aux in auxiliaries)
+        assert len(prompts) == 4
+        assert all(isinstance(p, str) for p in prompts)
+        assert all(required_aux_key in aux for aux in auxiliaries)

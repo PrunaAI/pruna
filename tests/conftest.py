@@ -1,3 +1,6 @@
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -6,6 +9,19 @@ import pytest
 from .fixtures import *  # noqa: F403, F401
 
 HARDWARE_MARKS = {"cpu", "cuda", "multi_gpu"}
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register optional CLI flags for integration tests."""
+    parser.addoption(
+        "--vlm-e2e-save-dir",
+        action="store",
+        default=None,
+        help=(
+            "If set, VLM e2e tests write one JSON per case (inputs, pred summary, metric) "
+            "under this directory."
+        ),
+    )
 
 
 def pytest_configure(config: Any) -> None:
@@ -27,6 +43,10 @@ def pytest_configure(config: Any) -> None:
     config.addinivalue_line("markers", "slow: mark test that run rather long")
     config.addinivalue_line("markers", "style: mark test that only check style")
     config.addinivalue_line("markers", "integration: mark test that is an integration test")
+    config.addinivalue_line(
+        "markers",
+        "vlm_e2e: real SmolVLM + benchmark dataloader batch (slow; run in integration pipelines)",
+    )
 
 
 def pytest_collection_modifyitems(session: Any, config: Any, items: list) -> None:

@@ -153,7 +153,7 @@ dependencies = [
     "peft>=0.18.0,<0.19.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
-    "realesrgan"
+    "realesrgan",
 ]
 
 [project.optional-dependencies]
@@ -167,6 +167,10 @@ whisper = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
+]
+evaluation = [
+    "outlines>1.2.0,<2.0.0",
+    "litellm>=1.0.0",
 ]
 stable-fast = [
     "xformers>=0.0.30",
@@ -224,6 +228,7 @@ dev = [
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "pruna[evaluation]",
 ]
 cpu = []
 lmharness = [
@@ -235,6 +240,9 @@ intel = [
     "intel-extension-for-pytorch>=2.7.0",
     "torch>=2.7.0,<2.9.0",
     "torchvision>=0.22.0,<0.24.0",
+]
+mine-replicate = [
+    "replicate>=0.26.0",
 ]
 
 [build-system]

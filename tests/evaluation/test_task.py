@@ -36,10 +36,10 @@ def _mock_torch_metrics():
     with patch.object(TorchMetrics, '_member_map_', {**TorchMetrics._member_map_, **mock_metrics}):
         yield
 
-@pytest.mark.parametrize("metric_name", MetricRegistry()._registry)
+@pytest.mark.parametrize("metric_name", sorted(MetricRegistry._registry))
 def test_metric_initialization_from_metric_name(metric_name):
     datamodule = PrunaDataModule.from_string("LAION256")
-    Task(request=[metric_name], datamodule=datamodule)
+    Task(request=[metric_name], datamodule=datamodule, device="cpu")
 
 
 @device_parametrized
