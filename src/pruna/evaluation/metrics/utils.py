@@ -60,7 +60,7 @@ def metric_data_processor(
     - 'y_gt': Model's output first, then ground truth. Returns [outputs, gt].
     - 'gt_y': Ground truth first, then model's output. Returns [gt, outputs].
     - 'y_x': Model's output first, then input data. Returns [outputs, x].
-      Used by CLIPScore, AlignmentScore, VQA, ImageEditScore, VIEScore.
+      Used by CLIPScore, VQA, ImageEditScore, VIEScore.
     - 'x_y': Input data first, then model's output. Returns [x, outputs].
     - 'x_gt': Input data first, then ground truth. Returns [x, gt].
     - 'gt_x': Ground truth first, then input data. Returns [gt, x].

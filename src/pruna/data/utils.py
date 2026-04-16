@@ -34,6 +34,20 @@ from torch.utils.data import DataLoader
 from pruna.logging.logger import pruna_logger
 
 
+class TokenizerMissingError(Exception):
+    """
+    Custom exception raised when a tokenizer is required but not provided.
+
+    Parameters
+    ----------
+    message : str, optional
+        The message to display when the exception is raised.
+    """
+
+    def __init__(self, message: str = "Tokenizer is missing. Please provide a valid tokenizer.") -> None:
+        super().__init__(message)
+
+
 def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> list[str] | None:
     """
     Extract Literal values from a function parameter's type annotation (handles Union).
@@ -64,32 +78,18 @@ def get_literal_values_from_param(func: Callable[..., Any], param_name: str) -> 
         except Exception:
             return None
 
-    def extract(annotation: Any) -> list[str] | None:
-        if annotation is None or annotation is type(None):
+    def extract(ann: Any) -> list[str] | None:
+        if ann is None or ann is type(None):
             return None
-        if get_origin(annotation) is Literal:
-            args = get_args(annotation)
+        if get_origin(ann) is Literal:
+            args = get_args(ann)
             return list(args) if args and all(isinstance(a, str) for a in args) else None
-        for arg in get_args(annotation) or ():
+        for arg in get_args(ann) or ():
             if (r := extract(arg)) is not None:
                 return r
         return None
 
     return extract(ann)
-
-
-class TokenizerMissingError(Exception):
-    """
-    Custom exception raised when a tokenizer is required but not provided.
-
-    Parameters
-    ----------
-    message : str, optional
-        The message to display when the exception is raised.
-    """
-
-    def __init__(self, message: str = "Tokenizer is missing. Please provide a valid tokenizer.") -> None:
-        super().__init__(message)
 
 
 def split_train_into_train_val_test(dataset: Dataset | IterableDataset, seed: int) -> Tuple[Dataset, Dataset, Dataset]:

@@ -1,11 +1,10 @@
-"""Tests for VLM metrics (VQA, AlignmentScore, ImageEditScore, QAAccuracy, TextScore, VieScore)."""
+"""Tests for VLM metrics (VQA, ImageEditScore, QAAccuracy, TextScore, VieScore)."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
 
-from pruna.evaluation.metrics.metric_alignment_score import AlignmentScoreMetric
 from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
@@ -26,7 +25,6 @@ SMOL_VLM = "HuggingFaceTB/SmolVLM-256M-Instruct"
 
 _ALL_VLM = (
     VQAMetric,
-    AlignmentScoreMetric,
     ImageEditScoreMetric,
     QAAccuracyMetric,
     OneIGAlignmentMetric,
@@ -101,7 +99,7 @@ def test_vlm_metrics_litellm_mocked(metric_cls: type) -> None:
     pytest.importorskip("litellm")
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
-    if metric_cls in (AlignmentScoreMetric, VQAMetric, QAAccuracyMetric, OneIGAlignmentMetric):
+    if metric_cls in (VQAMetric, QAAccuracyMetric, OneIGAlignmentMetric):
         mock_response.choices[0].message.content = '{"answer": "Yes"}'
     else:
         mock_response.choices[0].message.content = '{"score": 8}'

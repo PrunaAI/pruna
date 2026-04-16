@@ -35,9 +35,8 @@ import torch
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import MetricResult
-from pruna.evaluation.metrics.utils import get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import get_call_type_for_single_metric
 from pruna.evaluation.metrics.vlm_base import BaseVLM, get_vlm
-from pruna.evaluation.metrics.vlm_utils import _process_images
 
 
 def auxiliary_dicts_from_gt(gt: Any, batch_size: int) -> list[dict[str, Any]]:
@@ -136,33 +135,3 @@ class StatefulVLMMeanScoresMetric(StatefulMetric):
         if not self.scores:
             return MetricResult(self.metric_name, self.__dict__, 0.0)
         return MetricResult(self.metric_name, self.__dict__, float(np.mean(self.scores)))
-
-
-class _DoesThisImageShowPromptMetric(StatefulVLMMeanScoresMetric):
-    """
-    Shared ``Does this image show "{prompt}"?`` loop with a ``Yes`` expected answer.
-
-    Subclasses set ``use_probability`` before :meth:`update` (VQAScore-style soft scores vs
-    binary matching).
-    """
-
-    use_probability: bool
-
-    def update(self, x: list[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
-        inputs = metric_data_processor(x, gt, outputs, self.call_type)
-        images = _process_images(inputs[0])
-        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
-        for i, image in enumerate(images):
-            prompt = prompts[i] if i < len(prompts) else ""
-            question = f'Does this image show "{prompt}"?'
-            score = self.vlm.score(
-                [image],
-                [question],
-                ["Yes"],
-                response_format=self.response_format,
-                use_probability=self.use_probability,
-            )[0]
-            self.scores.append(score)
-
-    def compute(self) -> MetricResult:
-        return self.compute_mean_of_scores()

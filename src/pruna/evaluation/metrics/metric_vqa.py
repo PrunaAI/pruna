@@ -35,15 +35,16 @@ from typing import Any, Literal
 
 import torch
 
-from pruna.evaluation.metrics.metric_vlm_base import _DoesThisImageShowPromptMetric
+from pruna.evaluation.metrics.metric_vlm_base import StatefulVLMMeanScoresMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
-from pruna.evaluation.metrics.utils import SINGLE
+from pruna.evaluation.metrics.result import MetricResult
+from pruna.evaluation.metrics.utils import SINGLE, metric_data_processor
 from pruna.evaluation.metrics.vlm_base import BaseVLM
-from pruna.evaluation.metrics.vlm_utils import VQAnswer
+from pruna.evaluation.metrics.vlm_utils import VQAnswer, _process_images
 
 
 @MetricRegistry.register("vqa")
-class VQAMetric(_DoesThisImageShowPromptMetric):
+class VQAMetric(StatefulVLMMeanScoresMetric):
     """
     VQA (Visual Question Answering) metric.
 
@@ -82,8 +83,7 @@ class VQAMetric(_DoesThisImageShowPromptMetric):
 
     Notes
     -----
-    For strict binary scoring without logprobs, use
-    :class:`~pruna.evaluation.metrics.metric_alignment_score.AlignmentScoreMetric`. Hosted vs
+    For strict binary scoring without logprobs, pass ``use_probability=False``. Hosted vs
     local setup: :doc:`Evaluate a model </docs_pruna/user_manual/evaluate>` (Vision-language judge metrics).
     """
 
@@ -118,3 +118,42 @@ class VQAMetric(_DoesThisImageShowPromptMetric):
             api_key=api_key,
             call_type=call_type,
         )
+
+    def update(self, x: list[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
+        """
+        Update the metric with new batch data.
+
+        Parameters
+        ----------
+        x : list[Any] | torch.Tensor
+            The input data (prompts).
+        gt : torch.Tensor
+            The ground truth (unused; present for call-type compatibility).
+        outputs : torch.Tensor
+            The output images.
+        """
+        inputs = metric_data_processor(x, gt, outputs, self.call_type)
+        images = _process_images(inputs[0])
+        prompts = inputs[1] if len(inputs) > 1 and isinstance(inputs[1], list) else [""] * len(images)
+        for i, image in enumerate(images):
+            prompt = prompts[i] if i < len(prompts) else ""
+            question = f'Does this image show "{prompt}"?'
+            score = self.vlm.score(
+                [image],
+                [question],
+                ["Yes"],
+                response_format=self.response_format,
+                use_probability=self.use_probability,
+            )[0]
+            self.scores.append(score)
+
+    def compute(self) -> MetricResult:
+        """
+        Compute the VQA score.
+
+        Returns
+        -------
+        MetricResult
+            The mean VQA score across all updates.
+        """
+        return self.compute_mean_of_scores()

@@ -63,7 +63,7 @@ Structured outputs
 Usage examples
 ----------------
 Minimal LiteLLM and local ``transformers`` construction is shown under :func:`get_vlm`
-(``Examples`` section). **Registry metrics** (``vqa``, ``qa_accuracy``, ``alignment_score``,
+(``Examples`` section). **Registry metrics** (``vqa``, ``qa_accuracy``,
 ``img_edit_score``, OCR/text metrics, ``oneig_alignment``, ``vie_score``, …) take the same
 ``vlm_type``, ``model_name``, ``api_key``, and ``vlm_kwargs`` pattern; see
 ``StatefulVLMMeanScoresMetric`` in ``metric_vlm_base`` and each metric class docstring.
@@ -117,7 +117,6 @@ VLM_METRIC_REGISTRY_NAMES: frozenset[str] = frozenset(
     (
         "vqa",
         "qa_accuracy",
-        "alignment_score",
         "img_edit_score",
         "text_score",
         "ocr_levenshtein",
