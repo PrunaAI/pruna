@@ -140,7 +140,7 @@ dependencies = [
     "bitsandbytes; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "optimum-quanto>=0.2.5",
     "hqq==0.2.7.post1",
-    "torchao>=0.12.0,<0.16.0", # 0.16.0 breaks diffusers 0.36.0, torch+torch: https://github.com/pytorch/ao/issues/2919#issue-3375688762
+    "torchao>=0.12.0,<0.18.0", # 0.16.0 breaks diffusers 0.36.0, torch+torch: https://github.com/pytorch/ao/issues/2919#issue-3375688762
     "gliner; python_version >= '3.11'",
     "piq",
     "opencv-python",
