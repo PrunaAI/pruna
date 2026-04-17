@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import shutil
 import tempfile
 import time
@@ -36,6 +37,7 @@ from pruna.evaluation.metrics.utils import PAIRWISE, SINGLE, get_call_type_for_s
 from pruna.logging.logger import pruna_logger
 
 METRIC_RAPIDATA = "rapidata"
+TIMEOUT_FOR_CLIENT_BUILD = 10  # seconds
 
 
 # We don't use the MetricRegistry here
@@ -52,11 +54,11 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         The Rapidata client to use. If None, a new one is created.
     rapidata_client_id : str | None
         The client ID of the Rapidata client.
-        If none, the credentials are read from the environment variable RAPIDATA_CLIENT_ID.
+        If None, the credentials are read from the environment variable RAPIDATA_CLIENT_ID.
         If credentials are not found in the environment variable, you will be prompted to login via browser.
     rapidata_client_secret : str | None
         The client secret of the Rapidata client.
-        If none, the credentials are read from the environment variable RAPIDATA_CLIENT_SECRET.
+        If None, the credentials are read from the environment variable RAPIDATA_CLIENT_SECRET.
         If credentials are not found in the environment variable, you will be prompted to login via browser.
     *args :
         Additional arguments passed to StatefulMetric.
@@ -67,10 +69,10 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
     --------
     Standalone usage::
         metric = RapidataMetric()
-        # OR metric = RapidataMetric.from_benchmark_id("69bc528fa858d3fbc1ea1475")
+        # OR metric = RapidataMetric.from_benchmark_id("1234567890")
 
         metric.create_benchmark("my_bench", prompts)
-        metric.create_request("Quality", instruction="Which image looks better?")
+        metric.create_async_request("Quality", instruction="Which image looks better?")
 
         metric.set_current_context("model_a")
         metric.update(prompts, ground_truths, outputs_a)
@@ -81,7 +83,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         metric.compute()
 
         # wait for human votes
-        overall = metric.retrieve_results()
+        overall = metric.retrieve_async_results()
     """
 
     media_cache: List[torch.Tensor | PIL.Image.Image | str]
@@ -107,18 +109,16 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
             client_id=rapidata_client_id,
             client_secret=rapidata_client_secret,
         )
-        if call_type.startswith(PAIRWISE):
-            raise ValueError("RapidataMetric does not support pairwise metrics. Use a single metric instead.")
         self.call_type = get_call_type_for_single_metric(call_type, self.default_call_type)
         self.add_state("media_cache", default=[])
         self.add_state("prompt_cache", default=[])
         self.benchmark: RapidataBenchmark | None = None
-        self.current_context: str | None = None
 
     @classmethod
     def from_rapidata_benchmark(
         cls,
         benchmark: RapidataBenchmark | str,
+        client: RapidataClient | None = None,
         rapidata_client_id: str | None = None,
         rapidata_client_secret: str | None = None
     ) -> RapidataMetric:
@@ -129,6 +129,8 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         ----------
         benchmark : RapidataBenchmark | str
             The benchmark to attach to. Can be a RapidataBenchmark object or a string (benchmark ID).
+        client : RapidataClient | None
+            The Rapidata client to use. If None, a new one is created.
         rapidata_client_id : str | None
             The client ID of the Rapidata client.
         rapidata_client_secret : str | None
@@ -140,6 +142,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
             The created metric.
         """
         metric = cls(
+            client=client,
             rapidata_client_id=rapidata_client_id,
             rapidata_client_secret=rapidata_client_secret,
         )
@@ -158,7 +161,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         data_assets: list[str] | None = None,
         split: Literal["test", "val", "train"] = "test",
         **kwargs,
-    ) -> None:
+    ) -> str:
         """
         Register a new benchmark on the Rapidata platform.
 
@@ -176,16 +179,27 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         data : list[str] | PrunaDataModule
             The prompts or dataset to benchmark against.
         data_assets : list[str] | None
-            The assets to attach to the prompts.
-            For instance, if you wish to benchmark an image editing model,
-            you can pass the original images as data_assets.
+            Additional assets (like images for edit tasks) to attach to the prompts.
+            When using a list of strings as the data, you can pass data_assets as a list of file paths or URLs.
+            When using a PrunaDataModule, data assets are extracted automatically from the datamodule, if available.  
         split : str, optional
             Which split to use when data is a PrunaDataModule. Default is "test".
         **kwargs : Any
             Additional keyword arguments passed to the Rapidata API.
+
+        Returns
+        -------
+        str
+            The ID of the created benchmark.
         """
         if self.benchmark is not None:
-            raise ValueError("Benchmark already created. Use from_benchmark() to attach to an existing one.")
+            raise ValueError(
+                "Benchmark already created. Use from_rapidata_benchmark() to create a new metric from an existing one."
+                )
+        # All metric creation methods make sure that the client is configured or they raise an exception.
+        # Still, we check it again here to be sure.
+        if self.client is None:
+            raise ValueError("No client configured. Call from_rapidata_benchmark() to attach to an existing one.")
 
         # Rapidata benchmarks only accept a list of string,
         # so we need to convert the PrunaDataModule to a list of strings.
@@ -208,6 +222,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
                 )
 
         self.benchmark = self.client.mri.create_new_benchmark(name, prompts=data, prompt_assets=data_assets, **kwargs)
+        return self.benchmark.id
 
     def create_async_request(
         self,
@@ -244,24 +259,6 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         self._require_benchmark()
         self.benchmark.create_leaderboard(name, instruction, show_prompt, show_prompt_assets, **kwargs)
 
-    def set_current_context(self, model_name: str, **kwargs) -> None:
-        """
-        Set which model is currently being evaluated.
-
-        Call this before the :meth:`update` / :meth:`compute` cycle for each
-        model. At least two models must be submitted before meaningful
-        human comparison can begin.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to evaluate.
-        **kwargs : Any
-            Additional keyword arguments.
-        """
-        self.current_context = model_name
-        self.reset()  # Clear the cache for the new model.
-
     def update(self, x: List[Any] | Tensor, gt: List[Any] | Tensor, outputs: Any) -> None:
         """
         Accumulate model outputs for the current model.
@@ -290,7 +287,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         and cleans up temporary files.
 
         This method does **not** return a result — human evaluation is
-        asynchronous. Use :meth:`retrieve_results` or
+        asynchronous. Use :meth:`retrieve_async_results` or
         :meth:`retrieve_granular_results` once enough votes have been
         collected.
         """
@@ -313,7 +310,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         pruna_logger.warning(
             "Sent evaluation request for model '%s' to Rapidata.\n "
             "It may take a while to collect votes from human raters.\n "
-            "Use retrieve_results() to check scores later, "
+            "Use retrieve_async_results() to check scores later, "
             "or monitor progress at: "
             "https://app.rapidata.ai/mri/benchmarks/%s",
             self.current_context,
@@ -403,8 +400,9 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
 
         Returns
         -------
-        List[CompositeMetricResult] | None
-            A list of results, one per leaderboard, or None if the benchmark is not finished yet.
+        tuple[List[CompositeMetricResult] | None, bool]
+            A tuple where the first element is a list of results, one per leaderboard,
+            and the second element is a boolean indicating whether the benchmark is finished yet.
         """
         results = []
         all_finished = True
@@ -431,7 +429,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         **kwargs,
     ) -> CompositeMetricResult | List[CompositeMetricResult] | None:
         """
-        Wait for  the results or return whatever we have as is from the benchmark.
+        Wait for the results or return whatever we have as is from the benchmark.
 
         If is_blocking is True, it will poll until the results are ready or the timeout is reached.
         If is_blocking is False, it will return the results immediately if they are ready,

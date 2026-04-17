@@ -21,8 +21,8 @@ class AsyncEvaluationMixin(ABC):
     """
     Mixin for metrics that submit to external evaluation services and retrieve results asynchronously.
 
-    Subclasses implement create_request() to set up an evaluation
-    (e.g., create a leaderboard) and retrieve_results() to retrieve
+    Subclasses implement create_async_request() to set up an evaluation
+    (e.g., create a leaderboard) and retrieve_async_results() to retrieve
     outcomes (e.g., standings from human evaluators).
     """
 

@@ -102,14 +102,14 @@ def test_create_benchmark_raises_if_already_exists(metric_with_benchmark):
     with pytest.raises(ValueError, match="Benchmark already created"):
         metric_with_benchmark.create_benchmark("dup", data=["x"])
 
-def test_create_request_raises_without_benchmark(metric):
-    """Test that create_request raises without a benchmark."""
+def test_create_async_request_raises_without_benchmark(metric):
+    """Test that create_async_request raises without a benchmark."""
     with pytest.raises(ValueError, match="No benchmark configured"):
         metric.create_async_request("quality", "Rate image quality")
 
 
-def test_create_request_delegates_to_leaderboard(metric_with_benchmark):
-    """Test that create_request delegates to the benchmark."""
+def test_create_async_request_delegates_to_leaderboard(metric_with_benchmark):
+    """Test that create_async_request delegates to the benchmark."""
     metric_with_benchmark.create_async_request("quality", "Rate image quality")
     metric_with_benchmark.benchmark.create_leaderboard.assert_called_once_with(
         "quality", "Rate image quality", False, False
@@ -330,7 +330,7 @@ def test_create_benchmark_datamodule_ignores_explicit_data_assets(metric, mock_c
     )
 
 
-def test_create_request_forwards_show_prompt_assets_true(metric_with_benchmark):
+def test_create_async_request_forwards_show_prompt_assets_true(metric_with_benchmark):
     """show_prompt_assets=True is forwarded to create_leaderboard."""
     metric_with_benchmark.create_async_request("quality", "Rate quality", show_prompt_assets=True)
     metric_with_benchmark.benchmark.create_leaderboard.assert_called_once_with(

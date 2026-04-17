@@ -49,8 +49,9 @@ class EvaluationContextMixin(ABC):
         value : str
             The new context.
         """
-        self._current_context = value
-        self.on_context_change()
+        if self._current_context != value:
+            self._current_context = value
+            self.on_context_change()
 
     def on_context_change(self) -> None:
         """Hook called when the context changes. Override to reset state."""

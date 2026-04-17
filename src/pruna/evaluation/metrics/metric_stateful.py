@@ -122,7 +122,7 @@ class StatefulMetric(ABC):
         """
 
     @abstractmethod
-    def compute(self,) -> Any:
+    def compute(self) -> Any:
         """Override this method to compute the final metric value."""
 
     def is_pairwise(self) -> bool:
