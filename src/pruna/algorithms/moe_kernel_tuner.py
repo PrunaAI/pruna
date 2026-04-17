@@ -136,10 +136,16 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 default_value=None,
                 meta={
                     "desc": (
-                        "Block size for quantization along the N dimension when weight_dtype is "
-                        "fp8_w8a8. Must be set together with block_quant_shape_k: either both "
-                        "None or both an integer (mixing None with a value is invalid). "
-                        "Default None: no block-wise quant tiling."
+                        "Side length (in elements) of one FP8 quantization block along the GEMM "
+                        "N axis in the fused MoE matmuls (same N as Triton BLOCK_SIZE_N: the "
+                        "output / intermediate-expert dimension). This sets the layout of "
+                        "block-wise FP8 scale tensors in the benchmark; it is not a Triton tile "
+                        "size that this algorithm searches over (see block_size_n_max for the "
+                        "searched tile cap). When set, the tuner still searches kernel configs "
+                        "but only keeps those whose BLOCK_SIZE_N is divisible by this value. "
+                        "Must be set together with block_quant_shape_k: either both None or both "
+                        "an integer. Default None: per-expert (non-block) FP8 scales and no extra "
+                        "divisibility filter on BLOCK_SIZE_N."
                     )
                 },
             ),
@@ -149,10 +155,15 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 default_value=None,
                 meta={
                     "desc": (
-                        "Block size for quantization along the K (intermediate) dimension when "
-                        "weight_dtype is fp8_w8a8. Must be set together with block_quant_shape_n: "
-                        "either both None or both an integer (mixing None with a value is invalid). "
-                        "Default None: no block-wise quant tiling."
+                        "Side length (in elements) of one FP8 quantization block along the GEMM "
+                        "K axis (same K as Triton BLOCK_SIZE_K: the inner / reduction dimension, "
+                        "e.g. hidden size in the expert up-projection). This is not automatically "
+                        "tuned: you choose it (or leave both quant block params None) to match the "
+                        "desired block-wise FP8 scale layout; the tuner only filters candidate "
+                        "kernels so BLOCK_SIZE_K divides evenly by this value when both are set. "
+                        "Must be set together with block_quant_shape_n: either both None or both "
+                        "an integer. Default None: per-expert FP8 scales and no extra "
+                        "divisibility filter on BLOCK_SIZE_K."
                     )
                 },
             ),
