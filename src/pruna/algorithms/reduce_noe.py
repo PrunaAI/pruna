@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import Any
 
 from ConfigSpace import UniformIntegerHyperparameter
-from pydantic import config
 from transformers import AutoModelForCausalLM
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -129,10 +128,12 @@ class ReduceNOE(PrunaAlgorithmBase):
                 target_name = smash_config["target_name"]
                 # if VLM MoE, the config that contains moe is the text_config one.
                 if "text_config" in config_json:
-                    config_json = config_json["text_config"]
-                if target_name not in config_json:
+                    text_config_json = config_json["text_config"]
+                else:
+                    text_config_json = config_json
+                if target_name not in text_config_json:
                     raise KeyError(f"Target name '{target_name}' not found in config file at {config_path}")
-                config_json[target_name] = smash_config["num_experts_per_token"]
+                text_config_json[target_name] = smash_config["num_experts_per_token"]
                 with config_path.open("w", encoding="utf-8") as f:
                     json.dump(config_json, f, indent=2)
                 safe_memory_cleanup()
