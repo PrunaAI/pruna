@@ -22,8 +22,22 @@ from typing import Any, Callable, List, Literal
 
 import PIL.Image
 import torch
-from rapidata import RapidataClient
-from rapidata.rapidata_client.benchmark.rapidata_benchmark import RapidataBenchmark
+
+try:
+    from rapidata import RapidataClient
+    from rapidata.rapidata_client.benchmark.rapidata_benchmark import RapidataBenchmark
+    _RAPIDATA_AVAILABLE = True
+
+except ImportError:
+    class RapidataClient:  # type: ignore[no-redef] # numpydoc ignore=PR01
+        """Placeholder used when the 'rapidata' extra is not installed."""
+
+        def __init__(self, *args, **kwargs) -> None: ...
+
+    class RapidataBenchmark:  # type: ignore[no-redef]
+        """Placeholder used when the 'rapidata' extra is not installed."""
+    _RAPIDATA_AVAILABLE = False
+
 from torch import Tensor
 from torchvision.utils import save_image
 
@@ -36,7 +50,6 @@ from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metr
 from pruna.logging.logger import pruna_logger
 
 METRIC_RAPIDATA = "rapidata"
-TIMEOUT_FOR_CLIENT_BUILD = 10  # seconds
 
 
 # We don't use the MetricRegistry here
@@ -83,7 +96,6 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
 
         # wait for human votes
         overall = metric.retrieve_async_results()
-
     """
 
     media_cache: List[torch.Tensor | PIL.Image.Image | str]
@@ -104,6 +116,11 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         *args,
         **kwargs,
     ) -> None:
+        if not _RAPIDATA_AVAILABLE:
+            raise ImportError(
+            "RapidataMetric requires the 'rapidata' extra. "
+            "Install it with `pip install pruna[rapidata]`."
+            )
         super().__init__(*args, **kwargs)
         self.client = client or RapidataClient(
             client_id=rapidata_client_id,

@@ -2,17 +2,17 @@ import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+import pytest
 
 import PIL.Image
-import pytest
 import torch
 from datasets import Dataset
 
 from pruna.data.pruna_datamodule import PrunaDataModule
-from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric
-from rapidata.rapidata_client.benchmark.rapidata_benchmark import RapidataBenchmark
+from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric, RapidataBenchmark
 from pruna.evaluation.metrics.result import CompositeMetricResult
 
+pytestmark = pytest.mark.requires_rapidata
 
 @pytest.fixture
 def mock_client():
