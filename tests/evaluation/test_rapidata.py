@@ -1,3 +1,5 @@
+import os
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -150,9 +152,10 @@ def test_update_raises_without_context(metric_with_benchmark):
 
 def test_prepare_media_string_passthrough(metric_ready_with_cleanup):
     """Test that string URLs/paths are passed through as-is."""
-    metric_ready_with_cleanup.media_cache = ["https://example.com/img.png", "/tmp/local.png"]
+    local_path = os.path.join(tempfile.gettempdir(), "local.png")
+    metric_ready_with_cleanup.media_cache = ["https://example.com/img.png", local_path]
     paths = metric_ready_with_cleanup._prepare_media_for_upload()
-    assert paths == ["https://example.com/img.png", "/tmp/local.png"]
+    assert paths == ["https://example.com/img.png", local_path]
 
 
 def test_prepare_media_pil_image(metric_ready_with_cleanup):
@@ -309,14 +312,15 @@ def test_create_benchmark_datamodule_extracts_images(metric, mock_client):
         features=Features({"text": Value("string"), "image": HFImage()}),
     )
     dm = PrunaDataModule(train_ds=ds, val_ds=ds, test_ds=ds, collate_fn=lambda x: x, dataloader_args={})
-    with patch.object(metric, "_prepare_media_for_upload", return_value=["/tmp/0.png", "/tmp/1.png"]) as mock_prep:
+    fake_paths = [os.path.join(tempfile.gettempdir(), f"{i}.png") for i in range(2)]
+    with patch.object(metric, "_prepare_media_for_upload", return_value=fake_paths) as mock_prep:
         metric.create_benchmark("my-bench", data=dm, split="test")
         mock_prep.assert_called_once()
         images_arg = mock_prep.call_args[0][0]
         assert len(images_arg) == 2
         assert all(isinstance(img, PIL.Image.Image) for img in images_arg)
     mock_client.mri.create_new_benchmark.assert_called_once_with(
-        "my-bench", prompts=["prompt1", "prompt2"], prompt_assets=["/tmp/0.png", "/tmp/1.png"],
+        "my-bench", prompts=["prompt1", "prompt2"], prompt_assets=fake_paths,
     )
 
 

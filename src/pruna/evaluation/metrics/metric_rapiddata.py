@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import concurrent.futures
 import shutil
 import tempfile
 import time
@@ -33,7 +32,7 @@ from pruna.evaluation.metrics.async_mixin import AsyncEvaluationMixin
 from pruna.evaluation.metrics.context_mixin import EvaluationContextMixin
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.result import CompositeMetricResult
-from pruna.evaluation.metrics.utils import PAIRWISE, SINGLE, get_call_type_for_single_metric, metric_data_processor
+from pruna.evaluation.metrics.utils import SINGLE, get_call_type_for_single_metric, metric_data_processor
 from pruna.logging.logger import pruna_logger
 
 METRIC_RAPIDATA = "rapidata"
@@ -84,6 +83,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
 
         # wait for human votes
         overall = metric.retrieve_async_results()
+
     """
 
     media_cache: List[torch.Tensor | PIL.Image.Image | str]
@@ -181,7 +181,7 @@ class RapidataMetric(StatefulMetric, AsyncEvaluationMixin, EvaluationContextMixi
         data_assets : list[str] | None
             Additional assets (like images for edit tasks) to attach to the prompts.
             When using a list of strings as the data, you can pass data_assets as a list of file paths or URLs.
-            When using a PrunaDataModule, data assets are extracted automatically from the datamodule, if available.  
+            When using a PrunaDataModule, data assets are extracted automatically from the datamodule, if available.
         split : str, optional
             Which split to use when data is a PrunaDataModule. Default is "test".
         **kwargs : Any

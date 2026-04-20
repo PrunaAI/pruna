@@ -55,7 +55,6 @@ class EvaluationContextMixin(ABC):
 
     def on_context_change(self) -> None:
         """Hook called when the context changes. Override to reset state."""
-        pass
 
     def _require_context(self) -> None:
         """Raise if no context has been set."""

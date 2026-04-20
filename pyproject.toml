@@ -36,6 +36,9 @@ possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
 
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+
 
 [tool.coverage.run]
 source = ["src/pruna"]
