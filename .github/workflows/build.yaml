@@ -5,9 +5,9 @@ permissions:
   pull-requests: read
 
 on:
-  pull_request:
-    branches:
-      - main
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 concurrency:
