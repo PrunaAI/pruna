@@ -178,10 +178,6 @@ class PrunaModel:
         """Set the model to evaluation mode."""
         set_to_eval(self.model)
 
-    def save(self, model_path: str) -> None:
-        """Save the model."""
-        self.save_pretrained(model_path)
-
     def save_pretrained(self, model_path: str) -> None:
         """
         Save the smashed model to the specified model path.

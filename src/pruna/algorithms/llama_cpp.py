@@ -61,7 +61,7 @@ class LlamaCpp(PrunaAlgorithmBase):
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cpu", "cuda", "mps"]
-    compatible_before: list[str] = []
+    compatible_before: list[str] = ["reduce_noe"]
     compatible_after: list[str] = []
 
     def get_hyperparameters(self) -> list:
@@ -88,9 +88,9 @@ class LlamaCpp(PrunaAlgorithmBase):
             ),
             OrdinalHyperparameter(
                 "n_gpu_layers",
-                sequence=[0, 1, 4, 8, 16, 32, 999],
+                sequence=[0, 1, 4, 8, 16, 32, -1],
                 default_value=0,
-                meta={"desc": "Number of layers to offload to GPU. Use 999 for all layers."},
+                meta={"desc": "Number of layers to offload to GPU. Use -1 for all layers."},
             ),
             Int(
                 "main_gpu",
@@ -185,14 +185,15 @@ class LlamaCpp(PrunaAlgorithmBase):
 
     def _load_quantized_model(self, llama_cpp: Any, quant_gguf_path: Path, smash_config: Any, temp_dir: Path) -> Any:
         pruna_logger.info(f"Loading quantized model from {quant_gguf_path}")
-        n_gpu_layers = smash_config["n_gpu_layers"]
-        if n_gpu_layers == 999:
-            n_gpu_layers = -1  # llama-cpp-python uses -1 for all layers
+        # n_gpu_layers should default to -1 (all layers) if not specified
+        n_gpu_layers = smash_config.get("n_gpu_layers", -1)
         quantized_model = llama_cpp.Llama(
             model_path=str(quant_gguf_path),
             n_gpu_layers=n_gpu_layers,
             main_gpu=smash_config["main_gpu"],
         )
+        # explicitly set model_path for consistency and to ensure Pruna's save logic can find the GGUF file 
+        # since llama.cpp doesn't always expose it as a public attribute
         quantized_model.model_path = str(quant_gguf_path)
         quantized_model._pruna_device = smash_config["device"]
         return quantized_model
@@ -231,18 +232,30 @@ class LlamaCpp(PrunaAlgorithmBase):
             # Ensure inputs are properly sanitized and validated to prevent arg injection.
             for param in (script_path, hf_model_dir, outfile):
                 param_str = str(param)
-                if any(c in param_str for c in ("\0", "\n", "\r", ";", "&", "|", "`", "$")):
+                # Restrict control characters and basic shell breaks. 
+                # We allow common path characters like '\', '(', ')', '[', ']', '{', '}' which are common on Windows.
+                if any(c in param_str for c in "\0\n\r;!&|><$`\"'"):
                     raise ValueError(f"Unsafe characters detected in subprocess argument: {param_str}")
 
+            # Subprocess is required as convert_hf_to_gguf.py is designed as a standalone CLI script
+            # in llama-cpp-python. We use shell=False to mitigate risk of shell injection.
             convert_cmd = [
-                sys.executable, str(script_path),
-                hf_model_dir,
-                "--outfile", str(outfile),
-                "--outtype", "f16"
+                sys.executable,
+                str(script_path),
+                str(hf_model_dir),
+                "--outfile",
+                str(outfile),
+                "--outtype",
+                "f16",
             ]
             try:
-                # subprocess needed because convert_hf_to_gguf.py is a standalone CLI script
-                subprocess.run(convert_cmd, check=True, capture_output=True, text=True)  # nosec B603
+                subprocess.run(
+                    convert_cmd,
+                    shell=False,  # Explicitly disable shell to mitigate injection risk
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )  # nosec B603
             except subprocess.CalledProcessError as e:
                 pruna_logger.error(f"Conversion script failed with error: {e.stderr}")
                 raise

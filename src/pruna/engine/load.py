@@ -534,6 +534,7 @@ def load_llama_cpp(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
         raise FileNotFoundError(f"GGUF file not found at {model_path}")
 
     model = llama_cpp.Llama(model_path=str(model_path), **filter_load_kwargs(llama_cpp.Llama.__init__, kwargs))
+    # Explicitly set model_path for consistency and to ensure Pruna's save logic can find the GGUF file
     model.model_path = str(model_path)
     model._pruna_device = smash_config["device"]
     return model
