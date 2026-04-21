@@ -80,6 +80,7 @@ class RealESRGAN(PrunaAlgorithmBase):
         "ring_attn",
         "hyper",
     ]
+    required_install: str = "``pip install pruna[upscale]``"
 
     def get_hyperparameters(self) -> list:
         """
