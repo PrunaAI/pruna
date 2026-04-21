@@ -23,6 +23,7 @@ def pytest_configure(config: Any) -> None:
     config.addinivalue_line("markers", "requires_intel: mark test that needs pruna[intel]")
     config.addinivalue_line("markers", "requires_lmharness: mark test that needs pruna[lmharness]")
     config.addinivalue_line("markers", "requires_whisper: mark test that needs pruna[whisper]")
+    config.addinivalue_line("markers", "requires_upscale: mark test that needs pruna[upscale]")
     config.addinivalue_line("markers", "requires_rapidata: mark test that needs pruna[rapidata]")
     # Category marks
     config.addinivalue_line("markers", "slow: mark test that run rather long")
