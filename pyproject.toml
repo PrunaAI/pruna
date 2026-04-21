@@ -154,7 +154,7 @@ dependencies = [
     # peft 0.19+ enforces torchao>=0.16 in PEFT (is_torchao_available); keep <0.19 while core torchao stays <0.16.
     # https://github.com/huggingface/peft/blob/6d5a6f4f2f902dbf13d21d2661d57c3c05df1dae/src/peft/import_utils.py#L131
     "peft>=0.18.0,<0.19.0",
-    "trl<=0.21.0",
+    "trl<=1.2.0",
     "termcolor==2.3.0",
 ]
 
