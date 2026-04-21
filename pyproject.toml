@@ -36,6 +36,9 @@ possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
 
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -204,6 +207,9 @@ full = [
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
 ]
+rapidata = [
+    "rapidata>=3.0.0"
+]
 dev = [
     "wget",
     "python-dotenv",
@@ -234,6 +240,10 @@ dev = [
 cpu = []
 lmharness = [
     "lm-eval>=0.4.0"
+]
+evaluation = [
+    "pruna[rapidata]",
+    "pruna[lmharness]"
 ]
 
 # Intel extension is tightly coupled with the torch version
