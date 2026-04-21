@@ -76,13 +76,7 @@ class LlamaCpp(PrunaAlgorithmBase):
         return [
             OrdinalHyperparameter(
                 "quantization_method",
-                sequence=[
-                    "q4_k_m",
-                    "q4_k_s",
-                    "q5_k_m",
-                    "q8_0",
-                    "f16"
-                ],
+                sequence=["q4_k_m", "q4_k_s", "q5_k_m", "q8_0", "f16"],
                 default_value="q4_k_m",
                 meta={"desc": "Quantization method for llama.cpp. Examples: q4_k_m, q8_0, f16."},
             ),
@@ -140,9 +134,7 @@ class LlamaCpp(PrunaAlgorithmBase):
         quantization_method = self._get_quantization_method(model_to_export, smash_config["quantization_method"])
         pruna_logger.info(f"Quantizing model with llama.cpp using method {quantization_method}")
 
-        _, f16_gguf_path, quant_gguf_path = self._get_cache_paths(
-            model_to_export, smash_config, quantization_method
-        )
+        _, f16_gguf_path, quant_gguf_path = self._get_cache_paths(model_to_export, smash_config, quantization_method)
 
         # Create a temp directory to hold HF model if needed
         temp_dir = Path(tempfile.mkdtemp())
@@ -174,11 +166,7 @@ class LlamaCpp(PrunaAlgorithmBase):
 
     def _get_quantization_method(self, model: Any, default_method: str) -> str:
         """Get the quantization method, defaulting to f16 for tiny models."""
-        if (
-            hasattr(model, "config")
-            and hasattr(model.config, "hidden_size")
-            and model.config.hidden_size < 32
-        ):
+        if hasattr(model, "config") and hasattr(model.config, "hidden_size") and model.config.hidden_size < 32:
             pruna_logger.info("Tiny model detected. Bypassing quantized block sizes and using f16.")
             return "f16"
         return default_method
@@ -192,7 +180,7 @@ class LlamaCpp(PrunaAlgorithmBase):
             n_gpu_layers=n_gpu_layers,
             main_gpu=smash_config["main_gpu"],
         )
-        # explicitly set model_path for consistency and to ensure Pruna's save logic can find the GGUF file 
+        # explicitly set model_path for consistency and to ensure Pruna's save logic can find the GGUF file
         # since llama.cpp doesn't always expose it as a public attribute
         quantized_model.model_path = str(quant_gguf_path)
         quantized_model._pruna_device = smash_config["device"]
@@ -214,11 +202,7 @@ class LlamaCpp(PrunaAlgorithmBase):
         return llama_cpp_cache, f16_gguf_path, quant_gguf_path
 
     def _convert_to_gguf(
-        self,
-        model: Any,
-        outfile: Path,
-        temp_dir: Path,
-        smash_config: SmashConfigPrefixWrapper
+        self, model: Any, outfile: Path, temp_dir: Path, smash_config: SmashConfigPrefixWrapper
     ) -> None:
         """Save HF model and convert it to GGUF format."""
         with tempfile.TemporaryDirectory(dir=str(temp_dir)) as hf_model_dir:
@@ -226,47 +210,40 @@ class LlamaCpp(PrunaAlgorithmBase):
             if hasattr(smash_config, "tokenizer") and smash_config.tokenizer:
                 smash_config.tokenizer.save_pretrained(hf_model_dir)
 
-            script_path = self._get_conversion_script()
-            pruna_logger.info(f"Converting Hugging Face model to GGUF format at {outfile}...")
+            script_path = Path(self._get_conversion_script()).resolve()
+            hf_model_path = Path(hf_model_dir).resolve()
+            output_path = outfile.resolve()
 
-            # Ensure inputs are properly sanitized and validated to prevent arg injection.
-            for param in (script_path, hf_model_dir, outfile):
-                param_str = str(param)
-                # Restrict control characters and basic shell breaks. 
-                # We allow common path characters like '\', '(', ')', '[', ']', '{', '}' which are common on Windows.
-                if any(c in param_str for c in "\0\n\r;!&|><$`\"'"):
-                    raise ValueError(f"Unsafe characters detected in subprocess argument: {param_str}")
+            # Sanitize arguments
+            for p in (script_path, hf_model_path, output_path):
+                p_str = str(p)
+                if any(c in p_str for c in "\0\n\r;!&|><$`\"'"):
+                    raise ValueError(f"Unsafe characters in path: {p_str}")
+                # Check for argument injection (leading dashes)
+                if p_str.startswith("-"):
+                    raise ValueError(f"Path cannot start with a dash: {p_str}")
 
-            # Subprocess is required as convert_hf_to_gguf.py is designed as a standalone CLI script
-            # in llama-cpp-python. We use shell=False to mitigate risk of shell injection.
             convert_cmd = [
                 sys.executable,
                 str(script_path),
-                str(hf_model_dir),
-                "--outfile",
-                str(outfile),
-                "--outtype",
-                "f16",
+                str(hf_model_path),
+                "--outfile", str(output_path),
+                "--outtype", "f16",
             ]
+
             try:
                 subprocess.run(
                     convert_cmd,
-                    shell=False,  # Explicitly disable shell to mitigate injection risk
+                    shell=False,
                     check=True,
                     capture_output=True,
                     text=True,
                 )  # nosec B603
             except subprocess.CalledProcessError as e:
-                pruna_logger.error(f"Conversion script failed with error: {e.stderr}")
+                pruna_logger.error(f"GGUF conversion failed: {e.stderr}")
                 raise
 
-    def _quantize_gguf(
-        self,
-        llama_cpp: Any,
-        infile: Path,
-        outfile: Path,
-        method: str
-    ) -> None:
+    def _quantize_gguf(self, llama_cpp: Any, infile: Path, outfile: Path, method: str) -> None:
         """Quantize a GGUF file using llama-cpp-python API."""
         pruna_logger.info(f"Quantizing GGUF model to {method} at {outfile}...")
 
@@ -327,8 +304,7 @@ class LlamaCpp(PrunaAlgorithmBase):
         """
         try:
             import llama_cpp
+
             return dict(llama_cpp=llama_cpp)
         except ImportError:
-            raise ImportError(
-                "Could not import llama_cpp. Please install it with `pip install llama-cpp-python`."
-            )
+            raise ImportError("Could not import llama_cpp. Please install it with `pip install llama-cpp-python`.")
