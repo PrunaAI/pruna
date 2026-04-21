@@ -84,6 +84,8 @@ conflicts = [
     [{ extra = "intel" }, { extra = "stable-fast" }, { extra = "stable-fast-extraindex" }],
     [{ extra = "intel" }, { extra = "full" }, { extra = "stable-fast-extraindex" }],
     [{ extra = "intel" }, { extra = "vllm" }],
+    [{ extra = "transformers-new" }, { extra = "transformers-legacy" }],
+    [{ extra = "transformers-pruna-current" }, { extra = "transformers-new" }]
 ]
 
 [tool.uv.sources]
@@ -115,7 +117,6 @@ dependencies = [
     "torchvision>=0.22.0",
     "torchmetrics[image]",
     "requests>=2.31.0",
-    "transformers==5.0.0",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
     "datasets>=3.0",
@@ -157,6 +158,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+transformers-new = ["transformers>=5.0.0"]
+transformers-legacy = ["transformers<=4.48.0"]
+transformers-pruna-current = ["transformers < 5.0.0"]
+
+
 # whisper-s2t and ctranslate2 are isolated because importing whisper_s2t
 # at test time causes side-effects that break unrelated tests.
 
@@ -190,7 +196,8 @@ gptq = [
 awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
-    "torch>=2.9.0"
+    "torch>=2.9.0",
+    "pruna[transformers-pruna-current]"
 ]
 full = [
     "pruna[stable-fast]",
