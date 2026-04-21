@@ -66,14 +66,17 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        name: ["base", 'lmharness']
+        name: ["base", 'lmharness', 'rapidata']
         include:
         - name: base
           extras: ""
-          mark_filter: "cpu and not slow and not style and not requires_intel and not requires_lmharness"
+          mark_filter: "cpu and not slow and not style and not requires_intel and not requires_lmharness and not requires_rapidata"
         - name: lmharness
           extras: "--extra lmharness"
           mark_filter: "requires_lmharness"
+        - name: rapidata
+          extras: "--extra rapidata"
+          mark_filter: "requires_rapidata"
 
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
