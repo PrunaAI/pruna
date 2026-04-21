@@ -103,7 +103,7 @@ authors = [
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -156,7 +156,6 @@ dependencies = [
     "peft>=0.18.0,<0.19.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
-    "realesrgan"
 ]
 
 [project.optional-dependencies]
@@ -198,6 +197,9 @@ awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
     "torch>=2.9.0"
+]
+upscale = [
+    "realesrgan",
 ]
 full = [
     "pruna[stable-fast]",

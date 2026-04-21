@@ -1,9 +1,11 @@
+import pytest
+
 from pruna.algorithms.upscale import RealESRGAN
 
 from .base_tester import AlgorithmTesterBase
 
 
-# Takes too long to run on CPU, so we explicitly exclude it
+@pytest.mark.requires_upscale
 class TestUpscale(AlgorithmTesterBase):
     """Test the Upscale algorithm."""
 
