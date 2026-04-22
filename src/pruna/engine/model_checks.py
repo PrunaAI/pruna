@@ -109,7 +109,9 @@ def is_moe_lm(model: Any) -> bool:
     """
     Check if the model is a MoE LM.
 
-    Currently all MoE LMs are based on Mixtral in transformers.
+    Detects MoE via ``config.num_experts`` (e.g. Mixtral, Qwen-MoE text-only)
+    or via nested ``config.text_config.num_experts`` (e.g. multimodal
+    ``*ForConditionalGeneration`` wrappers).
 
     Parameters
     ----------
@@ -121,7 +123,13 @@ def is_moe_lm(model: Any) -> bool:
     bool
         True if the model is a MoE LM, False otherwise.
     """
-    return hasattr(getattr(model, "config", None), "num_experts")
+    config = getattr(model, "config", None)
+    if config is None:
+        return False
+    if getattr(config, "num_experts", None) is not None:
+        return True
+    text_cfg = getattr(config, "text_config", None)
+    return text_cfg is not None and getattr(text_cfg, "num_experts", None) is not None
 
 
 def is_transformers_pipeline_with_causal_lm(model: Any) -> bool:

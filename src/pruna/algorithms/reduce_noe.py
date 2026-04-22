@@ -126,9 +126,11 @@ class ReduceNOE(PrunaAlgorithmBase):
                 with config_path.open("r", encoding="utf-8") as f:
                     config_json = json.load(f)
                 target_name = smash_config["target_name"]
-                if target_name not in config_json:
+                # if VLM MoE, the config that contains moe is the text_config one.
+                text_config_json = config_json.get("text_config", config_json)
+                if target_name not in text_config_json:
                     raise KeyError(f"Target name '{target_name}' not found in config file at {config_path}")
-                config_json[target_name] = smash_config["num_experts_per_token"]
+                text_config_json[target_name] = smash_config["num_experts_per_token"]
                 with config_path.open("w", encoding="utf-8") as f:
                     json.dump(config_json, f, indent=2)
                 safe_memory_cleanup()
