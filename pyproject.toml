@@ -96,7 +96,7 @@ stable-fast-pruna = { index = "pruna_internal", extra = "stable-fast-extraindex"
 
 [project]
 name = "pruna"
-version = "0.3.2"
+version = "0.3.3"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
