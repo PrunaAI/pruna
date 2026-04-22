@@ -59,7 +59,9 @@ class CombinationsTester(AlgorithmTesterBase):
         ("flux_tiny_random", ["fora", "diffusers_int8"], False, 'cmmd'),
         ("flux_tiny_random", ["fora", "torch_compile"], False, 'cmmd'),
         pytest.param("flux_tiny_random", ["fora", "stable_fast"], False, 'cmmd', marks=pytest.mark.requires_stable_fast),
-        ("tiny_janus", ["hqq", "torch_compile"], False, 'cmmd'),
+        pytest.param("tiny_janus", ["hqq", "torch_compile"], False, 'cmmd', marks=pytest.mark.skip(
+            reason="Current Janus inference requires transformer 4.51.3 which is incompatible with the test environment."
+        )),
         pytest.param("flux_tiny", ["fora", "flash_attn3", "torch_compile"], False, 'cmmd', marks=pytest.mark.high_gpu),
     ],
     indirect=["model_fixture"],
