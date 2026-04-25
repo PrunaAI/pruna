@@ -36,9 +36,6 @@ possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
 
-[tool.bandit]
-exclude_dirs = ["tests", "docs"]
-
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -96,14 +93,14 @@ stable-fast-pruna = { index = "pruna_internal", extra = "stable-fast-extraindex"
 
 [project]
 name = "pruna"
-version = "0.3.3"
+version = "0.3.2"
 description = "Smash your AI models"
 authors = [
     {name = "Pruna AI", email = "hello@pruna.ai"}
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.13"
 keywords = ["AI", "machine learning", "model optimization", "pruning"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -156,6 +153,7 @@ dependencies = [
     "peft>=0.18.0,<0.19.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
+    "realesrgan",
 ]
 
 [project.optional-dependencies]
@@ -169,6 +167,10 @@ whisper = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
+]
+evaluation = [
+    "outlines>1.2.0,<2.0.0",
+    "litellm>=1.0.0",
 ]
 stable-fast = [
     "xformers>=0.0.30",
@@ -194,17 +196,11 @@ awq = [
     "llmcompressor>=0.9",
     "torch>=2.9.0"
 ]
-upscale = [
-    "realesrgan",
-]
 full = [
     "pruna[stable-fast]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
-]
-rapidata = [
-    "rapidata>=3.0.0"
 ]
 dev = [
     "wget",
@@ -232,14 +228,11 @@ dev = [
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "pruna[evaluation]",
 ]
 cpu = []
 lmharness = [
     "lm-eval>=0.4.0"
-]
-evaluation = [
-    "pruna[rapidata]",
-    "pruna[lmharness]"
 ]
 
 # Intel extension is tightly coupled with the torch version
