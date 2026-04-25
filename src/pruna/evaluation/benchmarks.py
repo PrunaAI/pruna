@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import builtins
 from dataclasses import dataclass, field
 
 from pruna.data import base_datasets
 from pruna.data.utils import get_literal_values_from_param
 from pruna.evaluation.metrics import MetricRegistry
+
+TASK_TYPE_TEXT_IMAGE = "text_image"
+TASK_TYPE_TEXT_PLUS_IMAGE_IMAGE = "text+image_image"
 
 
 @dataclass
@@ -31,9 +37,13 @@ class Benchmark:
     description : str
         Description of what the benchmark evaluates.
     metrics : list[str]
-        List of metric names used for evaluation.
+        Metric names from ``MetricRegistry`` that the ``reference`` paper
+        explicitly names for that benchmark (not speculative proxies). Entries
+        with no matching registered name stay empty; pass metrics explicitly to
+        ``Task`` when running other evaluations.
     task_type : str
-        Type of task the benchmark evaluates (e.g., 'text_to_image').
+        Modality-style label: ``text_image`` (text → image), ``text+image_image`` (text + source
+        image → image), or ``text_to_video``, ``image_classification``, ``text_generation``.
     reference : str | None
         URL to the canonical paper (e.g., arXiv) for this benchmark.
     """
@@ -62,24 +72,17 @@ class BenchmarkRegistry:
     """
     Registry for benchmarks.
 
-    Metrics per benchmark are set to those explicitly used in the reference
-    paper (see reference URL). All entries verified from paper evaluation
-    sections (ar5iv/HTML or PDF) as of verification pass:
+    Each entry's ``metrics`` lists only ``MetricRegistry`` names that have a
+    **directly named** counterpart in the ``reference`` paper (e.g. CLIPScore →
+    ``clip_score``, VQAScore → ``vqa``, Fréchet inception distance → ``fid``).
+    If the paper cites a method with no registered metric (HPS v2, Mask2Former,
+    mPLUG-large adjudication, …), the list is empty.
 
-    - Parti Prompts (2206.10789 §5.2, §5.4): human side-by-side only on P222.
-    - DrawBench (2205.11487 §4.3): human raters only; COCO uses FID + CLIP.
-    - GenAI Bench (2406.13743): VQAScore only (web/PWC; ar5iv failed).
-    - VBench (2311.17982): 16 dimension-specific methods; no single Pruna metric.
-    - COCO (2205.11487 §4.1): FID and CLIP score for fidelity and alignment.
-    - ImageNet (1409.0575 §4): top-1/top-5 classification accuracy.
-    - WikiText (1609.07843 §5): perplexity on validation/test.
-    - GenEval (2310.11513 §3.2): Mask2Former + CLIP color pipeline, binary score.
-    - HPS (2306.09341): HPS v2 scoring model (CLIP fine-tuned on HPD v2).
-    - ImgEdit (2505.20275 §4.2): GPT-4o 1–5 ratings and ImgEdit-Judge.
-    - Long Text Bench (2507.22058 §4): Text Accuracy (OCR, Qwen2.5-VL-7B).
-    - GEditBench (2504.17761 §4.2): VIEScore (SQ, PQ, O via GPT-4.1/Qwen2.5-VL).
-    - OneIG (2506.07977 §4.1): per-dimension metrics (semantic alignment, ED, etc.).
-    - DPG (2403.05135): DSG-style graph score, mPLUG-large adjudicator.
+    See ``.mine/benchmark-paper-alignment/01-arxiv-literature-vs-pruna-metrics.md``
+    for paper-by-paper notes and Pruna implementation gaps.
+
+    OneIG is split into six subset benchmarks (plus full ``OneIG``); see
+    ``.mine/benchmark-paper-alignment/02-oneig-subset-metrics-verification.md`` for §4.1 mapping.
     """
 
     _registry: dict[str, Benchmark] = {}
@@ -88,9 +91,7 @@ class BenchmarkRegistry:
     def _register(cls, benchmark: Benchmark) -> None:
         missing = [m for m in benchmark.metrics if not MetricRegistry.has_metric(m)]
         if missing:
-            raise ValueError(
-                f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}."
-            )
+            raise ValueError(f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}.")
         if benchmark.lookup_key not in base_datasets:
             available = ", ".join(base_datasets.keys())
             raise ValueError(
@@ -125,14 +126,14 @@ class BenchmarkRegistry:
         return cls._registry[key]
 
     @classmethod
-    def list(cls, task_type: str | None = None) -> list[str]:
+    def list(cls, task_type: str | None = None) -> builtins.list[str]:
         """
         List available benchmark names.
 
         Parameters
         ----------
         task_type : str | None
-            Filter by task type (e.g., 'text_to_image', 'text_to_video').
+            Filter by task type (e.g., ``text_image``, ``text_to_video``).
             If None, returns all benchmarks.
 
         Returns
@@ -154,7 +155,7 @@ for _benchmark in [
             "perspectives, and symbol rendering from basic to complex compositions."
         ),
         metrics=[],  # Paper uses human evaluation only; pass explicit metrics if needed
-        task_type="text_to_image",
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2206.10789",
     ),
     Benchmark(
@@ -164,7 +165,7 @@ for _benchmark in [
             "Enables side-by-side comparison on sample quality and image-text alignment with human raters."
         ),
         metrics=[],  # Paper uses human evaluation only; pass explicit metrics if needed
-        task_type="text_to_image",
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2205.11487",
     ),
     Benchmark(
@@ -174,8 +175,8 @@ for _benchmark in [
             "Covers basic skills (scene, attributes, spatial relationships) to advanced reasoning "
             "(counting, comparison, logic/negation) with over 24k human ratings."
         ),
-        metrics=[],  # Paper uses VQAScore only; not in Pruna
-        task_type="text_to_image",
+        metrics=["vqa", "clip_score"],  # VQAScore + CLIPScore both named (arXiv:2406.13743)
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2406.13743",
     ),
     Benchmark(
@@ -195,8 +196,8 @@ for _benchmark in [
             "MS-COCO for text-to-image evaluation (Imagen, 2205.11487). Paper reports "
             "FID for fidelity and CLIP score for image-text alignment."
         ),
-        metrics=["fid", "clip_score"],  # §4.1: FID + CLIP score
-        task_type="text_to_image",
+        metrics=["fid", "clip_score"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2205.11487",
     ),
     Benchmark(
@@ -223,11 +224,13 @@ for _benchmark in [
         name="GenEval",
         description=(
             "Compositional text-to-image benchmark with 6 categories: single object, two object, "
-            "counting, colors, position, color attributes. Evaluates fine-grained alignment "
-            "between prompts and generated images via VQA-style questions."
+            "counting, colors, position, color attributes. Uses atomic yes/no questions per prompt; "
+            "``Task.from_benchmark`` wires ``qa_accuracy`` with strict per-image aggregation "
+            "(all questions must pass) plus ``clip_score``. For holistic VQAScore-style scoring "
+            "use GenAI Bench with ``vqa``."
         ),
-        metrics=["clip_score"],  # §3.2: Mask2Former; not in Pruna
-        task_type="text_to_image",
+        metrics=["qa_accuracy", "clip_score"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2310.11513",
     ),
     Benchmark(
@@ -237,7 +240,7 @@ for _benchmark in [
             "Covers anime, concept-art, paintings, and photo styles with human preference data."
         ),
         metrics=[],  # Paper uses HPS scoring model; not in Pruna
-        task_type="text_to_image",
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2306.09341",
     ),
     Benchmark(
@@ -246,18 +249,20 @@ for _benchmark in [
             "Image editing benchmark with 8 edit types: replace, add, remove, adjust, extract, "
             "style, background, compose. Evaluates instruction-following for inpainting and editing."
         ),
-        metrics=[],  # Paper uses GPT-4o/ImgEdit-Judge; not in Pruna
-        task_type="text_to_image",
+        metrics=["img_edit_score"],  # Paper: GPT-4o rubric scores, FakeShield; no matching MetricRegistry name
+        task_type=TASK_TYPE_TEXT_PLUS_IMAGE_IMAGE,
         reference="https://arxiv.org/abs/2505.20275",
     ),
     Benchmark(
         name="Long Text Bench",
         description=(
-            "Text-to-image benchmark for long, detailed prompts. Evaluates model ability to "
-            "handle complex multi-clause descriptions and maintain coherence across long instructions."
+            "Text rendering benchmark evaluating whether T2I models correctly render specific text strings "
+            "specified in prompts. Provides ``text_content`` ground truth for OCR comparison via ``text_score`` "
+            "(normalized character accuracy in [0, 1]; higher is better). "
+            "Not to be confused with text-to-image alignment for long descriptive prompts."
         ),
-        metrics=[],  # Paper uses text_score/TIT-Score; not in Pruna
-        task_type="text_to_image",
+        metrics=["text_score"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2507.22058",
     ),
     Benchmark(
@@ -265,21 +270,55 @@ for _benchmark in [
         description=(
             "General image editing benchmark with 11 task types: background change, color alter, "
             "material alter, motion change, style change, subject add/remove/replace, text change, "
-            "tone transfer, and human retouching."
+            "tone transfer, and human retouching. "
+            "Evaluated with VIEScore in text--image editing (``tie``) mode when source image bytes "
+            "are available in batch aux (semantic + perceptual sub-scores, overall as geometric mean "
+            "on the 0--10 scale; see ``vie_score`` metric)."
         ),
-        metrics=[],  # Paper uses VIEScore; not in Pruna
-        task_type="text_to_image",
+        metrics=["vie_score"],  # VIEScore named in GEdit-Bench section
+        task_type=TASK_TYPE_TEXT_PLUS_IMAGE_IMAGE,
         reference="https://arxiv.org/abs/2504.17761",
     ),
     Benchmark(
-        name="OneIG",
-        description=(
-            "Omni-dimensional benchmark for text-to-image evaluation. Six dataset categories "
-            "(Anime_Stylization, General_Object, Knowledge_Reasoning, Multilingualism, Portrait, "
-            "Text_Rendering) plus fine-grained style classes. Includes alignment questions."
-        ),
-        metrics=[],  # Paper uses dimension-specific metrics; not in Pruna
-        task_type="text_to_image",
+        name="OneIG Anime Stylization",
+        description="OneIG subset: anime and stylized imagery.",
+        metrics=["oneig_alignment"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG General Object",
+        description="OneIG subset: everyday objects and scenes.",
+        metrics=["oneig_alignment"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Knowledge Reasoning",
+        description="OneIG subset: knowledge- and reasoning-heavy prompts.",
+        metrics=["oneig_reasoning"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Multilingualism",
+        description="OneIG subset: multilingual prompts (incl. Chinese splits).",
+        metrics=["oneig_alignment"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Portrait",
+        description="OneIG subset: people and portraits.",
+        metrics=["oneig_alignment"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Text Rendering",
+        description="OneIG subset: text and graphics painted into the image.",
+        metrics=["oneig_text_score"],
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
@@ -289,7 +328,7 @@ for _benchmark in [
             "global, and other descriptive aspects with natural-language questions for alignment."
         ),
         metrics=[],  # Paper uses custom evaluation; not in Pruna
-        task_type="text_to_image",
+        task_type=TASK_TYPE_TEXT_IMAGE,
         reference="https://arxiv.org/abs/2403.05135",
     ),
 ]:
