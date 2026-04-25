@@ -26,10 +26,9 @@ from pruna.data.pruna_datamodule import PrunaDataModule
 from pruna.data.utils import move_batch_to_device
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.utils import get_device, move_to_device, safe_memory_cleanup, set_to_best_available_device
-from pruna.evaluation.metrics.context_mixin import EvaluationContextMixin
 from pruna.evaluation.metrics.metric_base import BaseMetric
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
-from pruna.evaluation.metrics.result import MetricResult, MetricResultProtocol
+from pruna.evaluation.metrics.result import MetricResult
 from pruna.evaluation.metrics.utils import ensure_device_consistency, get_device_map, group_metrics_by_inheritance
 from pruna.evaluation.task import Task
 from pruna.logging.logger import pruna_logger
@@ -72,8 +71,8 @@ class EvaluationAgent:
                 raise ValueError("When not using 'task' parameter, both 'request' and 'datamodule' must be provided.")
             self.task = Task(request=request, datamodule=datamodule, device=device)
 
-        self.first_model_results: List[MetricResultProtocol] = []
-        self.subsequent_model_results: List[MetricResultProtocol] = []
+        self.first_model_results: List[MetricResult] = []
+        self.subsequent_model_results: List[MetricResult] = []
         self.device = set_to_best_available_device(self.task.device)
         self.cache: List[Tensor] = []
         self.evaluation_for_first_model: bool = True
@@ -113,8 +112,8 @@ class EvaluationAgent:
 
         Examples
         --------
-        >>> agent = EvaluationAgent.from_benchmark("Parti Prompts", model)
-        >>> agent = EvaluationAgent.from_benchmark("HPS", model, category="anime", fraction=0.1)
+        >>> agent = EvaluationAgent.from_benchmark("Parti Prompts")
+        >>> agent = EvaluationAgent.from_benchmark("HPS", category="anime", fraction=0.1)
         """
         task = Task.from_benchmark(
             benchmark_name,
@@ -125,20 +124,18 @@ class EvaluationAgent:
         )
         return cls(task=task)
 
-    def evaluate(self, model: Any, model_name: str | None = None) -> List[MetricResultProtocol]:
+    def evaluate(self, model: Any) -> List[MetricResult]:
         """
         Evaluate models using different metric types.
 
         Parameters
         ----------
-        model : Any
+        model : PrunaModel
             The model to evaluate.
-        model_name : str | None, optional
-            The name of the model to evaluate. Required for rapidata benchmark submission.
 
         Returns
         -------
-        List[MetricResultProtocol]
+        List[MetricResult]
             The results of the model.
         """
         results = []
@@ -148,10 +145,6 @@ class EvaluationAgent:
         single_stateful_metrics = self.task.get_single_stateful_metrics()
         pairwise_metrics = self.task.get_pairwise_stateful_metrics()
         stateless_metrics = self.task.get_stateless_metrics()
-
-        for metric in single_stateful_metrics:
-            if isinstance(metric, EvaluationContextMixin):
-                metric.current_context = model_name
 
         # Update and compute stateful metrics.
         pruna_logger.info("Evaluating stateful metrics.")
@@ -285,7 +278,7 @@ class EvaluationAgent:
 
     def compute_stateful_metrics(
         self, single_stateful_metrics: List[StatefulMetric], pairwise_metrics: List[StatefulMetric]
-    ) -> List[MetricResultProtocol]:
+    ) -> List[MetricResult]:
         """
         Compute stateful metrics.
 
@@ -303,20 +296,16 @@ class EvaluationAgent:
         """
         results = []
         for stateful_metric in single_stateful_metrics:
-            result = stateful_metric.compute()
-            if result is not None:
-                results.append(result)
+            results.append(stateful_metric.compute())
             stateful_metric.reset()
 
         if not self.evaluation_for_first_model and self.task.is_pairwise_evaluation():
             for pairwise_metric in pairwise_metrics:
-                result = pairwise_metric.compute()
-                if result is not None:
-                    results.append(result)
+                results.append(pairwise_metric.compute())
                 pairwise_metric.reset()
         return results
 
-    def compute_stateless_metrics(self, model: PrunaModel, stateless_metrics: List[Any]) -> List[MetricResultProtocol]:
+    def compute_stateless_metrics(self, model: PrunaModel, stateless_metrics: List[Any]) -> List[MetricResult]:
         """
         Compute stateless metrics.
 
