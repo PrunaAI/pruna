@@ -1,0 +1,12 @@
+LLM2Vec (llm2vec package) vendored from OneIG-Benchmark.
+
+Source: https://github.com/OneIG-Bench/OneIG-Benchmark
+Commit: 41b49831e79e6dde5323618c164da1c4cf0f699d
+Path: scripts/utils/llm2clip/llm2vec/
+
+OneIG-Benchmark is licensed under the Apache License 2.0.
+See the project repository for full license text.
+
+``oneig_llm2vec/modeling_llama_encoder.py`` is derived from
+McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp (Hugging Face Hub);
+Pruna relaxes the upstream flash-attention-only constraint for CPU use.
