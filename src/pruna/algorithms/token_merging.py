@@ -209,19 +209,22 @@ def _merge_source(merge: Callable, x: torch.Tensor, source: torch.Tensor | None 
 # ---------------------------------------------------------------------------
 
 try:
+    from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS
     from transformers.models.vit.modeling_vit import ViTLayer as _HFViTLayer
     from transformers.models.vit.modeling_vit import ViTSelfAttention as _HFViTSelfAttention
+    from transformers.models.vit.modeling_vit import eager_attention_forward
 
     class ToMeViTSelfAttention(_HFViTSelfAttention):
         """
         Self-attention with proportional attention and key-metric side-output for ToMe.
 
         Modifications over the base HuggingFace ``ViTSelfAttention``:
-        - Uses eager attention to inject proportional attention weighting when
-          ``self._tome_info["prop_attn"]`` is ``True`` and a token ``size`` is available.
-        - Stores the mean of *k* over heads in ``self._tome_info["metric"]`` so that
-          the enclosing ``ToMeViTLayer`` can use it for bipartite matching without
-          requiring changes to the intermediate ``ViTAttention`` wrapper.
+        - Uses the same attention implementation as the original model (e.g. SDPA, eager, flash_attention_2)
+          When proportional attention is active and attention implementation is not eager, the log-size bias is
+          injected via the ``attn_mask`` parameter of SDPA.
+        - Stores the mean of *k* over heads in ``self._tome_info["metric"]`` so
+          that the enclosing ``ToMeViTLayer`` can use it for bipartite matching
+          without requiring changes to the intermediate ``ViTAttention`` wrapper.
 
         Parameters
         ----------
@@ -235,9 +238,9 @@ try:
             self,
             hidden_states: torch.Tensor,
             head_mask: Optional[torch.Tensor] = None,
-        ) -> Tuple[torch.Tensor, torch.Tensor]:
+        ) -> Tuple[torch.Tensor, None]:
             """
-            Forward pass with proportional attention and key-metric storage.
+            Forward pass, proportional attention, and key-metric storage.
 
             Parameters
             ----------
@@ -248,8 +251,9 @@ try:
 
             Returns
             -------
-            Tuple[torch.Tensor, torch.Tensor]
-                Context layer and attention probabilities.
+            Tuple[torch.Tensor, None]
+                Context layer and ``None`` (attention probs are not materialised
+                when using SDPA).
             """
             batch_size = hidden_states.shape[0]
             new_shape = (batch_size, -1, self.num_attention_heads, self.attention_head_size)
@@ -258,24 +262,46 @@ try:
             value_layer = self.value(hidden_states).view(*new_shape).transpose(1, 2)
             query_layer = self.query(hidden_states).view(*new_shape).transpose(1, 2)
 
-            # Eager attention so we can inject the proportional-attention term.
-            attn_weights = (query_layer @ key_layer.transpose(-2, -1)) * self.scaling
-
-            # Proportional attention: bias scores by log(token_size).
-            if self._tome_info["prop_attn"] and self._tome_info["size"] is not None:
-                attn_weights = attn_weights + self._tome_info["size"].log()[:, None, None, :, 0]
-
-            if head_mask is not None:
-                attn_weights = attn_weights * head_mask
-
-            attn_weights = attn_weights.softmax(dim=-1)
-            attn_probs = torch.nn.functional.dropout(attn_weights, p=self.dropout_prob if self.training else 0.0)
-
-            context_layer = (attn_probs @ value_layer).transpose(1, 2)
-            context_layer = context_layer.reshape(batch_size, -1, self.all_head_size)
-
             # Store the key mean as the similarity metric for token merging.
             self._tome_info["metric"] = key_layer.mean(1)
+
+            # Proportional attention: bias scores by log(token_size).
+            attention_mask = None
+            if self._tome_info["prop_attn"] and self._tome_info["size"] is not None:
+                attention_mask = self._tome_info["size"].log()[:, None, None, :, 0]
+
+            if self.config._attn_implementation == "eager" and attention_mask is not None:
+                # eager_attention_forward applies the mask as a post-softmax
+                # multiply (head-mask semantics), but proportional attention
+                # requires a pre-softmax additive bias.  Handle manually.
+                attn_weights = (query_layer @ key_layer.transpose(-2, -1)) * self.scaling
+                attn_weights = attn_weights + attention_mask
+                attn_weights = torch.nn.functional.softmax(
+                    attn_weights,
+                    dim=-1,
+                    dtype=torch.float32,
+                ).to(query_layer.dtype)
+                dropout_p = self.dropout_prob if self.training else 0.0
+                attn_weights = torch.nn.functional.dropout(attn_weights, p=dropout_p, training=self.training)
+                context_layer = (attn_weights @ value_layer).transpose(1, 2).contiguous()
+                attn_probs = attn_weights
+            else:
+                attention_interface: Callable = eager_attention_forward
+                if self.config._attn_implementation != "eager":
+                    attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
+
+                context_layer, attn_probs = attention_interface(
+                    self,
+                    query_layer,
+                    key_layer,
+                    value_layer,
+                    attention_mask,
+                    head_mask=head_mask,
+                    scaling=self.scaling,
+                    dropout=self.dropout_prob if self.training else 0.0,
+                )
+
+            context_layer = context_layer.reshape(batch_size, -1, self.all_head_size)
 
             return context_layer, attn_probs
 
@@ -484,8 +510,8 @@ class TokenMerging(PrunaAlgorithmBase):
         For every ``ViTLayer`` in the model, swaps its class to
         ``ToMeViTLayer`` (which performs bipartite token merging after
         self-attention).  For every ``ViTSelfAttention``, swaps its class to
-        ``ToMeViTSelfAttention`` (which uses eager attention with proportional
-        weighting and stores the key metric).  The model is then wrapped in a
+        ``ToMeViTSelfAttention`` (which uses the same attention implementation as the original model
+        with proportional attention weighting and stores the key metric).  The model is then wrapped in a
         ``ToMeModelWrapper`` that resets the shared ``_tome_info`` state
         before every forward pass.
 
