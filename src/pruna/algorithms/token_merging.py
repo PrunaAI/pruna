@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import math
+from collections import deque
 from typing import Any, Callable, Optional, Tuple
 
 import torch
@@ -104,7 +105,7 @@ def _bipartite_soft_matching(
         return _do_nothing, _do_nothing
 
     with torch.no_grad():
-        tokens = tokens / tokens.norm(dim=-1, keepdim=True)
+        tokens = torch.nn.functional.normalize(tokens, dim=-1)
         a, b = tokens[..., ::2, :], tokens[..., 1::2, :]
         scores = a @ b.transpose(-1, -2)
 
@@ -157,6 +158,10 @@ def _merge_wavg(merge: Callable, x: torch.Tensor, size: torch.Tensor | None = No
     """
     Merge via weighted average based on token size.
 
+    Concatenates ``x * size`` and ``size`` along the channel dimension and
+    performs a *single* merge call instead of two, halving kernel-launch
+    overhead.
+
     Parameters
     ----------
     merge : Callable
@@ -174,9 +179,10 @@ def _merge_wavg(merge: Callable, x: torch.Tensor, size: torch.Tensor | None = No
     if size is None:
         size = torch.ones_like(x[..., 0, None])
 
-    x = merge(x * size, mode="sum")
-    size = merge(size, mode="sum")
-    x = x / size
+    # Single merge pass: cat weighted tokens and sizes, split after merge.
+    combined = merge(torch.cat([x * size, size], dim=-1), mode="sum")
+    size = combined[..., -1:]
+    x = combined[..., :-1] / size
     return x, size
 
 
@@ -350,7 +356,7 @@ try:
             hidden_states = attention_output + hidden_states
 
             # --- token merging ---
-            r = self._tome_info["r"].pop(0)
+            r = self._tome_info["r"].popleft()
             if r > 0:
                 metric = self._tome_info["metric"]
                 merge, _ = _bipartite_soft_matching(
@@ -433,8 +439,7 @@ class ToMeModelWrapper(torch.nn.Module):
         Any
             The output of the wrapped model's forward pass.
         """
-        # Make a copy of the list to avoid modifying the original
-        self._tome_info["r"] = list(self.parsed_r)
+        self._tome_info["r"] = deque(self.parsed_r)
         self._tome_info["size"] = None
         self._tome_info["source"] = None
         self._tome_info["metric"] = None
