@@ -244,7 +244,7 @@ try:
             self,
             hidden_states: torch.Tensor,
             head_mask: Optional[torch.Tensor] = None,
-        ) -> Tuple[torch.Tensor, None]:
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
             """
             Forward pass, proportional attention, and key-metric storage.
 
