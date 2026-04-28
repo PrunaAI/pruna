@@ -174,7 +174,7 @@ for _benchmark in [
             "Covers basic skills (scene, attributes, spatial relationships) to advanced reasoning "
             "(counting, comparison, logic/negation) with over 24k human ratings."
         ),
-        metrics=[],  # Paper uses VQAScore only; not in Pruna
+        metrics=["vqa", "clip_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2406.13743",
     ),
