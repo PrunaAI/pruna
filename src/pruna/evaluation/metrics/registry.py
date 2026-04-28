@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import importlib
 from functools import partial
 from inspect import isclass
 from typing import Any, Callable, Dict, Iterable, List
@@ -29,9 +30,17 @@ class MetricRegistry:
     Registry for metrics.
 
     The registry is a dictionary that maps metric names to metric classes.
+
+    Notes
+    -----
+    ``_lazy_metrics`` lists names that :meth:`has_metric` treats as registered before the
+    implementing module is loaded. The ``oneig_reasoning`` metric imports the LLM2CLIP-related
+    stack (vendored helpers, heavy optional dependencies); it is imported only when
+    :meth:`get_metric` is called with that name so other code paths avoid that cost.
     """
 
     _registry: Dict[str, Callable[..., Any]] = {}
+    _lazy_metrics: frozenset[str] = frozenset({"oneig_reasoning"})
 
     @classmethod
     def register(cls, name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -104,7 +113,7 @@ class MetricRegistry:
         bool
             True if the metric is registered, False otherwise.
         """
-        return name in cls._registry
+        return name in cls._registry or name in cls._lazy_metrics
 
     @classmethod
     def get_metric(cls, name: str, **kwargs) -> BaseMetric | StatefulMetric:
@@ -122,6 +131,9 @@ class MetricRegistry:
         -------
             The metric instance.
         """
+        if name in cls._lazy_metrics and name not in cls._registry:
+            importlib.import_module("pruna.evaluation.metrics.metric_oneig_reasoning")
+
         if name not in cls._registry:
             raise ValueError(f"Metric '{name}' is not registered.")
 
