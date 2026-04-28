@@ -38,8 +38,8 @@ from pruna.engine.utils import verify_sha256
 from pruna.logging.logger import pruna_logger
 
 # SHA256 hash for the pinned version (b3600) of convert_hf_to_gguf.py
-LLAMA_CPP_CONVERSION_SCRIPT_URL = "https://raw.githubusercontent.com/ggml-org/llama.cpp/b3600/convert_hf_to_gguf.py"
-LLAMA_CPP_CONVERSION_SCRIPT_SHA256 = "f62ab712618231b3e76050f94e45dcf94567312c209b4b99bfc142229360b018"
+LLAMA_CPP_CONVERSION_SCRIPT_URL = "https://raw.githubusercontent.com/ggml-org/llama.cpp/b8958/convert_hf_to_gguf.py"
+LLAMA_CPP_CONVERSION_SCRIPT_SHA256 = "242033a2d0070b6c9d8b29a4ca82e0ed7d1db162ce0c5b80c1e4223a41c249c4"
 LLAMA_CPP_CACHE_DIR = Path.home() / ".cache" / "pruna" / "scripts" / "llama_cpp"
 
 
@@ -209,6 +209,17 @@ class LlamaCpp(PrunaAlgorithmBase):
             model.save_pretrained(hf_model_dir)
             if hasattr(smash_config, "tokenizer") and smash_config.tokenizer:
                 smash_config.tokenizer.save_pretrained(hf_model_dir)
+            else:
+                if hasattr(model, "config") and hasattr(model.config, "_name_or_path") and model.config._name_or_path:
+                    model_id = model.config._name_or_path
+                    pruna_logger.info(f"Tokenizer missing in SmashConfig. Automatically adding tokenizer for {model_id}")
+                    smash_config.add_tokenizer(model_id)
+                    smash_config.tokenizer.save_pretrained(hf_model_dir)
+                else:
+                    raise ValueError(
+                        "Tokenizer is missing in SmashConfig and could not be inferred from the model. "
+                        "Please run `smash_config.add_tokenizer('model_id')` before smashing."
+                    )
 
             script_path = Path(self._get_conversion_script()).resolve()
             hf_model_path = Path(hf_model_dir).resolve()

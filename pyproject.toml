@@ -203,8 +203,7 @@ upscale = [
 ]
 full = [
     "pruna[stable-fast]",
-    "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
-    "gguf>=0.6.0", # Required for converting HF models to GGUF format
+    "pruna[llamacpp]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",

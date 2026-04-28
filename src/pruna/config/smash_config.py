@@ -556,6 +556,26 @@ class SmashConfig:
             # we convert this to native python types for printing and handing arguments to pruna algorithms
             return convert_numpy_types(return_value)
 
+    def get(self, name: str, default: Any = None) -> Any:
+        """
+        Get a configuration value from the configuration, returning default if not found.
+
+        Parameters
+        ----------
+        name : str
+            The name of the configuration setting.
+        default : Any, optional
+            The default value to return if the setting is not found.
+
+        Returns
+        -------
+        Any
+            Configuration value for the given name, or default.
+        """
+        if name in self:
+            return self[name]
+        return default
+
     def __contains__(self, name: str) -> bool:
         """
         Check if a configuration key exists in the SmashConfig.
@@ -729,6 +749,27 @@ class SmashConfigPrefixWrapper:
             return self._base_config[key]
         actual_key = self._prefix + key
         return self._base_config[actual_key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get a configuration value from the config, returning default if not found.
+
+        Parameters
+        ----------
+        key : str
+            The key to get from the config.
+        default : Any, optional
+            The default value to return if the setting is not found.
+
+        Returns
+        -------
+        Any
+            Configuration value for the given key, or default.
+        """
+        try:
+            return self[key]
+        except (KeyError, AttributeError):
+            return default
 
     def __getattr__(self, attr: str) -> Any:
         """
