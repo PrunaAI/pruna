@@ -83,7 +83,7 @@ class LlamaCpp(PrunaAlgorithmBase):
             OrdinalHyperparameter(
                 "n_gpu_layers",
                 sequence=[0, 1, 4, 8, 16, 32, -1],
-                default_value=0,
+                default_value=-1,
                 meta={"desc": "Number of layers to offload to GPU. Use -1 for all layers."},
             ),
             Int(
@@ -269,11 +269,13 @@ class LlamaCpp(PrunaAlgorithmBase):
         else:
             raise ValueError(f"Unknown quantization method: {method}")
 
-        llama_cpp.llama_model_quantize(
+        return_status = llama_cpp.llama_model_quantize(
             str(infile).encode("utf-8"),
             str(outfile).encode("utf-8"),
             params,
         )
+        if return_status != 0:
+            raise RuntimeError(f"llama_model_quantize failed with status code {return_status}.")
 
     def _get_conversion_script(self) -> Path:
         """

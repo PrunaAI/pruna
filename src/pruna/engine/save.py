@@ -495,7 +495,8 @@ def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: Smash
             # Update the model's internal path to the new location
             model.model_path = str(target_file)
             # Register the llama_cpp loading function in SmashConfig
-            smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
+            if LOAD_FUNCTIONS.llama_cpp.name not in smash_config.load_fns:
+                smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
         else:
             raise FileNotFoundError(f"GGUF file not found at {gguf_file}")
     else:
