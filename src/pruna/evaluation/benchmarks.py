@@ -267,8 +267,8 @@ for _benchmark in [
             "material alter, motion change, style change, subject add/remove/replace, text change, "
             "tone transfer, and human retouching."
         ),
-        metrics=[],  # Paper uses VIEScore; not in Pruna
-        task_type="text_to_image",
+        metrics=["vie_score"],
+        task_type="text+image_image",
         reference="https://arxiv.org/abs/2504.17761",
     ),
     Benchmark(
