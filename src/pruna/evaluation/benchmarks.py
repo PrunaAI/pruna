@@ -246,8 +246,8 @@ for _benchmark in [
             "Image editing benchmark with 8 edit types: replace, add, remove, adjust, extract, "
             "style, background, compose. Evaluates instruction-following for inpainting and editing."
         ),
-        metrics=[],  # Paper uses GPT-4o/ImgEdit-Judge; not in Pruna
-        task_type="text_to_image",
+        metrics=["img_edit_score"],
+        task_type="text+image_image",
         reference="https://arxiv.org/abs/2505.20275",
     ),
     Benchmark(
