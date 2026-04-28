@@ -286,6 +286,13 @@ for _benchmark in [
         reference="https://arxiv.org/abs/2506.07977",
     ),
     Benchmark(
+        name="OneIG Knowledge Reasoning",
+        description="OneIG subset: knowledge- and reasoning-heavy prompts.",
+        metrics=["oneig_reasoning"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
         name="OneIG Multilingualism",
         description="OneIG subset: multilingual prompts (incl. Chinese splits).",
         metrics=["oneig_alignment"],
