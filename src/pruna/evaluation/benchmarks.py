@@ -272,13 +272,30 @@ for _benchmark in [
         reference="https://arxiv.org/abs/2504.17761",
     ),
     Benchmark(
-        name="OneIG",
-        description=(
-            "Omni-dimensional benchmark for text-to-image evaluation. Six dataset categories "
-            "(Anime_Stylization, General_Object, Knowledge_Reasoning, Multilingualism, Portrait, "
-            "Text_Rendering) plus fine-grained style classes. Includes alignment questions."
-        ),
-        metrics=[],  # Paper uses dimension-specific metrics; not in Pruna
+        name="OneIG Anime Stylization",
+        description="OneIG subset: anime and stylized imagery.",
+        metrics=["oneig_alignment"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG General Object",
+        description="OneIG subset: everyday objects and scenes.",
+        metrics=["oneig_alignment"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Multilingualism",
+        description="OneIG subset: multilingual prompts (incl. Chinese splits).",
+        metrics=["oneig_alignment"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Portrait",
+        description="OneIG subset: people and portraits.",
+        metrics=["oneig_alignment"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
