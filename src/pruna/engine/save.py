@@ -491,7 +491,7 @@ def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: Smash
             target_file = model_path / "model.gguf"
             if gguf_file.resolve() != target_file.resolve():
                 shutil.copy(gguf_file, target_file)
-            
+
             # Update the model's internal path to the new location
             model.model_path = str(target_file)
             # Register the llama_cpp loading function in SmashConfig

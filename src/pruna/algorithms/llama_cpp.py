@@ -157,6 +157,7 @@ class LlamaCpp(PrunaAlgorithmBase):
             else:
                 quant_gguf_path = f16_gguf_path
 
+            shutil.rmtree(temp_dir, ignore_errors=True)
             return self._load_quantized_model(llama_cpp, quant_gguf_path, smash_config, temp_dir)
 
         except Exception as e:
