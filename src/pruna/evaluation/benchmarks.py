@@ -256,7 +256,7 @@ for _benchmark in [
             "Text-to-image benchmark for long, detailed prompts. Evaluates model ability to "
             "handle complex multi-clause descriptions and maintain coherence across long instructions."
         ),
-        metrics=[],  # Paper uses text_score/TIT-Score; not in Pruna
+        metrics=["text_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2507.22058",
     ),
@@ -296,6 +296,13 @@ for _benchmark in [
         name="OneIG Portrait",
         description="OneIG subset: people and portraits.",
         metrics=["oneig_alignment"],
+        task_type="text_to_image",
+        reference="https://arxiv.org/abs/2506.07977",
+    ),
+    Benchmark(
+        name="OneIG Text Rendering",
+        description="OneIG subset: text and graphics painted into the image.",
+        metrics=["oneig_text_score"],
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2506.07977",
     ),
