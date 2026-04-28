@@ -130,6 +130,43 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                 default_value=8,
                 meta={"desc": "Maximum (log) block size for tiling through intermediate dimension."},
             ),
+            OrdinalHyperparameter(
+                "block_quant_shape_n",
+                sequence=[32, 64, 128, 256, 512, 1024, 2048, 4096, None],
+                default_value=None,
+                meta={
+                    "desc": (
+                        "Side length (in elements) of one FP8 quantization block along the GEMM "
+                        "N axis in the fused MoE matmuls (same N as Triton BLOCK_SIZE_N: the "
+                        "output / intermediate-expert dimension). This sets the layout of "
+                        "block-wise FP8 scale tensors in the benchmark; it is not a Triton tile "
+                        "size that this algorithm searches over (see block_size_n_max for the "
+                        "searched tile cap). When set, the tuner still searches kernel configs "
+                        "but only keeps those whose BLOCK_SIZE_N is divisible by this value. "
+                        "Must be set together with block_quant_shape_k: either both None or both "
+                        "an integer. Default None: per-expert (non-block) FP8 scales and no extra "
+                        "divisibility filter on BLOCK_SIZE_N."
+                    )
+                },
+            ),
+            OrdinalHyperparameter(
+                "block_quant_shape_k",
+                sequence=[32, 64, 128, 256, 512, 1024, 2048, 4096, None],
+                default_value=None,
+                meta={
+                    "desc": (
+                        "Side length (in elements) of one FP8 quantization block along the GEMM "
+                        "K axis (same K as Triton BLOCK_SIZE_K: the inner / reduction dimension, "
+                        "e.g. hidden size in the expert up-projection). This is not automatically "
+                        "tuned: you choose it (or leave both quant block params None) to match the "
+                        "desired block-wise FP8 scale layout; the tuner only filters candidate "
+                        "kernels so BLOCK_SIZE_K divides evenly by this value when both are set. "
+                        "Must be set together with block_quant_shape_n: either both None or both "
+                        "an integer. Default None: per-expert FP8 scales and no extra "
+                        "divisibility filter on BLOCK_SIZE_K."
+                    )
+                },
+            ),
         ]
 
     def model_check_fn(self, model: Any) -> bool:
@@ -178,6 +215,19 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         model_config = getattr(model, "config", None)
         if model_config is None:
             raise ValueError(f"Model {model.__class__.__name__} has no config.")
+        # Multimodal MoE (e.g. Qwen3_5MoeForConditionalGeneration): MoE parameters live on text_config.
+        if getattr(model_config, "num_experts", None) is None:
+            text_cfg = getattr(model_config, "text_config", None)
+            if text_cfg is not None and getattr(text_cfg, "num_experts", None) is not None:
+                model_config = text_cfg
+            else:
+                raise ValueError(
+                    f"Cannot resolve MoE layout for {model.__class__.__name__}: "
+                    "`config.num_experts` is missing and no `config.text_config.num_experts` was "
+                    "found. This tuner expects a supported MoE model (e.g. Mixtral, Qwen-MoE, "
+                    "or multimodal MoE with experts in `text_config`). For custom or future "
+                    "architectures, extend config resolution in MoeKernelTuner._apply."
+                )
 
         tensor_parallel_size = int(smash_config["tensor_parallel_size"])
         if model.__class__.__name__ == "HunyuanImage3ForCausalMM":
@@ -194,6 +244,17 @@ class MoeKernelTuner(PrunaAlgorithmBase):
         dtype = torch.bfloat16 if dtype == "bfloat16" else torch.float16
         use_fp8_w8a8 = smash_config["weight_dtype"] == "fp8_w8a8"
         use_int8_w8a16 = smash_config["weight_dtype"] == "int8_w8a16"
+        block_quant_shape_n = smash_config["block_quant_shape_n"]
+        block_quant_shape_k = smash_config["block_quant_shape_k"]
+        if (block_quant_shape_n is None) ^ (block_quant_shape_k is None):
+            raise ValueError(
+                "block_quant_shape_n and block_quant_shape_k must both be None (default, "
+                "per-expert FP8 scales and no quant-block filtering) or both set to an integer; "
+                "setting only one 'None' is not supported."
+            )
+        block_quant_shape = None
+        if block_quant_shape_n is not None and block_quant_shape_k is not None:
+            block_quant_shape = [block_quant_shape_n, block_quant_shape_k]
 
         # (iii) Tune the kernel over a range of batch sizes (single GPU per Ray worker).
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
@@ -206,6 +267,18 @@ class MoeKernelTuner(PrunaAlgorithmBase):
 
         ray.init(ignore_reinit_error=True)
         search_space = get_configs_compute_bound(smash_config)
+
+        # Remove configs incompatible with block quantisation constraints:
+        # - BLOCK_SIZE_K must be divisible by block_quant_shape_k
+        # - BLOCK_SIZE_N must be divisible by block_quant_shape_n
+        if block_quant_shape is not None and use_fp8_w8a8:
+            search_space = [
+                cfg
+                for cfg in search_space
+                if cfg["BLOCK_SIZE_K"] % block_quant_shape_k == 0
+                and cfg["BLOCK_SIZE_N"] % block_quant_shape_n == 0
+            ]
+
         pruna_logger.info(f"Start tuning over {len(search_space)} configurations...")
 
         start = time.time()
@@ -226,7 +299,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
                     use_fp8_w8a8,
                     use_int8_w8a16,
                     search_space,
-                    None,
+                    block_quant_shape,
                     False,
                     imported_packages,
                     0,  # fixed seed for reproducibility
@@ -266,7 +339,7 @@ class MoeKernelTuner(PrunaAlgorithmBase):
             dtype,
             use_fp8_w8a8,
             use_int8_w8a16,
-            None,
+            block_quant_shape,
             smash_config["path_to_huggingface_hub_cache"],
             smash_config["path_to_vllm_cache"],
             imported_packages,
