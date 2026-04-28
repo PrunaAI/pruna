@@ -226,7 +226,7 @@ for _benchmark in [
             "counting, colors, position, color attributes. Evaluates fine-grained alignment "
             "between prompts and generated images via VQA-style questions."
         ),
-        metrics=["clip_score"],  # §3.2: Mask2Former; not in Pruna
+        metrics=["qa_accuracy", "clip_score"],  # strict QA + CLIP score
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2310.11513",
     ),
