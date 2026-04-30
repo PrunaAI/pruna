@@ -70,7 +70,7 @@ jobs:
         include:
         - name: base
           extras: ""
-          mark_filter: "cpu and not slow and not style and not requires_intel and not requires_lmharness and not requires_rapidata"
+          mark_filter: "cpu and no_extras and not slow and not style"
         - name: lmharness
           extras: "--extra lmharness"
           mark_filter: "requires_lmharness"
