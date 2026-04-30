@@ -40,18 +40,3 @@ New to contributing? Check out our [Contributing Guide](https://docs.pruna.ai/en
 > - Draft PRs or PRs without a clear and detailed overview may be delayed.  
 > - Please mark your PR as **Ready for Review** and ensure the sections above are filled out.
 > - Contributions that are entirely AI-generated without meaningful human review are discouraged.
-
----
-
-## First Prune (1-year OSS anniversary)
-
-**First Prune** marks one year of Pruna’s open-source work. During the initiative window, qualifying merged contributions count toward **First Prune**. You can earn credits for our **performance models** via our **API**.
-
-If you’d like your contribution to count toward **First Prune**, here’s how it works:
-
-- **Initiative window:** First Prune starts on **March 31**.
-- **Issue assignment:** For your PR to count toward First Prune, the related issue must be assigned to the contributor opening the PR. Issues are labeled with **first-prune**.
-- **Open for review:** Please **open your PR and mark it ready for review by April 30** (end of April).
-- **Review priority:** We’ll make our best effort to review quickly any PR that is open and has a review request before April 30.
-- **Credits:** Each qualifying merged PR earns **30 credits**. We’ll be in touch after all qualifying PRs for **First Prune** have been merged.
-- **To get started:** Have a look at [all models](https://www.pruna.ai/all-models). You’ll need to **sign up** on the [dashboard](https://dashboard.pruna.ai/login) before you can redeem your credits.
