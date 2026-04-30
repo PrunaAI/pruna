@@ -112,6 +112,10 @@ For specific test markers:
 uv run pytest -m "cpu and not slow"
 ```
 
+#### How and when to add a new optional extra
+
+Add a new extra when a feature or algorithm needs dependencies that should not be installed for every Pruna user, for example because they are heavy, platform-specific, or only needed for one backend. Define the dependency group in `pyproject.toml` under `[project.optional-dependencies]`. For algorithms, set `required_install` on the algorithm class, for example `required_install = "uv pip install 'pruna[my-extra]'"`; this is used in the import error shown when the extra is missing. Finally, register a matching `requires_<extra>` marker in `tests/conftest.py`, mark tests that need the extra, and add the extra to the CI matrix with its install option and marker filter, for example `extras: "--extra my-extra"` and `mark_filter: "requires_my_extra"`.
+
 #### If you used Option B (pip/conda):
 
 ```bash
