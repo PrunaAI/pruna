@@ -468,7 +468,7 @@ class TokenMerging(PrunaAlgorithmBase):
     """
 
     algorithm_name: str = "token_merging"
-    group_tags: list[tags] = [tags.KERNEL]
+    group_tags: list[tags] = [tags.PRUNER]
     save_fn = SAVE_FUNCTIONS.reapply
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2210.09461",
