@@ -275,6 +275,11 @@ try:
             self._tome_info["metric"] = key_layer.mean(1)
 
             # Proportional attention: bias scores by log(token_size).
+            # On layer 0 the bias is skipped by construction: ToMeModelWrapper.forward
+            # resets size to None each call, and size is only populated by the merge
+            # step that runs *after* attention. From the second layer onward (once a
+            # prior layer with r > 0 has merged), size is usually set and, if
+            # prop_attn is on, attention_mask is non-None.
             attention_mask = None
             if self._tome_info["prop_attn"] and self._tome_info["size"] is not None:
                 attention_mask = self._tome_info["size"].log()[:, None, None, :, 0]
