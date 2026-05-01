@@ -298,13 +298,19 @@ try:
                 ).to(query_layer.dtype)
                 dropout_p = self.dropout_prob if self.training else 0.0
                 attn_weights = torch.nn.functional.dropout(attn_weights, p=dropout_p, training=self.training)
-                if head_mask is not None and not getattr(self, "_tome_head_mask_warned", False):
-                    pruna_logger.warning(
-                        "ToMeViTSelfAttention received a non-None head_mask while "
-                        "proportional attention is active. The combination of Token "
-                        "Merging with head pruning is not supported."
-                    )
-                    self._tome_head_mask_warned = True
+                if head_mask is not None:
+                    # Match HF eager semantics: head_mask is a post-softmax
+                    # multiplicative gate. Combining ToMe with head pruning is
+                    # untested, so warn once per module.
+                    if not getattr(self, "_tome_head_mask_warned", False):
+                        pruna_logger.warning(
+                            "ToMeViTSelfAttention received a non-None head_mask while "
+                            "proportional attention is active. The combination of Token "
+                            "Merging with head pruning is untested; behaviour may diverge "
+                            "from the reference implementation."
+                        )
+                        self._tome_head_mask_warned = True
+                    attn_weights = attn_weights * head_mask[:, None, None, :, :]
                 context_layer = (attn_weights @ value_layer).transpose(1, 2).contiguous()
                 attn_probs = attn_weights
             else:
