@@ -26,6 +26,7 @@ from pruna.config.hyperparameters import Boolean
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.engine.model_checks import is_transformers_pipeline_with_vit, is_vit
 from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.logging.logger import pruna_logger
 
 # ---------------------------------------------------------------------------
 # Token merging utility functions (adapted from facebook/ToMe)
@@ -297,6 +298,13 @@ try:
                 ).to(query_layer.dtype)
                 dropout_p = self.dropout_prob if self.training else 0.0
                 attn_weights = torch.nn.functional.dropout(attn_weights, p=dropout_p, training=self.training)
+                if head_mask is not None and not getattr(self, "_tome_head_mask_warned", False):
+                    pruna_logger.warning(
+                        "ToMeViTSelfAttention received a non-None head_mask while "
+                        "proportional attention is active. The combination of Token "
+                        "Merging with head pruning is not supported."
+                    )
+                    self._tome_head_mask_warned = True
                 context_layer = (attn_weights @ value_layer).transpose(1, 2).contiguous()
                 attn_probs = attn_weights
             else:
