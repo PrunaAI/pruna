@@ -190,6 +190,9 @@ def _merge_source(merge: Callable, x: torch.Tensor, source: torch.Tensor | None 
     """
     Track merge sources as an adjacency matrix.
 
+    This function is used when ``trace_source`` is ``True`` in the model's
+    ``_tome_info`` dict. It maintains a binary adjacency matrix of shape and is used only for visualization/debugging.
+
     Parameters
     ----------
     merge : Callable
