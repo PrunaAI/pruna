@@ -487,6 +487,43 @@ class TokenMerging(PrunaAlgorithmBase):
     runs_on: list[str] = ["cpu", "cuda"]
     dataset_required: bool = False
 
+    def get_hyperparameters(self) -> list:
+        """
+        Return the algorithm-specific hyperparameters.
+
+        Returns
+        -------
+        list
+            A list containing:
+            - ``r`` – number of tokens to merge per layer (int, 0–128).
+            - ``trace_source`` – whether to track merge provenance (bool).
+            - ``prop_attn`` – whether to use proportional attention (bool).
+        """
+        return [
+            UniformIntegerHyperparameter(
+                "r",
+                lower=0,
+                upper=128,
+                default_value=16,
+                meta={
+                    "desc": (
+                        "Number of tokens to merge per transformer layer. "
+                        "Higher values speed up inference but may reduce accuracy."
+                    )
+                },
+            ),
+            Boolean(
+                name="trace_source",
+                default=False,
+                meta=dict(desc="Track the source of each merged token (useful for visualisation)."),
+            ),
+            Boolean(
+                name="prop_attn",
+                default=True,
+                meta=dict(desc="Use proportional attention weights based on token size."),
+            ),
+        ]
+
     def model_check_fn(self, model: Any) -> bool:
         """
         Check whether *model* contains HuggingFace ``ViTLayer`` blocks.
@@ -502,19 +539,6 @@ class TokenMerging(PrunaAlgorithmBase):
             ``True`` if the model contains at least one ``ViTLayer``.
         """
         return is_vit(model) or is_transformers_pipeline_with_vit(model)
-
-    def import_algorithm_packages(self) -> dict[str, Any]:
-        """
-        Import the required HuggingFace ViT classes.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Dictionary with ``ViTLayer`` and ``ViTSelfAttention``.
-        """
-        from transformers.models.vit.modeling_vit import ViTLayer, ViTSelfAttention
-
-        return dict(ViTLayer=ViTLayer, ViTSelfAttention=ViTSelfAttention)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
@@ -578,39 +602,15 @@ class TokenMerging(PrunaAlgorithmBase):
 
         return ToMeModelWrapper(model, r, tome_info, num_layers)
 
-    def get_hyperparameters(self) -> list:
+    def import_algorithm_packages(self) -> dict[str, Any]:
         """
-        Return the algorithm-specific hyperparameters.
+        Import the required HuggingFace ViT classes.
 
         Returns
         -------
-        list
-            A list containing:
-            - ``r`` – number of tokens to merge per layer (int, 0–128).
-            - ``trace_source`` – whether to track merge provenance (bool).
-            - ``prop_attn`` – whether to use proportional attention (bool).
+        Dict[str, Any]
+            Dictionary with ``ViTLayer`` and ``ViTSelfAttention``.
         """
-        return [
-            UniformIntegerHyperparameter(
-                "r",
-                lower=0,
-                upper=128,
-                default_value=16,
-                meta={
-                    "desc": (
-                        "Number of tokens to merge per transformer layer. "
-                        "Higher values speed up inference but may reduce accuracy."
-                    )
-                },
-            ),
-            Boolean(
-                name="trace_source",
-                default=False,
-                meta=dict(desc="Track the source of each merged token (useful for visualisation)."),
-            ),
-            Boolean(
-                name="prop_attn",
-                default=True,
-                meta=dict(desc="Use proportional attention weights based on token size."),
-            ),
-        ]
+        from transformers.models.vit.modeling_vit import ViTLayer, ViTSelfAttention
+
+        return dict(ViTLayer=ViTLayer, ViTSelfAttention=ViTSelfAttention)
