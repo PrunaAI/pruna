@@ -268,9 +268,8 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
     enum_key = backend_name.upper()
 
     if enum_key not in attention_backend_name.__members__:
-
         # Pick the right custom op based on use_fp8
-        _ops = torch.ops.flash_attn_pruna  # ty: ignore[invalid-argument-type]
+        _ops = torch.ops.flash_attn_pruna
         _op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
 
         @attention_backend_registry.register(
@@ -316,7 +315,11 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
                 )
             else:
                 out = _op_fn(
-                    q=query, k=key, v=value, softmax_scale=scale, causal=is_causal  # ty: ignore[invalid-argument-type]
+                    q=query,  # type: ignore[invalid-argument-type]
+                    k=key,  # type: ignore[invalid-argument-type]
+                    v=value,  # type: ignore[invalid-argument-type]
+                    softmax_scale=scale,  # type: ignore[invalid-argument-type]
+                    causal=is_causal,  # type: ignore[invalid-argument-type]
                 )
                 return out
 
@@ -519,7 +522,7 @@ def _quantize_fp8(t: torch.Tensor, descale_shape: Tuple[int, int]) -> Tuple[torc
     """
     amax = t.abs().amax()
     # E4M3 max representable value is 448.0
-    scale = (448.0 / amax.clamp(min=1e-12))
+    scale = 448.0 / amax.clamp(min=1e-12)
     t_fp8 = (t * scale).to(torch.float8_e4m3fn)
     descale = torch.full(descale_shape, 1.0 / scale.item(), dtype=torch.float32, device=t.device)
     return t_fp8, descale
@@ -556,7 +559,9 @@ def register_pruna_flash_attn_op(kernel_mod: Any, use_fp8: bool = False) -> None
             k, descale_k = _quantize_fp8(k, descale_shape)
             v, descale_v = _quantize_fp8(v, descale_shape)
             result = flash_attn_cuda(
-                q, k, v,
+                q,
+                k,
+                v,
                 softmax_scale=softmax_scale or None,
                 causal=causal,
                 deterministic=False,
