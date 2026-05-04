@@ -50,3 +50,39 @@ AI models often hallucinate comments or reinvent existing utilities.
 ## Additional Resources
 
 For comprehensive guidance on contributing to Pruna, including development workflows, code quality standards, testing practices, and AI-assisted development best practices, see the [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## AI assistant / coding agent instructions
+
+If you are an AI assistant or coding agent helping with a contribution, follow these instructions.
+
+### Before making changes
+
+Read the relevant project files before editing code:
+
+- `README.md`
+- `CONTRIBUTING.md`
+- Existing code related to the changes
+- Relevant tests
+- Relevant files in `.github/`
+
+First understand the current project structure before introducing new patterns.
+
+### Contributing to Pruna
+
+Keep contributions small, focused, and reviewable.
+
+Do:
+
+- Make the smallest reasonable change that solves the issue
+- Match the existing code style
+- Reuse existing utilities and patterns
+- Add or update tests when behavior changes
+- Update documentation when user-facing behavior changes
+
+Do not:
+
+- Make unrelated refactors
+- Reformat unrelated files
+- Rename files or APIs unless required
+- Add new dependencies unless necessary
+- Skip checks or tests
