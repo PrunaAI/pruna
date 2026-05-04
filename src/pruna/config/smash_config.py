@@ -119,6 +119,11 @@ class SmashConfig:
             raise ValueError(f"Unsupported configuration type: {type(configuration)}")
         self.config_space: ConfigurationSpace = self._configuration.config_space
 
+    @property
+    def prepare_saving(self):
+        """Getter of _prepare_saving as an object's internal data."""
+        return self._prepare_saving
+
     @classmethod
     def from_list(
         cls,
