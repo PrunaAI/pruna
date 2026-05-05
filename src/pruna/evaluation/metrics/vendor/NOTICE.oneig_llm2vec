@@ -10,3 +10,8 @@ See the project repository for full license text.
 ``oneig_llm2vec/modeling_llama_encoder.py`` is derived from
 McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp (Hugging Face Hub);
 Pruna relaxes the upstream flash-attention-only constraint for CPU use.
+
+Pruna also includes two minimal compatibility fixes in
+``oneig_llm2vec/llm2vec.py``:
+- Preserve constructor-provided ``doc_max_length`` instead of hardcoding 512.
+- Honor ``convert_to_numpy=True`` in ``encode()`` by returning ``numpy.ndarray``.
