@@ -85,7 +85,7 @@ class LLM2Vec(nn.Module):
         self.pooling_mode = pooling_mode
         self.skip_instruction = skip_instruction
         self.max_length = max_length
-        self.doc_max_length = 512
+        self.doc_max_length = doc_max_length
         self.config = model.config
 
     @classmethod
@@ -448,6 +448,8 @@ class LLM2Vec(nn.Module):
         all_embeddings = torch.cat(all_embeddings, dim=0)
         all_embeddings = all_embeddings[np.argsort(length_sorted_idx)]
         all_embeddings = all_embeddings.to(torch.float32)
+        if convert_to_numpy:
+            return all_embeddings.cpu().numpy()
         return all_embeddings
 
     def save(self, output_path, merge_before_save=False, save_config=True):
