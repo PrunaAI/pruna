@@ -184,6 +184,6 @@ class AestheticLAION(StatefulMetric):
             urlretrieve(f"{LAION_AESTHETIC_BASE_URL}/{model_file}", path_to_model)
 
         aesthetic_linear_head = nn.Linear(hidden_dim, 1)
-        aesthetic_linear_head.load_state_dict(torch.load(path_to_model, map_location=self.device))
+        aesthetic_linear_head.load_state_dict(torch.load(path_to_model, map_location=self.device, weights_only=True))
         aesthetic_linear_head.eval()
         return aesthetic_linear_head.to(self.device)

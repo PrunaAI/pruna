@@ -383,9 +383,9 @@ def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
         The loaded pickled model.
     """
     # torch load has a target device but no interface to reproduce an accelerate-distributed model, we first map to cpu
-    target_device = (
-        "cpu" if smash_config.device == "accelerate" else smash_config.device
-    )
+    # Note: weights_only=False is used here because full model objects are being loaded.
+    # This is tracked in issue #592 for future architectural improvements (e.g., state_dict or safetensors).
+    target_device = "cpu" if smash_config.device == "accelerate" else smash_config.device
     model = torch.load(
         Path(path) / PICKLED_FILE_NAME,
         weights_only=False,
