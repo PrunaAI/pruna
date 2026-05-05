@@ -170,6 +170,10 @@ vllm = [
     "vllm>=0.16.0",
     "ray",
 ]
+llamacpp = [
+    "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
+    "gguf>=0.6.0", # Required for converting HF models to GGUF format
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna>=1.0.8,<1.0.9",
@@ -199,6 +203,7 @@ upscale = [
 ]
 full = [
     "pruna[stable-fast]",
+    "pruna[llamacpp]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",

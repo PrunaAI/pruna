@@ -760,3 +760,20 @@ def is_gptq_model(model: Any) -> bool:
         True if the model is a GPTQ model, False otherwise.
     """
     return "gptqmodel" in model.__class__.__module__ and "GPTQ" in model.__class__.__name__
+
+
+def is_llama_cpp_model(model: Any) -> bool:
+    """
+    Check if the model is a llama.cpp Llama model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a llama.cpp Llama model, False otherwise.
+    """
+    return model.__class__.__name__ == "Llama" and "llama_cpp" in str(model.__class__.__module__)

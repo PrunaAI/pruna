@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import contextlib
 import gc
+import hashlib
 import inspect
 import json
 from contextlib import AbstractContextManager, contextmanager
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +38,48 @@ def safe_memory_cleanup() -> None:
     """Perform safe memory cleanup by collecting garbage and clearing CUDA cache."""
     gc.collect()
     torch.cuda.empty_cache()
+
+
+def get_fn_name(obj: Any) -> str:
+    """
+    Get the name of a function or a partial function.
+
+    Parameters
+    ----------
+    obj : Any
+        The function or partial function to get the name of.
+
+    Returns
+    -------
+    str
+        The name of the function.
+    """
+    if isinstance(obj, partial):
+        return get_fn_name(obj.func)
+    return getattr(obj, "name", getattr(obj, "__name__", str(obj)))
+
+
+def verify_sha256(file_path: str | Path, expected_hash: str) -> bool:
+    """
+    Verify the SHA256 hash of a file.
+
+    Parameters
+    ----------
+    file_path : str | Path
+        The path to the file to verify.
+    expected_hash : str
+        The expected SHA256 hash.
+
+    Returns
+    -------
+    bool
+        True if the hash matches, False otherwise.
+    """
+    sha256_hash = hashlib.sha256()
+    with Path(file_path).open("rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest() == expected_hash
 
 
 def load_json_config(path: str | Path, json_name: str) -> dict:
@@ -364,6 +408,12 @@ def get_device(model: Any) -> str:
     if safe_is_instance(model, Pipeline):
         return get_device(model.model)
 
+    # function scored import due to model_check's import of ModelContext
+    from pruna.engine.model_checks import is_llama_cpp_model
+
+    if is_llama_cpp_model(model):
+        return _get_llama_cpp_device(model)
+
     # a device map that points the whole model to the same device (only key is "") is not considered distributed
     # when casting a model like this with "to" the device map is not maintained, so we rely on the model.device attribute
     if hasattr(model, "hf_device_map") and model.hf_device_map is not None and list(model.hf_device_map.keys()) != [""]:
@@ -375,11 +425,33 @@ def get_device(model: Any) -> str:
             model_device = next(model.parameters()).device
         except StopIteration:
             raise ValueError("Could not determine device of model, model has no device attribute.")
+        except AttributeError:
+            # Model does not use PyTorch parameters natively (e.g. llama_cpp), default to cpu string mapping
+            model_device = "cpu"
 
     # model_device.type ignores the device index. Added a new function to convert to string.
     model_device = device_to_string(model_device)
 
     return model_device
+
+
+def _get_llama_cpp_device(model: Any) -> str:
+    """
+    Determine device for llama.cpp models.
+
+    Parameters
+    ----------
+    model : Any
+        The llama.cpp model.
+
+    Returns
+    -------
+    str
+        The device string.
+    """
+    if hasattr(model, "_pruna_device"):
+        return device_to_string(model._pruna_device)
+    return "cpu"  # Default for now, as it's the safest.
 
 
 def get_device_map(model: Any, subset_key: str | None = None) -> dict[str, str]:
