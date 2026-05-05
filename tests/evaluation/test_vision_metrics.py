@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
+from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import BaseVLM
@@ -42,3 +43,16 @@ def test_vie_score_uses_json_score_lists() -> None:
     result = metric.compute()
 
     assert abs(result.result - 0.8) < 0.01
+
+
+@pytest.mark.cpu
+def test_img_edit_score_negative_response_clamped() -> None:
+    """Image edit score never goes below zero for malformed negative outputs."""
+    mock_vlm = MagicMock(spec=BaseVLM)
+    mock_vlm.generate.return_value = ['{"score": -10.0}']
+
+    metric = ImageEditScoreMetric(vlm=mock_vlm, device="cpu", structured_output=True)
+    metric.update(["replace the boot with a mug"], torch.zeros(1), _dummy_image())
+    result = metric.compute()
+
+    assert result.result == 0.0
