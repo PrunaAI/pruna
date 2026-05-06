@@ -245,7 +245,7 @@ evaluation = [
 # Intel extension is tightly coupled with the torch version
 intel = [
     "intel-extension-for-pytorch>=2.7.0",
-    "torch>=2.7.0,<2.9.0",
+    "torch>=2.7.0,<2.12.0",
     "torchvision>=0.22.0,<0.24.0",
 ]
 
