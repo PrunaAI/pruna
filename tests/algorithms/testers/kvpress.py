@@ -1,3 +1,5 @@
+import pytest
+
 from pruna import PrunaModel
 from pruna.algorithms.kvpress import KVPress
 
