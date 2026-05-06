@@ -4,6 +4,7 @@ from pruna.algorithms.kvpress import KVPress
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_kvpress
 class TestKVPress(AlgorithmTesterBase):
     """Test the KVPress KV cache compression algorithm with default settings."""
 
@@ -19,6 +20,7 @@ class TestKVPress(AlgorithmTesterBase):
         assert hasattr(model, "_kvpress_original_generate")
 
 
+@pytest.mark.requires_kvpress
 class TestKVPressSnapKV(AlgorithmTesterBase):
     """Test the KVPress algorithm with SnapKV and custom press_kwargs."""
 
