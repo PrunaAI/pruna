@@ -20,6 +20,7 @@ EXTRA_MARKS = {
     "requires_whisper": "mark test that needs pruna[whisper]",
     "requires_upscale": "mark test that needs pruna[upscale]",
     "requires_rapidata": "mark test that needs pruna[rapidata]",
+    "requires_kvpress": "mark test that needs pruna[kvpress]",
 }
 
 

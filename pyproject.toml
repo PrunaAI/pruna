@@ -87,6 +87,7 @@ conflicts = [
     [{ extra = "intel" }, { extra = "stable-fast" }, { extra = "stable-fast-extraindex" }],
     [{ extra = "intel" }, { extra = "full" }, { extra = "stable-fast-extraindex" }],
     [{ extra = "intel" }, { extra = "vllm" }],
+    [{ extra = "kvpress" }, { extra = "vbench" }],
 ]
 
 [tool.uv.sources]
@@ -247,6 +248,9 @@ intel = [
     "intel-extension-for-pytorch>=2.7.0",
     "torch>=2.7.0,<2.9.0",
     "torchvision>=0.22.0,<0.24.0",
+]
+kvpress = [
+    "kvpress>=0.5.2",
 ]
 
 [build-system]
