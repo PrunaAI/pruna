@@ -89,7 +89,8 @@ You can then also install the pre-commit hooks with
 
     pre-commit install
 
-1. Develop your contribution
+
+3. Develop your contribution
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You are now ready to work on your contribution. Check out a branch on your forked repository and start coding!
@@ -109,6 +110,30 @@ Tensor Annotations with jaxtyping
 ---------------------------------
 
 We use `jaxtyping <https://github.com/google/jaxtyping>`_ to annotate PyTorch tensors with both shape and dtype information, mainly in collate functions, dataloaders, and model interfaces. This improves readability, helps catch shape/type mismatches early, and makes functions more self-documenting. Contributors are encouraged to follow this style when defining tensor inputs or outputs—for details and examples, see the official jaxtyping documentation.
+
+
+**How to add a new dependency**
+
+Your contribution may require packages that |pruna| does not yet list as a dependency. Declare them in ``pyproject.toml`` and mention them in your pull request so reviewers can weigh impact and versioning.
+
+Use the ``dependencies`` section when the library is generally required for |pruna| to work as intended across typical usage.
+
+If it should not be installed for every |pruna| user, put it under ``optional-dependencies``. This often applies when a dependency is too heavy or platform-specific, or only needed for one backend. Then follow **these steps to add a new optional extra**:
+
+1. Define the dependency group in ``pyproject.toml`` under ``[project.optional-dependencies]``. Then go through the installation process with uv (see :ref:`installation`) and register conflicts with other extras by extending the conflicts under ``[tool.uv]``.
+2. If this extra is required for an algorithm, set the ``required_install`` attribute on the algorithm class, for example ``required_install = "uv pip install 'pruna[my-extra]'"``.
+3. Register a matching ``requires_my_extra`` marker in ``tests/conftest.py`` and mark tests that need the extra.
+4. Finally, if CPU tests rely on that extra, update ``.github/workflows/tests.yaml``: append your extra to the ``test`` job's ``strategy``:
+
+   .. code-block:: yaml
+
+        name: [..., my-extra]
+        matrix:
+            include:
+            # ...
+            - name: my-extra
+                extras: "--extra my-extra"
+                mark_filter: "requires_my_extra"
 
 
 4. Run the tests
@@ -131,12 +156,6 @@ For specific test markers:
 
     uv run pytest -m "cpu and not slow"
 
-**How and when to add a new optional extra**
-
-Add a new extra when a feature or algorithm needs dependencies that should not be installed for every |pruna| user, for example because they are heavy, platform-specific, or only needed for one backend.
-Define the dependency group in ``pyproject.toml`` under ``[project.optional-dependencies]``.
-For algorithms, set ``required_install`` on the algorithm class, for example ``required_install = "uv pip install 'pruna[my-extra]'"``; this is used in the import error shown when the extra is missing.
-Finally, register a matching ``requires_<extra>`` marker in ``tests/conftest.py``, mark tests that need the extra, and add the extra to the CI matrix with its install option and marker filter, for example ``extras: "--extra my-extra"`` and ``mark_filter: "requires_my_extra"``.
 
 **If you used Option B (pip/conda):**
 
