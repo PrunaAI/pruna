@@ -77,6 +77,7 @@ explicit = true
 
 [tool.uv]
 index-strategy = "first-index"
+exclude-newer = "1 week"  # protection against compromised dependencies
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
