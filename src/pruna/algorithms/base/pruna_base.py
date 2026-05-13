@@ -370,7 +370,23 @@ class PrunaAlgorithmBase(ABC):
 
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
-        return self._apply(model, wrapped_config)
+        result = self._apply(model, wrapped_config)
+
+        self.post_apply_hook(model, smash_config)
+        return result
+
+    def post_apply_hook(self, model: Any, smash_config: SmashConfig) -> None:
+        """
+        Post apply hook called after _apply returns to run side effects after the algorithm applies.
+
+        Parameters
+        ----------
+        model : Any
+            The model applied with the algorithm.
+        smash_config : SmashConfig
+            The SmashConfig object.
+        """
+        return
 
     def get_compatible_algorithms(self) -> list[str]:
         """
