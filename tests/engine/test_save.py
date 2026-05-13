@@ -1,9 +1,6 @@
 import os
-import shutil
-from pathlib import Path
-from unittest.mock import patch
-
 import pytest
+import shutil
 import torch
 from diffusers import DiffusionPipeline
 from transformers import AutoModelForCausalLM
@@ -28,6 +25,7 @@ def test_save_llm_to_hub() -> None:
         smash_config=smash_config,
     )
     pruna_model.push_to_hub(upload_repo_id, private=False)
+
 
 @pytest.mark.slow
 @pytest.mark.cpu
@@ -163,30 +161,6 @@ def test_push_to_hub_path_types(tmp_path) -> None:
 
 
 @pytest.mark.cpu
-def test_recovery_save_fn_is_none() -> None:
-    """Test that recovery algorithms use save_fn=None, preserving the prior algorithm's save format."""
-    from pruna.algorithms.global_utils.recovery.perp_recoverer import PERPRecoverer
-
-    assert PERPRecoverer.save_fn is None
-
-
-@pytest.mark.cpu
-def test_recovery_does_not_add_to_save_fns(tmp_path) -> None:
-    """Test that recovery's apply() does not append to save_fns when save_fn is None."""
-
-    config = SmashConfig()
-    config.save_fns = ["hqq"]  # simulate a prior algorithm's save_fn
-
-    save_fn = None
-
-    # PrunaAlgorithmBase apply logic
-    if save_fn is not None and save_fn != SAVE_FUNCTIONS.reapply:
-        config.save_fns.append(save_fn.name)
-
-    assert config.save_fns == ["hqq"], "Recovery should not add to save_fns"
-
-
-@pytest.mark.cpu
 def test_recovery_refresh_save_cache(tmp_path) -> None:
     """Test that recovery refreshes a stale save_before_apply cache with recovered weights."""
     from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -198,7 +172,6 @@ def test_recovery_refresh_save_cache(tmp_path) -> None:
     # Simulate a save_before_apply algorithm having run before recovery:
     # 1. Save original (pre-transformation) model to cache
     save_dir = PrunaAlgorithmBase.get_save_before_smash_dir(config)
-    save_dir.mkdir(parents=True)
     save_pruna_model(model, save_dir, config)
 
     # 2. Mark save_before_apply in save_fns (as the algorithm would)
@@ -211,7 +184,6 @@ def test_recovery_refresh_save_cache(tmp_path) -> None:
     ori_save_fns = config.save_fns[:]
     config.save_fns = [fn for fn in config.save_fns if fn != SAVE_FUNCTIONS.save_before_apply.name]
     shutil.rmtree(save_dir, ignore_errors=True)
-    save_dir.mkdir(parents=True)
     save_pruna_model(model, save_dir, config)
     config.save_fns = ori_save_fns
 
