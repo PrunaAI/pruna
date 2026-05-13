@@ -6,7 +6,7 @@ from pruna.algorithms.ws2t import WS2T, WhisperS2TWrapper
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.skip(reason="This test / the importing of whisper_s2t is affecting other tests.")
+@pytest.mark.requires_whisper
 @pytest.mark.slow
 class TestWhisperS2T(AlgorithmTesterBase):
     """Test the WhisperS2T batcher."""

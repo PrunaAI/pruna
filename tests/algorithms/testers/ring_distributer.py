@@ -21,7 +21,7 @@ from pruna.engine.pruna_model import PrunaModel
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 class TestRingAttn(AlgorithmTesterBase):
     """Test the RingAttn algorithm."""
 

@@ -14,7 +14,7 @@ from pruna.evaluation.metrics.metric_cmmd import CMMD
 from pruna.evaluation.metrics.registry import MetricRegistry
 from typing import Any, List
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="needs ≥2 GPUs to build a split model")
 @pytest.mark.parametrize(
     "datamodule_fixture, model_fixture, evaluation_request, low_memory",
@@ -112,7 +112,7 @@ def test_ensure_task_model_device_mismatch_raises(datamodule_fixture: PrunaDataM
     with pytest.raises(ValueError):
         model = agent.prepare_model(model)
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="needs ≥2 GPUs to build a split model")
 @pytest.mark.parametrize(
     "datamodule_fixture,model_fixture,task_device",
@@ -134,7 +134,7 @@ def test_ensure_task_model_accelerate_device_mismatch_raises(datamodule_fixture:
         agent.prepare_model(model)
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="needs ≥2 GPUs to build a split model")
 @pytest.mark.parametrize(
     "datamodule_fixture,model_fixture",

@@ -30,7 +30,7 @@ def device_parametrized(cls: Any) -> Any:
             pytest.param("cuda", marks=pytest.mark.cuda),
             pytest.param(
                 "accelerate",
-                marks=pytest.mark.distributed,
+                marks=pytest.mark.multi_gpu,
             ),
             pytest.param("cpu", marks=pytest.mark.cpu),
         ],

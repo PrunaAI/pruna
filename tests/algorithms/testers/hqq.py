@@ -1,3 +1,5 @@
+import pytest
+
 from pruna import PrunaModel
 from pruna.algorithms.hqq import HQQ
 
@@ -14,6 +16,9 @@ class TestHQQ(AlgorithmTesterBase):
     metrics = ["perplexity"]
 
 
+@pytest.mark.skip(
+    reason="Current Janus inference requires transformer 4.51.3 which is incompatible with the test environment."
+)
 class TestHQQJanus(AlgorithmTesterBase):
     """Test the HQQ quantizer."""
 

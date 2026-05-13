@@ -50,6 +50,7 @@ class Half(PrunaAlgorithmBase):
         "stable_fast",
         "torch_compile",
         "ifw",
+        "kvpress",
         "whisper_s2t",
         "sage_attn",
         "hyper",

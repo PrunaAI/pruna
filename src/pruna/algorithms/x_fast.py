@@ -45,7 +45,10 @@ class XFast(PrunaAlgorithmBase):
     runs_on: list[str] = ["cuda"]
     dataset_required: bool = False
     compatible_before: list[str | AlgorithmTag] = ["quanto", "half"]
-    required_install: str = "``pip install pruna[stable-fast]``"
+    required_install: str = (
+        "``pip install pruna[stable-fast]`` or ``pip install pruna[stable-fast] "
+        "--extra-index-url https://prunaai.pythonanywhere.com/`` for other torch versions"
+    )
 
     def get_hyperparameters(self) -> list:
         """

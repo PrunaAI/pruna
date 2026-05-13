@@ -1,8 +1,11 @@
+import pytest
+
 from pruna.algorithms.stable_fast import StableFast
 
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_stable_fast
 class TestStableFast(AlgorithmTesterBase):
     """Test the stable_fast algorithm."""
 
