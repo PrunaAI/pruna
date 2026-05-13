@@ -42,7 +42,7 @@ from pruna.engine.load import (
 )
 from pruna.engine.model_checks import get_helpers, is_janus_llamagen_ar
 from pruna.engine.save_artifacts import save_artifacts
-from pruna.engine.utils import determine_dtype, monkeypatch
+from pruna.engine.utils import determine_dtype, get_fn_name, monkeypatch
 from pruna.logging.logger import pruna_logger
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
         save_fn = original_save_fn
 
     # if save-before-move was the last operation, we simply move the already saved files, we have delt with them before
-    elif smash_config.save_fns[-1] == SAVE_FUNCTIONS.save_before_apply.name:
+    elif len(smash_config.save_fns) > 0 and smash_config.save_fns[-1] == get_fn_name(SAVE_FUNCTIONS.save_before_apply):
         pruna_logger.debug("Moving saved model...")
         save_fn = save_before_apply
 
@@ -470,6 +470,39 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
 
 
+def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Save the model with llama.cpp functionality.
+
+    Parameters
+    ----------
+    model : Any
+        The model to save.
+    model_path : str | Path
+        The directory to save the model to.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    """
+    model_path = Path(model_path)
+
+    if hasattr(model, "model_path"):
+        gguf_file = Path(model.model_path)
+        if gguf_file.exists():
+            target_file = model_path / "model.gguf"
+            if gguf_file.resolve() != target_file.resolve():
+                shutil.copy(gguf_file, target_file)
+
+            # Update the model's internal path to the new location
+            model.model_path = str(target_file)
+            # Register the llama_cpp loading function in SmashConfig
+            if LOAD_FUNCTIONS.llama_cpp.name not in smash_config.load_fns:
+                smash_config.load_fns.append(LOAD_FUNCTIONS.llama_cpp.name)
+        else:
+            raise FileNotFoundError(f"GGUF file not found at {gguf_file}")
+    else:
+        raise AttributeError("Llama object does not have model_path attribute.")
+
+
 def reapply(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
     """
     Reapply the model.
@@ -521,6 +554,7 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     pickled = member(save_pickled)
     hqq = member(save_model_hqq)
     hqq_diffusers = member(save_model_hqq_diffusers)
+    llama_cpp = member(save_model_llama_cpp)
     save_before_apply = member(save_before_apply)
     reapply = member(reapply)
 
