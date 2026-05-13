@@ -623,8 +623,9 @@ class SmashConfig:
         # request wants to activate a dictionary of algorithms and their hyperparameters
         elif isinstance(request, dict):
             for key, value in request.items():
-                # target modules are a special case, as they are a hyperparameter but their value is a dict
-                if isinstance(value, dict) and "target_module" not in key:
+                # if the key is an algorithm name and the value is a dict, treat it as
+                # algorithm activation + hyperparameter setting (e.g. {"hqq": {"weight_bits": 4}})
+                if isinstance(value, dict) and key in SMASH_SPACE.get_all_algorithms():
                     self._configuration[key] = True
                     for k, v in value.items():
                         if not k.startswith(key):

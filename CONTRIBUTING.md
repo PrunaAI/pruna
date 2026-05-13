@@ -3,9 +3,8 @@
 Since you landed on this part of the repository, we want to first of all say thank you! 💜
 Contributions from the community are essential to improving Pruna, we appreciate your effort in making the repository better for everyone!
 
-Please make sure to review and adhere to the [Pruna Code of Conduct](https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md) before contributing to Pruna.
-Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms.
-Contributions that do not adhere to the code of conduct will be ignored.
+Please make sure to review and adhere to the [Pruna Code of Conduct](https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md) and [AI Contribution Policy](https://github.com/PrunaAI/pruna/blob/main/AI_CONTRIBUTION_POLICY.md) before contributing to Pruna.
+Contributions that do not adhere to the code of conduct or AI contribution policy will be ignored.
 
 There are various ways you can contribute:
 
@@ -111,6 +110,10 @@ For specific test markers:
 ```bash
 uv run pytest -m "cpu and not slow"
 ```
+
+#### How and when to add a new optional extra
+
+Add a new extra when a feature or algorithm needs dependencies that should not be installed for every Pruna user, for example because they are heavy, platform-specific, or only needed for one backend. Define the dependency group in `pyproject.toml` under `[project.optional-dependencies]`. For algorithms, set `required_install` on the algorithm class, for example `required_install = "uv pip install 'pruna[my-extra]'"`; this is used in the import error shown when the extra is missing. Finally, register a matching `requires_<extra>` marker in `tests/conftest.py`, mark tests that need the extra, and add the extra to the CI matrix with its install option and marker filter, for example `extras: "--extra my-extra"` and `mark_filter: "requires_my_extra"`.
 
 #### If you used Option B (pip/conda):
 

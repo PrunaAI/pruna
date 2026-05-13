@@ -1,13 +1,15 @@
 import pytest
 from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.result import MetricResult
-import pytest
 from pruna.evaluation.task import (
     Task,
     _process_single_request,
     _get_lm_eval_task_metrics,
 )
 from pruna.data.pruna_datamodule import PrunaDataModule
+
+# apply this mark to all tests in this file
+pytestmark = pytest.mark.requires_lmharness
 
 
 @pytest.mark.cpu

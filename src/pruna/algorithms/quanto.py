@@ -52,6 +52,7 @@ class Quanto(PrunaAlgorithmBase):
     compatible_before: Iterable[str] = ["qkv_diffusers", "moe_kernel_tuner"]
     compatible_after: Iterable[str] = [
         "deepcache",
+        "kvpress",
         "sage_attn",
         "text_to_image_distillation_inplace_perp",
         "text_to_image_distillation_lora",

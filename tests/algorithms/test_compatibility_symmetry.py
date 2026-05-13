@@ -2,6 +2,8 @@ import pytest
 
 from pruna.algorithms import AlgorithmRegistry
 
+pytestmark = pytest.mark.cpu
+
 
 def test_compatibility_symmetry():
     pruna_algorithms = AlgorithmRegistry._registry

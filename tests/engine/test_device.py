@@ -66,7 +66,7 @@ def test_device_casting(input_device: str | torch.device, target_device: str | t
 
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
 @pytest.mark.parametrize("model_fixture", ["sd_tiny_random"], indirect=True)
 def test_accelerate_diffusers_casting(target_device: str | torch.device, model_fixture: Any) -> None:
@@ -85,7 +85,7 @@ def test_accelerate_diffusers_casting(target_device: str | torch.device, model_f
     model("an elf on a shelf", num_inference_steps=2, width=16, height=16)
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
 @pytest.mark.parametrize("model_fixture", ["opt_tiny_random"], indirect=True)
 def test_accelerate_autocausallm_casting(target_device: str | torch.device, model_fixture: Any) -> None:
@@ -103,7 +103,7 @@ def test_accelerate_autocausallm_casting(target_device: str | torch.device, mode
     model(**dummy)
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
 def test_accelerate_diffusers_model_casting(target_device: str | torch.device) -> None:
     """Test that a diffusers model can be cast to the target device."""
@@ -127,7 +127,7 @@ def test_accelerate_diffusers_model_casting(target_device: str | torch.device) -
     full_pipe("an elf on a shelf", num_inference_steps=2, width=16, height=16)
 
 
-@pytest.mark.distributed
+@pytest.mark.multi_gpu
 @pytest.mark.parametrize("target_device", ["cuda", "cpu"])
 @pytest.mark.parametrize("model_fixture", ["whisper_tiny_random"], indirect=True)
 def test_accelerate_transformer_pipeline_casting(target_device: str | torch.device, model_fixture: Any) -> None:
