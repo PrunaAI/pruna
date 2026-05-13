@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
-import shutil
 import torch
 from diffusers import DiffusionPipeline
 from transformers import AutoModelForCausalLM
@@ -161,39 +163,36 @@ def test_push_to_hub_path_types(tmp_path) -> None:
 
 
 @pytest.mark.cpu
-def test_recovery_refresh_save_cache(tmp_path) -> None:
-    """Test that recovery refreshes a stale save_before_apply cache with recovered weights."""
+def test_perp_post_apply_hook_round_trip(tmp_path) -> None:
+    """Test whether PERPRecoverer saves the correct model and load from it."""
     from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+    from pruna.algorithms.global_utils.recovery.perp_recoverer import PERPRecoverer
 
-    model = AutoModelForCausalLM.from_pretrained("yujiepan/opt-tiny-random")
+    class FakeRecoverer(PERPRecoverer):
+        algorithm_name = "test_fake_recoverer"
 
+        def __init__(self):  # noqa: D107
+            pass
+
+        def _apply(self, model, smash_config):  # noqa: D401
+            model.weight.data.fill_(0.99)
+            return model
+
+    model = torch.nn.Linear(3, 2)
+    model.weight.data.fill_(0.1)
     config = SmashConfig(device="cpu")
 
-    # Simulate a save_before_apply algorithm having run before recovery:
-    # 1. Save original (pre-transformation) model to cache
     save_dir = PrunaAlgorithmBase.get_save_before_smash_dir(config)
     save_pruna_model(model, save_dir, config)
-
-    # 2. Mark save_before_apply in save_fns (as the algorithm would)
     config.save_fns.append(SAVE_FUNCTIONS.save_before_apply.name)
 
-    # 3. Simulate the transformation (e.g., half) + recovery modifying weights
-    model.lm_head.weight.data.fill_(0.99)  # "recovered" weights
+    model = FakeRecoverer().apply(model, config)
 
-    # 4. Simulate what recovery's apply() does: refresh the stale cache
-    ori_save_fns = config.save_fns[:]
-    config.save_fns = [fn for fn in config.save_fns if fn != SAVE_FUNCTIONS.save_before_apply.name]
-    shutil.rmtree(save_dir, ignore_errors=True)
-    save_pruna_model(model, save_dir, config)
-    config.save_fns = ori_save_fns
-
-    # 5. Verify the cache was refreshed: save_before_apply should copy updated files
     save_path = tmp_path / "final_model"
     save_pruna_model(model, save_path, config)
 
-    # Load and verify the recovered weights survived the round-trip
     loaded_model, _ = load_pruna_model(save_path)
     loaded_model = loaded_model.cpu()
     assert torch.allclose(
-        loaded_model.lm_head.weight, torch.full_like(loaded_model.lm_head.weight, 0.99)
+        loaded_model.weight, torch.full_like(loaded_model.weight, 0.99)
     ), "Recovered weights should survive save/load through save_before_apply"
