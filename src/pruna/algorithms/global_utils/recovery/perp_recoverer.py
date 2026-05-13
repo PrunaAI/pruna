@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import shutil
+from abc import ABCMeta
 from typing import Any, Dict
 
 import torch
@@ -32,11 +32,11 @@ from pruna.engine.model_checks import (
     is_sd_pipeline,
     is_sdxl_pipeline,
 )
-from pruna.engine.save import SAVE_FUNCTIONS, save_pruna_model
+from pruna.engine.save import refresh_saved_model
 from pruna.logging.logger import pruna_logger
 
 
-class PERPRecoverer(PrunaAlgorithmBase):
+class PERPRecoverer(PrunaAlgorithmBase, metaclass=ABCMeta):
     """
     General purpose PERP recoverer using norm, head and bias finetuning and optionally HuggingFace's LoRA.
 
@@ -65,7 +65,6 @@ class PERPRecoverer(PrunaAlgorithmBase):
 
     def __init__(self, task_name: str, use_lora: bool, use_in_place: bool, is_distillation: bool) -> None:
         self.task_name = task_name
-        self.tokenizer_required = task_name == "text_to_text"  # type: ignore[misc]
 
         if not use_lora and not use_in_place:
             raise ValueError("Arguments use_lora and use_in_place cannot both be False, please use one of the two.")
@@ -90,6 +89,11 @@ class PERPRecoverer(PrunaAlgorithmBase):
         self.seed_generator: torch.Generator | None = None
 
         super().__init__()  # self.adapters need to be set before calling get_hyperparameters
+
+    @property
+    def tokenizer_required(self) -> bool:
+        """Overwritten ``tokenizer_required`` property."""
+        return self.task_name == "text_to_text"
 
     def get_hyperparameters(self) -> list:
         """
@@ -183,44 +187,10 @@ class PERPRecoverer(PrunaAlgorithmBase):
             adapter_smash_config = SmashConfigPrefixWrapper(smash_config, adapter.adapter_prefix + "_")
             adapter.pre_smash_hook(model_recovery, adapter_smash_config, seed=adapter_seed)
 
-    def apply(self, model: Any, smash_config: SmashConfig) -> Any:
-        """
-        Apply the recovery algorithm and refresh the save cache if needed.
-
-        Recovery modifies weights in-place without changing the model's serialization
-        format. If a prior algorithm used ``save_before_apply`` (caching the model before
-        its transformation), the cached snapshot is now stale because recovery changed
-        the weights. This override refreshes that cache so the already saved model includes
-        the recovered weights.
-
-        Parameters
-        ----------
-        model : Any
-            The model to apply the algorithm to.
-        smash_config : SmashConfig
-            The SmashConfig object containing the save and load functions.
-
-        Returns
-        -------
-        Any
-            The model after recovery has been applied.
-        """
-        result = super().apply(model, smash_config)
-
+    def post_apply_hook(self, model: Any, smash_config: SmashConfig):
+        """Override to run side effects after the algorithm has been applied."""
         if smash_config.prepare_saving:
-            save_dir = self.get_save_before_smash_dir(smash_config)
-            if not save_dir.exists():
-                return result
-
-            ori_save_fns = smash_config.save_fns[:]
-            smash_config.save_fns = [fn for fn in smash_config.save_fns if fn != SAVE_FUNCTIONS.save_before_apply.name]
-            # Re-save with recovered weights
-            shutil.rmtree(save_dir, ignore_errors=True)
-            save_dir.mkdir(parents=True)
-            save_pruna_model(model, save_dir, smash_config)
-            # Restore save_fns
-            smash_config.save_fns = ori_save_fns
-        return result
+            refresh_saved_model(model, self.get_save_before_smash_dir(smash_config), smash_config)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """

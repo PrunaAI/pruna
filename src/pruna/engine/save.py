@@ -355,9 +355,7 @@ def save_model_hqq(model: Any, model_path: str | Path, smash_config: SmashConfig
         # save pipeline info so we can call transformers.pipeline at load time
         save_pipeline_info(model, str(model_path))
         # pipeline loading requires a safetensor file so we save a fake, lightweight one
-        save_model(
-            torch.nn.Linear(1, 1), str(model_path / "model.safetensors"), metadata={"format": "pt"}
-        )
+        save_model(torch.nn.Linear(1, 1), str(model_path / "model.safetensors"), metadata={"format": "pt"})
 
         save_model_hqq(model.model, model_path, smash_config)
     elif is_janus_llamagen_ar(model):
@@ -468,6 +466,37 @@ def save_model_hqq_diffusers(model: Any, model_path: str | Path, smash_config: S
                 setattr(model, attr_name, module_backup)
 
     smash_config.load_fns.append(LOAD_FUNCTIONS.hqq_diffusers.name)
+
+
+def refresh_saved_model(model: Any, model_path: Path, smash_config: SmashConfig) -> None:
+    """
+    Refresh the saved save-before-apply model, and the cache will reflect the current model state.
+
+    Recovery modifies weights in-place without changing the model's serialization
+    format. If a prior algorithm used ``save_before_apply`` (caching the model before
+    its transformation), the cached snapshot is now stale because recovery changed
+    the weights. This override refreshes that cache so the already saved model includes
+    the recovered weights.
+
+    Parameters
+    ----------
+    model : Any
+        The model to apply the algorithm to.
+    model_path: Path
+        The model path to be saved.
+    smash_config : SmashConfig
+        The SmashConfig object containing the save and load functions.
+    """
+    if not model_path.exists():
+        return None
+
+    ori_save_fns = smash_config.save_fns[:]
+    smash_config.save_fns = [fn for fn in smash_config.save_fns if fn != SAVE_FUNCTIONS.save_before_apply.name]
+    # Re-save with recovered weights
+    shutil.rmtree(model_path, ignore_errors=True)
+    save_pruna_model(model, model_path, smash_config)
+    # Restore save_fns
+    smash_config.save_fns = ori_save_fns
 
 
 def save_model_llama_cpp(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
