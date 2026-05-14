@@ -1,18 +1,17 @@
 import os
-import pytest
-import torch
 from pathlib import Path
 from unittest.mock import patch
-from transformers import AutoModelForCausalLM
-from pruna.config.smash_config import SmashConfig
-from pruna import smash
-from pruna.engine.save import save_pruna_model
-from pruna.engine.save import save_pruna_model_to_hub
-from pruna.engine.save import SAVE_FUNCTIONS
-from pruna.engine.load import load_pruna_model
-from pruna.config.smash_config import SmashConfig
+
+import pytest
+import torch
 from diffusers import DiffusionPipeline
+from transformers import AutoModelForCausalLM
+
+from pruna import smash
+from pruna.config.smash_config import SmashConfig
+from pruna.engine.load import load_pruna_model
 from pruna.engine.pruna_model import PrunaModel
+from pruna.engine.save import SAVE_FUNCTIONS, save_pruna_model, save_pruna_model_to_hub
 
 
 @pytest.mark.slow
@@ -28,6 +27,7 @@ def test_save_llm_to_hub() -> None:
         smash_config=smash_config,
     )
     pruna_model.push_to_hub(upload_repo_id, private=False)
+
 
 @pytest.mark.slow
 @pytest.mark.cpu
@@ -160,3 +160,39 @@ def test_push_to_hub_path_types(tmp_path) -> None:
             private=True
         )
         assert mock_upload.called
+
+
+@pytest.mark.cpu
+def test_perp_post_apply_hook_round_trip(tmp_path) -> None:
+    """Test whether PERPRecoverer saves the correct model and load from it."""
+    from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
+    from pruna.algorithms.global_utils.recovery.perp_recoverer import PERPRecoverer
+
+    class FakeRecoverer(PERPRecoverer):
+        algorithm_name = "test_fake_recoverer"
+
+        def __init__(self):  # noqa: D107
+            pass
+
+        def _apply(self, model, smash_config):  # noqa: D401
+            model.weight.data.fill_(0.99)
+            return model
+
+    model = torch.nn.Linear(3, 2)
+    model.weight.data.fill_(0.1)
+    config = SmashConfig(device="cpu")
+
+    save_dir = PrunaAlgorithmBase.get_save_before_smash_dir(config)
+    save_pruna_model(model, save_dir, config)
+    config.save_fns.append(SAVE_FUNCTIONS.save_before_apply.name)
+
+    model = FakeRecoverer().apply(model, config)
+
+    save_path = tmp_path / "final_model"
+    save_pruna_model(model, save_path, config)
+
+    loaded_model, _ = load_pruna_model(save_path)
+    loaded_model = loaded_model.cpu()
+    assert torch.allclose(
+        loaded_model.weight, torch.full_like(loaded_model.weight, 0.99)
+    ), "Recovered weights should survive save/load through save_before_apply"

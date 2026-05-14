@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABCMeta
 from typing import Any, Dict
 
 import torch
@@ -23,7 +24,7 @@ from pruna.algorithms.global_utils.recovery.adapters.utils import freeze_paramet
 from pruna.algorithms.global_utils.recovery.finetuners import PrunaFinetuner
 from pruna.algorithms.global_utils.recovery.finetuners.diffusers.utils import get_denoiser_attr
 from pruna.algorithms.global_utils.recovery.utils import get_trainable_parameters
-from pruna.config.smash_config import SmashConfigPrefixWrapper
+from pruna.config.smash_config import SmashConfig, SmashConfigPrefixWrapper
 from pruna.engine.model_checks import (
     is_causal_lm,
     is_flux_pipeline,
@@ -31,11 +32,11 @@ from pruna.engine.model_checks import (
     is_sd_pipeline,
     is_sdxl_pipeline,
 )
-from pruna.engine.save import SAVE_FUNCTIONS
+from pruna.engine.save import refresh_saved_model
 from pruna.logging.logger import pruna_logger
 
 
-class PERPRecoverer(PrunaAlgorithmBase):
+class PERPRecoverer(PrunaAlgorithmBase, metaclass=ABCMeta):
     """
     General purpose PERP recoverer using norm, head and bias finetuning and optionally HuggingFace's LoRA.
 
@@ -52,7 +53,7 @@ class PERPRecoverer(PrunaAlgorithmBase):
     """
 
     group_tags: list[AlgorithmTag] = [AlgorithmTag.RECOVERER]  # type: ignore[attr-defined]
-    save_fn = SAVE_FUNCTIONS.pickled
+    save_fn = None
     references: dict[str, str] = {
         "GitHub": "https://github.com/huggingface/peft",
         "Paper": "https://arxiv.org/pdf/2312.15230",
@@ -63,7 +64,6 @@ class PERPRecoverer(PrunaAlgorithmBase):
 
     def __init__(self, task_name: str, use_lora: bool, use_in_place: bool, is_distillation: bool) -> None:
         self.task_name = task_name
-        self.tokenizer_required = task_name == "text_to_text"  # type: ignore[misc]
 
         if not use_lora and not use_in_place:
             raise ValueError("Arguments use_lora and use_in_place cannot both be False, please use one of the two.")
@@ -88,6 +88,11 @@ class PERPRecoverer(PrunaAlgorithmBase):
         self.seed_generator: torch.Generator | None = None
 
         super().__init__()  # self.adapters need to be set before calling get_hyperparameters
+
+    @property
+    def tokenizer_required(self) -> bool:
+        """Overwritten ``tokenizer_required`` property."""
+        return self.task_name == "text_to_text"
 
     def get_hyperparameters(self) -> list:
         """
@@ -180,6 +185,20 @@ class PERPRecoverer(PrunaAlgorithmBase):
         for adapter, adapter_seed in zip(adapters, adapter_seeds):
             adapter_smash_config = SmashConfigPrefixWrapper(smash_config, adapter.adapter_prefix + "_")
             adapter.pre_smash_hook(model_recovery, adapter_smash_config, seed=adapter_seed)
+
+    def post_apply_hook(self, model: Any, smash_config: SmashConfig):
+        """
+        Override to run side effects after the algorithm has been applied.
+
+        Parameters
+        ----------
+        model : Any
+            The model.
+        smash_config : SmashConfig
+            The SmashConfig configuration to apply.
+        """
+        if smash_config.prepare_saving:
+            refresh_saved_model(model, self.get_save_before_smash_dir(smash_config), smash_config)
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
