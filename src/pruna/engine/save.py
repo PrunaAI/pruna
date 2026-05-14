@@ -482,7 +482,7 @@ def refresh_saved_model(model: Any, model_path: Path, smash_config: SmashConfig)
     ----------
     model : Any
         The model to apply the algorithm to.
-    model_path: Path
+    model_path : Path
         The model path to be saved.
     smash_config : SmashConfig
         The SmashConfig object containing the save and load functions.
