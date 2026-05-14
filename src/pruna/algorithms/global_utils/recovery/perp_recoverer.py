@@ -187,7 +187,16 @@ class PERPRecoverer(PrunaAlgorithmBase, metaclass=ABCMeta):
             adapter.pre_smash_hook(model_recovery, adapter_smash_config, seed=adapter_seed)
 
     def post_apply_hook(self, model: Any, smash_config: SmashConfig):
-        """Override to run side effects after the algorithm has been applied."""
+        """
+        Override to run side effects after the algorithm has been applied.
+
+        Parameters
+        ----------
+        model : Any
+            The model.
+        smash_config : SmashConfig
+            The SmashConfig configuration to apply.
+        """
         if smash_config.prepare_saving:
             refresh_saved_model(model, self.get_save_before_smash_dir(smash_config), smash_config)
 
