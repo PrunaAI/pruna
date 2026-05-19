@@ -77,6 +77,10 @@ explicit = true
 
 [tool.uv]
 index-strategy = "first-index"
+exclude-newer = "1 week"  # protection against compromised dependencies
+exclude-newer-package = {
+    gptqmodel = false  # needed because the gptqmodel version is pinned to a dev wheel with no date
+}
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
