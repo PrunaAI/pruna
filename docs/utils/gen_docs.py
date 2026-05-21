@@ -197,8 +197,7 @@ def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
     # Break the long command into multiple code blocks with line continuation for better RST rendering
     pro_install = (
         "``pip install pruna_pro[full]`` "
-        "``--extra-index-url https://prunaai.pythonanywhere.com/`` "
-        "``--extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/``"
+        "``--extra-index-url https://prunaai.pythonanywhere.com/``"
     )
     if required_install:
         if obj.algorithm_name == "gptq":

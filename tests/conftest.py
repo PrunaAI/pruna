@@ -15,7 +15,6 @@ EXTRA_MARKS = {
     "requires_awq": "mark test that needs pruna[awq]",
     "requires_stable_fast": "mark test that needs pruna[stable-fast]",
     "requires_vllm": "mark test that needs pruna[vllm]",
-    "requires_intel": "mark test that needs pruna[intel]",
     "requires_lmharness": "mark test that needs pruna[lmharness]",
     "requires_whisper": "mark test that needs pruna[whisper]",
     "requires_upscale": "mark test that needs pruna[upscale]",
