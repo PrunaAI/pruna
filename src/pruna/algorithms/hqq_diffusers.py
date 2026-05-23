@@ -540,12 +540,20 @@ def _rename_attribute(path: str, old: str, new: str) -> str:
 
 def sync_unet_upsampler_names(module: torch.nn.Module) -> None:
     """
-    Align Upsample2D.name with the conv submodule that is actually present.
+    Sync Upsample2D.name with the conv submodule key present on the UNet.
 
-    Diffusers forward uses ``self.name`` to choose between ``self.conv`` and
-    ``self.Conv2d_0``. Quantization and reload can change submodule keys without
-    updating ``name``; infer the correct value from ``_modules`` instead of
-    hard-coding it at smash time only.
+    Diffusers Upsample2D.forward selects conv or Conv2d_0 from name. HQQ and
+    reload can change submodule keys without updating name; set name from _modules.
+
+    Parameters
+    ----------
+    module : torch.nn.Module
+        A diffusers UNet, or a module that exposes up_blocks with upsamplers.
+
+    Returns
+    -------
+    None
+        Upsample2D.name on each upsampler is set in place to match its conv submodule.
     """
     unet_types = get_diffusers_unet_models()
     if not isinstance(module, tuple(unet_types)) or not hasattr(module, "up_blocks"):
