@@ -491,8 +491,8 @@ class SAVE_FUNCTIONS(Enum):  # noqa: N801
     Enumeration of save functions for different model types.
 
     This enum provides callable functions for saving different types of models,
-    including pickled models, IPEX LLM models, HQQ models, and models that need
-    to be saved before applying transformations.
+    including pickled models, HQQ models, and models that need to be saved before
+    applying transformations.
 
     Parameters
     ----------

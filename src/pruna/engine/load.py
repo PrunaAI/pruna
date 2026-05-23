@@ -606,7 +606,7 @@ class LOAD_FUNCTIONS(Enum):  # noqa: N801
     Enumeration of load functions for different model types.
 
     This enum provides callable functions for loading different types of models,
-    including transformers, diffusers, pickled models, IPEX LLM models, and HQQ models.
+    including transformers, diffusers, pickled models, and HQQ models.
 
     Parameters
     ----------
