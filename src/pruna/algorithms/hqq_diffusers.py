@@ -270,11 +270,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
                 # We default to the torch backend if the input backend is not applicable
                 imported_modules["prepare_for_inference"](module)
 
-            unet_types = get_diffusers_unet_models()
-            if isinstance(module, tuple(unet_types)):
-                for layer in module.up_blocks:
-                    if layer.upsamplers is not None:
-                        layer.upsamplers[0].name = "conv"
+            sync_unet_upsampler_names(module)
 
             return module
 
@@ -455,6 +451,10 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
             # before the HQQ attempt to move them from meta device to cpu/gpu
             if hasattr(model, "save_dir"):
                 cls.load_hqq_missed_parameters(model, model.save_dir)
+            if hasattr(model, "unet"):
+                sync_unet_upsampler_names(model.unet)
+            else:
+                sync_unet_upsampler_names(model)
 
     return AutoHQQHFDiffusersModel
 
@@ -536,3 +536,28 @@ def _rename_attribute(path: str, old: str, new: str) -> str:
         return path.replace(f"{old}.", f"{new}.", 1)
     else:
         return path
+
+
+def sync_unet_upsampler_names(module: torch.nn.Module) -> None:
+    """
+    Align Upsample2D.name with the conv submodule that is actually present.
+
+    Diffusers forward uses ``self.name`` to choose between ``self.conv`` and
+    ``self.Conv2d_0``. Quantization and reload can change submodule keys without
+    updating ``name``; infer the correct value from ``_modules`` instead of
+    hard-coding it at smash time only.
+    """
+    unet_types = get_diffusers_unet_models()
+    if not isinstance(module, tuple(unet_types)) or not hasattr(module, "up_blocks"):
+        return
+    for layer in module.up_blocks:
+        if layer.upsamplers is None:
+            continue
+        upsampler = layer.upsamplers[0]
+        if not upsampler.use_conv:
+            continue
+        if "conv" in upsampler._modules:
+            upsampler.name = "conv"
+        elif "Conv2d_0" in upsampler._modules:
+            # Legacy diffusers key (forward uses Conv2d_0 when name != "conv").
+            upsampler.name = "Conv2d_0"
