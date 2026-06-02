@@ -120,16 +120,17 @@ class QAAccuracyMetric(StatefulVLMMeanScoresMetric):
         device: str | torch.device | None = None,
         api_key: str | None = None,
         call_type: str = SINGLE,
+        *,
+        aggregation: str = "mean",
         **kwargs: Any,
     ) -> None:
         super().__init__(device=device)
         self.response_format = VQAnswer if structured_output else None
-        self.aggregation = kwargs.pop("aggregation", "mean")
+        self.aggregation = aggregation
         if self.aggregation not in {"mean", "all_or_nothing"}:
             raise ValueError(
                 f"qa_accuracy aggregation must be one of {{'mean', 'all_or_nothing'}}. Got: {self.aggregation!r}."
             )
-        self.metric_units = type(self).metric_units
         self._init_vlm_scores(
             vlm=vlm,
             vlm_type=vlm_type,
