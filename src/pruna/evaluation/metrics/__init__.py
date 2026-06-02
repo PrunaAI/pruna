@@ -30,6 +30,7 @@ from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as Rapidata
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import (
     BaseVLM,
@@ -65,6 +66,7 @@ __all__ = [
     "RapidataMetric",
     "TextScoreMetric",
     "VQAMetric",
+    "VieScoreMetric",
     "BaseVLM",
     "LitellmVLM",
     "StatefulVLMMeanScoresMetric",
