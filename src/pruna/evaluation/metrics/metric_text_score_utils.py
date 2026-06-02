@@ -24,6 +24,7 @@ import re
 from collections import Counter
 from typing import Literal
 
+# Known OneIG/Qwen OCR boilerplate (see OneIG ``clean_and_remove_hallucinations``).
 _OCR_HALLUCINATION_KEYWORDS = ("addCriterion", "No text recognized.", "No text recognized")
 
 
@@ -42,7 +43,7 @@ def normalize_text_simple(s: str) -> str:
         Normalized string.
     """
     cleaned = re.sub(
-        r"[^\u4e00-\u9fa5a-zA-Z0-9\sàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]",
+        r"[^\u4e00-\u9fffa-zA-Z0-9\sàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]",
         "",
         s or "",
     )
@@ -107,18 +108,15 @@ def preprocess_string_oneig(s: str) -> str:
     str
         Preprocessed string (ground truth or OCR).
     """
-    raw = s or ""
-    cleaned = re.sub(
-        r"[^\u4e00-\u9fa5a-zA-Z0-9\sàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]",
-        "",
-        raw,
-    )
+    cleaned = normalize_text_simple(s)
     if contains_chinese(cleaned):
+        # Spaces between CJK characters are a common Qwen OCR artifact.
+        cleaned = re.sub(r"(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])", "", cleaned)
         pattern = re.compile(
-            r"[\u4e00-\u9fa5a-zA-Z0-9àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]",
+            r"[\u4e00-\u9fffa-zA-Z0-9àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]",
         )
-        return "".join(pattern.findall(raw)).strip()
-    return re.sub(r"\s+", " ", cleaned).strip()
+        return "".join(pattern.findall(cleaned)).strip()
+    return cleaned
 
 
 def clean_oneig_ocr_hallucinations(text: str) -> str:
@@ -137,7 +135,7 @@ def clean_oneig_ocr_hallucinations(text: str) -> str:
     """
     out = text or ""
     for keyword in _OCR_HALLUCINATION_KEYWORDS:
-        out = out.replace(keyword, "").replace(f"\n{keyword}", "").replace(f"{keyword}\n", "")
+        out = out.replace(f"\n{keyword}", "").replace(f"{keyword}\n", "").replace(keyword, "")
     return out
 
 
