@@ -37,9 +37,11 @@ until those issues are clearly resolved upstream.
 from __future__ import annotations
 
 import os
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 import torch
+from PIL import Image
 
 from pruna.evaluation.metrics.metric_stateful import StatefulMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
@@ -49,8 +51,33 @@ from pruna.evaluation.metrics.utils import (
     get_call_type_for_single_metric,
     metric_data_processor,
 )
-from pruna.evaluation.metrics.vlm_utils import _process_images
+from pruna.evaluation.metrics.vlm_utils import (
+    _process_images,
+    _tensor_to_pil,
+    resolve_oneig_reasoning_device,
+    split_mxn_grid,
+)
 from pruna.logging.logger import pruna_logger
+
+
+def _is_cuda_device(device: str) -> bool:
+    return device == "cuda" or device.startswith("cuda:")
+
+
+@contextmanager
+def _oneig_hf_download_env() -> Iterator[None]:
+    """Apply optional OneIG HF hub env tweaks, then restore prior values."""
+    keys = ("HF_HUB_ENABLE_HF_TRANSFER",)
+    saved = {k: os.environ.get(k) for k in keys}
+    try:
+        _prepare_huggingface_hub_for_oneig_downloads()
+        yield
+    finally:
+        for key, val in saved.items():
+            if val is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = val
 
 
 def _env_truthy(raw: str | None) -> bool:
@@ -123,11 +150,13 @@ class _LLM2CLIPScorer:
         model_name: str = "microsoft/LLM2CLIP-Openai-L-14-336",
         llm_model_name: str = "microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned",
         device: str = "cuda",
+        attn_implementation: str | None = None,
     ) -> None:
         self.processor_model = processor_model
         self.model_name = model_name
         self.llm_model_name = llm_model_name
         self.device = device
+        self.attn_implementation = attn_implementation
         self._processor = None
         self._clip_model = None
         self._l2v = None
@@ -135,7 +164,10 @@ class _LLM2CLIPScorer:
     def _load_models(self) -> None:
         if self._clip_model is not None:
             return
-        _prepare_huggingface_hub_for_oneig_downloads()
+        with _oneig_hf_download_env():
+            self._load_models_inner()
+
+    def _load_models_inner(self) -> None:
         from transformers import AutoConfig, AutoModel, AutoTokenizer, CLIPImageProcessor
 
         from pruna.evaluation.metrics.vendor.oneig_llm2vec import LLM2Vec
@@ -148,7 +180,7 @@ class _LLM2CLIPScorer:
             self.model_name,
             self.llm_model_name,
         )
-        dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
+        dtype = torch.bfloat16 if _is_cuda_device(str(self.device)) else torch.float32
         self._processor = CLIPImageProcessor.from_pretrained(self.processor_model)
         self._clip_model = AutoModel.from_pretrained(
             self.model_name,
@@ -158,11 +190,15 @@ class _LLM2CLIPScorer:
         self._clip_model.train(mode=False)
 
         config = AutoConfig.from_pretrained(self.llm_model_name, trust_remote_code=True)
-        dev_str = str(self.device)
-        attn_impl = "sdpa" if dev_str == "cuda" or dev_str.startswith("cuda:") else "eager"
-        config.attn_implementation = attn_impl
-        if hasattr(config, "_attn_implementation"):
-            config._attn_implementation = attn_impl
+        if self.attn_implementation is not None:
+            # User override (e.g. sdpa, flash_attention_2, eager). Upstream OneIG leaves HF default.
+            config.attn_implementation = self.attn_implementation
+            if hasattr(config, "_attn_implementation"):
+                config._attn_implementation = self.attn_implementation
+        elif _is_cuda_device(str(self.device)):
+            config.attn_implementation = "sdpa"
+            if hasattr(config, "_attn_implementation"):
+                config._attn_implementation = "sdpa"
         llm_model = LlamaEncoderModel.from_pretrained(
             self.llm_model_name,
             dtype=dtype,
@@ -195,11 +231,10 @@ class _LLM2CLIPScorer:
             return None
         input_pixels = self._processor(images=pil_images, return_tensors="pt").pixel_values.to(self.device)
         captions = [text_prompt]
-        text_features = self._l2v.encode(captions, convert_to_tensor=True, device=self.device).to(self.device)
-        text_features = self._clip_model.get_text_features(text_features)
-
         with torch.no_grad():
-            if self.device == "cuda":
+            text_features = self._l2v.encode(captions, convert_to_tensor=True, device=self.device).to(self.device)
+            text_features = self._clip_model.get_text_features(text_features)
+            if _is_cuda_device(str(self.device)):
                 with torch.amp.autocast(device_type="cuda"):
                     image_features = self._clip_model.get_image_features(input_pixels)
             else:
@@ -207,8 +242,9 @@ class _LLM2CLIPScorer:
 
         image_features = image_features.float()
         text_features = text_features.float()
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
+        eps = 1e-8
+        image_features /= image_features.norm(dim=-1, keepdim=True) + eps
+        text_features /= text_features.norm(dim=-1, keepdim=True) + eps
 
         text_probs = (image_features @ text_features.T).cpu().tolist()
         return [p[0] for p in text_probs]
@@ -220,8 +256,8 @@ class OneIGReasoningMetric(StatefulMetric):
     OneIG reasoning score: LLM2CLIP similarity between GT answer text and generated image.
 
     Uses ``reasoning_gt_answer`` from aux (populated by OneIG Knowledge_Reasoning loader;
-    language is chosen at dataset load via ``reasoning_language``). MVP: 1×1 grid (whole
-    image as single cell). Llama-derived checkpoints may require
+    language is chosen at dataset load via ``reasoning_language``). Splits a ``2 x 2`` grid
+    by default (OneIG ``split_mxn_grid``) and averages cell scores. Llama-derived checkpoints may require
     ``HF_TOKEN`` and ``huggingface-cli login``.
 
     Parameters
@@ -232,6 +268,11 @@ class OneIGReasoningMetric(StatefulMetric):
         LLM2CLIP model ID.
     llm_model_name : str, optional
         LLM2Vec model ID.
+    grid_size : tuple[int, int], optional
+        ``(columns, rows)`` for :func:`~pruna.evaluation.metrics.vlm_utils.split_mxn_grid``.
+    attn_implementation : str | None, optional
+        Transformers attention backend for the LLM encoder (``None`` uses HF default;
+        Pruna defaults to ``sdpa`` on CUDA when unset).
     device : str | torch.device | None, optional
         Device for inference.
     scorer : _LLM2CLIPScorer | None, optional
@@ -261,30 +302,45 @@ class OneIGReasoningMetric(StatefulMetric):
         processor_model: str = "openai/clip-vit-large-patch14-336",
         model_name: str = "microsoft/LLM2CLIP-Openai-L-14-336",
         llm_model_name: str = "microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned",
+        grid_size: tuple[int, int] = (2, 2),
+        attn_implementation: str | None = None,
         device: str | torch.device | None = None,
         scorer: _LLM2CLIPScorer | None = None,
         call_type: str | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(device=device, **kwargs)
+        resolved = resolve_oneig_reasoning_device(device)
+        super().__init__(device=resolved, **kwargs)
+        self.device = resolved
         self.call_type = get_call_type_for_single_metric(
             call_type if call_type is not None else SINGLE, self.default_call_type
         )
         self.processor_model = processor_model
         self.model_name = model_name
         self.llm_model_name = llm_model_name
-        self._scorer = scorer
+        self.grid_size = (int(grid_size[0]), int(grid_size[1]))
+        self.attn_implementation = attn_implementation
+        self._injected_scorer = scorer
+        self._llm2clip_scorer: _LLM2CLIPScorer | None = None
         self.add_state("scores", default=[])
 
     def _get_scorer(self) -> _LLM2CLIPScorer:
-        if self._scorer is not None:
-            return self._scorer
-        return _LLM2CLIPScorer(
-            processor_model=self.processor_model,
-            model_name=self.model_name,
-            llm_model_name=self.llm_model_name,
-            device=self.device,
-        )
+        if self._injected_scorer is not None:
+            return self._injected_scorer
+        if self._llm2clip_scorer is None:
+            self._llm2clip_scorer = _LLM2CLIPScorer(
+                processor_model=self.processor_model,
+                model_name=self.model_name,
+                llm_model_name=self.llm_model_name,
+                device=str(self.device),
+                attn_implementation=self.attn_implementation,
+            )
+        return self._llm2clip_scorer
+
+    def reset(self) -> None:
+        """Clear scores and release cached LLM2CLIP weights."""
+        super().reset()
+        self._llm2clip_scorer = None
 
     def _get_gt_text(self, aux: dict) -> str:
         val = aux.get("reasoning_gt_answer")
@@ -318,18 +374,25 @@ class OneIGReasoningMetric(StatefulMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        aux_list = inputs[1] if len(inputs) > 1 else []
-        if isinstance(aux_list, torch.Tensor):
-            aux_list = aux_list.tolist()
+        aux_slot = inputs[1] if len(inputs) > 1 else []
+        if isinstance(aux_slot, torch.Tensor):
+            raise ValueError("oneig_reasoning expects gt as list[dict] with 'reasoning_gt_answer'.")
 
         scorer = self._get_scorer()
 
         for i, image in enumerate(images):
-            aux = aux_list[i] if i < len(aux_list) else {}
-            if not isinstance(aux, dict):
-                raise ValueError(f"oneig_reasoning requires aux[{i}] to be a dict. Got: {type(aux)}.")
-            text = self._get_gt_text(aux)
-            result = scorer.score([image], text)
+            aux_row = aux_slot[i] if isinstance(aux_slot, (list, tuple)) and i < len(aux_slot) else {}
+            if not isinstance(aux_row, dict):
+                raise ValueError(f"oneig_reasoning requires aux[{i}] to be a dict. Got: {type(aux_row)}.")
+            text = self._get_gt_text(aux_row)
+            if isinstance(image, Image.Image):
+                pil = image.convert("RGB")
+            elif isinstance(image, torch.Tensor):
+                pil = _tensor_to_pil(image)
+            else:
+                pil = Image.fromarray(image).convert("RGB")
+            cells = split_mxn_grid(pil, self.grid_size)
+            result = scorer.score(cells, text)
             if result is None or len(result) == 0:
                 raise RuntimeError(f"oneig_reasoning: LLM2CLIP scorer returned no scores for sample {i}.")
             self.scores.append(float(sum(result) / len(result)))
