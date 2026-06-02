@@ -16,14 +16,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 import torch
+from PIL import Image
 
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.registry import MetricRegistry
 from pruna.evaluation.metrics.utils import metric_data_processor
-from pruna.evaluation.metrics.vlm_utils import _process_images
+from pruna.evaluation.metrics.vlm_utils import _process_images, split_mxn_grid
+
+_DEFAULT_ONEIG_ALIGNMENT_VLM = "Qwen/Qwen2.5-VL-7B-Instruct"
 
 
 def _int_dict_keys(mapping: Mapping[Any, Any]) -> dict[int, Any]:
@@ -122,73 +125,146 @@ def aggregate_oneig_alignment_per_cell(filtered_scores: Mapping[int, float], que
     return s / float(len(question_ids))
 
 
+def _aux_list_from_gt(aux_slot: Any, batch_size: int) -> list[dict[str, Any]]:
+    if isinstance(aux_slot, torch.Tensor):
+        raise ValueError(
+            "oneig_alignment expects gt as list[dict] with 'questions' and optional 'dependencies'. "
+            f"Got tensor with shape {tuple(aux_slot.shape)}."
+        )
+    if not isinstance(aux_slot, (list, tuple)):
+        return [{} for _ in range(batch_size)]
+    out: list[dict[str, Any]] = []
+    for i in range(batch_size):
+        row = aux_slot[i] if i < len(aux_slot) else {}
+        if not isinstance(row, dict):
+            raise ValueError(f"oneig_alignment requires aux[{i}] to be a dict. Got: {type(row)!r}.")
+        out.append(row)
+    return out
+
+
 @MetricRegistry.register("oneig_alignment")
 class OneIGAlignmentMetric(QAAccuracyMetric):
     """
     OneIG alignment with dependency-aware aggregation.
 
-    Reuses :class:`QAAccuracyMetric` VLM Yes/No scoring but aggregates like
-    ``OneIG-Benchmark`` ``alignment_score.py`` for a **single** grid cell (no
-    ``split_mxn_grid``): question ids are sorted numerically, raw scores are
-    masked when any non-root parent is ``No``, then the mean over all questions
-    is stored per image. Entries with null or blank question text (HF ``datasets``
-    schema padding) are omitted from scoring.
+    Matches ``OneIG-Benchmark`` ``alignment_score.py``: split an ``m x n`` output grid
+    (default ``2 x 2``), score **one question per VLM call** across all cells, apply
+    dependency masking per cell, then average cell scores.
 
-    Numerical parity with upstream also depends on the VLM (e.g. ``openai/gpt-4o`` via
-    litellm vs reference Qwen2.5-VL).
+    Scoring semantics
+    -----------------
+    OneIG Q_D probes are phrased so **Yes = aligned**. Each call requests
+    :meth:`~pruna.evaluation.metrics.vlm_base.BaseVLM.score` with expected answer
+    ``"Yes"`` (probability of Yes). Low scores act as semantic **No** for dependency
+    masking.
 
     Parameters
     ----------
-    *args : Any
-        Additional positional arguments for :class:`QAAccuracyMetric`.
+    grid_size : tuple[int, int], optional
+        ``(columns, rows)`` for :func:`~pruna.evaluation.metrics.vlm_utils.split_mxn_grid`.
+        Default ``(2, 2)`` per OneIG. Use ``(1, 1)`` to score the full image without splitting.
     vlm : BaseVLM | None, optional
         Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
     vlm_type : {"litellm", "transformers"}, optional
-        VLM backend. Default is ``"litellm"``.
+        VLM backend. Default is ``"transformers"`` (paper-faithful Qwen2.5-VL).
     model_name : str | None, optional
-        Litellm model id or HuggingFace checkpoint id. **Required** when ``vlm`` is not
-        provided (e.g. ``openai/gpt-4o``).
+        HuggingFace or litellm model id. Default ``Qwen/Qwen2.5-VL-7B-Instruct``.
     vlm_kwargs : dict, optional
-        Forwarded by ``get_vlm`` to ``LitellmVLM`` or ``TransformersVLM``. For local models,
-        set ``model_load_kwargs`` for ``from_pretrained``; for litellm, pass extra API options.
+        Forwarded by ``get_vlm``.
     structured_output : bool, optional
-        Use structured generation (litellm pydantic; transformers outlines when applicable).
-        Default is True.
+        Use structured generation when applicable.
     device : str | torch.device | None, optional
         Device for transformers VLM.
     api_key : str | None, optional
         API key for litellm.
     call_type : str, optional
         Call type for the metric.
+    aggregation : str, optional
+        Unused; kept for registry compatibility with :class:`QAAccuracyMetric`.
     **kwargs : Any
         Additional keyword arguments for :class:`QAAccuracyMetric`.
 
     Examples
     --------
-    Same ``hosted`` / ``local`` pattern as ``QAAccuracyMetric`` and
-    :func:`~pruna.evaluation.metrics.vlm_base.get_vlm`:
-
     .. code-block:: python
-
-        import torch
 
         from pruna.evaluation.metrics import OneIGAlignmentMetric
 
-        hosted = OneIGAlignmentMetric(vlm_type="litellm", model_name="openai/gpt-4o")
-        local = OneIGAlignmentMetric(
-            vlm_type="transformers",
-            model_name="HuggingFaceTB/SmolVLM-256M-Instruct",
-            device="cpu",
-            vlm_kwargs={"model_load_kwargs": {"torch_dtype": torch.float32}},
-        )
+        paper = OneIGAlignmentMetric(device="cuda")
+        api = OneIGAlignmentMetric(vlm_type="litellm", model_name="openai/gpt-4o")
     """
 
     metric_name: str = "oneig_alignment"
     metric_units: str = "alignment"
 
+    def __init__(
+        self,
+        *args: Any,
+        grid_size: tuple[int, int] = (2, 2),
+        vlm: Any | None = None,
+        vlm_type: Literal["litellm", "transformers"] = "transformers",
+        model_name: str | None = _DEFAULT_ONEIG_ALIGNMENT_VLM,
+        vlm_kwargs: dict | None = None,
+        structured_output: bool = True,
+        device: str | torch.device | None = None,
+        api_key: str | None = None,
+        call_type: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            *args,
+            vlm=vlm,
+            vlm_type=vlm_type,
+            model_name=model_name,
+            vlm_kwargs=vlm_kwargs,
+            structured_output=structured_output,
+            device=device,
+            api_key=api_key,
+            call_type=call_type if call_type is not None else "y_gt",
+            **kwargs,
+        )
+        self.grid_size = (int(grid_size[0]), int(grid_size[1]))
+
+    def _score_sample(self, image: Any, aux: dict[str, Any]) -> float:
+        if not isinstance(image, Image.Image):
+            if isinstance(image, torch.Tensor):
+                from pruna.evaluation.metrics.vlm_utils import _tensor_to_pil
+
+                image = _tensor_to_pil(image)
+            else:
+                image = Image.fromarray(image).convert("RGB")
+        cells = split_mxn_grid(image, self.grid_size)
+        qs = aux.get("questions")
+        if not isinstance(qs, dict) or not qs:
+            raise ValueError(
+                f"oneig_alignment requires 'questions' as a non-empty dict on aux. Got keys: {list(aux.keys())}."
+            )
+        qmap = _int_dict_keys(qs)
+        qids = _active_oneig_question_ids(qmap)
+        if not qids:
+            return 0.0
+        deps = _normalize_dependencies(aux.get("dependencies", {}))
+        per_question_cell_scores: dict[int, list[float]] = {}
+        n_cells = len(cells)
+        for qid in qids:
+            qtext = str(qmap[qid])
+            raw_scores_list = self.vlm.score(
+                cells,
+                [qtext] * n_cells,
+                ["Yes"] * n_cells,
+                response_format=self.response_format,
+            )
+            per_question_cell_scores[qid] = [float(s) for s in raw_scores_list]
+        cell_means: list[float] = []
+        for cell_i in range(n_cells):
+            raw_map = {qid: per_question_cell_scores[qid][cell_i] for qid in qids}
+            filtered = apply_oneig_dependency_mask(raw_map, deps)
+            cell_means.append(aggregate_oneig_alignment_per_cell(filtered, qids))
+        return float(sum(cell_means) / len(cell_means))
+
     def update(self, x: list[Any] | torch.Tensor, gt: torch.Tensor, outputs: torch.Tensor) -> None:
         """
-        Score each question with the VLM, apply dependency masking, append per-cell mean.
+        Score each prompt image with OneIG alignment (grid split + per-question VLM calls).
 
         Parameters
         ----------
@@ -202,33 +278,6 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
         """
         inputs = metric_data_processor(x, gt, outputs, self.call_type)
         images = _process_images(inputs[0])
-        aux_list = inputs[1] if len(inputs) > 1 else []
-        if isinstance(aux_list, torch.Tensor):
-            aux_list = aux_list.tolist()
+        aux_list = _aux_list_from_gt(inputs[1] if len(inputs) > 1 else [], len(images))
         for i, image in enumerate(images):
-            aux = aux_list[i] if i < len(aux_list) else {}
-            if not isinstance(aux, dict):
-                raise ValueError(
-                    "oneig_alignment requires aux[{}] to be a dict with 'questions'. Got: {!r}.".format(i, type(aux))
-                )
-            qs = aux.get("questions")
-            if not isinstance(qs, dict) or not qs:
-                raise ValueError(
-                    f"oneig_alignment requires 'questions' as a non-empty dict on aux. Got keys: {list(aux.keys())}."
-                )
-            qmap = _int_dict_keys(qs)
-            qids = _active_oneig_question_ids(qmap)
-            if not qids:
-                self.scores.append(0.0)
-                continue
-            question_texts = [str(qmap[qi]) for qi in qids]
-            deps = _normalize_dependencies(aux.get("dependencies", {}))
-            raw_scores_list = self.vlm.score(
-                [image] * len(question_texts),
-                question_texts,
-                ["Yes"] * len(question_texts),
-                response_format=self.response_format,
-            )
-            raw_map = {qid: float(raw_scores_list[j]) for j, qid in enumerate(qids)}
-            filtered = apply_oneig_dependency_mask(raw_map, deps)
-            self.scores.append(aggregate_oneig_alignment_per_cell(filtered, qids))
+            self.scores.append(self._score_sample(image, aux_list[i]))

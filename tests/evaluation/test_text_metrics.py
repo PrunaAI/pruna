@@ -71,7 +71,8 @@ def test_oneig_alignment_metric_respects_question_id_order() -> None:
     mock_vlm = MagicMock(spec=BaseVLM)
     mock_vlm.score.return_value = [0.0, 1.0]
 
-    metric = OneIGAlignmentMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
+    metric = OneIGAlignmentMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu", grid_size=(1, 1))
+    mock_vlm.score.side_effect = [[0.0], [1.0]]
     images = torch.rand(1, 3, 64, 64)
     aux = {
         "questions": {"2": "second", "1": "first"},
@@ -83,8 +84,9 @@ def test_oneig_alignment_metric_respects_question_id_order() -> None:
     assert result.higher_is_better is True
     assert result.metric_units == "alignment"
     assert result.result == 0.0
-    call = mock_vlm.score.call_args
-    assert call[0][1] == ["first", "second"]
+    assert mock_vlm.score.call_count == 2
+    assert mock_vlm.score.call_args_list[0][0][1] == ["first"]
+    assert mock_vlm.score.call_args_list[1][0][1] == ["second"]
 
 
 @pytest.mark.cpu
@@ -93,7 +95,8 @@ def test_oneig_alignment_skips_none_question_texts() -> None:
     mock_vlm = MagicMock(spec=BaseVLM)
     mock_vlm.score.return_value = [1.0]
 
-    metric = OneIGAlignmentMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
+    metric = OneIGAlignmentMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu", grid_size=(1, 1))
+    mock_vlm.score.return_value = [1.0]
     images = torch.rand(1, 3, 64, 64)
     aux = {
         "questions": {"1": "first", "21": None},
@@ -111,7 +114,7 @@ def test_oneig_alignment_skips_none_question_texts() -> None:
 def test_oneig_alignment_all_padding_questions_yields_zero_without_vlm() -> None:
     """When every slot is padding, score is 0.0 and the VLM is not called."""
     mock_vlm = MagicMock(spec=BaseVLM)
-    metric = OneIGAlignmentMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu")
+    metric = OneIGAlignmentMetric(vlm=mock_vlm, vlm_type="litellm", device="cpu", grid_size=(1, 1))
     aux = {"questions": {"1": None, "2": None}, "dependencies": {}}
     metric.update(["p"], [aux], torch.rand(1, 3, 64, 64))
     assert metric.compute().result == 0.0
