@@ -21,9 +21,10 @@ Implementations
 
 Why LiteLLM for the default API path
 --------------------------------------
-Judge-style metrics need a capable vision-language model. Loading large VLMs locally is
-expensive; routing through ``litellm`` keeps the default path lightweight and matches common
-API-judge setups without bundling a full local VLM in every metric run.
+We use LiteLLM because it is a simple standard interface that works across providers
+(for example OpenAI, Anthropic, and others behind one client). Judge-style metrics need a
+capable vision-language model; routing through ``litellm`` keeps the default path lightweight
+without bundling a full local VLM in every metric run.
 
 API keys and environment
 ------------------------
@@ -575,7 +576,8 @@ class LitellmVLM(BaseVLM):
                     top = getattr(tok, "top_logprobs", None) or []
                     for t in top:
                         token_str = (getattr(t, "token", "") or "").lower()
-                        lp = float(getattr(t, "logprob", -1e9) or -1e9)
+                        raw_lp = getattr(t, "logprob", None)
+                        lp = -1e9 if raw_lp is None else float(raw_lp)
                         prob = math.exp(lp)
                         if any(_word_matches(token_str, w) for w in yes_words):
                             p_yes += prob

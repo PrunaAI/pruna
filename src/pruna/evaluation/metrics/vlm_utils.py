@@ -34,6 +34,73 @@ VLM_AUX_IMAGE_BYTES_KEY_ORDER: tuple[str, ...] = (
 )
 
 
+def _is_black_image(image: Image.Image) -> bool:
+    """Return True if every pixel is black (OneIG grid padding cells)."""
+    pixels = image.load()
+    if pixels is None:
+        return True
+    for i in range(image.width):
+        for j in range(image.height):
+            if pixels[i, j] != (0, 0, 0):
+                return False
+    return True
+
+
+def split_mxn_grid(image: Image.Image, grid_size: tuple[int, int] = (2, 2)) -> list[Image.Image]:
+    """
+    Split a composite image into an ``m x n`` grid (OneIG-Benchmark ``split_mxn_grid``).
+
+    Skips all-black cells used as padding in reference grids.
+
+    Parameters
+    ----------
+    image : PIL.Image.Image
+        Composite image (e.g. 2x2 generations).
+    grid_size : tuple[int, int], optional
+        ``(columns, rows)``; default ``(2, 2)`` per OneIG.
+
+    Returns
+    -------
+    list[PIL.Image.Image]
+        Non-black cropped cells in row-major order.
+    """
+    cols, rows = int(grid_size[0]), int(grid_size[1])
+    if cols < 1 or rows < 1:
+        raise ValueError(f"grid_size must be positive (cols, rows). Got: {grid_size!r}")
+    width, height = image.size
+    cell_w = width // cols
+    cell_h = height // rows
+    if cell_w < 1 or cell_h < 1:
+        return [image.convert("RGB")]
+    out: list[Image.Image] = []
+    for row in range(rows):
+        for col in range(cols):
+            box = (col * cell_w, row * cell_h, (col + 1) * cell_w, (row + 1) * cell_h)
+            cell = image.crop(box)
+            if not _is_black_image(cell):
+                out.append(cell.convert("RGB"))
+    return out if out else [image.convert("RGB")]
+
+
+def resolve_oneig_reasoning_device(device: str | torch.device | None) -> str:
+    """
+    Pick a device string for OneIG LLM2CLIP scoring.
+
+    Parameters
+    ----------
+    device : str | torch.device | None
+        Requested device; ``None`` selects CUDA when available else CPU.
+
+    Returns
+    -------
+    str
+        Device string for model placement.
+    """
+    if device is not None:
+        return str(device)
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def _tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
     if tensor.ndim == 4:
         tensor = tensor[0]
