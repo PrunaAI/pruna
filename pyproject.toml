@@ -154,7 +154,6 @@ dependencies = [
     "peft>=0.18.0,<0.19.0",
     "trl<=0.21.0",
     "termcolor==2.3.0",
-    "realesrgan",
 ]
 
 [project.optional-dependencies]
@@ -169,9 +168,20 @@ vllm = [
     "vllm>=0.16.0",
     "ray",
 ]
+rapidata = [
+    "rapidata>=3.0.0",
+]
+upscale = [
+    "realesrgan",
+]
 evaluation = [
+    "pruna[rapidata]",
+    "pruna[lmharness]",
     "outlines>1.2.0,<2.0.0",
     "litellm>=1.0.0",
+]
+oneig-reasoning = [
+    "hf_transfer>=0.1.9",
 ]
 stable-fast = [
     "xformers>=0.0.30",
