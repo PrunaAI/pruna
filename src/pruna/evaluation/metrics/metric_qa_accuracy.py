@@ -55,8 +55,6 @@ class QAAccuracyMetric(StatefulVLMMeanScoresMetric):
 
     Parameters
     ----------
-    *args : Any
-        Additional positional arguments.
     vlm : BaseVLM | None, optional
         Custom VLM instance. If provided, ``vlm_type`` and ``model_name`` are ignored.
     vlm_type : {"litellm", "transformers"}, optional
@@ -76,8 +74,10 @@ class QAAccuracyMetric(StatefulVLMMeanScoresMetric):
         API key for litellm.
     call_type : str, optional
         Call type for the metric.
+    aggregation : {"mean", "all_or_nothing"}, optional
+        Per-image score aggregation (keyword-only). Default is ``"mean"``.
     **kwargs : Any
-        Supports ``aggregation``: ``"mean"`` or ``"all_or_nothing"``.
+        Additional keyword arguments forwarded to the parent class.
 
     Raises
     ------
@@ -111,7 +111,6 @@ class QAAccuracyMetric(StatefulVLMMeanScoresMetric):
 
     def __init__(
         self,
-        *args,
         vlm: BaseVLM | None = None,
         vlm_type: Literal["litellm", "transformers"] = "litellm",
         model_name: str | None = None,
@@ -119,7 +118,7 @@ class QAAccuracyMetric(StatefulVLMMeanScoresMetric):
         structured_output: bool = True,
         device: str | torch.device | None = None,
         api_key: str | None = None,
-        call_type: str = SINGLE,
+        call_type: str | None = None,
         *,
         aggregation: str = "mean",
         **kwargs: Any,
@@ -139,7 +138,7 @@ class QAAccuracyMetric(StatefulVLMMeanScoresMetric):
             structured_output=structured_output,
             device=device,
             api_key=api_key,
-            call_type=call_type,
+            call_type=call_type if call_type is not None else SINGLE,
         )
 
     def _extract_questions(self, gt: Any, n: int) -> list[list[str]]:
