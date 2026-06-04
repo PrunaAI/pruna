@@ -151,8 +151,6 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
     (default ``2 x 2``), score **one question per VLM call** across all cells, apply
     dependency masking per cell, then average cell scores.
 
-    Scoring semantics
-    -----------------
     OneIG Q_D probes are phrased so **Yes = aligned**. Each call requests
     :meth:`~pruna.evaluation.metrics.vlm_base.BaseVLM.score` with expected answer
     ``"Yes"`` (probability of Yes). Low scores act as semantic **No** for dependency
@@ -178,11 +176,9 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
     api_key : str | None, optional
         API key for litellm.
     call_type : str, optional
-        Call type for the metric.
-    aggregation : str, optional
-        Unused; kept for registry compatibility with :class:`QAAccuracyMetric`.
+        Call type for the metric (``"single"`` or ``"pairwise"``).
     **kwargs : Any
-        Additional keyword arguments for :class:`QAAccuracyMetric`.
+        Forwarded to :class:`QAAccuracyMetric` (e.g. ``aggregation``).
 
     Examples
     --------
@@ -199,7 +195,6 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
 
     def __init__(
         self,
-        *args: Any,
         grid_size: tuple[int, int] = (2, 2),
         vlm: Any | None = None,
         vlm_type: Literal["litellm", "transformers"] = "transformers",
@@ -212,7 +207,6 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            *args,
             vlm=vlm,
             vlm_type=vlm_type,
             model_name=model_name,

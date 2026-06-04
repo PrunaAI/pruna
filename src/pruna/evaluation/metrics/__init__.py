@@ -27,6 +27,7 @@ from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
 from pruna.evaluation.metrics.metric_oneig_reasoning import OneIGReasoningMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
+from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as RapidataMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
@@ -65,6 +66,7 @@ __all__ = [
     "RapidataMetric",
     "TextScoreMetric",
     "VQAMetric",
+    "VieScoreMetric",
     "BaseVLM",
     "LitellmVLM",
     "StatefulVLMMeanScoresMetric",

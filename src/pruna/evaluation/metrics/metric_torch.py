@@ -50,6 +50,26 @@ from pruna.evaluation.metrics.utils import (
 )
 from pruna.logging.logger import pruna_logger
 
+_PRUNA_TASK_ROUTING_KWARGS: tuple[str, ...] = (
+    "vlm_type",
+    "model_name",
+    "structured_output",
+    "vlm_kwargs",
+    "api_key",
+)
+
+
+def _strip_task_routing_kwargs(kwargs: dict[str, Any]) -> None:
+    """
+    Drop kwargs :class:`~pruna.evaluation.task.Task` passes when building mixed metric lists.
+
+    Torchmetrics classes often end with ``**kwargs`` and would otherwise accept bogus keys
+    until a lower layer raises. Stripping here keeps :class:`TorchMetricWrapper` the single
+    choke point between Pruna routing and torchmetrics constructors.
+    """
+    for key in _PRUNA_TASK_ROUTING_KWARGS:
+        kwargs.pop(key, None)
+
 
 def default_update(metric: Metric, *args, **kwargs) -> None:
     """
@@ -124,9 +144,7 @@ def arniqa_update(metric: ARNIQA, preds: Any) -> None:
 
 
 def ssim_update(
-        metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure,
-        preds: Any,
-        target: Any
+    metric: StructuralSimilarityIndexMeasure | MultiScaleStructuralSimilarityIndexMeasure, preds: Any, target: Any
 ) -> None:
     """
     Update handler for SSIM or MS-SSIM metric.
@@ -152,29 +170,22 @@ class TorchMetrics(Enum):
     """
     Enumeration of torchmetrics metrics for evaluation.
 
-    This enum provides a tuple per member (metric_factory, update_fn, call_type):
-    metric_factory builds the metric (typically a torchmetrics class, or
-    functools.partial when some constructor arguments are fixed); update_fn is
-    an optional custom update handler; call_type describes how inputs are paired
-    for the metric.
+    Each member value is a ``(metric_factory, update_fn, call_type)`` tuple.
 
     Parameters
     ----------
     value : tuple
-        Tuple holding metric_factory, update_fn, and call_type as described above.
+        ``(metric_factory, update_fn, call_type)`` for this enum member.
     names : str
-        The name of the enum member.
+        Enum member name.
     module : str
-        The module where the enum is defined.
+        Defining module name.
     qualname : str
-        The qualified name of the enum.
+        Qualified name of the enum class.
     type : type
-        The type of the enum.
+        Enum metaclass type.
     start : int
-        The start index for auto-numbering enum values.
-    boundary : enum.FlagBoundary or None
-        Boundary handling mode used by the Enum functional API for Flag and
-        IntFlag enums.
+        Auto-numbering start index for functional API enums.
     """
 
     fid = (FrechetInceptionDistance, fid_update, "gt_y")
@@ -246,6 +257,7 @@ class TorchMetricWrapper(StatefulMetric):
         if metric_name == "clip_score" and call_type.startswith(PAIRWISE):
             from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 
+            _strip_task_routing_kwargs(kwargs)
             return PairwiseClipScore(**kwargs)
         return super().__new__(cls)
 
@@ -259,6 +271,7 @@ class TorchMetricWrapper(StatefulMetric):
             If the metric name is not supported.
         """
         self.metric_name = metric_name
+        _strip_task_routing_kwargs(kwargs)
         super().__init__(kwargs.pop("device", None))
         try:
             self.metric = TorchMetrics[metric_name](**kwargs)
