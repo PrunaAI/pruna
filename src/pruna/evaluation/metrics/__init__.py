@@ -22,16 +22,16 @@ from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyCon
 from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
-from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
 from pruna.evaluation.metrics.metric_oneig_reasoning import OneIGReasoningMetric
+from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
-from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
-from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
-from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as RapidataMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
+from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
+from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import (
     BaseVLM,
     LitellmVLM,
