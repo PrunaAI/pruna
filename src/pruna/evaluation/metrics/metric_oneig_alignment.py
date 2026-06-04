@@ -220,10 +220,11 @@ class OneIGAlignmentMetric(QAAccuracyMetric):
             structured_output=structured_output,
             device=device,
             api_key=api_key,
-            call_type=call_type if call_type is not None else "y_gt",
+            call_type=call_type,
             **kwargs,
         )
         self.grid_size = (int(grid_size[0]), int(grid_size[1]))
+        self.metric_units = type(self).metric_units
 
     def _score_sample(self, image: Any, aux: dict[str, Any]) -> float:
         if not isinstance(image, Image.Image):
