@@ -36,9 +36,6 @@ possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
 
-[tool.bandit]
-exclude_dirs = ["tests", "docs"]
-
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -164,6 +161,21 @@ vllm = [
     "vllm>=0.16.0",
     "ray",
 ]
+rapidata = [
+    "rapidata>=3.0.0",
+]
+upscale = [
+    "realesrgan",
+]
+evaluation = [
+    "pruna[rapidata]",
+    "pruna[lmharness]",
+    "outlines>1.2.0,<2.0.0",
+    "litellm>=1.0.0",
+]
+oneig-reasoning = [
+    "hf_transfer>=0.1.9",
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna>=1.0.8,<1.0.9",
@@ -188,17 +200,11 @@ awq = [
     "llmcompressor>=0.9",
     "torch>=2.9.0"
 ]
-upscale = [
-    "realesrgan",
-]
 full = [
     "pruna[stable-fast]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
-]
-rapidata = [
-    "rapidata>=3.0.0"
 ]
 dev = [
     "wget",
@@ -226,14 +232,11 @@ dev = [
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "pruna[evaluation]",
 ]
 cpu = []
 lmharness = [
     "lm-eval>=0.4.0"
-]
-evaluation = [
-    "pruna[rapidata]",
-    "pruna[lmharness]"
 ]
 
 kvpress = [
