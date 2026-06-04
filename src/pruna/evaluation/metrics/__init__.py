@@ -27,6 +27,7 @@ from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as RapidataMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
+from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
 from pruna.evaluation.metrics.vlm_base import (
     BaseVLM,
@@ -56,8 +57,10 @@ __all__ = [
     "AestheticLAION",
     "LMEvalMetric",
     "OneIGAlignmentMetric",
+    "OneIGTextScoreMetric",
     "QAAccuracyMetric",
     "RapidataMetric",
+    "TextScoreMetric",
     "BaseVLM",
     "LitellmVLM",
     "StatefulVLMMeanScoresMetric",
