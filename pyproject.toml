@@ -65,6 +65,12 @@ testpaths = [
     "tests/",
 ]
 
+# Dependency cooldown applies only to PyPI; trusted extra indexes (pruna_internal, user --extra-index-url) are unaffected.
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+exclude-newer = "1 week"
 
 [[tool.uv.index]]
 name = "pruna_internal"
@@ -73,9 +79,6 @@ explicit = true
 
 [tool.uv]
 index-strategy = "first-index"
-exclude-newer = "1 week"  # protection against compromised dependencies
-# trusted dev wheels that are missing an upload date
-exclude-newer-package = { gptqmodel = false, "stable-fast-pruna" = false }
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
