@@ -24,6 +24,7 @@ from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMe
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
 from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
+from pruna.evaluation.metrics.metric_oneig_reasoning import OneIGReasoningMetric
 from pruna.evaluation.metrics.metric_qa_accuracy import QAAccuracyMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as RapidataMetric
@@ -57,6 +58,7 @@ __all__ = [
     "AestheticLAION",
     "LMEvalMetric",
     "OneIGAlignmentMetric",
+    "OneIGReasoningMetric",
     "OneIGTextScoreMetric",
     "QAAccuracyMetric",
     "RapidataMetric",
