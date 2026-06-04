@@ -36,9 +36,6 @@ possibly-missing-attribute = "ignore"
 missing-argument = "ignore"
 unused-type-ignore-comment = "ignore"
 
-[tool.bandit]
-exclude_dirs = ["tests", "docs"]
-
 
 [tool.coverage.run]
 source = ["src/pruna"]
@@ -70,29 +67,21 @@ name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"
 explicit = true
 
-[[tool.uv.index]]
-name = "intel-pytorch-extension"
-url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
-explicit = true
-
 [tool.uv]
 index-strategy = "first-index"
+exclude-newer = "1 week"  # protection against compromised dependencies
+# trusted dev wheels that are missing an upload date
+exclude-newer-package = { gptqmodel = false, "stable-fast-pruna" = false }
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
     [{ extra = "vllm" }, { extra = "vbench" }],
-    [{ extra = "intel" }, { extra = "awq" }],
     [{ extra = "gptq" }, { extra = "awq" }],
-    # intel is incompatible with all stable-fast variants and vllm
-    [{ extra = "intel" }, { extra = "stable-fast" }, { extra = "stable-fast-extraindex" }],
-    [{ extra = "intel" }, { extra = "full" }, { extra = "stable-fast-extraindex" }],
-    [{ extra = "intel" }, { extra = "vllm" }],
     [{ extra = "kvpress" }, { extra = "vbench" }],
 ]
 
 [tool.uv.sources]
 gptqmodel = { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" }
-intel-extension-for-pytorch = { index = "intel-pytorch-extension" }
 stable-fast-pruna = { index = "pruna_internal", extra = "stable-fast-extraindex" }
 
 [project]
@@ -171,6 +160,21 @@ vllm = [
     "vllm>=0.16.0",
     "ray",
 ]
+rapidata = [
+    "rapidata>=3.0.0",
+]
+upscale = [
+    "realesrgan",
+]
+evaluation = [
+    "pruna[rapidata]",
+    "pruna[lmharness]",
+    "outlines>1.2.0,<2.0.0",
+    "litellm>=1.0.0",
+]
+oneig-reasoning = [
+    "hf_transfer>=0.1.9",
+]
 stable-fast = [
     "xformers>=0.0.30",
     "stable-fast-pruna>=1.0.8,<1.0.9",
@@ -195,17 +199,11 @@ awq = [
     "llmcompressor>=0.9",
     "torch>=2.9.0"
 ]
-upscale = [
-    "realesrgan",
-]
 full = [
     "pruna[stable-fast]",
 ]
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
-]
-rapidata = [
-    "rapidata>=3.0.0"
 ]
 dev = [
     "wget",
@@ -233,22 +231,13 @@ dev = [
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "pruna[evaluation]",
 ]
 cpu = []
 lmharness = [
     "lm-eval>=0.4.0"
 ]
-evaluation = [
-    "pruna[rapidata]",
-    "pruna[lmharness]"
-]
 
-# Intel extension is tightly coupled with the torch version
-intel = [
-    "intel-extension-for-pytorch>=2.7.0",
-    "torch>=2.7.0,<2.9.0",
-    "torchvision>=0.22.0,<0.24.0",
-]
 kvpress = [
     "kvpress>=0.5.2",
 ]
