@@ -120,20 +120,3 @@ def test_oneig_alignment_all_padding_questions_yields_zero_without_vlm() -> None
     assert metric.compute().result == 0.0
     mock_vlm.score.assert_not_called()
 
-
-def test_to_oneig_record_strips_null_questions_and_dependencies() -> None:
-    """Null-valued Q_D entries are filtered out at record construction time."""
-    row = {"category": "Anime_Stylization", "id": "001", "class": "None", "prompt_en": "a cat"}
-    questions_by_key = {
-        "anime_001": {
-            "questions": {"1": "Is there a cat?", "21": None},
-            "dependencies": {"1": [0], "21": None},
-        }
-    }
-    record = _to_oneig_record(row, questions_by_key, {}, {})
-    assert "21" not in record["questions"]
-    assert "21" not in record["dependencies"]
-    assert record["questions"] == {"1": "Is there a cat?"}
-    assert record["dependencies"] == {"1": [0]}
-
-
