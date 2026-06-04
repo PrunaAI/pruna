@@ -100,6 +100,48 @@ Evaluation Components
 The |pruna| package provides a variety of evaluation metrics to assess your models.
 In this section, we'll introduce the evaluation metrics you can use.
 
+.. _vlm_judge_metrics:
+
+Vision-language judge metrics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some **quality** metrics (for example ``vqa``, ``qa_accuracy``, ``alignment_score``, OCR-based text scores, ``vie_score``) use a **vision-language model** as a judge. By default they use a hosted API via ``litellm`` (``vlm_type="litellm"``); you can load a local Hugging Face model with ``vlm_type="transformers"``. When using string metric names with ``Task``, the default hosted route uses ``openai/gpt-4o`` unless you construct the metric explicitly.
+
+**API keys (hosted judges).** Pruna passes ``api_key`` into LiteLLM using this order: the metric’s ``api_key`` argument (if set), then ``LITELLM_API_KEY``, then ``OPENAI_API_KEY``. That matches common usage for OpenAI routes: LiteLLM documents ``OPENAI_API_KEY`` for OpenAI; ``LITELLM_API_KEY`` is an extra env name Pruna checks so you can supply a key without using ``OPENAI_API_KEY``. If all three are unset, LiteLLM can still pick up provider-specific variables (for example ``ANTHROPIC_API_KEY``) as in LiteLLM’s “Setting API Keys” and provider docs—if you use a non-OpenAI route but have ``OPENAI_API_KEY`` set for other tools, pass ``api_key`` explicitly so Pruna does not forward the wrong key. Credentials for Replicate or other image-only backends are separate and are not used by these metrics.
+
+**Hosted ``litellm``.** Set ``OPENAI_API_KEY`` or ``LITELLM_API_KEY`` (or pass ``api_key=...``) and use a vision-capable LiteLLM route as ``model_name``:
+
+.. code-block:: python
+
+    from pruna.evaluation.metrics import VQAMetric
+
+    hosted = VQAMetric(vlm_type="litellm", model_name="openai/gpt-4o")
+
+The same pattern works with ``get_vlm`` in ``pruna.evaluation.metrics.vlm_base``:
+
+.. code-block:: python
+
+    from pruna.evaluation.metrics.vlm_base import get_vlm
+
+    vlm = get_vlm(vlm_type="litellm", model_name="openai/gpt-4o")
+
+**Local ``transformers``.** Pass a Hugging Face model id as ``model_name``, set ``device``, and use ``vlm_kwargs`` with ``model_load_kwargs`` for ``from_pretrained`` (same pattern for any registry metric class):
+
+.. code-block:: python
+
+    import torch
+
+    from pruna.evaluation.metrics import VQAMetric
+
+    local = VQAMetric(
+        vlm_type="transformers",
+        model_name="HuggingFaceTB/SmolVLM-256M-Instruct",
+        device="cpu",
+        vlm_kwargs={"model_load_kwargs": {"torch_dtype": torch.float32}},
+    )
+
+Use ``Task(request=[hosted, ...], ...)`` or ``Task(request=[local, ...], ...)`` (or pass the metric instance wherever metrics are configured). Full constructor patterns and ``get_vlm`` helpers are documented in ``pruna.evaluation.metrics.vlm_base`` and each metric’s docstring.
+
 EvaluationAgent Initialization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
