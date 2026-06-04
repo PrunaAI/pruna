@@ -1,6 +1,13 @@
+import os
 from typing import Any
 
 import pytest
+
+if os.environ.get("PRUNA_CI_CPU_ONLY") == "1":
+    import torch
+
+    if hasattr(torch.backends, "mps"):
+        torch.backends.mps.is_available = lambda: False  # type: ignore[method-assign]
 
 # import all fixtures to make them avaliable for pytest
 from .fixtures import *  # noqa: F403, F401
