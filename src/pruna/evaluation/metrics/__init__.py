@@ -26,6 +26,13 @@ from pruna.evaluation.metrics.metric_pairwise_clip import PairwiseClipScore
 from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as RapidataMetric
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
+from pruna.evaluation.metrics.vlm_base import (
+    BaseVLM,
+    LitellmVLM,
+    StatefulVLMMeanScoresMetric,
+    TransformersVLM,
+    get_vlm,
+)
 
 __all__ = [
     "MetricRegistry",
@@ -47,4 +54,9 @@ __all__ = [
     "AestheticLAION",
     "LMEvalMetric",
     "RapidataMetric",
+    "BaseVLM",
+    "LitellmVLM",
+    "StatefulVLMMeanScoresMetric",
+    "TransformersVLM",
+    "get_vlm",
 ]
