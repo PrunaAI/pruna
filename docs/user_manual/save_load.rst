@@ -166,7 +166,7 @@ So, when the base model was loaded with e.g. a specific precision:
     import torch
     from diffusers import DiffusionPipeline
 
-    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega", torch_dtype=torch.float16)
+    base_model = DiffusionPipeline.from_pretrained("segmind/Segmind-Vega", dtype=torch.float16)
 
 You should also load the smashed model as follows:
 
@@ -174,7 +174,7 @@ You should also load the smashed model as follows:
 
     from pruna import PrunaModel
 
-    loaded_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed", torch_dtype=torch.float16)
+    loaded_model = PrunaModel.from_pretrained("PrunaAI/Segmind-Vega-smashed", dtype=torch.float16)
 
 Depending on the saving function of the algorithm combination not all keyword arguments are required for loading (e.g. some are set by the algorithm combination itself).
 In that case, we discard and log a warning about unused keyword arguments.
