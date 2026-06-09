@@ -157,7 +157,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-transformers-new = ["transformers>=5.0.0"]
+transformers-new = ["transformers>=5.10.2"]
 transformers-legacy = ["transformers<=4.48.0"]
 transformers-pruna-current = ["transformers < 5.0.0"]
 
