@@ -78,7 +78,7 @@ url = "https://prunaai.pythonanywhere.com/simple/"
 explicit = true
 
 [tool.uv]
-index-strategy = "first-index"
+index-strategy = "unsafe-best-match"
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
