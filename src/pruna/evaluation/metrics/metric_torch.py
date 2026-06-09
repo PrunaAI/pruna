@@ -17,6 +17,7 @@ from __future__ import annotations
 from contextlib import suppress
 from enum import Enum
 from functools import partial
+from importlib import import_module
 from typing import Any, Callable, List, Optional, Union
 
 import torch
@@ -49,6 +50,29 @@ from pruna.evaluation.metrics.utils import (
     metric_data_processor,
 )
 from pruna.logging.logger import pruna_logger
+
+_torchmetrics_clip_score = import_module("torchmetrics.functional.multimodal.clip_score")
+
+
+def _unwrap_clip_features(features: Any) -> Any:
+    """Return the tensor inside Transformers 5 CLIP outputs or the original tensor."""
+    return features.pooler_output if hasattr(features, "pooler_output") else features
+
+
+def _patch_clip_score_feature_outputs() -> None:
+    """Patch TorchMetrics CLIPScore feature extraction for Transformers 5 outputs."""
+    get_features = getattr(_torchmetrics_clip_score, "_get_features", None)
+    if get_features is None or getattr(get_features, "_pruna_unwraps_pooler_output", False):
+        return
+
+    def _get_features_with_pooler_unwrap(*args: Any, **kwargs: Any) -> Any:
+        return _unwrap_clip_features(get_features(*args, **kwargs))
+
+    setattr(_get_features_with_pooler_unwrap, "_pruna_unwraps_pooler_output", True)
+    _torchmetrics_clip_score._get_features = _get_features_with_pooler_unwrap
+
+
+_patch_clip_score_feature_outputs()
 
 
 def default_update(metric: Metric, *args, **kwargs) -> None:
