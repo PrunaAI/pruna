@@ -42,6 +42,10 @@ from pruna.logging.logger import pruna_logger
 torch._dynamo.config.cache_size_limit = 128
 
 
+DEFAULT_BACKEND = "inductor"
+CPU_COMPATIBLE_BACKENDS = ["inductor", "openvino"]
+
+
 class TorchCompile(PrunaAlgorithmBase):
     """
     Implement Torch Compile compilation using torch.compile.
@@ -107,8 +111,8 @@ class TorchCompile(PrunaAlgorithmBase):
             CategoricalHyperparameter(
                 "backend",
                 choices=["inductor", "cudagraphs", "onnxrt", "tvm", "openvino", "openxla"],
-                default_value="inductor",
-                meta={"desc": "Compilation backend."},
+                default_value=DEFAULT_BACKEND,
+                meta={"desc": "Compilation backend. Only inductor (default) and openvino are supported on CPU."},
             ),
             Boolean(
                 "fullgraph",
@@ -267,6 +271,18 @@ def get_model_device(model: Callable[..., Any]) -> torch.device:
     return torch.device("cpu")
 
 
+def _resolve_compile_backend(backend: str, device: str) -> str:
+    """
+    Resolve the torch.compile backend for the target device.
+
+    GPU-only backends are replaced with inductor on CPU.
+    """
+    if device != "cpu" or backend in CPU_COMPATIBLE_BACKENDS:
+        return backend
+    pruna_logger.warning(f"Backend '{backend}' is not supported on CPU; falling back to 'inductor'.")
+    return DEFAULT_BACKEND
+
+
 def compile_callable(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
     """
     Compile a callable model using torch.compile.
@@ -284,9 +300,8 @@ def compile_callable(model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         The compiled model.
     """
     backend = smash_config["backend"]
-    if smash_config["device"] == "cpu" or str(get_model_device(model)) == "cpu":
-        pruna_logger.info("Compiling for CPU")
-        backend = "openvino"
+    backend = _resolve_compile_backend(backend, smash_config["device"])
+
     if smash_config["target"] == "module_list":
         found_module_list = False
         for name, module in model.named_modules():

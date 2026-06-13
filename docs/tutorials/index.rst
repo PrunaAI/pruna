@@ -44,7 +44,7 @@ These tutorials will guide you through the process of using |pruna| to optimize 
       :text-align: center
       :link: ./cv_cpu.ipynb
 
-      ``Compile`` your model with ``torch_compile`` and ``openvino`` for faster inference.
+      ``Compile`` your model with ``torch_compile`` for faster inference.
 
    .. grid-item-card:: Speedup and Quantize any Diffusion Model
       :text-align: center
