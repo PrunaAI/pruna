@@ -166,7 +166,7 @@ class FlashAttn3(PrunaAlgorithmBase):
         Dict[str, Any]
             The algorithm packages.
         """
-        return {"flash_attention_3": get_kernel("kernels-community/flash-attn3")}
+        return {"flash_attention_3": get_kernel("kernels-community/flash-attn3", version=1)}
 
     def _has_backend_api(self, model: Any) -> bool:
         """Check if the model supports the diffusers attention backend API (>= 0.35)."""
