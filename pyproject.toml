@@ -78,13 +78,15 @@ url = "https://prunaai.pythonanywhere.com/simple/"
 explicit = true
 
 [tool.uv]
-index-strategy = "unsafe-best-match"
+index-strategy = "first-index"
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
     [{ extra = "vllm" }, { extra = "vbench" }],
     [{ extra = "gptq" }, { extra = "awq" }],
     [{ extra = "kvpress" }, { extra = "vbench" }],
+    [{ extra = "transformers-new" }, { extra = "transformers-legacy" }],
+    [{ extra = "transformers-pruna-current" }, { extra = "transformers-new" }]
 ]
 
 [tool.uv.sources]
@@ -176,6 +178,7 @@ whisper = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
+    "pruna[transformers-legacy]",
 ]
 llamacpp = [
     "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
@@ -203,7 +206,8 @@ gptq = [
 awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
-    "torch>=2.9.0"
+    "torch>=2.9.0",
+    "pruna[transformers-legacy]",
 ]
 upscale = [
     "realesrgan",
