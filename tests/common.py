@@ -122,6 +122,10 @@ def run_full_integration(
             raise Skipped(
                 f"Algorithm {algorithm_tester.get_algorithm_name()} is not compatible with {device}"
             )
+        if not algorithm_tester.algorithm_class().is_available_algorithm():
+            raise Skipped(
+                f"Algorithm {algorithm_tester.get_algorithm_name()} is not available in the current environment"
+            )
         algorithm_tester.prepare_smash_config(smash_config, device)
         device_map = construct_device_map_manually(model) if device == "accelerate" else None
         move_to_device(model, device=smash_config["device"], device_map=device_map)
