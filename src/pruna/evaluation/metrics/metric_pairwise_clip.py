@@ -142,6 +142,11 @@ def _process_image_data(images: Tensor) -> List[Tensor]:
     return list_images
 
 
+def _unwrap_clip_features(features: Any) -> Any:
+    """Unwrap transformers 5 CLIP feature outputs while preserving tensor returns."""
+    return features.pooler_output if hasattr(features, "pooler_output") else features
+
+
 def _get_features(
     data: List[Tensor],
     device: torch.device,
@@ -169,7 +174,7 @@ def _get_features(
     """
     # The processor expects the images to be on the CPU
     processed = processor(images=[i.cpu() for i in data], return_tensors="pt", padding=True)
-    return model.get_image_features(processed["pixel_values"].to(device))
+    return _unwrap_clip_features(model.get_image_features(processed["pixel_values"].to(device)))
 
 
 def _clip_score_update(
