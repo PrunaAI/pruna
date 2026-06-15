@@ -69,7 +69,7 @@ def _patch_clip_score_feature_outputs() -> None:
         return _unwrap_clip_features(get_features(*args, **kwargs))
 
     setattr(_get_features_with_pooler_unwrap, "_pruna_unwraps_pooler_output", True)
-    _torchmetrics_clip_score._get_features = _get_features_with_pooler_unwrap
+    setattr(_torchmetrics_clip_score, "_get_features", _get_features_with_pooler_unwrap)
 
 
 _patch_clip_score_feature_outputs()
