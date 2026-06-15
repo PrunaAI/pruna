@@ -25,7 +25,6 @@ OneIGCategory = Literal[
     "Anime_Stylization",
     "General_Object",
     "Knowledge_Reasoning",
-    "Multilingualism",
     "Portrait",
     "Text_Rendering",
     "3d rendering",

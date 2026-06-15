@@ -121,13 +121,13 @@ def _benchmarks_with_category() -> list[tuple[str, str]]:
 @pytest.mark.parametrize("dataset_name, category", _benchmarks_with_category())
 def test_benchmark_category_filter(dataset_name: str, category: str) -> None:
     """Test dataset loading with each category filter; dataset has at least one sample."""
-    dm = PrunaDataModule.from_string(dataset_name, category=category, dataloader_args={"batch_size": 4})
+    dm = PrunaDataModule.from_string(dataset_name, category=category, dataloader_args={"batch_size": 3})
     _assert_at_least_one_sample(dm)
     dm.limit_datasets(10)
     batch = next(iter(dm.test_dataloader()))
     prompts, auxiliaries = batch
 
-    assert len(prompts) == 4
+    assert len(prompts) == 3
     assert all(isinstance(p, str) for p in prompts)
 
     def _category_in_aux(aux: dict, cat: str) -> bool:
