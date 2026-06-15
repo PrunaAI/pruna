@@ -85,8 +85,6 @@ conflicts = [
     [{ extra = "vllm" }, { extra = "vbench" }],
     [{ extra = "gptq" }, { extra = "awq" }],
     [{ extra = "kvpress" }, { extra = "vbench" }],
-    [{ extra = "transformers-new" }, { extra = "transformers-legacy" }],
-    [{ extra = "transformers-pruna-current" }, { extra = "transformers-new" }]
 ]
 
 [tool.uv.sources]
@@ -158,12 +156,15 @@ dependencies = [
 
 [project.optional-dependencies]
 <<<<<<< HEAD
+<<<<<<< HEAD
 # ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
 =======
 transformers-new = ["transformers>=5.10.2"]
 transformers-legacy = ["transformers<=4.48.0"]
 
 
+=======
+>>>>>>> 9c34960 (ci: remove transformers as extras)
 # whisper-s2t and ctranslate2 are isolated because importing whisper_s2t
 # at test time causes side-effects that break unrelated tests.
 >>>>>>> 89d27bc (ci: transformers dependency as extra)
@@ -178,7 +179,6 @@ whisper = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
-    "pruna[transformers-legacy]",
 ]
 llamacpp = [
     "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
@@ -207,7 +207,6 @@ awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
     "torch>=2.9.0",
-    "pruna[transformers-legacy]",
 ]
 upscale = [
     "realesrgan",
