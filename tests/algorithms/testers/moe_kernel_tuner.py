@@ -16,7 +16,7 @@ from .base_tester import AlgorithmTesterBase
 class TestMoeKernelTuner(AlgorithmTesterBase):
     """Test the MoeKernelTuner."""
 
-    models = ["qwen_moe_tiny_random"]
+    models = ["tiny_random_qwen_moe"]
     reject_models = ["sd_tiny_random"]
     allow_pickle_files = False
     algorithm_class = MoeKernelTuner

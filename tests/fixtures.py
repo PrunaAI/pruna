@@ -219,8 +219,8 @@ MODEL_FACTORY: dict[str, Callable] = {
     "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
-    "qwen_moe_tiny_random": partial(
-        get_automodel_transformers, "yujiepan/qwen1.5-moe-tiny-random", torch_dtype=torch.bfloat16
+    "tiny_random_qwen_moe": partial(
+        get_automodel_transformers, "peft-internal-testing/tiny-random-qwen-1.5-MoE", torch_dtype=torch.bfloat16
     ),
     "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m", torch_dtype=torch.bfloat16),
 }
