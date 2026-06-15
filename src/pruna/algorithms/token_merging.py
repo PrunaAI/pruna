@@ -19,6 +19,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import torch
 from ConfigSpace import UniformIntegerHyperparameter
+from transformers import __version__ as transformers_version
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag as tags
@@ -628,3 +629,20 @@ class TokenMerging(PrunaAlgorithmBase):
         from transformers.models.vit.modeling_vit import ViTLayer, ViTSelfAttention
 
         return dict(ViTLayer=ViTLayer, ViTSelfAttention=ViTSelfAttention)
+
+    def is_available_algorithm(self) -> bool:
+        """
+        Return whether Token Merging can run in the current environment.
+
+        Returns
+        -------
+        bool
+            True if the installed transformers version is below 5.0.0, False otherwise.
+        """
+        if transformers_version >= "5.0.0":
+            pruna_logger.error(
+                f"Token merging is not supported with transformers>=5 (found {transformers_version}). "
+                "Please install transformers<5 to use it."
+            )
+            return False
+        return True

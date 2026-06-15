@@ -115,6 +115,21 @@ def check_algorithm_packages_availability(smash_config: SmashConfig) -> None:
         algorithm.import_algorithm_packages()
 
 
+def check_algorithm_availability(smash_config: SmashConfig) -> None:
+    """
+    Check if all active algorithms are available in the current environment.
+
+    Parameters
+    ----------
+    smash_config : SmashConfig
+        The SmashConfig object containing the algorithm configuration.
+    """
+    for algorithm_name in smash_config.get_active_algorithms():
+        algorithm = AlgorithmRegistry[algorithm_name]
+        if not algorithm.is_available_algorithm():
+            raise ValueError(f"Algorithm '{algorithm_name}' is not available in the current environment.")
+
+
 def check_argument_compatibility(smash_config: SmashConfig) -> None:
     """
     Check if the SmashConfig has the required arguments (tokenizer, processor, dataset) for all active algorithms.
