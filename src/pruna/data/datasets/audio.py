@@ -15,7 +15,7 @@
 from pathlib import Path
 from typing import Tuple, cast
 
-from datasets import Dataset, IterableDataset, load_dataset
+from datasets import Audio, Dataset, IterableDataset, load_dataset
 from huggingface_hub import snapshot_download
 
 from pruna.data.utils import split_train_into_train_val_test
@@ -39,6 +39,7 @@ def setup_librispeech_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
         The LibriSpeech dataset with explicit audio paths.
     """
     ds = load_dataset("argmaxinc/librispeech-200", split="train", streaming=False)
+    ds = ds.cast_column("audio", Audio(decode=False))
     ds = ds.map(lambda batch: {"sentence": ""})
     ds = cast(Dataset | IterableDataset, ds)
 
