@@ -13,21 +13,27 @@ on:
 jobs:
   stale:
     runs-on: ubuntu-latest
+    env:
+      DAYS_BEFORE_ISSUE_STALE: 21
+      DAYS_BEFORE_ISSUE_CLOSE: 14
+      DAYS_BEFORE_PR_STALE: 10
+      DAYS_BEFORE_PR_CLOSE: 7
     steps:
       - uses: actions/stale@v9
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Issues
-          days-before-issue-stale: 30
-          days-before-issue-close: 7
+          days-before-issue-stale: ${{ env.DAYS_BEFORE_ISSUE_STALE }}
+          days-before-issue-close: ${{ env.DAYS_BEFORE_ISSUE_CLOSE }}
           stale-issue-label: 'stale'
-          stale-issue-message: 'This issue has been inactive for 30 days and is now marked as stale. It will be closed in 7 days if there is no further activity.'
+          stale-issue-message: 'This issue has been inactive for ${{ env.DAYS_BEFORE_ISSUE_STALE }} days and is now marked as stale. It will be closed in ${{ env.DAYS_BEFORE_ISSUE_CLOSE }} days if there is no further activity.'
           close-issue-message: 'Closing this issue due to inactivity. Please reopen it or create a new issue if this is still relevant.'
           exempt-issue-labels: 'pinned,security,do-not-close'
 
           # PRs
-          days-before-pr-stale: 10
-          days-before-pr-close: 7
+          days-before-pr-stale: ${{ env.DAYS_BEFORE_PR_STALE }}
+          days-before-pr-close: ${{ env.DAYS_BEFORE_PR_CLOSE }}
           stale-pr-label: 'stale'
-          stale-pr-message: 'This PR has been inactive for 10 days and is now marked as stale.'
+          stale-pr-message: 'This PR has been inactive for ${{ env.DAYS_BEFORE_PR_STALE }} days and is now marked as stale. It will be closed in ${{ env.DAYS_BEFORE_PR_CLOSE }} days if there is no further activity.'
+          close-pr-message: 'Closing this PR due to inactivity. Please reopen it or create a new PR if this is still relevant.'
