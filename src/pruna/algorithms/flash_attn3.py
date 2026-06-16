@@ -270,7 +270,7 @@ def register_custom_backend(imported_packages: Dict[str, Any], use_fp8: bool = F
     if enum_key not in attention_backend_name.__members__:
 
         # Pick the right custom op based on use_fp8
-        _ops = torch.ops.flash_attn_pruna  # ty: ignore[invalid-argument-type]
+        _ops = torch.ops.flash_attn_pruna
         _op_fn = _ops._flash_attn_forward_fp8 if use_fp8 else _ops._flash_attn_forward
 
         @attention_backend_registry.register(
