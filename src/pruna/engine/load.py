@@ -505,7 +505,17 @@ def load_llama_cpp(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
     if not model_path.exists():
         raise FileNotFoundError(f"GGUF file not found at {model_path}")
 
-    model = llama_cpp.Llama(model_path=str(model_path), **filter_load_kwargs(llama_cpp.Llama.__init__, kwargs))
+    n_gpu_layers = kwargs.pop(
+        "n_gpu_layers", smash_config.get("llama_cpp_n_gpu_layers", smash_config.get("n_gpu_layers", -1))
+    )
+    main_gpu = kwargs.pop("main_gpu", smash_config.get("llama_cpp_main_gpu", smash_config.get("main_gpu", 0)))
+
+    model = llama_cpp.Llama(
+        model_path=str(model_path),
+        n_gpu_layers=n_gpu_layers,
+        main_gpu=main_gpu,
+        **filter_load_kwargs(llama_cpp.Llama.__init__, kwargs)
+    )
     # Explicitly set model_path for consistency and to ensure Pruna's save logic can find the GGUF file
     model.model_path = str(model_path)
     model._pruna_device = smash_config["device"]

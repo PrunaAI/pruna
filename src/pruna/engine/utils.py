@@ -408,6 +408,11 @@ def get_device(model: Any) -> str:
     if safe_is_instance(model, Pipeline):
         return get_device(model.model)
 
+    from pruna.engine.pruna_model import PrunaModel
+
+    if safe_is_instance(model, PrunaModel):
+        return get_device(model.model)
+
     # function scored import due to model_check's import of ModelContext
     from pruna.engine.model_checks import is_llama_cpp_model
 
