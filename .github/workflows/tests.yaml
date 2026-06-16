@@ -70,7 +70,7 @@ jobs:
         include:
         - name: base
           extras: ""
-          mark_filter: "cpu and not slow and not style and not requires_intel and not requires_lmharness and not requires_rapidata"
+          mark_filter: "no_extras"
         - name: lmharness
           extras: "--extra lmharness"
           mark_filter: "requires_lmharness"
@@ -83,6 +83,7 @@ jobs:
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
       HF_DATASETS_CACHE: ${{ github.workspace }}/.cache/huggingface/datasets
       HUGGINGFACE_HUB_CACHE: ${{ github.workspace }}/.cache/huggingface/hub
+      DEFAULT_MARK_FILTER: "cpu and not slow and not style"
 
     steps:
       - name: Checkout code
@@ -138,4 +139,4 @@ jobs:
       - name: Run tests with pytest-rerunfailures
         run: |
           echo "Running tests with up to 3 reruns on failure using $PYTEST_WORKERS workers..."
-          uv run pytest -n $PYTEST_WORKERS -m "${{ matrix.mark_filter }}" --reruns 3 --reruns-delay 10 --maxfail=1
+          uv run pytest -n $PYTEST_WORKERS -m "${{ env.DEFAULT_MARK_FILTER }} and ${{ matrix.mark_filter }}" --reruns 3 --reruns-delay 10 --maxfail=1

@@ -65,33 +65,30 @@ testpaths = [
     "tests/",
 ]
 
+# Dependency cooldown applies only to PyPI; trusted extra indexes (pruna_internal, user --extra-index-url) are unaffected.
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+exclude-newer = "1 week"
+
 [[tool.uv.index]]
 name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"
 explicit = true
 
-[[tool.uv.index]]
-name = "intel-pytorch-extension"
-url = "https://pytorch-extension.intel.com/release-whl/stable/cpu/cn/"
-explicit = true
-
 [tool.uv]
-index-strategy = "first-index"
+index-strategy = "unsafe-best-match"
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
     [{ extra = "vllm" }, { extra = "vbench" }],
-    [{ extra = "intel" }, { extra = "awq" }],
     [{ extra = "gptq" }, { extra = "awq" }],
-    # intel is incompatible with all stable-fast variants and vllm
-    [{ extra = "intel" }, { extra = "stable-fast" }, { extra = "stable-fast-extraindex" }],
-    [{ extra = "intel" }, { extra = "full" }, { extra = "stable-fast-extraindex" }],
-    [{ extra = "intel" }, { extra = "vllm" }],
+    [{ extra = "kvpress" }, { extra = "vbench" }],
 ]
 
 [tool.uv.sources]
 gptqmodel = { index = "pruna_internal", marker = "sys_platform != 'darwin' or platform_machine != 'arm64'" }
-intel-extension-for-pytorch = { index = "intel-pytorch-extension" }
 stable-fast-pruna = { index = "pruna_internal", extra = "stable-fast-extraindex" }
 
 [project]
@@ -247,11 +244,8 @@ evaluation = [
     "pruna[lmharness]"
 ]
 
-# Intel extension is tightly coupled with the torch version
-intel = [
-    "intel-extension-for-pytorch>=2.7.0",
-    "torch>=2.7.0,<2.9.0",
-    "torchvision>=0.22.0,<0.24.0",
+kvpress = [
+    "kvpress>=0.5.2",
 ]
 
 [build-system]

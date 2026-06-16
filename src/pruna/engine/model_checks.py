@@ -24,7 +24,10 @@ from transformers.models.auto.modeling_auto import (
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING,
     MODEL_FOR_SPEECH_SEQ_2_SEQ_MAPPING,
 )
-from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
+from transformers.pipelines.automatic_speech_recognition import (
+    AutomaticSpeechRecognitionPipeline,
+)
+from transformers.pipelines.image_classification import ImageClassificationPipeline
 from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
 from transformers.pipelines.text_generation import TextGenerationPipeline
 
@@ -130,6 +133,40 @@ def is_moe_lm(model: Any) -> bool:
         return True
     text_cfg = getattr(config, "text_config", None)
     return text_cfg is not None and getattr(text_cfg, "num_experts", None) is not None
+
+
+def is_vit(model: Any) -> bool:
+    """
+    Check if the model is a ViT model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a ViT model, False otherwise.
+    """
+    return model.__class__.__name__ == "ViTForImageClassification"
+
+
+def is_transformers_pipeline_with_vit(model: Any) -> bool:
+    """
+    Check if the model is a transformers pipeline with a ViT model.
+
+    Parameters
+    ----------
+    model : Any
+        The model to check.
+
+    Returns
+    -------
+    bool
+        True if the model is a transformers pipeline, False otherwise.
+    """
+    return isinstance(model, ImageClassificationPipeline) and is_vit(getattr(model, "model", None))
 
 
 def is_transformers_pipeline_with_causal_lm(model: Any) -> bool:

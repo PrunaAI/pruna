@@ -120,6 +120,15 @@ def get_automodel_transformers(model_id: str, **kwargs: dict[str, Any]) -> tuple
     return model, smash_config
 
 
+def get_vit_pipeline_for_specific_task(model_id: str, task: str, **kwargs: dict[str, Any]) -> tuple[Any, SmashConfig]:
+    """Get a transformers pipeline for specific task."""
+    model = pipeline(task, model=model_id, **kwargs)
+    smash_config = SmashConfig()
+
+    smash_config.add_data("ImageNet")
+    return model, smash_config
+
+
 def get_transformers_pipeline_for_specific_task(
     model_id: str, task: str, **kwargs: dict[str, Any]
 ) -> tuple[Any, SmashConfig]:
@@ -180,6 +189,10 @@ MODEL_FACTORY: dict[str, Callable] = {
     "shufflenet": partial(get_torchvision_model, "shufflenet_v2_x0_5"),
     "mobilenet_v2": partial(get_torchvision_model, "mobilenet_v2"),
     "resnet_18": partial(get_torchvision_model, "resnet18"),
+    "vit_base": partial(get_vit_pipeline_for_specific_task, "google/vit-base-patch16-224", task="image-classification"),
+    "vit_large": partial(
+        get_vit_pipeline_for_specific_task, "google/vit-large-patch16-224", task="image-classification"
+    ),
     # image generation models
     "stable_diffusion_v1_4": partial(get_diffusers_model, "CompVis/stable-diffusion-v1-4"),
     "stable_diffusion_3_medium_diffusers": partial(
@@ -206,8 +219,8 @@ MODEL_FACTORY: dict[str, Callable] = {
     "wan_tiny_random": partial(get_diffusers_model, "pruna-test/wan-t2v-tiny-random", torch_dtype=torch.bfloat16),
     "flux_tiny": partial(get_diffusers_model, "pruna-test/tiny_flux", torch_dtype=torch.float16),
     "tiny_llama": partial(get_automodel_transformers, "pruna-test/tiny_llama", torch_dtype=torch.bfloat16),
-    "qwen_moe_tiny_random": partial(
-        get_automodel_transformers, "yujiepan/qwen1.5-moe-tiny-random", torch_dtype=torch.bfloat16
+    "tiny_random_qwen_moe": partial(
+        get_automodel_transformers, "peft-internal-testing/tiny-random-qwen-1.5-MoE", torch_dtype=torch.bfloat16
     ),
     "opt_125m": partial(get_automodel_transformers, "facebook/opt-125m", torch_dtype=torch.bfloat16),
 }

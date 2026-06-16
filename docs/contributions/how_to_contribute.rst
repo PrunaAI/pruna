@@ -7,9 +7,9 @@ How to Contribute ? 💜
 Since you landed on this part of the documentation, we want to first of all say thank you! 💜
 Contributions from the community are essential to improving |pruna|, we appreciate your effort in making the repository better for everyone!
 
-Please make sure to review and adhere to the `Pruna Code of Conduct <https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md>`_ before contributing to Pruna.
-Any violations will be handled accordingly and result in a ban from the Pruna community and associated platforms.
-Contributions that do not adhere to the code of conduct will be ignored.
+Please make sure to review and adhere to the `Pruna Code of Conduct <https://github.com/PrunaAI/pruna/blob/main/CODE_OF_CONDUCT.md>`_
+and `AI Contribution Policy <https://github.com/PrunaAI/pruna/blob/main/AI_CONTRIBUTION_POLICY.md>`_ before contributing to Pruna.
+Contributions that do not adhere to the code of conduct or AI contribution policy will be ignored.
 
 If you don't have uv installed, you can install it by following the instructions on the `uv website <https://docs.astral.sh/uv/getting-started/installation/>`_.
 
@@ -89,7 +89,8 @@ You can then also install the pre-commit hooks with
 
     pre-commit install
 
-1. Develop your contribution
+
+3. Develop your contribution
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You are now ready to work on your contribution. Check out a branch on your forked repository and start coding!
@@ -111,6 +112,30 @@ Tensor Annotations with jaxtyping
 We use `jaxtyping <https://github.com/google/jaxtyping>`_ to annotate PyTorch tensors with both shape and dtype information, mainly in collate functions, dataloaders, and model interfaces. This improves readability, helps catch shape/type mismatches early, and makes functions more self-documenting. Contributors are encouraged to follow this style when defining tensor inputs or outputs—for details and examples, see the official jaxtyping documentation.
 
 
+**How to add a new dependency**
+
+Your contribution may require packages that |pruna| does not yet list as a dependency. Declare them in ``pyproject.toml`` and mention them in your pull request so reviewers can weigh impact and versioning.
+
+Use the ``dependencies`` section when the library is generally required for |pruna| to work as intended across typical usage.
+
+If it should not be installed for every |pruna| user, put it under ``optional-dependencies``. This often applies when a dependency is too heavy or platform-specific, or only needed for one backend. Then follow **these steps to add a new optional extra**:
+
+1. Define the dependency group in ``pyproject.toml`` under ``[project.optional-dependencies]``. Then go through the installation process with uv (see :ref:`installation`) and register conflicts with other extras by extending the conflicts under ``[tool.uv]``.
+2. If this extra is required for an algorithm, set the ``required_install`` attribute on the algorithm class, for example ``required_install = "uv pip install 'pruna[my-extra]'"``.
+3. Register a matching ``requires_my_extra`` marker in ``tests/conftest.py`` and mark tests that need the extra.
+4. Finally, if CPU tests rely on that extra, update ``.github/workflows/tests.yaml``: append your extra to the ``test`` job's ``strategy``:
+
+   .. code-block:: yaml
+
+        name: [..., my-extra]
+        matrix:
+            include:
+            # ...
+            - name: my-extra
+                extras: "--extra my-extra"
+                mark_filter: "requires_my_extra"
+
+
 4. Run the tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -130,6 +155,7 @@ For specific test markers:
 .. code-block:: bash
 
     uv run pytest -m "cpu and not slow"
+
 
 **If you used Option B (pip/conda):**
 
