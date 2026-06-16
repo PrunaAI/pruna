@@ -1,12 +1,13 @@
+import pytest
+
 from pruna.algorithms.llama_cpp import LlamaCpp
 
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_llamacpp
 class TestLlamaCpp(AlgorithmTesterBase):
     """Test the LlamaCpp quantizer."""
-
-    __test__ = True
 
     models = ["llama_3_tiny_random"]
     reject_models = ["sd_tiny_random"]

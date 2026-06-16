@@ -234,6 +234,7 @@ dev = [
     "types-PyYAML",
     "logbar",
     "pytest-xdist>=3.8.0",
+    "pruna[llamacpp]",
 ]
 cpu = []
 lmharness = [

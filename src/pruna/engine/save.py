@@ -73,7 +73,7 @@ def save_pruna_model(model: Any, model_path: str | Path, smash_config: SmashConf
         save_fn = original_save_fn
 
     # if save-before-move was the last operation, we simply move the already saved files, we have delt with them before
-    elif len(smash_config.save_fns) > 0 and smash_config.save_fns[-1] == get_fn_name(SAVE_FUNCTIONS.save_before_apply):
+    elif smash_config.save_fns[-1] == get_fn_name(SAVE_FUNCTIONS.save_before_apply):
         pruna_logger.debug("Moving saved model...")
         save_fn = save_before_apply
 
