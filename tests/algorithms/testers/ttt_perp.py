@@ -26,6 +26,7 @@ def assert_no_nan_values(module: Any) -> None:
 
 
 @pytest.mark.slow
+@pytest.mark.requires_transformers_legacy
 class TestTTTPerp(AlgorithmTesterBase):
     """Test the TTT Perp recovery algorithm."""
 
