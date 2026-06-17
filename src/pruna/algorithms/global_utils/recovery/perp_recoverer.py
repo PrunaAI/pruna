@@ -16,6 +16,7 @@ from typing import Any, Dict
 
 import torch
 from ConfigSpace import Constant
+from packaging.version import Version
 from transformers import __version__ as transformers_version
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -332,7 +333,7 @@ class PERPRecoverer(PrunaAlgorithmBase):
         bool
             True if the installed transformers version is below 5.0.0, False otherwise.
         """
-        if transformers_version >= "5.0.0":
+        if Version(transformers_version) >= Version("5.0.0"):
             pruna_logger.error(
                 f"{self.algorithm_name} is not supported with transformers>=5 (found {transformers_version}). "
                 "Please install transformers<5 to use it."

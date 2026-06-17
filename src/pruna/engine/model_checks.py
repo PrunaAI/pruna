@@ -19,6 +19,7 @@ from typing import Any, List
 
 import diffusers
 import diffusers.models.transformers as diffusers_transformers
+from packaging.version import Version
 from transformers import __version__ as transformers_version
 from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING,
@@ -30,7 +31,7 @@ from transformers.pipelines.automatic_speech_recognition import (
 )
 from transformers.pipelines.image_classification import ImageClassificationPipeline
 
-if transformers_version < "5.0.0":
+if Version(transformers_version) < Version("5.0.0"):
     from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline as TextGenerationPipeline
 else:
     from transformers.pipelines.text_generation import TextGenerationPipeline

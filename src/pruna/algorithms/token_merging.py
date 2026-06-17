@@ -19,6 +19,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import torch
 from ConfigSpace import UniformIntegerHyperparameter
+from packaging.version import Version
 from transformers import __version__ as transformers_version
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
@@ -639,7 +640,7 @@ class TokenMerging(PrunaAlgorithmBase):
         bool
             True if the installed transformers version is below 5.0.0, False otherwise.
         """
-        if transformers_version >= "5.0.0":
+        if Version(transformers_version) >= Version("5.0.0"):
             pruna_logger.error(
                 f"Token merging is not supported with transformers>=5 (found {transformers_version}). "
                 "Please install transformers<5 to use it."
