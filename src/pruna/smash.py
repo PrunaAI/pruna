@@ -62,10 +62,10 @@ def smash(
     with PrunaLoggerContext(verbose=verbose):
         # check the device consistency of the model and the smash config
         ensure_device_consistency(model, smash_config)
+        #check if the active algorithms are available in the current environment
+        check_algorithm_availability(smash_config)
         # check if the algorithm packages are available for the given configuration
         check_algorithm_packages_availability(smash_config)
-        # check if the active algorithms are available in the current environment
-        check_algorithm_availability(smash_config)
 
         if not experimental:
             # check if the algorithms are compatible with each other
