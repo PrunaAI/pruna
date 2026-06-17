@@ -19,7 +19,6 @@ from typing import Any
 from pruna import PrunaModel, SmashConfig
 from pruna.algorithms import AlgorithmRegistry
 from pruna.config.pre_smash_routines import (
-    check_algorithm_availability,
     check_algorithm_cross_compatibility,
     check_algorithm_packages_availability,
     check_argument_compatibility,
@@ -62,8 +61,6 @@ def smash(
     with PrunaLoggerContext(verbose=verbose):
         # check the device consistency of the model and the smash config
         ensure_device_consistency(model, smash_config)
-        #check if the active algorithms are available in the current environment
-        check_algorithm_availability(smash_config)
         # check if the algorithm packages are available for the given configuration
         check_algorithm_packages_availability(smash_config)
 

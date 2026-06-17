@@ -257,17 +257,6 @@ class PrunaAlgorithmBase(ABC):
         """
         return dict()
 
-    def is_available_algorithm(self) -> bool:
-        """
-        Return whether this algorithm can run in the current environment.
-
-        Returns
-        -------
-        bool
-            True if the algorithm is available.
-        """
-        return True
-
     def get_hyperparameters(self) -> list:
         """
         Configure all algorithm-specific hyperparameters with ConfigSpace.

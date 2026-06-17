@@ -16,8 +16,6 @@ from typing import Any, Dict
 
 import torch
 from ConfigSpace import Constant
-from packaging.version import Version
-from transformers import __version__ as transformers_version
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
@@ -321,22 +319,3 @@ class PERPRecoverer(PrunaAlgorithmBase):
             NormAdapter=NormAdapter,
             Finetuner=Finetuner,
         )
-
-    def is_available_algorithm(self) -> bool:
-        """
-        Return whether this PERP recoverer / distiller can run in the current environment.
-
-        These algorithms rely on transformers internals that changed in transformers 5.
-
-        Returns
-        -------
-        bool
-            True if the installed transformers version is below 5.0.0, False otherwise.
-        """
-        if Version(transformers_version) >= Version("5.0.0"):
-            pruna_logger.error(
-                f"{self.algorithm_name} is not supported with transformers>=5 (found {transformers_version}). "
-                "Please install transformers<5 to use it."
-            )
-            return False
-        return True

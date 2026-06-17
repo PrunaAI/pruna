@@ -28,7 +28,6 @@ from pruna.config.pre_smash_routines import (
     ensure_device_consistency,
     check_model_compatibility,
     check_algorithm_packages_availability,
-    check_algorithm_availability,
     check_argument_compatibility,
     execute_algorithm_pre_smash_hooks,
     check_algorithm_cross_compatibility,
@@ -190,34 +189,6 @@ class TestCheckAlgorithmPackagesAvailability:
         with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", {"algorithm1": mock_algorithm1}):
             with pytest.raises(ImportError):
                 check_algorithm_packages_availability(smash_config)
-
-@pytest.mark.cpu
-class TestCheckAlgorithmAvailability:
-    """Test suite for check_algorithm_availability function."""
-
-    def test_algorithm_availability_success(self):
-        """Test successful availability check. Should pass without errors when all algorithms are available."""
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-
-        mock_algorithm1 = Mock()
-        mock_algorithm1.is_available_algorithm.return_value = True
-
-        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", {"algorithm1": mock_algorithm1}):
-            check_algorithm_availability(smash_config)
-            mock_algorithm1.is_available_algorithm.assert_called_once()
-
-    def test_algorithm_availability_unavailable(self):
-        """Test availability failure. Should raise ValueError naming the algorithm."""
-        smash_config = Mock()
-        smash_config.get_active_algorithms.return_value = ["algorithm1"]
-
-        mock_algorithm1 = Mock()
-        mock_algorithm1.is_available_algorithm.return_value = False
-
-        with patch("pruna.config.pre_smash_routines.AlgorithmRegistry", {"algorithm1": mock_algorithm1}):
-            with pytest.raises(ValueError, match="Algorithm 'algorithm1' is not available"):
-                check_algorithm_availability(smash_config)
 
 @pytest.mark.cpu
 class TestCheckArgumentCompatibility:
