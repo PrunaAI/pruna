@@ -20,10 +20,6 @@ import pytest
 import torch
 import networkx as nx
 
-from pruna import SmashConfig
-from pruna.algorithms.distillation_perp import TextToImagePERPDistillation
-from pruna.algorithms.perp import TextToImagePERP
-from pruna.algorithms.token_merging import TokenMerging
 from pruna.config.pre_smash_routines import (
     ensure_device_consistency,
     check_model_compatibility,
