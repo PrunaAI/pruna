@@ -30,11 +30,13 @@ from transformers.pipelines.automatic_speech_recognition import (
     AutomaticSpeechRecognitionPipeline,
 )
 from transformers.pipelines.image_classification import ImageClassificationPipeline
+from transformers.pipelines.text_generation import TextGenerationPipeline
 
 if Version(transformers_version) < Version("5.0.0"):
-    from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline as TextGenerationPipeline
+    from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
 else:
-    from transformers.pipelines.text_generation import TextGenerationPipeline
+    # Text2TextGenerationPipeline was removed in transformers v5.
+    Text2TextGenerationPipeline = None
 
 from pruna.engine.utils import ModelContext
 
@@ -205,7 +207,9 @@ def is_transformers_pipeline_with_seq2seq_lm(model: Any) -> bool:
     bool
         True if the model is a transformers pipeline, False otherwise.
     """
-    return isinstance(model, TextGenerationPipeline) and is_translation_model(getattr(model, "model", None))
+    if Text2TextGenerationPipeline is None:
+        return False
+    return isinstance(model, Text2TextGenerationPipeline) and is_translation_model(getattr(model, "model", None))
 
 
 def is_transformers_pipeline_with_speech_recognition(model: Any) -> bool:
