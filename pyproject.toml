@@ -158,10 +158,9 @@ dependencies = [
 [project.optional-dependencies]
 transformers-legacy = [
     "transformers<5.0.0",
-
 ]
-# ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
 
+# ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
 
 ctranslate = [
     "ctranslate2==4.6.0",
@@ -173,6 +172,7 @@ whisper = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
+    "pruna[transformers-legacy]",
 ]
 llamacpp = [
     "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
@@ -201,6 +201,7 @@ awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
     "torch>=2.9.0",
+    "pruna[transformers-legacy]",
 ]
 upscale = [
     "realesrgan",
@@ -251,7 +252,6 @@ evaluation = [
     "pruna[rapidata]",
     "pruna[lmharness]"
 ]
-
 kvpress = [
     "kvpress>=0.5.2",
 ]

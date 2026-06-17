@@ -53,6 +53,7 @@ class PERPRecoverer(PrunaAlgorithmBase):
 
     group_tags: list[AlgorithmTag] = [AlgorithmTag.RECOVERER]  # type: ignore[attr-defined]
     save_fn = SAVE_FUNCTIONS.pickled
+    required_install: str = "``pip install pruna[transformers-legacy]``"
     references: dict[str, str] = {
         "GitHub": "https://github.com/huggingface/peft",
         "Paper": "https://arxiv.org/pdf/2312.15230",

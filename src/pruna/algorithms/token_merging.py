@@ -492,6 +492,7 @@ class TokenMerging(PrunaAlgorithmBase):
     algorithm_name: str = "token_merging"
     group_tags: list[tags] = [tags.PRUNER]
     save_fn = SAVE_FUNCTIONS.reapply
+    required_install: str = "``pip install pruna[transformers-legacy]``"
     references: dict[str, str] = {
         "Paper": "https://arxiv.org/abs/2210.09461",
         "GitHub": "https://github.com/facebookresearch/ToMe",
@@ -628,4 +629,3 @@ class TokenMerging(PrunaAlgorithmBase):
         from transformers.models.vit.modeling_vit import ViTLayer, ViTSelfAttention
 
         return dict(ViTLayer=ViTLayer, ViTSelfAttention=ViTSelfAttention)
-
