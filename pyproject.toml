@@ -115,7 +115,7 @@ dependencies = [
     "torchvision>=0.22.0",
     "torchmetrics[image]",
     "requests>=2.31.0",
-    "transformers<6.0.0"
+    "transformers<6.0.0",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
     "datasets>=3.0",
@@ -156,19 +156,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-<<<<<<< HEAD
-<<<<<<< HEAD
+transformers-legacy = [
+    "transformers<5.0.0",
+
+]
 # ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
-=======
-transformers-new = ["transformers>=5.10.2"]
-transformers-legacy = ["transformers<=4.48.0"]
 
-
-=======
->>>>>>> 9c34960 (ci: remove transformers as extras)
-# whisper-s2t and ctranslate2 are isolated because importing whisper_s2t
-# at test time causes side-effects that break unrelated tests.
->>>>>>> 89d27bc (ci: transformers dependency as extra)
 
 ctranslate = [
     "ctranslate2==4.6.0",
