@@ -19,7 +19,12 @@ def extract_python_code_blocks(readme_path: Path) -> str:
     return "\n\n".join(code_blocks)  # Concatenate all code snippets
 
 
+# The README's Python blocks are separate blocks, but together they form one example
+# and this test executes them as a single script. That example uses stable_fast, so
+# the whole README snippet test requires the stable-fast extra. If we later add
+# independent snippets, we should split extraction/marking per example.
 @pytest.mark.cuda
+@pytest.mark.requires_stable_fast
 def test_readme_code_blocks() -> None:
     """Writes all extracted Python code blocks to a single file, lints it with flake8, and executes it."""
     code = extract_python_code_blocks(README_PATH)
