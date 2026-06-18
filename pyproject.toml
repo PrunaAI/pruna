@@ -144,7 +144,7 @@ dependencies = [
     "gliner; python_version >= '3.11'",
     "piq",
     "opencv-python",
-    "kernels<=0.14.1", # until transformers compatibility with kernels>=0.15
+    "kernels>=0.12.0,<0.15.0",
     "aenum",
     "imageio-ffmpeg",
     "jaxtyping",
