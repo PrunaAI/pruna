@@ -66,7 +66,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        name: ["base", 'lmharness', 'rapidata']
+        name: ["base", 'lmharness', 'rapidata', 'llamacpp']
         include:
         - name: base
           extras: "dev"
@@ -77,6 +77,9 @@ jobs:
         - name: rapidata
           extras: "dev,rapidata"
           mark_filter: "requires_rapidata"
+        - name: llamacpp
+          extras: "dev,llamacpp"
+          mark_filter: "requires_llamacpp"
 
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -93,6 +96,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           extras: ${{ matrix.extras }}
+
+      - name: Rebuild llama-cpp-python for runner CPU
+        if: matrix.name == 'llamacpp'
+        env:
+          FORCE_CMAKE: "1"
+          # Prebuilt wheels is using code not compatible with cpu runners.
+          # Build from source against the runner's actual CPU feature set.
+          CMAKE_ARGS: "-DGGML_NATIVE=ON"
+        run: |
+          uv pip install --no-cache --reinstall-package llama-cpp-python --no-binary llama-cpp-python "llama-cpp-python>=0.2.78"
 
       - name: Cache Hugging Face datasets and models
         uses: actions/cache@v5
