@@ -100,6 +100,16 @@ jobs:
         if: matrix.extras != ''
         run: uv sync --extra dev ${{ matrix.extras }}
 
+      - name: Rebuild llama-cpp-python for runner CPU
+        if: matrix.name == 'llamacpp'
+        env:
+          FORCE_CMAKE: "1"
+          # Prebuilt wheels is using code not compatible with cpu runners.
+          # Build from source against the runner's actual CPU feature set.
+          CMAKE_ARGS: "-DGGML_NATIVE=ON"
+        run: |
+          uv pip install --no-cache --reinstall-package llama-cpp-python --no-binary llama-cpp-python "llama-cpp-python>=0.2.78"
+
       - name: Cache Hugging Face datasets and models
         uses: actions/cache@v5
         with:
