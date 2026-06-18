@@ -6,7 +6,7 @@ from pruna.algorithms.c_translate import CGenerate
 from .base_tester import AlgorithmTesterBase
 
 
-@pytest.mark.requires_whisper
+@pytest.mark.requires_ctranslate
 class TestCGenerate(AlgorithmTesterBase):
     """Test the c_generate algorithm."""
 

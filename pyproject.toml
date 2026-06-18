@@ -156,8 +156,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# ctranslate2 is isolated as an optional extra for c_whisper / c_translate / c_generate.
+# ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
 
+ctranslate = [
+    "ctranslate2==4.6.0",
+]
+# Deprecated alias; use ctranslate instead.
 whisper = [
     "ctranslate2==4.6.0",
 ]

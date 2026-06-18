@@ -67,6 +67,7 @@ class CTranslate(PrunaAlgorithmBase):
     group_tags: list[tags] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
+    required_install: str = "pip install pruna[ctranslate]"
     tokenizer_required: bool = True
     processor_required: bool = False
     dataset_required: bool = False
