@@ -67,12 +67,12 @@ class CTranslate(PrunaAlgorithmBase):
     group_tags: list[tags] = [tags.COMPILER]
     save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     references = {"GitHub": "https://github.com/OpenNMT/CTranslate2"}
+    required_install: str = "pip install pruna[ctranslate]"
     tokenizer_required: bool = True
     processor_required: bool = False
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = ["half"]
-    compatible_after: Iterable[str] = ["whisper_s2t"]
 
     def __init__(self, task_name: str = "translate") -> None:
         self.task_name = task_name

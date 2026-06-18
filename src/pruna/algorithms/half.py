@@ -51,7 +51,6 @@ class Half(PrunaAlgorithmBase):
         "torch_compile",
         "ifw",
         "kvpress",
-        "whisper_s2t",
         "sage_attn",
         "hyper",
         "text_to_text_inplace_perp",
