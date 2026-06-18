@@ -206,10 +206,7 @@ awq = [
 upscale = [
     "realesrgan",
 ]
-full = [
-    "pruna[stable-fast]",
-    "pruna[llamacpp]",
-]
+
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
 ]
