@@ -72,7 +72,6 @@ class CTranslate(PrunaAlgorithmBase):
     dataset_required: bool = False
     runs_on: list[str] = ["cuda"]
     compatible_before: Iterable[str] = ["half"]
-    compatible_after: Iterable[str] = ["whisper_s2t"]
 
     def __init__(self, task_name: str = "translate") -> None:
         self.task_name = task_name
