@@ -45,13 +45,13 @@ LLAMA_CPP_CACHE_DIR = Path.home() / ".cache" / "pruna" / "scripts" / "llama_cpp"
 
 class LlamaCpp(PrunaAlgorithmBase):
     """
-    Implement Llama.cpp as a quantizer.
+    Implement Llama.cpp as a compiler.
 
     Converts Hugging Face models to GGUF format and quantizes them using the llama.cpp tools.
     """
 
     algorithm_name: str = "llama_cpp"
-    group_tags: list[tags] = [tags.QUANTIZER]
+    group_tags: list[tags] = [tags.COMPILER]
     references: dict[str, str] = {
         "GitHub": "https://github.com/ggml-org/llama.cpp",
         "Python Bindings": "https://github.com/abetlen/llama-cpp-python",
@@ -112,19 +112,19 @@ class LlamaCpp(PrunaAlgorithmBase):
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Quantize the model with Llama.cpp by converting to GGUF.
+        Compile the model with Llama.cpp by converting to GGUF.
 
         Parameters
         ----------
         model : Any
-            The model to quantize.
+            The model to compile.
         smash_config : SmashConfigPrefixWrapper
-            The configuration for the quantization.
+            The configuration for the compilation.
 
         Returns
         -------
         Any
-            The quantized Llama object.
+            The compiled Llama object.
         """
         imported_modules = self.import_algorithm_packages()
         llama_cpp = imported_modules["llama_cpp"]
