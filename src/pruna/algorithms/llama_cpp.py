@@ -37,9 +37,9 @@ from pruna.engine.save import SAVE_FUNCTIONS
 from pruna.engine.utils import verify_sha256
 from pruna.logging.logger import pruna_logger
 
-# SHA256 hash for the pinned version (b9670) of convert_hf_to_gguf.py
-LLAMA_CPP_CONVERSION_SCRIPT_URL = "https://raw.githubusercontent.com/ggml-org/llama.cpp/b9670/convert_hf_to_gguf.py"
-LLAMA_CPP_CONVERSION_SCRIPT_SHA256 = "c819f18fb22927b49fabc3b35d1c9e21ee638b3817eccd1bd4efbcc7116eeb4d"
+# SHA256 hash for the pinned version (b8958) of convert_hf_to_gguf.py
+LLAMA_CPP_CONVERSION_SCRIPT_URL = "https://raw.githubusercontent.com/ggml-org/llama.cpp/b8958/convert_hf_to_gguf.py"
+LLAMA_CPP_CONVERSION_SCRIPT_SHA256 = "242033a2d0070b6c9d8b29a4ca82e0ed7d1db162ce0c5b80c1e4223a41c249c4"
 LLAMA_CPP_CACHE_DIR = Path.home() / ".cache" / "pruna" / "scripts" / "llama_cpp"
 
 
