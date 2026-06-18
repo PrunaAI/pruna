@@ -6,6 +6,10 @@ inputs:
     description: 'Python version to use'
     required: false
     default: '3.11'
+  extras:
+    description: 'Comma-separated extras to install (e.g. "dev", "dev,lmharness")'
+    required: false
+    default: 'dev'
 
 runs:
   using: composite
@@ -19,4 +23,4 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - shell: bash
-      run: uv sync --extra dev
+      run: uv pip install ".[${{ inputs.extras }}]"

@@ -69,13 +69,13 @@ jobs:
         name: ["base", 'lmharness', 'rapidata']
         include:
         - name: base
-          extras: ""
+          extras: "dev"
           mark_filter: "no_extras"
         - name: lmharness
-          extras: "--extra lmharness"
+          extras: "dev,lmharness"
           mark_filter: "requires_lmharness"
         - name: rapidata
-          extras: "--extra rapidata"
+          extras: "dev,rapidata"
           mark_filter: "requires_rapidata"
 
     env:
@@ -92,10 +92,7 @@ jobs:
       - uses: ./.github/actions/setup-uv-project
         with:
           python-version: ${{ matrix.python-version }}
-      
-      - name: Install additional extras
-        if: matrix.extras != ''
-        run: uv sync --extra dev ${{ matrix.extras }}
+          extras: ${{ matrix.extras }}
 
       - name: Cache Hugging Face datasets and models
         uses: actions/cache@v5
