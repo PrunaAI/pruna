@@ -69,16 +69,16 @@ jobs:
         name: ["base", 'lmharness', 'rapidata', 'llamacpp']
         include:
         - name: base
-          extras: ""
+          extras: "dev"
           mark_filter: "no_extras"
         - name: lmharness
-          extras: "--extra lmharness"
+          extras: "dev,lmharness"
           mark_filter: "requires_lmharness"
         - name: rapidata
-          extras: "--extra rapidata"
+          extras: "dev,rapidata"
           mark_filter: "requires_rapidata"
         - name: llamacpp
-          extras: "--extra llamacpp"
+          extras: "dev,llamacpp"
           mark_filter: "requires_llamacpp"
 
     env:
@@ -95,10 +95,7 @@ jobs:
       - uses: ./.github/actions/setup-uv-project
         with:
           python-version: ${{ matrix.python-version }}
-      
-      - name: Install additional extras
-        if: matrix.extras != ''
-        run: uv sync --extra dev ${{ matrix.extras }}
+          extras: ${{ matrix.extras }}
 
       - name: Rebuild llama-cpp-python for runner CPU
         if: matrix.name == 'llamacpp'
