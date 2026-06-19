@@ -15,7 +15,7 @@
 from pathlib import Path
 from typing import Tuple, cast
 
-from datasets import Audio, Dataset, IterableDataset, load_dataset
+from datasets import Dataset, IterableDataset
 from huggingface_hub import snapshot_download
 
 from pruna.data.utils import split_train_into_train_val_test
@@ -38,9 +38,12 @@ def setup_librispeech_dataset(seed: int) -> Tuple[Dataset, Dataset, Dataset]:
     Tuple[Dataset, Dataset, Dataset]
         The LibriSpeech dataset with explicit audio paths.
     """
-    ds = load_dataset("argmaxinc/librispeech-200", split="train", streaming=False)
-    ds = ds.cast_column("audio", Audio(decode=False))
-    ds = ds.map(lambda batch: {"sentence": ""})
+    dataset_path = Path(snapshot_download("argmaxinc/librispeech-200", repo_type="dataset", allow_patterns=["*.flac"]))
+    audio_paths = sorted(str(path) for path in dataset_path.rglob("*.flac"))
+    if not audio_paths:
+        raise ValueError("No LibriSpeech audio files were found in the downloaded dataset snapshot.")
+
+    ds = Dataset.from_dict({"audio": [{"path": path} for path in audio_paths], "sentence": [""] * len(audio_paths)})
     ds = cast(Dataset | IterableDataset, ds)
 
     ds_train, ds_val, ds_test = split_train_into_train_val_test(ds, seed)
