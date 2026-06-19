@@ -410,7 +410,7 @@ def get_device(model: Any) -> str:
 
     from pruna.engine.pruna_model import PrunaModel
 
-    if safe_is_instance(model, PrunaModel):
+    if isinstance(model, PrunaModel):
         return get_device(model.model)
 
     # function scored import due to model_check's import of ModelContext
