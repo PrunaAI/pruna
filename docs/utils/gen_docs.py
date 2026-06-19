@@ -192,7 +192,7 @@ def get_compatible_algorithms(obj: PrunaAlgorithmBase) -> str:
 def get_required_install(obj: PrunaAlgorithmBase) -> str | None:
     """Get the required install of a Pruna algorithm."""
     required_install = obj.required_install
-    base_install = "``pip install pruna[full]``"
+    base_install = "``pip install pruna``"
 
     # Break the long command into multiple code blocks with line continuation for better RST rendering
     pro_install = (
