@@ -1,3 +1,5 @@
+import logging
+import os
 from typing import Any
 
 import pytest
@@ -21,11 +23,17 @@ EXTRA_MARKS = {
     "requires_rapidata": "mark test that needs pruna[rapidata]",
     "requires_kvpress": "mark test that needs pruna[kvpress]",
     "requires_llamacpp": "mark test that needs pruna[llamacpp]",
+    "requires_transformers_legacy": "mark test that needs pruna[transformers-legacy]",
 }
 
 
 def pytest_configure(config: Any) -> None:
     """Configure the pytest markers."""
+    if os.environ.get("CI"):
+        # Hugging Face Hub downloads log every request at INFO via httpx; suppress in CI.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     # Device marks
     for mark, description in DEVICE_MARKS.items():
         config.addinivalue_line("markers", f"{mark}: {description}")

@@ -115,7 +115,7 @@ dependencies = [
     "torchvision>=0.22.0",
     "torchmetrics[image]",
     "requests>=2.31.0",
-    "transformers<5.0.0",
+    "transformers<6.0.0",
     "pytorch-lightning",
     "huggingface-hub[hf-xet]>=0.30.0",
     "datasets>=3.0",
@@ -144,7 +144,7 @@ dependencies = [
     "gliner; python_version >= '3.11'",
     "piq",
     "opencv-python",
-    "kernels<=0.14.1", # until transformers compatibility with kernels>=0.15
+    "kernels>=0.12.0,<0.15.0",
     "aenum",
     "imageio-ffmpeg",
     "jaxtyping",
@@ -156,6 +156,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+transformers-legacy = [
+    "transformers<5.0.0",
+]
+
 # ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
 
 ctranslate = [
@@ -168,6 +172,7 @@ whisper = [
 vllm = [
     "vllm>=0.16.0",
     "ray",
+    "pruna[transformers-legacy]",
 ]
 llamacpp = [
     "llama-cpp-python>=0.2.78", # Required for running and inferencing Llama.cpp models
@@ -195,15 +200,13 @@ gptq = [
 awq = [
     "compressed-tensors >= 0.13.0",
     "llmcompressor>=0.9",
-    "torch>=2.9.0"
+    "torch>=2.9.0",
+    "pruna[transformers-legacy]",
 ]
 upscale = [
     "realesrgan",
 ]
-full = [
-    "pruna[stable-fast]",
-    "pruna[llamacpp]",
-]
+
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
 ]
@@ -246,7 +249,6 @@ evaluation = [
     "pruna[rapidata]",
     "pruna[lmharness]"
 ]
-
 kvpress = [
     "kvpress>=0.5.2",
 ]

@@ -19,6 +19,8 @@ from typing import Any, List
 
 import diffusers
 import diffusers.models.transformers as diffusers_transformers
+from packaging.version import Version
+from transformers import __version__ as transformers_version
 from transformers.models.auto.modeling_auto import (
     MODEL_FOR_CAUSAL_LM_MAPPING,
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING,
@@ -28,8 +30,13 @@ from transformers.pipelines.automatic_speech_recognition import (
     AutomaticSpeechRecognitionPipeline,
 )
 from transformers.pipelines.image_classification import ImageClassificationPipeline
-from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
 from transformers.pipelines.text_generation import TextGenerationPipeline
+
+if Version(transformers_version) < Version("5.0.0"):
+    from transformers.pipelines.text2text_generation import Text2TextGenerationPipeline
+else:
+    # Text2TextGenerationPipeline was removed in transformers v5.
+    Text2TextGenerationPipeline = None
 
 from pruna.engine.utils import ModelContext
 
@@ -200,6 +207,8 @@ def is_transformers_pipeline_with_seq2seq_lm(model: Any) -> bool:
     bool
         True if the model is a transformers pipeline, False otherwise.
     """
+    if Text2TextGenerationPipeline is None:
+        return False
     return isinstance(model, Text2TextGenerationPipeline) and is_translation_model(getattr(model, "model", None))
 
 

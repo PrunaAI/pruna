@@ -1,6 +1,7 @@
 from typing import Any
 
 from datasets import load_dataset
+import pytest
 import torch
 
 from pruna import PrunaModel
@@ -10,6 +11,7 @@ from pruna.engine.utils import get_device
 from .base_tester import AlgorithmTesterBase
 
 
+@pytest.mark.requires_transformers_legacy
 class TestTokenMerging(AlgorithmTesterBase):
     """Test the token merging algorithm."""
 

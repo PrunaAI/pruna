@@ -29,6 +29,7 @@ def assert_no_nan_values(module: Any) -> None:
 # This test do pass on modern architectures.
 @pytest.mark.high_gpu
 @pytest.mark.slow
+@pytest.mark.requires_transformers_legacy
 class TestTTIInPlacePerp(AlgorithmTesterBase):
     """Test the TTI InPlace Perp recovery algorithm."""
 
