@@ -37,7 +37,7 @@ class TorchDynamic(PrunaAlgorithmBase):
     algorithm_name = "torch_dynamic"
     group_tags: list[tags] = [tags.QUANTIZER]
     references: dict[str, str] = {"GitHub": "https://github.com/pytorch/pytorch"}
-    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.pickled
+    save_fn: SAVE_FUNCTIONS = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required: bool = False
     processor_required: bool = False
     runs_on: list[str] = ["cpu", "cuda"]
