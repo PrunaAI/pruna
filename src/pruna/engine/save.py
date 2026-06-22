@@ -309,7 +309,7 @@ def save_before_apply(model: Any, model_path: str | Path, smash_config: SmashCon
         if file.is_file():
             shutil.copy(file, target_path)
         else:
-            shutil.copytree(file, target_path)
+            shutil.copytree(file, target_path, dirs_exist_ok=True)
 
 
 def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
