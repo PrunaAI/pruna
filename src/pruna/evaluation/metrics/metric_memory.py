@@ -185,6 +185,7 @@ class GPUMemoryStats(BaseMetric):
 
             peak_memory = (max(before_sum, load_sum, after_sum) - before_sum) / 1024**2
 
+            del metric_model
             safe_memory_cleanup()
 
         if len(model_device_indices) > 1 and self.device_map is None:
