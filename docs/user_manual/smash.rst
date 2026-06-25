@@ -236,7 +236,7 @@ Example 3: Speech Recognition Optimization
 
     # Load the model
     model_id = "openai/whisper-tiny"
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True).to("cuda")
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, dtype=torch.float16, low_cpu_mem_usage=True).to("cuda")
 
     # Create and configure SmashConfig
     smash_config = SmashConfig(["c_whisper", "whisper_s2t"])
