@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import wraps
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List
 
 import torch
 
@@ -64,6 +64,9 @@ class CallSequenceTracker:
         module : torch.nn.Module
             The module to wrap.
         """
+        if hasattr(module.forward, "__call_tracker_original_forward__"):
+            return
+
         original_forward = module.forward
 
         @wraps(original_forward)
@@ -93,6 +96,7 @@ class CallSequenceTracker:
 
             return original_forward(*args, **kwargs)
 
+        wrapped_forward.__call_tracker_original_forward__ = original_forward
         module.forward = wrapped_forward
 
     def wrap(self, model: PrunaModel) -> None:
@@ -121,8 +125,9 @@ class CallSequenceTracker:
         torch.nn.Module
             The unwrapped module.
         """
-        if hasattr(module.forward, "__wrapped__"):
-            module.forward = cast(Any, getattr(module.forward, "__wrapped__"))
+        original_forward = getattr(module.forward, "__call_tracker_original_forward__", None)
+        if original_forward is not None:
+            module.forward = original_forward
         return module
 
     def get_call_sequence(self) -> List[Dict[str, Any]]:
