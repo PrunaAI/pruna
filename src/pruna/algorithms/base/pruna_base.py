@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import functools
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict, Iterable
 
 from transformers import Pipeline
@@ -356,8 +357,8 @@ class PrunaAlgorithmBase(ABC):
         Any
             The model after the algorithm has been applied.
         """
-        if self.save_fn == SAVE_FUNCTIONS.save_before_apply and smash_config._prepare_saving:
-            save_dir = smash_config.cache_dir / SAVE_BEFORE_SMASH_CACHE_DIR
+        if self.save_fn == SAVE_FUNCTIONS.save_before_apply and smash_config.prepare_saving:
+            save_dir = self.get_save_before_smash_dir(smash_config)
             save_pruna_model(model, save_dir, smash_config)
 
         # save algorithms to reapply after loading
@@ -371,7 +372,23 @@ class PrunaAlgorithmBase(ABC):
 
         prefix = self.algorithm_name + "_"
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
-        return self._apply(model, wrapped_config)
+        result = self._apply(model, wrapped_config)
+
+        self.post_apply_hook(result, smash_config)
+        return result
+
+    def post_apply_hook(self, model: Any, smash_config: SmashConfig) -> None:
+        """
+        Post apply hook called after _apply returns to run side effects after the algorithm applies.
+
+        Parameters
+        ----------
+        model : Any
+            The model applied with the algorithm.
+        smash_config : SmashConfig
+            The SmashConfig object.
+        """
+        return
 
     def get_compatible_algorithms(self) -> list[str]:
         """
@@ -448,6 +465,23 @@ class PrunaAlgorithmBase(ABC):
             The required algorithms.
         """
         return _expand_tags_into_algorithm_names(self.disjointly_compatible_after)
+
+    @staticmethod
+    def get_save_before_smash_dir(smash_config: SmashConfig) -> Path:
+        """
+        Get the save directory for the algorithm caches.
+
+        Parameters
+        ----------
+        smash_config : SmashConfig
+            The SmashConfig to check the cache directory against.
+
+        Returns
+        -------
+        Path
+            The absolute path of "SAVE_BEFORE_SMASH_CACHE_DIR".
+        """
+        return (smash_config.cache_dir / SAVE_BEFORE_SMASH_CACHE_DIR).resolve()
 
 
 def wrap_handle_imports(func):
