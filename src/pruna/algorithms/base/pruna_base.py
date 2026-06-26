@@ -374,7 +374,7 @@ class PrunaAlgorithmBase(ABC):
         wrapped_config = SmashConfigPrefixWrapper(smash_config, prefix)
         result = self._apply(model, wrapped_config)
 
-        self.post_apply_hook(model, smash_config)
+        self.post_apply_hook(result, smash_config)
         return result
 
     def post_apply_hook(self, model: Any, smash_config: SmashConfig) -> None:
