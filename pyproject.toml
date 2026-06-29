@@ -144,7 +144,7 @@ dependencies = [
     "gliner; python_version >= '3.11'",
     "piq",
     "opencv-python",
-    "kernels>=0.12.0,<0.15.0",
+    "kernels>=0.12.0,<0.17.0",
     "aenum",
     "imageio-ffmpeg",
     "jaxtyping",
