@@ -20,6 +20,7 @@ from pruna.evaluation.metrics.metric_dino_score import DinoScore
 from pruna.evaluation.metrics.metric_elapsed_time import LatencyMetric, ThroughputMetric, TotalTimeMetric
 from pruna.evaluation.metrics.metric_energy import CO2EmissionsMetric, EnergyConsumedMetric
 from pruna.evaluation.metrics.metric_evalharness import LMEvalMetric
+from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_memory import DiskMemoryMetric, InferenceMemoryMetric, TrainingMemoryMetric
 from pruna.evaluation.metrics.metric_model_architecture import TotalMACsMetric, TotalParamsMetric
 from pruna.evaluation.metrics.metric_oneig_alignment import OneIGAlignmentMetric
@@ -30,7 +31,6 @@ from pruna.evaluation.metrics.metric_rapiddata import RapidataMetric as Rapidata
 from pruna.evaluation.metrics.metric_sharpness import SharpnessMetric
 from pruna.evaluation.metrics.metric_text_score import OneIGTextScoreMetric, TextScoreMetric
 from pruna.evaluation.metrics.metric_torch import TorchMetricWrapper
-from pruna.evaluation.metrics.metric_img_edit_score import ImageEditScoreMetric
 from pruna.evaluation.metrics.metric_vie_score import VieScoreMetric
 from pruna.evaluation.metrics.metric_vqa import VQAMetric
 from pruna.evaluation.metrics.vlm_base import (
@@ -51,6 +51,7 @@ __all__ = [
     "CO2EmissionsMetric",
     "DiskMemoryMetric",
     "TrainingMemoryMetric",
+    "ImageEditScoreMetric",
     "InferenceMemoryMetric",
     "TotalParamsMetric",
     "TotalMACsMetric",
@@ -67,7 +68,6 @@ __all__ = [
     "RapidataMetric",
     "TextScoreMetric",
     "VQAMetric",
-    "ImageEditScoreMetric",
     "VieScoreMetric",
     "BaseVLM",
     "LitellmVLM",
