@@ -75,7 +75,7 @@ class BenchmarkRegistry:
     - WikiText (1609.07843 ?5): perplexity on validation/test.
     - GenEval (2310.11513 ?3.2): Mask2Former + CLIP color pipeline, binary score.
     - HPS (2306.09341): HPS v2 scoring model (CLIP fine-tuned on HPD v2).
-    - ImgEdit (2505.20275 ?4.2): GPT-4o 1ÿÿÿ5 ratings and ImgEdit-Judge.
+    - ImgEdit (2505.20275 ?4.2): GPT-4o 1-5 ratings and ImgEdit-Judge.
     - Long Text Bench (2507.22058 ?4): Text Accuracy (OCR, Qwen2.5-VL-7B).
     - GEditBench (2504.17761 ?4.2): VIEScore (SQ, PQ, O via GPT-4.1/Qwen2.5-VL).
     - OneIG (2506.07977 ?4.1): per-dimension metrics (semantic alignment, ED, etc.).
@@ -88,9 +88,7 @@ class BenchmarkRegistry:
     def _register(cls, benchmark: Benchmark) -> None:
         missing = [m for m in benchmark.metrics if not MetricRegistry.has_metric(m)]
         if missing:
-            raise ValueError(
-                f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}."
-            )
+            raise ValueError(f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}.")
         if benchmark.lookup_key not in base_datasets:
             available = ", ".join(base_datasets.keys())
             raise ValueError(
