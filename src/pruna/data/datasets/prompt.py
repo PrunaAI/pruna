@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from typing import Literal, Tuple, get_args
 
 from datasets import Dataset, load_dataset
@@ -123,21 +124,95 @@ GEditBenchCategory = Literal[
 DPGCategory = Literal["entity", "attribute", "relation", "global", "other"]
 
 
-def _to_oneig_record(row: dict, questions_by_key: dict[str, dict]) -> dict:
-    """Convert OneIG row to unified record format."""
+def _warn_ignored_benchmark_seed(seed: int | None, *, dataset: str) -> None:
+    if seed is not None:
+        pruna_logger.warning(
+            "%s: `seed` is ignored for this test-only benchmark; sampling does not shuffle the test split.",
+            dataset,
+        )
+
+
+def _oneig_alignment_language_zh(row: dict) -> bool:
+    """Return True when the official Q_D file for this row should use the ``*_zh`` graphs."""
+    if row.get("category", "") == "Multilingualism":
+        return True
+    lang = row.get("language") or row.get("lang")
+    return isinstance(lang, str) and lang.lower() in {"zh", "zh-cn", "zh_cn", "chinese", "cn"}
+
+
+def _oneig_qd_prefix(row: dict) -> str:
+    """Map dataset ``category`` (+ language) to Q_D JSON stem (e.g. ``object``, ``anime_zh``)."""
+    row_category = row.get("category", "")
+    use_zh = _oneig_alignment_language_zh(row)
+    if row_category == "Multilingualism":
+        return "multilingualism_zh"
+    base = _CATEGORY_TO_QD.get(row_category, "")
+    if not base:
+        return ""
+    return f"{base}_zh" if use_zh else base
+
+
+def _to_oneig_record(
+    row: dict,
+    questions_by_key: dict[str, dict],
+    reasoning_gt_en: dict[str, str],
+    reasoning_gt_zh: dict[str, str],
+    reasoning_language: str = "EN",
+) -> dict:
+    """Convert OneIG row to unified record format.
+
+    Parameters
+    ----------
+    row : dict
+        Raw Hugging Face row (``category``, ``id``, ``class``). EN configs use ``prompt_en``; the
+        ``OneIG-Bench-ZH`` **Multilingualism** split uses ``prompt_cn`` instead of ``prompt_en``.
+    questions_by_key : dict[str, dict]
+        Merged Q_D index keyed as ``{qd_stem}_{prompt_id}`` (see ``_fetch_oneig_alignment``).
+    reasoning_gt_en : dict[str, str]
+        Official ``gt_answer.json`` keyed by prompt id (e.g. ``"000"``).
+    reasoning_gt_zh : dict[str, str]
+        Official ``gt_answer_zh.json`` keyed by prompt id.
+    reasoning_language : str, optional
+        Which reasoning GT to use: ``"EN"`` or ``"ZH"``. Default is ``"EN"``.
+
+    Returns
+    -------
+    dict
+        Unified record including ``questions``, ``dependencies``, and ``reasoning_gt_answer`` when
+        applicable (Knowledge_Reasoning only).
+    """
     row_category = row.get("category", "")
     row_class = row.get("class", "None") or "None"
-    qd_name = _CATEGORY_TO_QD.get(row_category, "")
-    lookup_key = f"{qd_name}_{row.get('id', '')}" if qd_name else ""
+    prompt_id = str(row.get("id", ""))
+    qd_prefix = _oneig_qd_prefix(row)
+    lookup_key = f"{qd_prefix}_{prompt_id}" if qd_prefix else ""
     q_info = questions_by_key.get(lookup_key, {})
+    text = row.get("prompt") or row.get("prompt_en") or row.get("prompt_cn") or ""
+    reasoning_gt_answer: str | None = None
+    if row_category == "Knowledge_Reasoning":
+        if reasoning_language.upper() == "ZH":
+            reasoning_gt_answer = reasoning_gt_zh.get(prompt_id)
+        else:
+            reasoning_gt_answer = reasoning_gt_en.get(prompt_id)
+    is_text_rendering = row_category in ("Text_Rendering", "Text Rendering")
+    if is_text_rendering and text:
+        import re as _re
+
+        quoted = _re.findall(r'"([^"]+)"', text)
+        text_content: str | None = " ".join(quoted) if quoted else (row_class if row_class != "None" else None)
+    else:
+        text_content = row_class if row_class != "None" else None
+    questions = {k: v for k, v in q_info.get("questions", {}).items() if v is not None}
+    dependencies = {k: v for k, v in q_info.get("dependencies", {}).items() if v is not None}
     return {
-        "text": row.get("prompt_en", row.get("prompt", "")),
-        "subset": "Text_Rendering" if row_category in ("Text_Rendering", "Text Rendering") else row_category,
-        "text_content": row_class if row_class != "None" else None,
+        "text": text,
+        "subset": "Text_Rendering" if is_text_rendering else row_category,
+        "text_content": text_content,
         "category": row_category,
         "class": row_class,
-        "questions": q_info.get("questions", {}),
-        "dependencies": q_info.get("dependencies", {}),
+        "questions": questions,
+        "dependencies": dependencies,
+        "reasoning_gt_answer": reasoning_gt_answer,
     }
 
 
@@ -159,7 +234,7 @@ def setup_drawbench_dataset() -> Tuple[Dataset, Dataset, Dataset]:
 
 
 def setup_parti_prompts_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -172,8 +247,8 @@ def setup_parti_prompts_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -188,6 +263,7 @@ def setup_parti_prompts_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The Parti Prompts dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="PartiPrompts")
     ds = load_dataset("nateraw/parti-prompts")["train"]  # type: ignore[index]
 
     if category is not None:
@@ -226,7 +302,7 @@ def _generate_geneval_question(entry: dict) -> list[str]:
 
 
 def setup_geneval_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -239,8 +315,8 @@ def setup_geneval_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -255,6 +331,7 @@ def setup_geneval_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The GenEval dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="GenEval")
     import json
 
     import requests
@@ -286,7 +363,7 @@ def setup_geneval_dataset(
 
 
 def setup_hps_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -299,8 +376,8 @@ def setup_hps_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -315,6 +392,7 @@ def setup_hps_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The HPD dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="HPS")
     import json
 
     from huggingface_hub import hf_hub_download
@@ -338,7 +416,7 @@ def setup_hps_dataset(
 
 
 def setup_long_text_bench_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -350,8 +428,8 @@ def setup_long_text_bench_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -364,6 +442,7 @@ def setup_long_text_bench_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The Long Text Bench dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="LongTextBench")
     ds = load_dataset("X-Omni/LongText-Bench")["train"]  # type: ignore[index]
     ds = ds.rename_column("text", "text_content")
     ds = ds.rename_column("prompt", "text")
@@ -389,8 +468,74 @@ def setup_genai_bench_dataset() -> Tuple[Dataset, Dataset, Dataset]:
     return ds.select([0]), ds.select([0]), ds
 
 
+def ensure_imgedit_benchmark_images_extracted() -> Path:
+    """
+    Download ``Benchmark.tar`` (if needed), extract it, and return the ``singleturn`` folder.
+
+    Returns
+    -------
+    Path
+        ``Benchmark/singleturn`` directory whose files are addressed by ``image_id``.
+
+    Raises
+    ------
+    RuntimeError
+        If the archive cannot be downloaded or extracted.
+    """
+    import tarfile
+
+    from huggingface_hub import hf_hub_download
+
+    tar_path = Path(hf_hub_download(repo_id="sysuyy/ImgEdit", filename="Benchmark.tar", repo_type="dataset"))
+    extract_dir = tar_path.parent / "imgedit_singleturn"
+    candidate = extract_dir / "Benchmark" / "singleturn"
+    if not candidate.is_dir() or not any(candidate.iterdir()):
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(tar_path, "r") as tar:
+            tar.extractall(path=extract_dir)
+    if not candidate.is_dir() or not any(candidate.iterdir()):
+        raise RuntimeError(f"ImgEdit: failed to extract Benchmark.tar to {candidate}")
+    return candidate
+
+
+def load_imgedit_source_image_bytes(image_id: str, *, image_folder: Path | None = None) -> bytes:
+    """
+    Read one ImgEdit source image as JPEG bytes (RGB).
+
+    Parameters
+    ----------
+    image_id : str
+        Path relative to the singleturn folder (from the official ``basic_edit.json`` ``id``).
+    image_folder : Path | None, optional
+        ``Benchmark/singleturn`` directory; when ``None``, calls
+        :func:`ensure_imgedit_benchmark_images_extracted`.
+
+    Returns
+    -------
+    bytes
+        JPEG-encoded bytes for the source image.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``image_id`` does not exist under ``image_folder``.
+    Exception
+        If PIL cannot open or convert the image.
+    """
+    from io import BytesIO
+
+    from PIL import Image
+
+    folder = image_folder if image_folder is not None else ensure_imgedit_benchmark_images_extracted()
+    img_path = folder / image_id
+    pil = Image.open(img_path).convert("RGB")
+    buf = BytesIO()
+    pil.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
 def setup_imgedit_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -403,8 +548,8 @@ def setup_imgedit_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -420,6 +565,7 @@ def setup_imgedit_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The ImgEdit dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="ImgEdit")
     import json
 
     import requests
@@ -433,6 +579,8 @@ def setup_imgedit_dataset(
     instructions: dict = json.loads(response_instructions.text)
     judge_prompts: dict = json.loads(response_judge_prompts.text)
 
+    image_folder = ensure_imgedit_benchmark_images_extracted()
+
     categories = [category] if category is not None and not isinstance(category, list) else category
     records = []
     for _, instruction in instructions.items():
@@ -441,14 +589,17 @@ def setup_imgedit_dataset(
         if categories is not None and edit_type not in categories:
             continue
 
-        records.append(
-            {
-                "text": instruction.get("prompt", ""),
-                "category": edit_type,
-                "image_id": instruction.get("id", ""),
-                "judge_prompt": judge_prompts.get(edit_type, ""),
-            }
-        )
+        image_id = instruction.get("id", "")
+        record: dict = {
+            "text": instruction.get("prompt", ""),
+            "category": edit_type,
+            "image_id": image_id,
+            "judge_prompt": judge_prompts.get(edit_type, ""),
+        }
+        src = load_imgedit_source_image_bytes(image_id, image_folder=image_folder)
+        if src is not None:
+            record["source_image_bytes"] = src
+        records.append(record)
 
     ds = Dataset.from_list(records)
     ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
@@ -466,18 +617,47 @@ _CATEGORY_TO_QD: dict[str, str] = {
     "General_Object": "object",
 }
 
-_ONEIG_ALIGNMENT_BASE = "https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/41b49831e79e6dde5323618c164da1c4cf0f699d/scripts/alignment/Q_D"
+_ONEIG_BENCHMARK_REF = "41b49831e79e6dde5323618c164da1c4cf0f699d"
+_ONEIG_RAW_BASE = f"https://raw.githubusercontent.com/OneIG-Bench/OneIG-Benchmark/{_ONEIG_BENCHMARK_REF}"
+_ONEIG_ALIGNMENT_QD_URL = f"{_ONEIG_RAW_BASE}/scripts/alignment/Q_D"
+_ONEIG_REASONING_GT_URL_EN = f"{_ONEIG_RAW_BASE}/scripts/reasoning/gt_answer.json"
+_ONEIG_REASONING_GT_URL_ZH = f"{_ONEIG_RAW_BASE}/scripts/reasoning/gt_answer_zh.json"
+
+_ONEIG_QD_JSON_STEMS: tuple[str, ...] = (
+    "anime",
+    "human",
+    "object",
+    "anime_zh",
+    "human_zh",
+    "object_zh",
+    "multilingualism_zh",
+)
 
 
 def _fetch_oneig_alignment() -> dict[str, dict]:
-    """Fetch alignment questions from per-category Q_D files (InferBench-style)."""
+    """Load OneIG question/dependency graphs from the official repo (HTTP, no on-disk cache).
+
+    Fetches every ``scripts/alignment/Q_D/*.json`` file used by upstream ``alignment_score.py`` (EN + ZH),
+    including ``multilingualism_zh.json``. Keys in the returned map are ``{stem}_{prompt_id}`` matching
+    upstream file stems (e.g. ``object_012``, ``multilingualism_zh_000``).
+
+    Returns
+    -------
+    dict[str, dict]
+        ``prompt_id``-level ``questions`` and ``dependencies`` dicts (parsed from JSON strings when needed).
+
+    Raises
+    ------
+    requests.HTTPError
+        If any asset URL is missing or the response is not successful.
+    """
     import json
 
     import requests
 
     questions_by_key: dict[str, dict] = {}
-    for qd_name in ("anime", "human", "object"):
-        url = f"{_ONEIG_ALIGNMENT_BASE}/{qd_name}.json"
+    for stem in _ONEIG_QD_JSON_STEMS:
+        url = f"{_ONEIG_ALIGNMENT_QD_URL}/{stem}.json"
         resp = requests.get(url, timeout=30)
         resp.raise_for_status()
         data = json.loads(resp.text)
@@ -488,16 +668,55 @@ def _fetch_oneig_alignment() -> dict[str, dict]:
                 q = json.loads(q)
             if isinstance(d, str):
                 d = json.loads(d)
-            questions_by_key[f"{qd_name}_{prompt_id}"] = {"questions": q, "dependencies": d}
+            questions_by_key[f"{stem}_{prompt_id}"] = {"questions": q, "dependencies": d}
     return questions_by_key
 
 
+def _fetch_oneig_reasoning_gt() -> tuple[dict[str, str], dict[str, str]]:
+    """Load official knowledge-reasoning reference answers (HTTP, no on-disk cache).
+
+    Mirrors ``scripts/reasoning/gt_answer.json`` and ``gt_answer_zh.json`` from the same pinned commit as Q_D.
+    Keys are prompt ids (``str``), values are answer strings; downstream metrics may slice filenames to the
+    first three characters like ``reasoning_score.py``.
+
+    Returns
+    -------
+    tuple[dict[str, str], dict[str, str]]
+        ``(en_by_id, zh_by_id)``.
+
+    Raises
+    ------
+    requests.HTTPError
+        If any asset URL is missing or the response is not successful.
+    """
+    import json
+
+    import requests
+
+    def _load(url: str) -> dict[str, str]:
+        resp = requests.get(url, timeout=60)
+        resp.raise_for_status()
+        raw = json.loads(resp.text)
+        return {str(k): str(v) for k, v in raw.items()}
+
+    return _load(_ONEIG_REASONING_GT_URL_EN), _load(_ONEIG_REASONING_GT_URL_ZH)
+
+
+def _oneig_needs_zh_multilingualism_hub(category: OneIGCategory | list[OneIGCategory] | None) -> bool:
+    """Whether ``OneIG-Bench-ZH`` must be loaded for ``Multilingualism`` rows."""
+    if category is None:
+        return True
+    categories = [category] if not isinstance(category, list) else category
+    return "Multilingualism" in categories
+
+
 def setup_oneig_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
     category: OneIGCategory | list[OneIGCategory] | None = None,
+    reasoning_language: str = "EN",
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Setup the OneIG benchmark dataset.
@@ -506,8 +725,8 @@ def setup_oneig_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -517,16 +736,43 @@ def setup_oneig_dataset(
     category : OneIGCategory | list[OneIGCategory] | None
         Filter by dataset category (Anime_Stylization, Portrait, etc.) or class (fauvism,
         watercolor, etc.). If None, returns all subsets.
+    reasoning_language : str, optional
+        Which reasoning GT to use for Knowledge_Reasoning rows: ``"EN"`` or ``"ZH"``. Default is ``"EN"``.
 
     Returns
     -------
     Tuple[Dataset, Dataset, Dataset]
-        The OneIG dataset (dummy train, dummy val, test).
-    """
-    questions_by_key = _fetch_oneig_alignment()
+        The OneIG dataset (dummy train, dummy val, test). Rows include ``questions`` and
+        ``dependencies`` from official Q_D JSON (EN + ZH stems, including ``multilingualism_zh``),
+        plus ``reasoning_gt_answer`` for ``Knowledge_Reasoning`` (language chosen by ``reasoning_language``).
+        Rows cover EN categories from ``OneIG-Bench`` plus ``Multilingualism`` from ``OneIG-Bench-ZH``.
+        Assets are downloaded over HTTP on each call (pinned commit ``_ONEIG_BENCHMARK_REF``); there is
+        no local disk cache.
 
-    ds_raw = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
-    records = [_to_oneig_record(dict(row), questions_by_key) for row in ds_raw]
+    Notes
+    -----
+    Non-multilingual prompts are loaded from the Hub config ``OneIG-Bench``; **Multilingualism** rows
+    are taken only from ``OneIG-Bench-ZH`` (they use ``prompt_cn``). The ZH config is fetched only when
+    the requested ``category`` is ``None`` (full suite) or explicitly includes ``Multilingualism``.
+    Q_D / reasoning JSON URLs are defined next to ``_fetch_oneig_alignment`` and
+    ``_fetch_oneig_reasoning_gt``.
+    """
+    _warn_ignored_benchmark_seed(seed, dataset="OneIG")
+    questions_by_key = _fetch_oneig_alignment()
+    reasoning_gt_en, reasoning_gt_zh = _fetch_oneig_reasoning_gt()
+
+    ds_en = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench")["train"]  # type: ignore[index]
+    records = [
+        _to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh, reasoning_language)
+        for row in ds_en
+    ]
+    if _oneig_needs_zh_multilingualism_hub(category):
+        ds_zh = load_dataset("OneIG-Bench/OneIG-Bench", "OneIG-Bench-ZH")["train"]  # type: ignore[index]
+        ds_zh_ml = ds_zh.filter(lambda r: r["category"] == "Multilingualism")
+        records.extend(
+            _to_oneig_record(dict(row), questions_by_key, reasoning_gt_en, reasoning_gt_zh, reasoning_language)
+            for row in ds_zh_ml
+        )
     ds = Dataset.from_list(records)
 
     if category is not None:
@@ -544,8 +790,252 @@ def setup_oneig_dataset(
     return ds.select([0]), ds.select([0]), ds
 
 
+# functools.partial is not used for these wrappers: get_literal_values_from_param would unwrap
+# partial objects back to setup_oneig_dataset and expose every OneIGCategory instead of one.
+
+
+def setup_oneig_anime_stylization_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Anime_Stylization``.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for the Anime_Stylization subset.
+    """
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category="Anime_Stylization",
+        reasoning_language=reasoning_language,
+    )
+
+
+def setup_oneig_general_object_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``General_Object``.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for the General_Object subset.
+    """
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category="General_Object",
+        reasoning_language=reasoning_language,
+    )
+
+
+def setup_oneig_knowledge_reasoning_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Knowledge_Reasoning``.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for the Knowledge_Reasoning subset.
+    """
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category="Knowledge_Reasoning",
+        reasoning_language=reasoning_language,
+    )
+
+
+def setup_oneig_multilingualism_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Multilingualism``.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for the Multilingualism subset.
+    """
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category="Multilingualism",
+        reasoning_language=reasoning_language,
+    )
+
+
+def setup_oneig_portrait_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Portrait``.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for the Portrait subset.
+    """
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category="Portrait",
+        reasoning_language=reasoning_language,
+    )
+
+
+def setup_oneig_text_rendering_dataset(
+    seed: int | None = None,
+    fraction: float = 1.0,
+    train_sample_size: int | None = None,
+    test_sample_size: int | None = None,
+    reasoning_language: str = "EN",
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Load OneIG-Bench with ``category`` fixed to ``Text_Rendering``.
+
+    License: Apache 2.0
+
+    Parameters
+    ----------
+    seed : int | None, optional
+        Ignored; see :func:`setup_oneig_dataset`.
+    fraction : float
+        Fraction of the subset to use.
+    train_sample_size : int | None
+        Unused; train/val are dummy.
+    test_sample_size : int | None
+        Test sample size cap for the subset.
+    reasoning_language : str
+        Passed to :func:`setup_oneig_dataset`.
+
+    Returns
+    -------
+    Tuple[Dataset, Dataset, Dataset]
+        Dummy train, dummy val, and test split for the Text_Rendering subset.
+    """
+    return setup_oneig_dataset(
+        seed=seed,
+        fraction=fraction,
+        train_sample_size=train_sample_size,
+        test_sample_size=test_sample_size,
+        category="Text_Rendering",
+        reasoning_language=reasoning_language,
+    )
+
+
 def setup_gedit_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -558,8 +1048,8 @@ def setup_gedit_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -576,6 +1066,7 @@ def setup_gedit_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The GEditBench dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="GEditBench")
     task_type_map = {
         "subject_add": "subject-add",
         "subject_remove": "subject-remove",
@@ -595,12 +1086,18 @@ def setup_gedit_dataset(
     for row in ds:
         task_type = row.get("task_type", "")
         category_name = task_type_to_category.get(task_type, task_type)
-        records.append(
-            {
-                "text": row.get("instruction", ""),
-                "category": category_name,
-            }
-        )
+        record: dict = {
+            "text": row.get("instruction", ""),
+            "category": category_name,
+        }
+        src = row.get("input_image_raw")
+        if src is not None:
+            from io import BytesIO
+
+            buf = BytesIO()
+            src.save(buf, format="JPEG")
+            record["source_image_bytes"] = buf.getvalue()
+        records.append(record)
 
     ds = Dataset.from_list(records)
     ds = stratify_dataset(ds, sample_size=test_sample_size, fraction=fraction)
@@ -613,7 +1110,7 @@ def setup_gedit_dataset(
 
 
 def setup_dpg_dataset(
-    seed: int,
+    seed: int | None = None,
     fraction: float = 1.0,
     train_sample_size: int | None = None,
     test_sample_size: int | None = None,
@@ -626,8 +1123,8 @@ def setup_dpg_dataset(
 
     Parameters
     ----------
-    seed : int
-        The seed to use.
+    seed : int | None, optional
+        Ignored; test order is deterministic. If not None, a warning is logged.
     fraction : float
         The fraction of the dataset to use.
     train_sample_size : int | None
@@ -642,6 +1139,7 @@ def setup_dpg_dataset(
     Tuple[Dataset, Dataset, Dataset]
         The DPG dataset (dummy train, dummy val, test).
     """
+    _warn_ignored_benchmark_seed(seed, dataset="DPG")
     import csv
     import io
     from collections import defaultdict
