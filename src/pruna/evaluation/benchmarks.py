@@ -174,7 +174,7 @@ for _benchmark in [
             "Covers basic skills (scene, attributes, spatial relationships) to advanced reasoning "
             "(counting, comparison, logic/negation) with over 24k human ratings."
         ),
-        metrics=["vqa", "clip_score"],
+        metrics=[],  # Paper uses VQAScore only; not in Pruna
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2406.13743",
     ),
@@ -267,8 +267,8 @@ for _benchmark in [
             "material alter, motion change, style change, subject add/remove/replace, text change, "
             "tone transfer, and human retouching."
         ),
-        metrics=["vie_score"],
-        task_type="text+image_image",
+        metrics=[],  # Paper uses VIEScore; not in Pruna
+        task_type="text_to_image",
         reference="https://arxiv.org/abs/2504.17761",
     ),
     Benchmark(
