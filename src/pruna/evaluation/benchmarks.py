@@ -88,9 +88,7 @@ class BenchmarkRegistry:
     def _register(cls, benchmark: Benchmark) -> None:
         missing = [m for m in benchmark.metrics if not MetricRegistry.has_metric(m)]
         if missing:
-            raise ValueError(
-                f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}."
-            )
+            raise ValueError(f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}.")
         if benchmark.lookup_key not in base_datasets:
             available = ", ".join(base_datasets.keys())
             raise ValueError(
@@ -226,7 +224,7 @@ for _benchmark in [
             "counting, colors, position, color attributes. Evaluates fine-grained alignment "
             "between prompts and generated images via VQA-style questions."
         ),
-        metrics=["clip_score"],  # §3.2: Mask2Former; not in Pruna
+        metrics=["qa_accuracy", "clip_score"],  # strict QA + CLIP score
         task_type="text_to_image",
         reference="https://arxiv.org/abs/2310.11513",
     ),
