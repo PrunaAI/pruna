@@ -11,6 +11,17 @@ on:
   pull_request:
     branches:
       - main
+      # TEMP: remove feat/vlm-pr-* entries before merging the VLM stack to main
+      - feat/vlm-pr-1-vendor
+      - feat/vlm-pr-2-infrastructure
+      - feat/vlm-pr-3a-qa-accuracy
+      - feat/vlm-pr-3b-oneig-alignment
+      - feat/vlm-pr-3c-text-score-pair
+      - feat/vlm-pr-3d-oneig-reasoning
+      - feat/vlm-pr-4a-vqa
+      - feat/vlm-pr-4b-vie-score
+      - feat/vlm-pr-4c-img-edit-score
+      - feat/vlm-pr-5-e2e-tests
 
 concurrency:
   group: ci-${{ github.repository }}-tests-${{ github.ref }}
