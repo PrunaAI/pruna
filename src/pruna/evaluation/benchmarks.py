@@ -88,9 +88,7 @@ class BenchmarkRegistry:
     def _register(cls, benchmark: Benchmark) -> None:
         missing = [m for m in benchmark.metrics if not MetricRegistry.has_metric(m)]
         if missing:
-            raise ValueError(
-                f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}."
-            )
+            raise ValueError(f"Benchmark '{benchmark.name}' references metrics not in MetricRegistry: {missing}.")
         if benchmark.lookup_key not in base_datasets:
             available = ", ".join(base_datasets.keys())
             raise ValueError(
