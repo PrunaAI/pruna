@@ -171,6 +171,24 @@ class TorchMetrics(Enum):
     Enumeration of torchmetrics metrics for evaluation.
 
     Each member value is a ``(metric_factory, update_fn, call_type)`` tuple.
+
+    Parameters
+    ----------
+    value : tuple
+        ``(metric_factory, update_fn, call_type)`` for this enum member.
+    names : str
+        Enum member name.
+    module : str
+        Defining module name.
+    qualname : str
+        Qualified name of the enum class.
+    type : type
+        Enum metaclass type.
+    start : int
+        Auto-numbering start index for functional API enums.
+    boundary : enum.FlagBoundary or None
+        Boundary handling mode used by the Enum functional API for Flag and
+        IntFlag enums.
     """
 
     fid = (FrechetInceptionDistance, fid_update, "gt_y")
