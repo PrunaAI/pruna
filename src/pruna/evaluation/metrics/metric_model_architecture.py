@@ -88,7 +88,10 @@ class ModelArchitectureStats(BaseMetric):
         batch = model.inference_handler.move_inputs_to_device(batch, self.device)
         inputs = model.inference_handler.prepare_inputs(batch)
 
-        model(inputs, **model.inference_handler.model_args)
+        if isinstance(inputs, dict):
+            model(**inputs, **model.inference_handler.model_args)
+        else:
+            model(inputs, **model.inference_handler.model_args)
 
         total_macs = 0
         self.module_macs = {}

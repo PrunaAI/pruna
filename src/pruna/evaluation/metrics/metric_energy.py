@@ -105,11 +105,17 @@ class EnvironmentalImpactStats(BaseMetric):
 
         # Warmup
         for _ in tqdm(range(self.n_warmup_iterations), desc="Warm-up for energy consumption metric", unit="iter"):
-            model(inputs, **model.inference_handler.model_args)
+            if isinstance(inputs, dict):
+                model(**inputs, **model.inference_handler.model_args)
+            else:
+                model(inputs, **model.inference_handler.model_args)
 
         tracker.start_task("Inference")
         for _ in tqdm(range(self.n_iterations), desc="Measuring energy consumption", unit="iter"):
-            model(inputs, **model.inference_handler.model_args)
+            if isinstance(inputs, dict):
+                model(**inputs, **model.inference_handler.model_args)
+            else:
+                model(inputs, **model.inference_handler.model_args)
         tracker.stop_task()
 
         # Make sure all the operations are finished before stopping the tracker
