@@ -91,8 +91,9 @@ def image_generation_collate(
 
     Returns
     -------
-    Tuple[torch.Tensor, Any]
-        The collated data with size img_size and normalized to [0, 1].
+    Tuple[List[str], Union[Float[torch.Tensor, ImageShape], Int[torch.Tensor, ImageShape]]]
+        A tuple with all text prompts as first element, and all images as second element.
+        The images are resized to img_size and converted to the desired format.
     """
     transformations = image_format_to_transforms(output_format, img_size)
     image_col = _resolve_column(column_map, "image")
@@ -127,7 +128,7 @@ def prompt_collate(data: Any, column_map: dict[str, str] | None = None) -> Tuple
     Returns
     -------
     Tuple[List[str], None]
-        The collated data.
+        A tuple with all text prompts as first element, and None as second element.
     """
     text_col = _resolve_column(column_map, "text")
     return [item[text_col] for item in data], None
@@ -154,7 +155,7 @@ def prompt_with_auxiliaries_collate(
     Returns
     -------
     Tuple[List[str], Any]
-        The collated data.
+        A tuple with all text prompts as first element, and all auxiliary dictionaries as second element.
     """
     text_col = _resolve_column(column_map, "text")
     #  The text column has the prompt.
@@ -180,8 +181,8 @@ def audio_collate(data: Any, column_map: dict[str, str] | None = None) -> Tuple[
 
     Returns
     -------
-    List[str]
-        The collated data.
+    Tuple[List[str], List[str]]
+        A tuple with all audio paths as first element, and all text transcriptions as second element.
     """
     audio_col = _resolve_column(column_map, "audio")
     sentence_col = _resolve_column(column_map, "sentence")
@@ -209,8 +210,10 @@ def image_classification_collate(
 
     Returns
     -------
-    Tuple[torch.Tensor, torch.Tensor]
-        The collated data.
+    Tuple[Float[torch.Tensor, ImageShape], Int[torch.Tensor, LabelShape]]
+        A tuple with all images, stacked into a single tensor, as first element,
+        and all labels, stacked into a single tensor, as second element.
+        The images are resized to img_size and converted to the desired format.
     """
     transformations = image_format_to_transforms(output_format, img_size)
     image_col = _resolve_column(column_map, "image")
@@ -251,7 +254,8 @@ def text_generation_collate(
     Returns
     -------
     Tuple[torch.Tensor, torch.Tensor]
-        The collated data.
+        A tuple with tokens from all text prompts as first element,
+        and their corresponding next tokens as second element. 
     """
     text_col = _resolve_column(column_map, "text")
     input_ids = []
@@ -290,7 +294,8 @@ def question_answering_collate(
     Returns
     -------
     Tuple[torch.Tensor, torch.Tensor]
-        The collated data.
+        A tuple with tokenized questions as first element,
+        and tokenized answers as second element.
     """
     question_col = _resolve_column(column_map, "question")
     answer_col = _resolve_column(column_map, "answer")
