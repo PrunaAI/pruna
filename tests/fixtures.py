@@ -206,6 +206,7 @@ MODEL_FACTORY: dict[str, Callable] = {
     "flux_tiny_random_with_tokenizer": partial(
         get_diffusers_model_with_tokenizer, "katuni4ka/tiny-random-flux", torch_dtype=torch.float16
     ),
+    "flux2_tiny_random": partial(get_diffusers_model, "tiny-random/flux2", torch_dtype=torch.bfloat16),
     # text generation models
     "opt_tiny_random": partial(get_automodel_transformers, "yujiepan/opt-tiny-random"),
     "smollm_135m": partial(get_automodel_transformers, "HuggingFaceTB/SmolLM2-135M"),
