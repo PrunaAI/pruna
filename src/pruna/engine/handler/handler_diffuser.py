@@ -48,14 +48,21 @@ class DiffuserHandler(InferenceHandler):
         self.model_args = default_args
 
     def prepare_inputs(
-        self, batch: List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor | dict[str, Any], ...] | dict[str, Any]
+        self, batch: Tuple[List[str] | torch.Tensor | dict[str, Any], ...]
     ) -> Any:
         """
         Prepare the inputs for the model.
 
+        The batch's first element is considered the model input.
+        1. The native pruna data format for generation is a tuple with the first element being a list with the prompts.
+        Check ``pruna/src/pruna/data/collate.py`` for more details.
+        2. To provide additional arguments to the model (e.g., negative prompts), \
+        construct the first element as a dictionary (e.g., ``{"prompt": [...], "negative_prompt": [...]}``).
+
+
         Parameters
         ----------
-        batch : List[str] | torch.Tensor | Tuple[List[str] | torch.Tensor | dict[str, Any], ...] | dict[str, Any]
+        batch : Tuple[List[str] | torch.Tensor | dict[str, Any], ...]
             The batch to prepare the inputs for.
 
         Returns
