@@ -59,7 +59,6 @@ class DiffuserHandler(InferenceHandler):
         2. To provide additional arguments to the model (e.g., negative prompts), \
         construct the first element as a dictionary (e.g., ``{"prompt": [...], "negative_prompt": [...]}``).
 
-
         Parameters
         ----------
         batch : Tuple[List[str] | torch.Tensor | dict[str, Any], ...]

@@ -255,7 +255,7 @@ def text_generation_collate(
     -------
     Tuple[torch.Tensor, torch.Tensor]
         A tuple with tokens from all text prompts as first element,
-        and their corresponding next tokens as second element. 
+        and their corresponding next tokens as second element.
     """
     text_col = _resolve_column(column_map, "text")
     input_ids = []
