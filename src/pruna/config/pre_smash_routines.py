@@ -214,7 +214,7 @@ def check_directional_compatibility_violations(graph: nx.DiGraph, algorithm_orde
         for j, alg_after in enumerate(algorithm_order):
             # alg_before comes before alg_after in the provided order
             # Check if there's an edge from alg_after to alg_before in the graph
-            if i < j and not graph.has_edge(alg_before, alg_after):
+            if i < j and graph.has_edge(alg_after, alg_before):
                 violations.append((alg_before, alg_after))
     return violations
 

@@ -27,6 +27,7 @@ from pruna.config.pre_smash_routines import (
     check_argument_compatibility,
     execute_algorithm_pre_smash_hooks,
     check_algorithm_cross_compatibility,
+    check_directional_compatibility_violations,
     determine_algorithm_order,
     construct_algorithm_directed_graph,
 )
@@ -349,6 +350,17 @@ class TestCheckAlgorithmCrossCompatibility:
 @pytest.mark.cpu
 class TestDetermineAlgorithmOrder:
     """Test suite for determine_algorithm_order function."""
+
+    def test_directional_compatibility_allows_independent_algorithms(self):
+        """Only a reversed dependency should invalidate an explicit order."""
+        graph = nx.DiGraph()
+        graph.add_nodes_from(["algorithm1", "algorithm2", "algorithm3"])
+        graph.add_edge("algorithm1", "algorithm2")
+
+        assert check_directional_compatibility_violations(graph, ["algorithm1", "algorithm2", "algorithm3"]) == []
+        assert check_directional_compatibility_violations(graph, ["algorithm3", "algorithm2", "algorithm1"]) == [
+            ("algorithm2", "algorithm1")
+        ]
 
     def test_determine_algorithm_order_success(self):
         """Test successful algorithm order determination. Should return topologically sorted algorithm order."""
