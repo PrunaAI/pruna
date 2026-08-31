@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 import torch
 
+from pruna.algorithms.global_utils.quantization.dtypes import parse_float8_dtype
 from pruna.algorithms.global_utils.quantization.swap_linear import swap_linear
 from pruna.algorithms.global_utils.quantization.symmetric_scale import amax_to_scale, scale_and_clamp
 
@@ -76,6 +77,7 @@ def test_amax_to_scale_zero_amax() -> None:
     torch.testing.assert_close(scale, torch.tensor(max_val / 1e-12))
     assert torch.isfinite(scale)
 
+
 @pytest.mark.cpu
 def test_scale_and_clamp_maps_and_clips() -> None:
     """Test that values are scaled then clipped to ``[-max_val, max_val]``."""
@@ -84,3 +86,23 @@ def test_scale_and_clamp_maps_and_clips() -> None:
     max_val = 4.0
     out = scale_and_clamp(x, scale, max_val)
     torch.testing.assert_close(out, torch.tensor([-4.0, 1.0, 4.0]))
+
+
+@pytest.mark.cpu
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("torch.float8_e4m3fn", torch.float8_e4m3fn),
+        ("torch.float8_e5m2", torch.float8_e5m2),
+    ],
+)
+def test_parse_float8_dtype_known_names(name: str, expected: torch.dtype) -> None:
+    """Test that known float8 dtype names resolve to the matching torch dtype."""
+    assert parse_float8_dtype(name) is expected
+
+
+@pytest.mark.cpu
+def test_parse_float8_dtype_unknown_name_raises() -> None:
+    """Test that an unsupported dtype name raises ValueError."""
+    with pytest.raises(ValueError, match="Unsupported float8 dtype"):
+        parse_float8_dtype("torch.float16")

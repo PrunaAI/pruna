@@ -22,6 +22,7 @@ from ConfigSpace import CategoricalHyperparameter, OrdinalHyperparameter
 
 from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
+from pruna.algorithms.global_utils.quantization.dtypes import FLOAT8_DTYPE_FROM_NAME, parse_float8_dtype
 from pruna.algorithms.global_utils.quantization.swap_linear import swap_linear
 from pruna.algorithms.static_fp8_diffusers.utils import StaticFp8Linear, quantize_linear_layer_static_fp8
 from pruna.config.smash_config import SmashConfigPrefixWrapper
@@ -95,13 +96,13 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
         return [
             CategoricalHyperparameter(
                 "weight_float8_dtype",
-                choices=["torch.float8_e4m3fn", "torch.float8_e5m2"],
+                choices=list(FLOAT8_DTYPE_FROM_NAME),
                 default_value="torch.float8_e4m3fn",
                 meta={"desc": "The float8 dtype to use for weight quantization."},
             ),
             CategoricalHyperparameter(
                 "input_float8_dtype",
-                choices=["torch.float8_e4m3fn", "torch.float8_e5m2"],
+                choices=list(FLOAT8_DTYPE_FROM_NAME),
                 default_value="torch.float8_e4m3fn",
                 meta={"desc": "The float8 dtype to use for input quantization."},
             ),
@@ -192,12 +193,8 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
         Any
             The quantized, calibrated model.
         """
-        weight_float8_dtype = (
-            torch.float8_e4m3fn if smash_config["weight_float8_dtype"] == "torch.float8_e4m3fn" else torch.float8_e5m2
-        )
-        input_float8_dtype = (
-            torch.float8_e4m3fn if smash_config["input_float8_dtype"] == "torch.float8_e4m3fn" else torch.float8_e5m2
-        )
+        weight_float8_dtype = parse_float8_dtype(smash_config["weight_float8_dtype"])
+        input_float8_dtype = parse_float8_dtype(smash_config["input_float8_dtype"])
 
         quantized_layers: dict[int, StaticFp8Linear] = {}
 
