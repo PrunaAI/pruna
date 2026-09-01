@@ -77,7 +77,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
         "moe_kernel_tuner",
     ]
     disjointly_compatible_before: Iterable[str] = []
-    disjointly_compatible_after: Iterable[str] = ["torchao"]
+    disjointly_compatible_after: Iterable[str] = ["torchao", "static_fp8_diffusers"]
 
     def get_hyperparameters(self) -> list:
         """

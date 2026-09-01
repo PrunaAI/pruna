@@ -63,6 +63,7 @@ class RingAttn(PrunaAlgorithmBase):
     compatible_before: Iterable[str | AlgorithmTag] = [
         "qkv_diffusers",
         "padding_pruning",
+        "static_fp8_diffusers",
         "moe_kernel_tuner",
     ]
     compatible_after: Iterable[str | AlgorithmTag] = [

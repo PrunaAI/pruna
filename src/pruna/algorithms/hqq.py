@@ -65,7 +65,7 @@ class HQQ(PrunaAlgorithmBase):
     compatible_before: Iterable[str] = ["torch_structured", "moe_kernel_tuner"]
     compatible_after: Iterable[str] = ["torch_compile", "sage_attn", "kvpress", "moe_kernel_tuner"]
     disjointly_compatible_before: Iterable[str] = []
-    disjointly_compatible_after: Iterable[str] = ["torchao"]
+    disjointly_compatible_after: Iterable[str] = ["torchao", "static_fp8_diffusers"]
 
     def get_hyperparameters(self) -> list:
         """

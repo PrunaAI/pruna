@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from enum import Enum
 
 try:
@@ -25,9 +26,95 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from safetensors.torch import load_file
 
 from pruna.config.smash_config import SmashConfig
+from pruna.engine.utils import get_nn_modules
 from pruna.logging.logger import pruna_logger
+
+STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME = "static_fp8_diffusers_artifacts"
+STATIC_FP8_DIFFUSERS_ARTIFACTS_FILENAME = "static_fp8_diffusers_artifacts.safetensors"
+# Calibrated activation state to persist. Weight-side buffers are re-derived deterministically
+# from the float weights during resmash, so they are intentionally not saved here.
+STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS = ("input_running_amax",)
+
+
+def module_path_prefix(module_name: str | None, submodule_name: str | None) -> str:
+    """
+    Get the dotted key prefix for a (root, submodule) pair, with a trailing dot.
+
+    Used symmetrically by save and load so that state-dict keys line up. The root
+    name is ``None`` for a bare ``nn.Module`` and the component attribute name for a
+    pipeline. The submodule name is ``""`` for the root module itself.
+
+    Parameters
+    ----------
+    module_name : str | None
+        The name of the top-level module.
+    submodule_name : str | None
+        The name of the submodule.
+
+    Returns
+    -------
+    str
+        The path prefix ending with a trailing dot, or an empty string if both names are None.
+    """
+    if module_name is None and submodule_name is None:
+        return ""
+    elif module_name is None:
+        return f"{submodule_name}."
+    elif not submodule_name:
+        return f"{module_name}."
+    else:
+        return f"{module_name}.{submodule_name}."
+
+
+def iter_typed_linears(model: Any, linear_cls: type) -> Iterator[tuple[str, Any]]:
+    """
+    Yield ``(key_prefix, module)`` for every module of ``linear_cls`` in the model (pipeline-aware).
+
+    Parameters
+    ----------
+    model : Any
+        The model (bare nn.Module or diffusers pipeline) to walk.
+    linear_cls : type
+        The linear module class to match (e.g. ``StaticFp8Linear``).
+
+    Yields
+    ------
+    tuple[str, Any]
+        The dotted key prefix and the matching linear module found at that path.
+    """
+    nn_modules: dict[str | None, torch.nn.Module]
+    try:
+        nn_modules = model.get_nn_modules()
+    except AttributeError:
+        nn_modules = get_nn_modules(model)
+
+    for root_name, root in nn_modules.items():
+        for submodule_name, submodule in root.named_modules():
+            if isinstance(submodule, linear_cls):
+                yield module_path_prefix(root_name, submodule_name), submodule
+
+
+def iter_static_fp8_linears(model: Any) -> Iterator[tuple[str, Any]]:
+    """
+    Yield ``(key_prefix, module)`` for every ``StaticFp8Linear`` in the model (pipeline-aware).
+
+    Parameters
+    ----------
+    model : Any
+        The model (bare nn.Module or diffusers pipeline) to walk.
+
+    Yields
+    ------
+    tuple[str, Any]
+        The dotted key prefix and the ``StaticFp8Linear`` module found at that path.
+    """
+    # Local import to avoid importing the algorithm package unless artifacts are used.
+    from pruna.algorithms.static_fp8_diffusers.utils import StaticFp8Linear
+
+    yield from iter_typed_linears(model, StaticFp8Linear)
 
 
 def load_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
@@ -152,6 +239,63 @@ def load_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_co
         )
 
 
+def load_static_fp8_diffusers_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Restore calibrated activation scales saved by ``save_static_fp8_diffusers_artifacts``.
+
+    Parameters
+    ----------
+    model : Any
+        The freshly re-quantized model whose activation scales should be restored.
+    model_path : str | Path
+        Directory the artifacts file is read from.
+    smash_config : SmashConfig
+        The SmashConfig (unused, kept for the artifact-loader signature).
+
+    Returns
+    -------
+    None
+        The function restores the activation scales in-place and does not return anything.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the artifacts file is missing (calibration was skipped during load).
+    ValueError
+        If the artifacts file is incomplete for one or more quantized layers.
+    """
+    artifacts_path = Path(model_path) / STATIC_FP8_DIFFUSERS_ARTIFACTS_FILENAME
+    if not artifacts_path.exists():
+        raise FileNotFoundError(
+            f"static_fp8_diffusers artifacts expected at '{artifacts_path}' but not found."
+        )
+
+    state_dict = load_file(str(artifacts_path))
+    layers = list(iter_static_fp8_linears(model))
+    if not layers:
+        raise ValueError("No static_fp8_diffusers quantized layers found in the model.")
+
+    missing_layers: list[str] = []
+    for prefix, layer in layers:
+        if any(f"{prefix}{attr}" not in state_dict for attr in STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS):
+            missing_layers.append(prefix or "<root>")
+            continue
+
+        for attr in STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS:
+            buffer = getattr(layer, attr)
+            setattr(layer, attr, state_dict[f"{prefix}{attr}"].to(device=buffer.device, dtype=buffer.dtype))
+
+        layer.freeze_input_scale()
+
+    if missing_layers:
+        raise ValueError(
+            "static_fp8_diffusers artifacts are incomplete."
+            "To use this artifact, exclude the following modules: " + ", ".join(missing_layers)
+        )
+
+    pruna_logger.info(f"Loaded static_fp8_diffusers artifacts from '{artifacts_path}'")
+
+
 class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* load functions.
@@ -188,6 +332,7 @@ class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
 
     torch_artifacts = member(load_torch_artifacts)
     moe_kernel_tuner_artifacts = member(load_moe_kernel_tuner_artifacts)
+    static_fp8_diffusers_artifacts = member(load_static_fp8_diffusers_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """Call the underlying load function."""

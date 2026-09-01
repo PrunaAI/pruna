@@ -23,9 +23,16 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from safetensors.torch import save_file
 
 from pruna.config.smash_config import SmashConfig
-from pruna.engine.load_artifacts import LOAD_ARTIFACTS_FUNCTIONS
+from pruna.engine.load_artifacts import (
+    LOAD_ARTIFACTS_FUNCTIONS,
+    STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS,
+    STATIC_FP8_DIFFUSERS_ARTIFACTS_FILENAME,
+    STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME,
+    iter_typed_linears,
+)
 from pruna.logging.logger import pruna_logger
 
 
@@ -118,6 +125,73 @@ def save_moe_kernel_tuner_artifacts(model: Any, model_path: str | Path, smash_co
     smash_config.load_artifacts_fns.append(LOAD_ARTIFACTS_FUNCTIONS.moe_kernel_tuner_artifacts.name)
 
 
+def save_module_attr_artifacts(
+    model: Any,
+    model_path: str | Path,
+    smash_config: SmashConfig,
+    *,
+    linear_cls: type,
+    attrs: tuple[str, ...],
+    filename: str,
+    load_fn_name: str,
+) -> None:
+    """
+    Save named module attributes for all ``linear_cls`` modules to a safetensors file.
+
+    Parameters
+    ----------
+    model : Any
+        The model whose matching linear modules should be exported.
+    model_path : str | Path
+        Directory where the artifacts safetensors file will be written.
+    smash_config : SmashConfig
+        The SmashConfig whose ``load_artifacts_fns`` list will be updated with
+        ``load_fn_name`` so the artifacts are restored on load.
+    linear_cls : type
+        The linear module class to match (e.g. ``StaticFp8Linear``).
+    attrs : tuple[str, ...]
+        Buffer or tensor attribute names to persist for each matched module.
+    filename : str
+        Basename of the safetensors file written under ``model_path``.
+    load_fn_name : str
+        Name of the corresponding load-artifacts function to append to
+        ``smash_config.load_artifacts_fns``.
+    """
+    state_dict = {}
+    for prefix, layer in iter_typed_linears(model, linear_cls):
+        for attr in attrs:
+            state_dict[f"{prefix}{attr}"] = getattr(layer, attr)
+
+    save_file(state_dict, str(Path(model_path) / filename))
+    smash_config.load_artifacts_fns.append(load_fn_name)
+
+
+def save_static_fp8_diffusers_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Save calibrated activation scales for all ``StaticFp8Linear`` modules.
+
+    Parameters
+    ----------
+    model : Any
+        The quantized model whose activation calibration state should be exported.
+    model_path : str | Path
+        Directory where the artifacts file is written.
+    smash_config : SmashConfig
+        The SmashConfig whose ``load_artifacts_fns`` is updated such that the artifacts are loaded.
+    """
+    from pruna.algorithms.static_fp8_diffusers.utils import StaticFp8Linear
+
+    save_module_attr_artifacts(
+        model,
+        model_path,
+        smash_config,
+        linear_cls=StaticFp8Linear,
+        attrs=STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS,
+        filename=STATIC_FP8_DIFFUSERS_ARTIFACTS_FILENAME,
+        load_fn_name=STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME,
+    )
+
+
 class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* save functions.
@@ -154,6 +228,7 @@ class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
 
     torch_artifacts = member(save_torch_artifacts)
     moe_kernel_tuner_artifacts = member(save_moe_kernel_tuner_artifacts)
+    static_fp8_diffusers_artifacts = member(save_static_fp8_diffusers_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """

@@ -54,6 +54,7 @@ class PaddingPruner(PrunaAlgorithmBase):
         "torchao",
         "flash_attn3",
         "ring_attn",
+        "static_fp8_diffusers",
         "moe_kernel_tuner",
     ]
 

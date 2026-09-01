@@ -105,7 +105,7 @@ class Torchao(PrunaAlgorithmBase):
         "moe_kernel_tuner",
     ]
     disjointly_compatible_before: Iterable[str] = ["hqq", "hqq_diffusers"]
-    disjointly_compatible_after: Iterable[str] = []
+    disjointly_compatible_after: Iterable[str] = ["static_fp8_diffusers"]
 
     def get_hyperparameters(self) -> list:
         """

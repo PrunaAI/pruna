@@ -89,6 +89,7 @@ class TorchCompile(PrunaAlgorithmBase):
         "text_to_text_lora",
         "text_to_text_perp",
         "moe_kernel_tuner",
+        "static_fp8_diffusers",
     ]
     compatible_after: Iterable[str] = ["img2img_denoise", "realesrgan_upscale", "moe_kernel_tuner"]
 
