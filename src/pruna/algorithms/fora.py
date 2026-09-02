@@ -54,6 +54,7 @@ class FORA(PrunaAlgorithmBase):
         "hyper",
         "padding_pruning",
         "static_fp8_diffusers",
+        "time_aware_fp8_diffusers",
         "moe_kernel_tuner",
     ]
     compatible_after: Iterable[str] = [

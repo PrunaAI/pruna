@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -24,7 +25,12 @@ from pruna.algorithms.base.pruna_base import PrunaAlgorithmBase
 from pruna.algorithms.base.tags import AlgorithmTag
 from pruna.algorithms.global_utils.quantization.dtypes import FLOAT8_DTYPE_FROM_NAME, parse_float8_dtype
 from pruna.algorithms.global_utils.quantization.swap_linear import swap_linear
-from pruna.algorithms.static_fp8_diffusers.utils import StaticFp8Linear, quantize_linear_layer_static_fp8
+from pruna.algorithms.time_aware_fp8_diffusers.utils import (
+    TimeAwareFp8Linear,
+    TimeAwareScaleHelper,
+    quantize_linear_layer_time_aware_fp8,
+)
+from pruna.config.hyperparameters import UnconstrainedHyperparameter
 from pruna.config.smash_config import SmashConfigPrefixWrapper
 from pruna.config.target_modules import (
     TARGET_MODULES_TYPE,
@@ -33,7 +39,7 @@ from pruna.config.target_modules import (
     map_targeted_nn_roots,
     target_backbone,
 )
-from pruna.engine.load_artifacts import STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME
+from pruna.engine.load_artifacts import TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME
 from pruna.engine.model_checks import is_diffusers_model
 from pruna.engine.pruna_model import PrunaModel
 from pruna.engine.save import SAVE_FUNCTIONS
@@ -41,23 +47,27 @@ from pruna.engine.utils import safe_memory_cleanup
 from pruna.logging.logger import pruna_logger
 
 
-class StaticFp8Diffusers(PrunaAlgorithmBase):
+class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
     """
-    Static fp8 quantization for diffusion models with calibration over full generations.
+    Time-aware fp8 quantization for diffusion models with calibration over full generations.
 
-    Weights are statically quantized. The input (activation) scales are calibrated
-    by running a few complete noise-to-image generations from a calibration dataset.
+    Weights are statically quantized. The input (activation) scales are calibrated by
+    running a few complete noise-to-image generations while recording per-layer input
+    maxima keyed by the exact denoising timestep value. The observed timesteps define a
+    lookup table (bin edges at midpoints between observed values).
 
-    The calibration is motivated by the importance of considering samples across all timesteps \
-    when calibrating the input scales, as highlighted in [Q-Diffusion](https://arxiv.org/abs/2302.04304) \
-    and [Post-training Quantization on Diffusion Models](https://arxiv.org/abs/2211.15736).
+    During inference, each layer reads the scale for the current timestep from the ``TimeAwareScaleHelper``.
+
+    The time-aware quantization is motivated by the variance in the input distribution across timesteps. \
+    It is a simplified version of \
+    [Temporal Dynamic Quantization for Diffusion Models](https://arxiv.org/abs/2306.02316), \
+    using a single scale per timestep (numerical) rather than a neural network to predict the scale.
     """
 
-    algorithm_name = "static_fp8_diffusers"
+    algorithm_name = "time_aware_fp8_diffusers"
     group_tags: list[AlgorithmTag] = [AlgorithmTag.QUANTIZER]
     references: dict[str, str] = {
-        "Q-Diffusion": "https://arxiv.org/abs/2302.04304",
-        "Post-training Quantization on Diffusion Models": "https://arxiv.org/abs/2211.15736"
+        "Temporal Dynamic Quantization for Diffusion Models": "https://arxiv.org/abs/2306.02316"
     }
     save_fn = SAVE_FUNCTIONS.save_before_apply
     tokenizer_required = False
@@ -81,8 +91,9 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
         "hqq",
         "hqq_diffusers",
         "torchao",
+        "static_fp8_diffusers",
     ]
-    disjointly_compatible_after: Iterable[str | AlgorithmTag] = ["time_aware_fp8_diffusers"]
+    disjointly_compatible_after: Iterable[str | AlgorithmTag] = []
 
     def get_hyperparameters(self) -> list:
         """
@@ -118,6 +129,16 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
                     )
                 },
             ),
+            UnconstrainedHyperparameter(
+                "calibration_num_inference_steps",
+                default_value=None,
+                meta={
+                    "desc": (
+                        "Number of denoising steps to use for each calibration generation. "
+                        "When None (default), the pipeline's default `num_inference_steps` is used."
+                    )
+                },
+            ),
             TargetModules(
                 "target_modules",
                 default_value=None,
@@ -135,6 +156,9 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
         """
         Check whether the algorithm is compatible with a model.
 
+        Requires a diffusers model whose denoiser ``forward`` takes a ``timestep``
+        argument, so the shared scale helper can capture the denoising step.
+
         Parameters
         ----------
         model : Any
@@ -145,7 +169,12 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
         bool
             Whether the algorithm is compatible with the model.
         """
-        return is_diffusers_model(model)
+        if not is_diffusers_model(model):
+            return False
+        denoiser = getattr(model, "transformer", None) or getattr(model, "unet", None)
+        if denoiser is None:
+            return False
+        return "timestep" in inspect.signature(denoiser.forward).parameters
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfigPrefixWrapper
@@ -171,7 +200,6 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
             A dictionary with a "target_modules" key defining which modules should be targeted by default.
         """
         target_modules = target_backbone(model)
-
         proj_out_patterns = ["unet.proj_out", "transformer.proj_out", "proj_out"]
         extra_exclude = ["*embed*", "*norm*", "*lm_head"] + proj_out_patterns
         target_modules["exclude"].extend(extra_exclude)
@@ -179,7 +207,7 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
 
     def _apply(self, model: Any, smash_config: SmashConfigPrefixWrapper) -> Any:
         """
-        Quantize the model and calibrate the static activation scales before compilation.
+        Quantize the model and calibrate the per-timestep activation scales before compilation.
 
         Parameters
         ----------
@@ -196,13 +224,13 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
         weight_float8_dtype = parse_float8_dtype(smash_config["weight_float8_dtype"])
         input_float8_dtype = parse_float8_dtype(smash_config["input_float8_dtype"])
 
-        quantized_layers: dict[int, StaticFp8Linear] = {}
+        scale_helper = TimeAwareScaleHelper()
+        quantized_layers: dict[int, TimeAwareFp8Linear] = {}
 
         target_modules: None | TARGET_MODULES_TYPE = smash_config["target_modules"]
         if target_modules is None:
             target_modules = self.get_model_dependent_hyperparameter_defaults(model, smash_config)["target_modules"]
             target_modules = cast(TARGET_MODULES_TYPE, target_modules)
-
         target_linear_modules = filter_targeted_modules(
             keep_targeted_fn=lambda module, path: isinstance(module, torch.nn.Linear),
             model=model,
@@ -211,7 +239,7 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
 
         def quantize_nn_module(attr_name: str | None, module: torch.nn.Module, subpaths: list[str]) -> Any:
             """
-            Apply static fp8 quantization to a nn.Module.
+            Apply time-aware fp8 quantization to a nn.Module.
 
             Parameters
             ----------
@@ -230,38 +258,49 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
             for subpath in subpaths:
                 swap_linear(
                     module,
-                    quantize_linear_layer_fn=quantize_linear_layer_static_fp8,
+                    quantize_linear_layer_fn=quantize_linear_layer_time_aware_fp8,
                     path=subpath,
                     kwargs={
                         "weight_float8_dtype": weight_float8_dtype,
                         "input_float8_dtype": input_float8_dtype,
+                        "scale_helper": scale_helper,
                     },
                 )
-
-            # Collect the quantized layers in each submodule.
             for submodule in module.modules():
-                if isinstance(submodule, StaticFp8Linear):
+                if isinstance(submodule, TimeAwareFp8Linear):
                     quantized_layers[id(submodule)] = submodule
-
             return module
 
         model = map_targeted_nn_roots(quantize_nn_module, model, target_linear_modules)
 
-        # Persist the calibrated activation scales such that loading
-        # restores them instead of re-running calibration runs.
-        if STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME not in smash_config.save_artifacts_fns:
-            smash_config.save_artifacts_fns.append(STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME)
+        denoiser = getattr(model, "transformer", None) or getattr(model, "unet", None)
+        if denoiser is None:
+            raise ValueError("No supported model backbone found.")
+        scale_helper.register_on_denoiser(denoiser)
 
-        # On load, the sidecar (loaded after this reapply) restores the frozen scales, so calibration is skipped.
-        is_loading = STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME in smash_config.load_artifacts_fns
+        # Persist the calibrated per-timestep scales such that loading
+        # restores them instead of re-running calibration generations.
+        if TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME not in smash_config.save_artifacts_fns:
+            smash_config.save_artifacts_fns.append(TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME)
+
+        # On load, the sidecar (loaded after this reapply) restores calibration timesteps/amaxes,
+        # freezes scales for the current input dtype, and rebuilds the scale helper's scale table.
+        is_loading = TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME in smash_config.load_artifacts_fns
         if is_loading:
-            pruna_logger.info("Loading static_fp8_diffusers. Skipping calibration. Scales restored from artifacts.")
+            pruna_logger.info(
+                "Loading time_aware_fp8_diffusers. Skipping calibration. Scales restored from artifacts."
+            )
         elif smash_config.data is None:
-            raise ValueError("static_fp8_diffusers requires a calibration dataset to fix the static input scales, "
-                             "but no data is attached to the SmashConfig (use `smash_config.add_data(...)`).")
+            raise ValueError(
+                "time_aware_fp8_diffusers requires a calibration dataset to fix the per-timestep input scales, "
+                "but no data is attached to the SmashConfig (use `smash_config.add_data(...)`)."
+            )
         else:
             self._calibrate(
-                model, list(quantized_layers.values()), smash_config
+                model,
+                list(quantized_layers.values()),
+                scale_helper,
+                smash_config,
             )
 
         safe_memory_cleanup()
@@ -270,26 +309,32 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
     @staticmethod
     def _calibrate(
         model: Any,
-        layers: list[StaticFp8Linear],
+        layers: list[TimeAwareFp8Linear],
+        scale_helper: TimeAwareScaleHelper,
         smash_config: SmashConfigPrefixWrapper,
     ) -> None:
         """
-        Calibrate the static activation scales over complete noise-to-image generations.
+        Calibrate the per-timestep activation scales over complete noise-to-image generations.
 
-        Do up to ``smash_config["calibration_batches"]`` noise-to-image batch generations using samples drawn from
+        Runs up to ``smash_config["calibration_batches"]`` noise-to-image batch generations using samples drawn from
         the validation dataloader of the dataset attached to the SmashConfig via ``add_data``.
 
         Parameters
         ----------
         model : Any
             The quantized pipeline to run calibration generations on.
-        layers : list[StaticFp8Linear]
+        layers : list[TimeAwareFp8Linear]
             The quantized layers to finalize once calibration completes.
+        scale_helper : TimeAwareScaleHelper
+            The scale helper to use for the calibration.
         smash_config : SmashConfigPrefixWrapper
             The configuration providing the calibration data and metadata.
         """
         pruna_model = PrunaModel(model)
         calibration_batches = int(smash_config["calibration_batches"])
+        calibration_num_inference_steps = smash_config["calibration_num_inference_steps"]
+        if calibration_num_inference_steps is not None:
+            pruna_model.inference_handler.model_args["num_inference_steps"] = int(calibration_num_inference_steps)
 
         batch_count = 0
         with torch.no_grad():
@@ -307,7 +352,13 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
                 )
 
         for layer in layers:
-            layer.freeze_input_scale()
+            layer.freeze_input_scales()
+        scale_helper.prepare_for_inference(layers)
 
-        pruna_logger.info(f"static_fp8_diffusers calibrated over {batch_count} batch(es).")
+        pruna_logger.info(f"Bin edges: {scale_helper.bin_edges}")
+        pruna_logger.info(
+            f"time_aware_fp8_diffusers calibrated over {batch_count} batch(es), "
+            f"{int(scale_helper.all_scales.shape[1])} timestep bin(s)."
+        )
+
         del pruna_model
