@@ -22,6 +22,12 @@ import torch.nn.functional as f
 
 from pruna.algorithms.global_utils.quantization.symmetric_scale import amax_to_scale, scale_and_clamp
 
+# Since cu129, cuBLAS tensorwise FP8 scales require 16-byte-aligned device pointers.
+# A packed ``(n_layers,)`` float32 buffer yields views at byte offset ``4 * slot``,
+# which is misaligned whenever ``slot % 4 != 0`` (``CUBLAS_STATUS_NOT_SUPPORTED``).
+# Store each scale in a 4-float slot so ``current_scales[i, 0]`` stays aligned.
+_CUBLAS_SCALE_ALIGN = 4
+
 
 class TimeAwareScaleHelper:
     """
@@ -83,8 +89,9 @@ class TimeAwareScaleHelper:
         """Bucketize the current timestep once and gather every layer's scale for that bin."""
         # scales_initialized guarantees the scale-table tensors are set.
         idx = torch.bucketize(self.buffer, self.bin_edges)  # type: ignore[arg-type]
-        self.current_scales.copy_(self.all_scales[:, idx].reshape(-1))  # type: ignore[union-attr]
-        self.current_scales_reciprocal.copy_(self.all_scales_reciprocal[:, idx].reshape(-1))  # type: ignore[union-attr]
+        gathered = self.all_scales[:, idx].reshape(-1)  # type: ignore[index]
+        self.current_scales[:, 0].copy_(gathered)  # type: ignore[index]
+        self.current_scales_reciprocal[:, 0].copy_(self.all_scales_reciprocal[:, idx].reshape(-1))  # type: ignore[index]
 
     def register_on_denoiser(self, denoiser: torch.nn.Module) -> torch.utils.hooks.RemovableHandle:
         """
@@ -191,8 +198,9 @@ class TimeAwareScaleHelper:
 
         self.all_scales = all_scales
         self.all_scales_reciprocal = all_scales.reciprocal()
-        self.current_scales = torch.zeros_like(all_scales[:, 0])
-        self.current_scales_reciprocal = torch.zeros_like(all_scales[:, 0])
+        n_layers = all_scales.shape[0]
+        self.current_scales = all_scales.new_zeros(n_layers, _CUBLAS_SCALE_ALIGN)
+        self.current_scales_reciprocal = all_scales.new_zeros(n_layers, _CUBLAS_SCALE_ALIGN)
         self.scales_initialized = True
 
     def _link_layer_scale_views(self, layers: list[TimeAwareFp8Linear]) -> None:
@@ -205,9 +213,10 @@ class TimeAwareScaleHelper:
             Layers in the same order used when building the scale table.
         """
         # scales_initialized guarantees the current-scale buffers are set.
+        # Index column 0 of the padded buffer so each view is 16-byte aligned.
         for slot, layer in enumerate(layers):
-            layer.input_current_scale = self.current_scales[slot]  # type: ignore[index]
-            layer.input_current_scale_reciprocal = self.current_scales_reciprocal[slot]  # type: ignore[index]
+            layer.input_current_scale = self.current_scales[slot, 0]  # type: ignore[index]
+            layer.input_current_scale_reciprocal = self.current_scales_reciprocal[slot, 0]  # type: ignore[index]
 
 
 class TimeAwareFp8Linear(torch.nn.Module):

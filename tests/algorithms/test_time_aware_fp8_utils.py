@@ -99,11 +99,35 @@ def test_prepare_for_inference_builds_all_scales() -> None:
 
 @pytest.mark.cpu
 def test_prepare_for_inference_links_layer_views() -> None:
-    """Test that current-scale buffers start at zero and layer views alias them."""
+    """Test that current-scale buffers start at zero and layer views alias column 0."""
     helper, layer = _prepared_helper_and_layer()
-    torch.testing.assert_close(helper.current_scales, torch.zeros(1))
-    torch.testing.assert_close(helper.current_scales_reciprocal, torch.zeros(1))
+    assert helper.current_scales is not None
+    assert helper.current_scales_reciprocal is not None
+    assert helper.current_scales.shape == (1, 4)
+    torch.testing.assert_close(helper.current_scales[:, 0], torch.zeros(1))
+    torch.testing.assert_close(helper.current_scales_reciprocal[:, 0], torch.zeros(1))
     helper.current_scales.fill_(3.0)
     helper.current_scales_reciprocal.fill_(4.0)
     torch.testing.assert_close(layer.input_current_scale, torch.tensor(3.0))
     torch.testing.assert_close(layer.input_current_scale_reciprocal, torch.tensor(4.0))
+
+
+def _frozen_layer(helper: TimeAwareScaleHelper) -> TimeAwareFp8Linear:
+    """Build a frozen layer on ``helper`` with two calibration timesteps."""
+    layer = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
+    layer.input_running_amax_by_timestep[0.0] = torch.tensor(1.0, dtype=torch.float32)
+    layer.input_running_amax_by_timestep[1.0] = torch.tensor(2.0, dtype=torch.float32)
+    layer.freeze_input_scales()
+    return layer
+
+
+@pytest.mark.cpu
+def test_layer_scale_views_are_16_byte_strided() -> None:
+    """Each layer view must land on a 16-byte boundary (4 float32s) for cuBLAS."""
+    helper = TimeAwareScaleHelper()
+    layers = [_frozen_layer(helper) for _ in range(5)]
+    helper.prepare_for_inference(layers)
+    for slot, layer in enumerate(layers):
+        assert layer.input_current_scale is not None
+        assert layer.input_current_scale.storage_offset() == slot * 4
+        assert layer.input_current_scale_reciprocal.storage_offset() == slot * 4
