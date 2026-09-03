@@ -31,6 +31,9 @@ from pruna.engine.load_artifacts import (
     STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS,
     STATIC_FP8_DIFFUSERS_ARTIFACTS_FILENAME,
     STATIC_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME,
+    TIME_AWARE_FP8_DIFFUSERS_ARTIFACT_ATTRS,
+    TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FILENAME,
+    TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME,
     iter_typed_linears,
 )
 from pruna.logging.logger import pruna_logger
@@ -192,6 +195,36 @@ def save_static_fp8_diffusers_artifacts(model: Any, model_path: str | Path, smas
     )
 
 
+def save_time_aware_fp8_diffusers_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Save calibration timesteps and amaxes for all ``TimeAwareFp8Linear`` modules.
+
+    Bin edges and scales are recomputed on load via
+    ``TimeAwareScaleHelper.prepare_for_inference``, so changing ``input_float8_dtype``
+    between save and load is supported.
+
+    Parameters
+    ----------
+    model : Any
+        The quantized model whose per-timestep calibration state should be exported.
+    model_path : str | Path
+        Directory where the artifacts file is written.
+    smash_config : SmashConfig
+        The SmashConfig whose ``load_artifacts_fns`` is updated such that the artifacts are loaded.
+    """
+    from pruna.algorithms.time_aware_fp8_diffusers.utils import TimeAwareFp8Linear
+
+    save_module_attr_artifacts(
+        model,
+        model_path,
+        smash_config,
+        linear_cls=TimeAwareFp8Linear,
+        attrs=TIME_AWARE_FP8_DIFFUSERS_ARTIFACT_ATTRS,
+        filename=TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FILENAME,
+        load_fn_name=TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME,
+    )
+
+
 class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* save functions.
@@ -229,6 +262,7 @@ class SAVE_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     torch_artifacts = member(save_torch_artifacts)
     moe_kernel_tuner_artifacts = member(save_moe_kernel_tuner_artifacts)
     static_fp8_diffusers_artifacts = member(save_static_fp8_diffusers_artifacts)
+    time_aware_fp8_diffusers_artifacts = member(save_time_aware_fp8_diffusers_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """

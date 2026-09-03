@@ -38,6 +38,13 @@ STATIC_FP8_DIFFUSERS_ARTIFACTS_FILENAME = "static_fp8_diffusers_artifacts.safete
 # from the float weights during resmash, so they are intentionally not saved here.
 STATIC_FP8_DIFFUSERS_ARTIFACT_ATTRS = ("input_running_amax",)
 
+TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FUNCTION_NAME = "time_aware_fp8_diffusers_artifacts"
+TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FILENAME = "time_aware_fp8_diffusers_artifacts.safetensors"
+# Dtype-independent calibration state to persist. Bin edges / scales are recomputed by
+# freeze_input_scales from these tensors using the current input_float8_dtype. Weight-side
+# buffers are re-derived deterministically from the float weights during resmash.
+TIME_AWARE_FP8_DIFFUSERS_ARTIFACT_ATTRS = ("calibration_timesteps", "calibration_amaxes")
+
 
 def module_path_prefix(module_name: str | None, submodule_name: str | None) -> str:
     """
@@ -296,6 +303,96 @@ def load_static_fp8_diffusers_artifacts(model: Any, model_path: str | Path, smas
     pruna_logger.info(f"Loaded static_fp8_diffusers artifacts from '{artifacts_path}'")
 
 
+def iter_time_aware_fp8_linears(model: Any) -> Iterator[tuple[str, Any]]:
+    """
+    Yield ``(key_prefix, module)`` for every ``TimeAwareFp8Linear`` in the model (pipeline-aware).
+
+    Parameters
+    ----------
+    model : Any
+        The model (bare nn.Module or diffusers pipeline) to walk.
+
+    Yields
+    ------
+    tuple[str, Any]
+        The dotted key prefix and the ``TimeAwareFp8Linear`` module found at that path.
+    """
+    # Local import to avoid importing the algorithm package unless artifacts are used.
+    from pruna.algorithms.time_aware_fp8_diffusers.utils import TimeAwareFp8Linear
+
+    yield from iter_typed_linears(model, TimeAwareFp8Linear)
+
+
+def load_time_aware_fp8_diffusers_artifacts(model: Any, model_path: str | Path, smash_config: SmashConfig) -> None:
+    """
+    Restore calibration timesteps/amaxes saved by ``save_time_aware_fp8_diffusers_artifacts``.
+
+    After restoring every layer's dtype-independent calibration tensors, ``freeze_input_scales``
+    finalizes each layer, then ``TimeAwareScaleHelper.prepare_for_inference`` builds bin edges
+    and scales with the current ``input_float8_dtype``.
+
+    Parameters
+    ----------
+    model : Any
+        The freshly re-quantized model whose per-timestep scales should be restored.
+    model_path : str | Path
+        Directory the artifacts file is read from.
+    smash_config : SmashConfig
+        The SmashConfig (unused, kept for the artifact-loader signature).
+
+    Returns
+    -------
+    None
+        The function restores the calibration state in-place and does not return anything.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the artifacts file is missing (calibration was skipped during load).
+    ValueError
+        If no quantized layers are found, or the artifacts file is incomplete for one or more layers.
+    RuntimeError
+        If ``prepare_for_inference`` rejects the restored layers (e.g. missing scale helper).
+    """
+    from pruna.algorithms.time_aware_fp8_diffusers.utils import TimeAwareFp8Linear
+
+    artifacts_path = Path(model_path) / TIME_AWARE_FP8_DIFFUSERS_ARTIFACTS_FILENAME
+    if not artifacts_path.exists():
+        raise FileNotFoundError(f"time_aware_fp8_diffusers artifacts expected at '{artifacts_path}' but not found.")
+
+    state_dict = load_file(str(artifacts_path))
+    layers = list(iter_time_aware_fp8_linears(model))
+    if not layers:
+        raise ValueError("No time_aware_fp8_diffusers quantized layers found in the model.")
+
+    missing_layers: list[str] = []
+    restored_layers: list[TimeAwareFp8Linear] = []
+    for prefix, layer in layers:
+        if any(f"{prefix}{attr}" not in state_dict for attr in TIME_AWARE_FP8_DIFFUSERS_ARTIFACT_ATTRS):
+            missing_layers.append(prefix or "<root>")
+            continue
+
+        # The buffers are initialized as None on layer creation, because the step count is unknown.
+        # Ensure that the device and dtype set here match the ones used in freeze_input_scales.
+        device = layer.weight_float8_data.device
+        dtype = torch.float32
+        for attr in TIME_AWARE_FP8_DIFFUSERS_ARTIFACT_ATTRS:
+            setattr(layer, attr, state_dict[f"{prefix}{attr}"].to(device=device, dtype=dtype))
+
+        layer.freeze_input_scales()
+        restored_layers.append(layer)
+
+    if missing_layers:
+        raise ValueError(
+            "time_aware_fp8_diffusers artifacts are incomplete."
+            "To use this artifact, exclude the following modules: " + ", ".join(missing_layers)
+        )
+
+    restored_layers[0].scale_helper.prepare_for_inference(restored_layers)
+
+    pruna_logger.info(f"Loaded time_aware_fp8_diffusers artifacts from '{artifacts_path}'")
+
+
 class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     """
     Enumeration of *artifact* load functions.
@@ -333,6 +430,7 @@ class LOAD_ARTIFACTS_FUNCTIONS(Enum):  # noqa: N801
     torch_artifacts = member(load_torch_artifacts)
     moe_kernel_tuner_artifacts = member(load_moe_kernel_tuner_artifacts)
     static_fp8_diffusers_artifacts = member(load_static_fp8_diffusers_artifacts)
+    time_aware_fp8_diffusers_artifacts = member(load_time_aware_fp8_diffusers_artifacts)
 
     def __call__(self, *args, **kwargs) -> None:
         """Call the underlying load function."""

@@ -49,6 +49,7 @@ class QKVFusing(PrunaAlgorithmBase):
         "quanto",
         "torchao",
         "static_fp8_diffusers",
+        "time_aware_fp8_diffusers",
         "deepcache",
         "fora",
         "torch_compile",

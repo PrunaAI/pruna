@@ -80,6 +80,7 @@ class RealESRGAN(PrunaAlgorithmBase):
         "ring_attn",
         "hyper",
         "static_fp8_diffusers",
+        "time_aware_fp8_diffusers",
     ]
     required_install: str = "``pip install pruna[upscale]``"
 
