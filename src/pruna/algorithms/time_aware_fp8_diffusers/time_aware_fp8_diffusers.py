@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -156,8 +155,9 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
         """
         Check whether the algorithm is compatible with a model.
 
-        Requires a diffusers model whose denoiser ``forward`` takes a ``timestep``
-        argument, so the shared scale helper can capture the denoising step.
+        Requires a diffusers model whose denoiser ``forward`` takes a parameter whose name
+        is in :attr:`TimeAwareScaleHelper.timestep_arg_names`, so the shared scale helper can
+        capture the denoising step.
 
         Parameters
         ----------
@@ -174,7 +174,7 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
         denoiser = getattr(model, "transformer", None) or getattr(model, "unet", None)
         if denoiser is None:
             return False
-        return "timestep" in inspect.signature(denoiser.forward).parameters
+        return TimeAwareScaleHelper._resolve_denoiser_timestep_arg(denoiser.forward) is not None
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfigPrefixWrapper
@@ -351,9 +351,7 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
                     f"Only {batch_count} batches were used."
                 )
 
-        for layer in layers:
-            layer.freeze_input_scales()
-        scale_helper.prepare_for_inference(layers)
+        TimeAwareFp8Diffusers._finalize_calibration(layers, scale_helper)
 
         pruna_logger.info(f"Bin edges: {scale_helper.bin_edges}")
         pruna_logger.info(
@@ -362,3 +360,31 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
         )
 
         del pruna_model
+
+    @staticmethod
+    def _finalize_calibration(layers: list[TimeAwareFp8Linear], scale_helper: TimeAwareScaleHelper) -> None:
+        """
+        Freeze per-layer scales and build the shared timestep lookup table.
+
+        Every swapped linear must have recorded calibration statistics. Unvisited layers
+        (unused denoiser branches) are a targeting error and must be excluded via ``target_modules``
+        or calibrated though a generation path that runs them.
+
+        Parameters
+        ----------
+        layers : list[TimeAwareFp8Linear]
+            All swapped linear layers.
+        scale_helper : TimeAwareScaleHelper
+            The shared scale helper that owns the inference lookup table.
+        """
+        n_unvisited = sum(1 for layer in layers if not layer.input_running_amax_by_timestep)
+        if n_unvisited:
+            raise RuntimeError(
+                f"{n_unvisited} of {len(layers)} TimeAwareFp8Linear layer(s) were not visited during "
+                "calibration. Exclude unused modules via `target_modules` or calibrate a path that "
+                "runs them. Cannot build per-timestep scales."
+            )
+
+        for layer in layers:
+            layer.freeze_input_scales()
+        scale_helper.prepare_for_inference(layers)

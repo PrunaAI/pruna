@@ -44,6 +44,8 @@ class TimeAwareScaleHelper:
     On every denoiser forward, the helper uses the current timestep to provide a view into the current scales.
     """
 
+    timestep_arg_names: tuple[str, ...] = ("timestep", "t")
+
     def __init__(self) -> None:
         self.buffer: torch.Tensor | None = None
         self.current_value: float = 0.0
@@ -85,6 +87,27 @@ class TimeAwareScaleHelper:
         if self.scales_initialized:
             self._select_current_scales()
 
+    @classmethod
+    def _resolve_denoiser_timestep_arg(cls, forward: Any) -> str | None:
+        """
+        Return the denoiser ``forward`` argument that carries the diffusion timestep.
+
+        Parameters
+        ----------
+        forward : Any
+            The denoiser ``forward`` method (bound or unbound).
+
+        Returns
+        -------
+        str | None
+            The first name in :attr:`timestep_arg_names` present on ``forward``, otherwise ``None``.
+        """
+        parameters = inspect.signature(forward).parameters
+        for name in cls.timestep_arg_names:
+            if name in parameters:
+                return name
+        return None
+
     def _select_current_scales(self) -> None:
         """Bucketize the current timestep once and gather every layer's scale for that bin."""
         # scales_initialized guarantees the scale-table tensors are set.
@@ -97,7 +120,7 @@ class TimeAwareScaleHelper:
         """
         Register a pre-forward hook on the denoiser that feeds the timestep into this helper.
 
-        The ``timestep`` argument is resolved by name from the denoiser's ``forward`` signature.
+        The timestep argument is resolved by name from the denoiser's ``forward`` signature.
 
         Parameters
         ----------
@@ -110,20 +133,25 @@ class TimeAwareScaleHelper:
             The handle of the registered hook.
         """
         parameters = list(inspect.signature(denoiser.forward).parameters)
-        if "timestep" not in parameters:
+        arg_name = self._resolve_denoiser_timestep_arg(denoiser.forward)
+        if arg_name is None:
+            capturable = ", ".join(repr(name) for name in self.timestep_arg_names)
             raise ValueError(
-                f"{type(denoiser).__name__}.forward has no 'timestep' parameter; "
-                "cannot capture the denoising timestep for time-aware fp8 quantization."
+                f"{type(denoiser).__name__}.forward has none of the capturable timestep "
+                f"parameters ({capturable}); cannot capture the denoising timestep for "
+                "time-aware fp8 quantization."
             )
-        timestep_position = parameters.index("timestep")
+        timestep_position = parameters.index(arg_name)
 
         def capture_timestep(module: torch.nn.Module, args: tuple, kwargs: dict[str, Any]) -> None:
-            if "timestep" in kwargs:
-                timestep = kwargs["timestep"]
-            elif len(args) > timestep_position:
-                timestep = args[timestep_position]
+            timestep = None
+            for name in self.timestep_arg_names:
+                if name in kwargs:
+                    timestep = kwargs[name]
+                    break
             else:
-                timestep = None
+                if len(args) > timestep_position:
+                    timestep = args[timestep_position]
 
             if timestep is not None:
                 self.update(timestep)
