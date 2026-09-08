@@ -351,7 +351,9 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
                     f"Only {batch_count} batches were used."
                 )
 
-        TimeAwareFp8Diffusers._finalize_calibration(layers, scale_helper)
+        for layer in layers:
+            layer.freeze_input_scales()
+        scale_helper.prepare_for_inference(layers)
 
         pruna_logger.info(f"Bin edges: {scale_helper.bin_edges}")
         pruna_logger.info(
@@ -360,31 +362,3 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
         )
 
         del pruna_model
-
-    @staticmethod
-    def _finalize_calibration(layers: list[TimeAwareFp8Linear], scale_helper: TimeAwareScaleHelper) -> None:
-        """
-        Freeze per-layer scales and build the shared timestep lookup table.
-
-        Every swapped linear must have recorded calibration statistics. Unvisited layers
-        (unused denoiser branches) are a targeting error and must be excluded via ``target_modules``
-        or calibrated though a generation path that runs them.
-
-        Parameters
-        ----------
-        layers : list[TimeAwareFp8Linear]
-            All swapped linear layers.
-        scale_helper : TimeAwareScaleHelper
-            The shared scale helper that owns the inference lookup table.
-        """
-        n_unvisited = sum(1 for layer in layers if not layer.input_running_amax_by_timestep)
-        if n_unvisited:
-            raise RuntimeError(
-                f"{n_unvisited} of {len(layers)} TimeAwareFp8Linear layer(s) were not visited during "
-                "calibration. Exclude unused modules via `target_modules` or calibrate a path that "
-                "runs them. Cannot build per-timestep scales."
-            )
-
-        for layer in layers:
-            layer.freeze_input_scales()
-        scale_helper.prepare_for_inference(layers)
