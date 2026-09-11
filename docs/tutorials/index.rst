@@ -76,6 +76,12 @@ These tutorials will guide you through the process of using |pruna| to optimize 
 
       Optimize Flux2 Klein 4B with FORA ``cacher``, ``torchao`` fp8 ``quantizer``, and ``torch_compile`` ``compiler``; compare baseline vs optimized latency.
 
+   .. grid-item-card:: Static and Time-Aware FP8 for Diffusion Models
+      :text-align: center
+      :link: ./fp8_static_time_aware_diffusers.ipynb
+
+      Quantize ``diffusers`` with ``static_fp8_diffusers`` and ``time_aware_fp8_diffusers``, compare against baseline in bfloat16 and dynamic fp8, and evaluate with ``latency`` and ``clip_score``.
+
    .. grid-item-card:: Make Stable Diffusion 3x Faster with DeepCache
       :text-align: center
       :link: ./sd_deepcache.ipynb
