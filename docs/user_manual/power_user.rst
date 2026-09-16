@@ -154,6 +154,8 @@ The ``overwrite_algorithm_order()`` method allows you to manually specify the or
 
     smashed_model = smash(model=model, smash_config=smash_config)
 
+The custom order is persisted in ``smash_config.json`` and preserved when algorithms are reapplied after loading.
+
 Requirements
 ------------
 
