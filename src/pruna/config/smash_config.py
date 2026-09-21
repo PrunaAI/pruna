@@ -49,6 +49,7 @@ ADDITIONAL_ARGS = [
 TOKENIZER_SAVE_PATH = "tokenizer/"
 PROCESSOR_SAVE_PATH = "processor/"
 SMASH_CONFIG_FILE_NAME = "smash_config.json"
+ALGORITHM_ORDER_KEY = "algorithm_order"
 SUPPORTED_DEVICES = ["cpu", "cuda", "mps", "accelerate"]
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pruna"
 
@@ -243,6 +244,7 @@ class SmashConfig:
         config_path = Path(path) / SMASH_CONFIG_FILE_NAME
         json_string = config_path.read_text()
         config_dict = json.loads(json_string)
+        algorithm_order = config_dict.pop(ALGORITHM_ORDER_KEY, None)
 
         deprecated_keys = [
             "quantizer",
@@ -299,6 +301,10 @@ class SmashConfig:
         for key, value in saved_values.items():
             self._configuration[key] = value
 
+        self._algorithm_order = None
+        if algorithm_order is not None:
+            self.overwrite_algorithm_order(algorithm_order)
+
         tokenizer_path = Path(path) / TOKENIZER_SAVE_PATH
         if tokenizer_path.exists():
             self.tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path))
@@ -322,6 +328,8 @@ class SmashConfig:
 
         for name in ADDITIONAL_ARGS:
             config_dict[name] = getattr(self, name)
+
+        config_dict[ALGORITHM_ORDER_KEY] = self._algorithm_order
 
         # do not save the old cache directory or device
         if "cache_dir" in config_dict:
@@ -705,7 +713,8 @@ class SmashConfig:
         algorithm_order : list[str]
             The order of algorithms to be applied.
         """
-        if not set(algorithm_order) == set(self.get_active_algorithms()):
+        active_algorithms = self.get_active_algorithms()
+        if len(algorithm_order) != len(active_algorithms) or set(algorithm_order) != set(active_algorithms):
             raise ValueError("All active algorithms must be contained in the given algorithm order.")
         self._algorithm_order = algorithm_order
 
