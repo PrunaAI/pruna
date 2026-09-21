@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 import torch
@@ -13,12 +14,11 @@ from pruna.algorithms.time_aware_fp8_diffusers.utils import (
 )
 
 
-class _Denoiser(torch.nn.Module):
-    """Minimal denoiser whose forward takes a ``timestep`` argument."""
-
-    def forward(self, x: torch.Tensor, timestep: torch.Tensor | None = None) -> torch.Tensor:
-        """Return the input unchanged."""
-        return x
+def _denoiser_with_time_arg(arg_name: str) -> torch.nn.Module:
+    """Build a denoiser whose ``forward`` exposes ``arg_name`` as the timestep argument."""
+    namespace: dict[str, Any] = {}
+    exec(f"def forward(self, x, {arg_name}=None):\n    return x\n", namespace)
+    return type("Denoiser", (torch.nn.Module,), {"forward": namespace["forward"]})()
 
 
 @pytest.mark.cpu
@@ -39,27 +39,81 @@ def test_model_check_rejects_denoiser_without_timestep(monkeypatch: pytest.Monke
 
 
 @pytest.mark.cpu
-def test_model_check_accepts_denoiser_with_timestep(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that a diffusers-like backbone whose forward takes timestep is accepted."""
+def test_register_on_denoiser_lists_capturable_parameter_names_on_failure() -> None:
+    """The missing-timestep error names every capturable forward argument."""
+
+    class NoTimestepDenoiser(torch.nn.Module):
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """Return the input unchanged."""
+            return x
+
+    with pytest.raises(ValueError, match="cannot capture the denoising timestep") as exc_info:
+        TimeAwareScaleHelper().register_on_denoiser(NoTimestepDenoiser())
+
+    message = str(exc_info.value)
+    for name in TimeAwareScaleHelper.timestep_arg_names:
+        assert repr(name) in message
+
+
+@pytest.mark.cpu
+@pytest.mark.parametrize("arg_name", TimeAwareScaleHelper.timestep_arg_names)
+def test_model_check_accepts_capturable_timestep_arg(monkeypatch: pytest.MonkeyPatch, arg_name: str) -> None:
+    """Test that a denoiser whose time argument is any capturable name is accepted."""
     monkeypatch.setattr(
         "pruna.algorithms.time_aware_fp8_diffusers.time_aware_fp8_diffusers.is_diffusers_model",
         lambda model: True,
     )
-    model = SimpleNamespace(transformer=_Denoiser())
+    model = SimpleNamespace(transformer=_denoiser_with_time_arg(arg_name))
     assert TimeAwareFp8Diffusers().model_check_fn(model) is True
 
 
 @pytest.mark.cpu
-def test_scale_helper_captures_timestep_from_forward() -> None:
-    """Test that the denoiser pre-hook copies the timestep into the helper."""
+@pytest.mark.parametrize("arg_name", TimeAwareScaleHelper.timestep_arg_names)
+def test_scale_helper_captures_timestep_from_kwargs(arg_name: str) -> None:
+    """Test that the denoiser pre-hook copies a named timestep kwarg into the helper."""
     helper = TimeAwareScaleHelper()
-    denoiser = _Denoiser()
+    denoiser = _denoiser_with_time_arg(arg_name)
     helper.register_on_denoiser(denoiser)
 
-    denoiser(torch.zeros(1, 2), timestep=torch.tensor([3.5]))
+    denoiser(torch.zeros(1, 2), **{arg_name: torch.tensor([3.5])})
 
     assert helper.current_value == 3.5
     torch.testing.assert_close(helper.buffer, torch.tensor([3.5]))
+
+
+@pytest.mark.cpu
+@pytest.mark.parametrize("arg_name", TimeAwareScaleHelper.timestep_arg_names)
+def test_scale_helper_captures_timestep_from_positional_args(arg_name: str) -> None:
+    """Test that the denoiser pre-hook copies a positional timestep into the helper."""
+    helper = TimeAwareScaleHelper()
+    denoiser = _denoiser_with_time_arg(arg_name)
+    helper.register_on_denoiser(denoiser)
+
+    denoiser(torch.zeros(1, 2), torch.tensor([2.25]))
+
+    assert helper.current_value == 2.25
+    torch.testing.assert_close(helper.buffer, torch.tensor([2.25]))
+
+
+@pytest.mark.cpu
+def test_finalize_calibration_raises_when_a_layer_was_not_visited() -> None:
+    """Any unvisited swapped Linear is a targeting error, even if other layers calibrated."""
+    helper = TimeAwareScaleHelper()
+    observed = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
+    unused = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
+    observed.input_running_amax_by_timestep[0.0] = torch.tensor(1.0, dtype=torch.float32)
+
+    with pytest.raises(RuntimeError, match="not visited during calibration"):
+        TimeAwareFp8Diffusers._finalize_calibration([unused, observed], helper)
+
+
+@pytest.mark.cpu
+def test_finalize_calibration_raises_when_no_layer_was_visited() -> None:
+    """Freeze fails when every swapped Linear missed calibration."""
+    helper = TimeAwareScaleHelper()
+    unused = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
+    with pytest.raises(RuntimeError, match="not visited during calibration"):
+        TimeAwareFp8Diffusers._finalize_calibration([unused], helper)
 
 
 def _prepared_helper_and_layer() -> tuple[TimeAwareScaleHelper, TimeAwareFp8Linear]:

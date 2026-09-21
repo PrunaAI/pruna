@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -156,8 +155,9 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
         """
         Check whether the algorithm is compatible with a model.
 
-        Requires a diffusers model whose denoiser ``forward`` takes a ``timestep``
-        argument, so the shared scale helper can capture the denoising step.
+        Requires a diffusers model whose denoiser ``forward`` takes a parameter whose name
+        is in :attr:`TimeAwareScaleHelper.timestep_arg_names`, so the shared scale helper can
+        capture the denoising step.
 
         Parameters
         ----------
@@ -174,7 +174,7 @@ class TimeAwareFp8Diffusers(PrunaAlgorithmBase):
         denoiser = getattr(model, "transformer", None) or getattr(model, "unet", None)
         if denoiser is None:
             return False
-        return "timestep" in inspect.signature(denoiser.forward).parameters
+        return TimeAwareScaleHelper._resolve_denoiser_timestep_arg(denoiser.forward) is not None
 
     def get_model_dependent_hyperparameter_defaults(
         self, model: Any, smash_config: SmashConfigPrefixWrapper
