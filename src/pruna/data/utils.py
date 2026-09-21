@@ -252,7 +252,7 @@ def stratify_dataset(
     dataset : Dataset
         The dataset to stratify.
     sample_size : int or None
-        Target size. If None, uses fraction or full dataset.
+        Target size. If None, uses fraction or full dataset. Zero selects no rows.
     fraction : float
         Fraction of dataset to use (0.0-1.0). Ignored if sample_size is set.
     seed : int or None
@@ -271,7 +271,9 @@ def stratify_dataset(
     """
     if fraction < 1.0 and sample_size is not None:
         raise ValueError("Fraction and sample_size cannot be used together.")
-    target_size = int(len(dataset) * fraction) if fraction < 1.0 else (sample_size or len(dataset))
+    target_size = (
+        int(len(dataset) * fraction) if fraction < 1.0 else (sample_size if sample_size is not None else len(dataset))
+    )
 
     dataset_length = len(dataset)
     if dataset_length < target_size:
