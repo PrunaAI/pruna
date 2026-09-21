@@ -43,6 +43,20 @@ from pruna.logging.filter import SuppressOutput
 from pruna.logging.logger import pruna_logger
 
 
+def _dtype_kwargs(dtype):
+    """Choose the dtype keyword for ``from_pretrained``.
+
+    The ``dtype`` keyword of ``from_pretrained`` exists since transformers 4.56 (PR #39782);
+    older versions use ``torch_dtype``.
+    """
+    from packaging.version import Version
+    from transformers import __version__ as transformers_version
+
+    if Version(transformers_version) >= Version("4.56"):
+        return {"dtype": dtype}
+    return {"torch_dtype": dtype}
+
+
 class HQQ(PrunaAlgorithmBase):
     """
     Implement HQQ using huggingface transformers and the HQQ package.
@@ -274,7 +288,11 @@ class HQQ(PrunaAlgorithmBase):
                     quantization_config=quant_config_hf,
                     trust_remote_code=True,
                     device_map="auto",
-                    torch_dtype=torch.float16 if smash_config["compute_dtype"] == "torch.float16" else torch.bfloat16,
+                    **_dtype_kwargs(
+                        torch.float16
+                        if smash_config["compute_dtype"] == "torch.float16"
+                        else torch.bfloat16
+                    ),
                 )
 
                 # Delete the temporary directory and its contents
