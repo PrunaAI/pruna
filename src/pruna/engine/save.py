@@ -329,6 +329,7 @@ def save_pickled(model: Any, model_path: str | Path, smash_config: SmashConfig) 
     smash_helpers = get_helpers(model)
     for helper in smash_helpers:
         getattr(model, helper).disable()
+    # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch -- torch.save of a checkpoint pruna writes
     torch.save(model, Path(model_path) / PICKLED_FILE_NAME)
     smash_config.load_fns.append(LOAD_FUNCTIONS.pickled.name)
 
