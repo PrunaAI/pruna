@@ -430,12 +430,16 @@ def construct_base_class(imported_modules: Dict[str, Any], extra_ignore_modules:
             }
             full_state_dict = model.state_dict()
             hqq_missed_parameters = {name: full_state_dict[name] for name in missed_parameters}
+            # torch.save of a checkpoint pruna writes
+            # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
             torch.save(hqq_missed_parameters, missed_parameters_save_path)
 
         @classmethod
         def load_hqq_missed_parameters(cls, model: Any, save_dir: str):
             missed_parameters_save_path = Path(save_dir) / "hqq_missed_parameters.pt"
             if missed_parameters_save_path.exists():
+                # weights_only=True, loads tensors only
+                # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
                 hqq_missed_parameters = torch.load(missed_parameters_save_path, weights_only=True)
                 for name, param in hqq_missed_parameters.items():
                     parent_name = ".".join(name.split(".")[:-1])

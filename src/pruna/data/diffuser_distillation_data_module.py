@@ -217,6 +217,7 @@ class DiffusionDistillationDataModule(PrunaDataModule):
             "outputs": outputs,
             "seed": seed,
         }
+        # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch -- torch.save of a checkpoint pruna writes
         torch.save(sample, filepath)
 
 
@@ -249,7 +250,8 @@ class DiffusionDistillationDataset(Dataset[Tuple[str, torch.Tensor, torch.Tensor
         # This is the most generic way to load the data, but may cause a bottleneck because of continuous disk access
         # Loading the whole dataset into memory is often possible given the typically small size of distillation datasets
         # This can be explored if this is identified as a causing a latency bottleneck
-        sample = torch.load(filepath)
+        # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch -- weights_only=True, loads tensors only
+        sample = torch.load(filepath, weights_only=True)
         return sample["caption"], sample["inputs"], sample["outputs"], sample["seed"]
 
     @staticmethod
