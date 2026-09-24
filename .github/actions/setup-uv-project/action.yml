@@ -23,4 +23,6 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - shell: bash
-      run: uv pip install ".[${{ inputs.extras }}]"
+      env:
+        EXTRAS: ${{ inputs.extras }}
+      run: uv pip install ".[$EXTRAS]"
