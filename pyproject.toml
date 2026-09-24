@@ -79,6 +79,7 @@ explicit = true
 
 [tool.uv]
 index-strategy = "unsafe-best-match"
+exclude-newer = "7 days"
 
 conflicts = [
     [{ extra = "awq" }, { extra = "vbench" }],
