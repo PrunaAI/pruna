@@ -157,7 +157,7 @@ dependencies = [
 
 [project.optional-dependencies]
 transformers-legacy = [
-    "transformers<5.0.0",
+    "transformers<6.0.0",
 ]
 
 # ctranslate2 is isolated as an optional extra for c_translate / c_generate / c_whisper.
