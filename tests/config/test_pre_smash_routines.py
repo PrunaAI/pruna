@@ -27,6 +27,7 @@ from pruna.config.pre_smash_routines import (
     check_argument_compatibility,
     execute_algorithm_pre_smash_hooks,
     check_algorithm_cross_compatibility,
+    check_directional_compatibility_violations,
     determine_algorithm_order,
     construct_algorithm_directed_graph,
 )
@@ -377,6 +378,32 @@ class TestDetermineAlgorithmOrder:
         with patch("pruna.config.pre_smash_routines.construct_algorithm_directed_graph", return_value=mock_graph):
             with pytest.raises(ValueError, match="Cycle detected in the algorithm order, the current algorithm configuration is not possible."):
                 determine_algorithm_order(model, smash_config)
+
+    def test_determine_algorithm_order_allows_independent_algorithms(self):
+        """Test that an explicit order is allowed when algorithms have no ordering dependency."""
+        model = None
+        smash_config = Mock(_algorithm_order=["algorithm1", "algorithm2"])
+
+        mock_graph = nx.DiGraph()
+        mock_graph.add_nodes_from(["algorithm1", "algorithm2"])
+
+        with patch("pruna.config.pre_smash_routines.construct_algorithm_directed_graph", return_value=mock_graph):
+            assert determine_algorithm_order(model, smash_config) == ["algorithm1", "algorithm2"]
+
+    @pytest.mark.parametrize(
+        ("edges", "algorithm_order", "expected_violations"),
+        [
+            ([("algorithm1", "algorithm2")], ["algorithm1", "algorithm2"], []),
+            ([("algorithm1", "algorithm2")], ["algorithm2", "algorithm1"], [("algorithm2", "algorithm1")]),
+        ],
+    )
+    def test_directional_compatibility_violations(self, edges, algorithm_order, expected_violations):
+        """Test that only explicit orders opposing graph edges are rejected."""
+        graph = nx.DiGraph()
+        graph.add_nodes_from(["algorithm1", "algorithm2"])
+        graph.add_edges_from(edges)
+
+        assert check_directional_compatibility_violations(graph, algorithm_order) == expected_violations
 
 @pytest.mark.cpu
 class TestConstructAlgorithmDirectedGraph:
