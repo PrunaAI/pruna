@@ -244,6 +244,14 @@ def resmash(model: Any, smash_config: SmashConfig) -> Any:
     for algorithm_name, is_reapplied in smash_config.reapply_after_load.items():
         smash_config_subset[algorithm_name] = is_reapplied
 
+    if smash_config_subset._algorithm_order is not None:
+        active_algorithms = set(smash_config_subset.get_active_algorithms())
+        smash_config_subset._algorithm_order = [
+            algorithm_name
+            for algorithm_name in smash_config_subset._algorithm_order
+            if algorithm_name in active_algorithms
+        ]
+
     # if it isn't already imported, import smash
     if "pruna.smash" not in sys.modules:
         from pruna.smash import smash
