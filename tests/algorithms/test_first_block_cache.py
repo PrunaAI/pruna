@@ -39,21 +39,15 @@ def test_ltx_tiny_checkpoint_has_one_block() -> None:
     assert not FirstBlockCache().model_check_fn(_pipeline_with(transformer))
 
 
-def test_z_image_tiny_transformer_enables_cache() -> None:
-    """Z-Image blocks are registered. The tiny pipeline tokenizer does not load on current transformers."""
+def test_z_image_tiny_transformer_is_rejected() -> None:
+    """Z-Image blocks are registered, but the transformer has no ``enable_cache`` on diffusers 0.39."""
     from diffusers import ZImageTransformer2DModel
 
     transformer = ZImageTransformer2DModel.from_pretrained(
         "tiny-random/z-image", subfolder="transformer", torch_dtype=torch.float32
     )
-    pipeline = _pipeline_with(transformer)
-    algorithm = FirstBlockCache()
-    assert algorithm.model_check_fn(pipeline)
-
-    smash_config = SmashConfig()
-    smash_config.add("first_block_cache")
-    algorithm.apply(pipeline, smash_config)
-    assert transformer.is_cache_enabled
+    assert not hasattr(transformer, "enable_cache")
+    assert not FirstBlockCache().model_check_fn(_pipeline_with(transformer))
 
 
 def test_wan_tiny_transformer_enables_cache() -> None:

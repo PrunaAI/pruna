@@ -39,13 +39,17 @@ class FirstBlockCache(PrunaAlgorithmBase):
     The cacher is not tied to a pipeline family. A model is eligible when its transformer exposes ``enable_cache``,
     has at least two blocks in a diffusers block list (``transformer_blocks``, ``single_transformer_blocks``,
     ``blocks``, ``layers``, and the other names diffusers caches), and every one of those blocks is registered in
-    diffusers' ``TransformerBlockRegistry``. On diffusers 0.39 that includes Flux.1, Qwen-Image, Z-Image, LTX-Video
-    (two or more layers), Wan, and HunyuanVideo.
+    diffusers' ``TransformerBlockRegistry``. On diffusers 0.39 that includes Flux.1, Qwen-Image, LTX-Video (two or
+    more layers), Wan, and HunyuanVideo.
+
+    Z-Image's ``ZImageTransformerBlock`` is registered, but ``ZImageTransformer2DModel`` does not inherit
+    ``CacheMixin`` and ``ZImagePipeline`` does not enter ``cache_context``. The hooks would raise ``ValueError`` on
+    the first forward. The check stays false until the transformer exposes ``enable_cache``.
 
     Flux.2 is not eligible on diffusers 0.39: ``Flux2TransformerBlock`` and ``Flux2SingleTransformerBlock`` are not
     registered, and the pipeline concatenates text and image tokens between the double-stream and single-stream loops,
-    which does not match the head/tail residual contract. A later diffusers that registers those blocks is accepted by
-    this check without a Pruna change.
+    which does not match the head/tail residual contract. A later diffusers that registers those blocks and exposes
+    ``enable_cache`` is accepted by this check without a Pruna change.
     """
 
     algorithm_name: str = "first_block_cache"
