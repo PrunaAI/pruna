@@ -69,6 +69,7 @@ class StaticFp8Diffusers(PrunaAlgorithmBase):
     compatible_before: Iterable[str | AlgorithmTag] = ["padding_pruning", "qkv_diffusers"]
     compatible_after: Iterable[str | AlgorithmTag] = [
         "fastercache",
+        "first_block_cache",
         "flash_attn3",
         "fora",
         "pab",
