@@ -149,8 +149,11 @@ def test_otlp_export_errors_not_shown_at_critical_level():
         logger.propagate = False
 
     try:
-        # Configure a non-existent endpoint to force export errors
-        with patch.object(exporter, "_endpoint", "http://nonexistent-domain-for-testing.invalid/v1/metrics"):
+        # Configure a non-existent endpoint to force export errors. The exporter's
+        # HTTP client snapshots the endpoint into its own `_endpoint` attribute at
+        # construction time rather than reading `exporter._endpoint` per call, so
+        # that attribute (not the exporter's) is the one that must be patched.
+        with patch.object(exporter._client, "_endpoint", "http://nonexistent-domain-for-testing.invalid/v1/metrics"):
             # Set log level to CRITICAL
             set_opentelemetry_log_level("CRITICAL")
             set_telemetry_metrics(True)
@@ -203,8 +206,11 @@ def test_otlp_export_errors_shown_at_info_level():
         logger.propagate = False
 
     try:
-        # Configure a non-existent endpoint to force export errors
-        with patch.object(exporter, "_endpoint", "http://nonexistent-domain-for-testing.invalid/v1/metrics"):
+        # Configure a non-existent endpoint to force export errors. The exporter's
+        # HTTP client snapshots the endpoint into its own `_endpoint` attribute at
+        # construction time rather than reading `exporter._endpoint` per call, so
+        # that attribute (not the exporter's) is the one that must be patched.
+        with patch.object(exporter._client, "_endpoint", "http://nonexistent-domain-for-testing.invalid/v1/metrics"):
             # Set log level to INFO
             set_opentelemetry_log_level("INFO")
             set_telemetry_metrics(True)
