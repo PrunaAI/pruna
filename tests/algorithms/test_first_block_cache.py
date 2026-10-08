@@ -24,7 +24,7 @@ def test_non_transformer_models_are_rejected(model_fixture: tuple) -> None:
 
 @pytest.mark.parametrize("model_fixture", ["flux2_tiny_random"], indirect=True)
 def test_flux2_pipeline_is_rejected(model_fixture: tuple) -> None:
-    """``Flux2Pipeline`` is rejected until diffusers registers its blocks."""
+    """``Flux2Pipeline`` is rejected. Its block classes are not in the diffusers block registry."""
     model, _ = model_fixture
     assert not FirstBlockCache().model_check_fn(model)
 

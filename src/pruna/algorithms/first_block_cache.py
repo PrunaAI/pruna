@@ -45,11 +45,6 @@ class FirstBlockCache(PrunaAlgorithmBase):
     Z-Image's ``ZImageTransformerBlock`` is registered, but ``ZImageTransformer2DModel`` does not inherit
     ``CacheMixin`` and ``ZImagePipeline`` does not enter ``cache_context``. The hooks would raise ``ValueError`` on
     the first forward. The check stays false until the transformer exposes ``enable_cache``.
-
-    Flux.2 is not eligible on diffusers 0.39: ``Flux2TransformerBlock`` and ``Flux2SingleTransformerBlock`` are not
-    registered, and the pipeline concatenates text and image tokens between the double-stream and single-stream loops,
-    which does not match the head/tail residual contract. A later diffusers that registers those blocks and exposes
-    ``enable_cache`` is accepted by this check without a Pruna change.
     """
 
     algorithm_name: str = "first_block_cache"
