@@ -35,7 +35,8 @@ class FirstBlockCache(PrunaAlgorithmBase):
 
     First Block Cache compares the residual of the first transformer block with the residual from the previous step.
     When the relative absmean difference is below ``threshold``, the remaining blocks are skipped and the cached tail
-    residual is reused. The hook is `FirstBlockCacheConfig` applied through ``transformer.enable_cache``.
+    residual is reused. Transformers whose blocks are already registered use ``transformer.enable_cache`` with a
+    ``FirstBlockCacheConfig``.
 
     The cacher is not tied to a pipeline family. A model is eligible when its transformer exposes ``enable_cache``,
     has at least two blocks in a diffusers block list (``transformer_blocks``, ``single_transformer_blocks``,
@@ -47,12 +48,13 @@ class FirstBlockCache(PrunaAlgorithmBase):
     ``CacheMixin`` and ``ZImagePipeline`` does not enter ``cache_context``. The hooks would raise ``ValueError`` on
     the first forward. The check stays false until the transformer exposes ``enable_cache``.
 
-    Flux.2 is cached per block list. ``transformer_blocks`` return ``(encoder_hidden_states, hidden_states)`` and
+    Flux.2 does not use ``enable_cache``. ``transformer_blocks`` return ``(encoder_hidden_states, hidden_states)`` and
     ``single_transformer_blocks`` return one concatenated token tensor, and the forward concatenates the two streams
     between those loops. diffusers hooks both lists as one head/tail pair, which subtracts those incompatible tensors.
-    Each list with at least two blocks gets its own cache. The Flux.2 block classes are not in diffusers'
-    ``TransformerBlockRegistry``; this algorithm registers that metadata before hooking them. ``Flux2Pipeline`` does
-    not enter ``cache_context``, so the wrapped forward opens one when the caller has not.
+    Each list with at least two blocks gets its own ``apply_first_block_cache`` call. The Flux.2 block classes are not
+    in ``TransformerBlockRegistry`` through diffusers 0.41; this algorithm registers that metadata before hooking them.
+    ``Flux2Pipeline`` does not enter ``cache_context``, so the wrapped forward opens one when the caller has not.
+    Klein already opens ``cond`` and ``uncond``; those contexts are left in place.
     """
 
     algorithm_name: str = "first_block_cache"
