@@ -346,7 +346,13 @@ def _fbc_context_is_active(transformer: torch.nn.Module) -> bool:
             continue
         for hook in registry.hooks.values():
             manager = getattr(hook, "state_manager", None)
-            if manager is not None and manager._current_context is not None:
+            # diffusers 0.41 stores a CacheContext on `_context`; older builds used `_current_context`.
+            if manager is None:
+                continue
+            current = getattr(manager, "_current_context", None)
+            if current is None:
+                current = getattr(manager, "_context", None)
+            if current is not None:
                 return True
     return False
 
