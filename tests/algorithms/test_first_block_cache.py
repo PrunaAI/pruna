@@ -23,10 +23,29 @@ def test_non_transformer_models_are_rejected(model_fixture: tuple) -> None:
 
 
 @pytest.mark.parametrize("model_fixture", ["flux2_tiny_random"], indirect=True)
-def test_flux2_pipeline_is_rejected(model_fixture: tuple) -> None:
-    """``Flux2Pipeline`` is rejected. Its block classes are not in the diffusers block registry."""
+def test_flux2_pipeline_caches_each_block_list(model_fixture: tuple) -> None:
+    """Flux.2 dev runs with a per-list cache, including a threshold that skips the tail."""
     model, _ = model_fixture
-    assert not FirstBlockCache().model_check_fn(model)
+    algorithm = FirstBlockCache()
+    assert algorithm.model_check_fn(model)
+
+    smash_config = SmashConfig()
+    smash_config.add("first_block_cache")
+    smash_config.add({"first_block_cache_threshold": 1.0})
+    algorithm.apply(model, smash_config)
+    assert model.transformer.is_cache_enabled
+
+    kwargs = {
+        "prompt": "a red apple",
+        "num_inference_steps": 4,
+        "height": 64,
+        "width": 64,
+        "text_encoder_out_layers": (1,),
+    }
+    first = model(**kwargs).images[0]
+    second = model(**kwargs).images[0]
+    assert first.size == (64, 64)
+    assert second.size == (64, 64)
 
 
 def test_ltx_tiny_checkpoint_has_one_block() -> None:

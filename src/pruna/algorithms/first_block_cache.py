@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import functools
 from collections.abc import Iterable
 from typing import Any, Dict
 
@@ -45,6 +46,13 @@ class FirstBlockCache(PrunaAlgorithmBase):
     Z-Image's ``ZImageTransformerBlock`` is registered, but ``ZImageTransformer2DModel`` does not inherit
     ``CacheMixin`` and ``ZImagePipeline`` does not enter ``cache_context``. The hooks would raise ``ValueError`` on
     the first forward. The check stays false until the transformer exposes ``enable_cache``.
+
+    Flux.2 is cached per block list. ``transformer_blocks`` return ``(encoder_hidden_states, hidden_states)`` and
+    ``single_transformer_blocks`` return one concatenated token tensor, and the forward concatenates the two streams
+    between those loops. diffusers hooks both lists as one head/tail pair, which subtracts those incompatible tensors.
+    Each list with at least two blocks gets its own cache. The Flux.2 block classes are not in diffusers'
+    ``TransformerBlockRegistry``; this algorithm registers that metadata before hooking them. ``Flux2Pipeline`` does
+    not enter ``cache_context``, so the wrapped forward opens one when the caller has not.
     """
 
     algorithm_name: str = "first_block_cache"
@@ -109,6 +117,8 @@ class FirstBlockCache(PrunaAlgorithmBase):
         transformer = getattr(model, "transformer", None)
         if transformer is None or not hasattr(transformer, "enable_cache"):
             return False
+        if _is_flux2_transformer(transformer):
+            return len(_flux2_block_lists(transformer)) > 0
         try:
             blocks = _cacheable_transformer_blocks(transformer)
         except ImportError:
@@ -134,12 +144,11 @@ class FirstBlockCache(PrunaAlgorithmBase):
         imported_modules = self.import_algorithm_packages()
         cache_config = imported_modules["FirstBlockCacheConfig"](threshold=smash_config["threshold"])
         transformer = model.transformer
+        if _is_flux2_transformer(transformer):
+            _apply_flux2_first_block_cache(transformer, cache_config)
+            return model
         transformer.enable_cache(cache_config)
-        # cache_context records child hook registries on first use. A forward that ran before enable_cache
-        # leaves that list empty, so the block hooks never receive a context.
-        registry = getattr(transformer, "_diffusers_hook", None)
-        if registry is not None and hasattr(registry, "_child_registries_cache"):
-            registry._child_registries_cache = None
+        _drop_stale_cache_context_registry(transformer)
         return model
 
     def import_algorithm_packages(self) -> Dict[str, Any]:
@@ -196,3 +205,174 @@ def _cacheable_transformer_blocks(transformer: torch.nn.Module) -> list[torch.nn
         except (ValueError, KeyError):
             return []
     return blocks
+
+
+def _is_flux2_transformer(transformer: torch.nn.Module) -> bool:
+    """
+    Return whether this module is a Flux.2 diffusion transformer.
+
+    Parameters
+    ----------
+    transformer : torch.nn.Module
+        The module stored on ``pipeline.transformer``.
+
+    Returns
+    -------
+    bool
+        True when the class name starts with ``Flux2``.
+    """
+    return type(transformer).__name__.startswith("Flux2")
+
+
+def _flux2_block_lists(transformer: torch.nn.Module) -> list[str]:
+    """
+    Return Flux.2 block lists that have a head block and a tail block.
+
+    Parameters
+    ----------
+    transformer : torch.nn.Module
+        A Flux.2 transformer.
+
+    Returns
+    -------
+    list[str]
+        ``transformer_blocks`` and ``single_transformer_blocks``, when each contains at least two Flux.2 blocks.
+    """
+    names: list[str] = []
+    for name in ("transformer_blocks", "single_transformer_blocks"):
+        blocks = getattr(transformer, name, None)
+        if not isinstance(blocks, torch.nn.ModuleList) or len(blocks) < 2:
+            continue
+        if all(type(block).__name__.startswith("Flux2") for block in blocks):
+            names.append(name)
+    return names
+
+
+def _register_flux2_block_metadata() -> None:
+    """
+    Register Flux.2 blocks with diffusers' cache registry when the installed release has not.
+
+    Double-stream blocks return ``(encoder_hidden_states, hidden_states)``. Single-stream blocks return the
+    concatenated token tensor. A release that already registered the class is left unchanged.
+    """
+    from diffusers.hooks._helpers import TransformerBlockMetadata, TransformerBlockRegistry
+    from diffusers.models.transformers.transformer_flux2 import (
+        Flux2SingleTransformerBlock,
+        Flux2TransformerBlock,
+    )
+
+    double_metadata = TransformerBlockMetadata(
+        return_hidden_states_index=1,
+        return_encoder_hidden_states_index=0,
+    )
+    # Single blocks return one tensor. Leaving the encoder index at its default marks that.
+    single_metadata = TransformerBlockMetadata(return_hidden_states_index=0)
+    for block_cls, metadata in (
+        (Flux2TransformerBlock, double_metadata),
+        (Flux2SingleTransformerBlock, single_metadata),
+    ):
+        try:
+            TransformerBlockRegistry.get(block_cls)
+        except ValueError:
+            TransformerBlockRegistry.register(block_cls, metadata)
+
+
+def _apply_flux2_first_block_cache(transformer: torch.nn.Module, config: Any) -> None:
+    """
+    Hook first-block cache on each Flux.2 block list.
+
+    Parameters
+    ----------
+    transformer : torch.nn.Module
+        The Flux.2 transformer.
+    config : Any
+        A ``FirstBlockCacheConfig``.
+    """
+    from diffusers.hooks.first_block_cache import apply_first_block_cache
+
+    if getattr(transformer, "is_cache_enabled", False):
+        raise ValueError("Caching has already been enabled on this Flux.2 transformer.")
+
+    _register_flux2_block_metadata()
+    hooked = False
+    for name in _flux2_block_lists(transformer):
+        blocks = getattr(transformer, name)
+        # apply_first_block_cache only sees direct children. Park the list on a holder so this call
+        # cannot pair a double-stream head with a single-stream tail, then put the list back.
+        holder = torch.nn.Module()
+        holder.add_module(name, blocks)
+        apply_first_block_cache(holder, config)
+        transformer.add_module(name, blocks)
+        hooked = True
+    if not hooked:
+        raise ValueError("Flux.2 transformer has no block list with at least two blocks.")
+
+    transformer._cache_config = config
+    _drop_stale_cache_context_registry(transformer)
+    _wrap_forward_with_cache_context(transformer)
+
+
+def _drop_stale_cache_context_registry(transformer: torch.nn.Module) -> None:
+    """
+    Forget a child-hook list recorded before these cache hooks existed.
+
+    Parameters
+    ----------
+    transformer : torch.nn.Module
+        The transformer whose ``cache_context`` walks child hooks.
+    """
+    registry = getattr(transformer, "_diffusers_hook", None)
+    if registry is not None and hasattr(registry, "_child_registries_cache"):
+        registry._child_registries_cache = None
+
+
+def _fbc_context_is_active(transformer: torch.nn.Module) -> bool:
+    """
+    Return whether a caller already opened ``cache_context``.
+
+    Parameters
+    ----------
+    transformer : torch.nn.Module
+        The transformer that owns the cache hooks.
+
+    Returns
+    -------
+    bool
+        True when a hook state manager has a current context name.
+    """
+    for module in transformer.modules():
+        registry = getattr(module, "_diffusers_hook", None)
+        if registry is None:
+            continue
+        for hook in registry.hooks.values():
+            manager = getattr(hook, "state_manager", None)
+            if manager is not None and manager._current_context is not None:
+                return True
+    return False
+
+
+def _wrap_forward_with_cache_context(transformer: torch.nn.Module) -> None:
+    """
+    Open a cache context for pipelines that call the transformer without one.
+
+    Klein already enters ``cond`` and ``uncond`` contexts. Those calls are left alone. ``Flux2Pipeline`` does not,
+    and the hooks raise ``ValueError`` until a context exists.
+
+    Parameters
+    ----------
+    transformer : torch.nn.Module
+        The Flux.2 transformer whose ``forward`` is wrapped.
+    """
+    if getattr(transformer, "_pruna_fbc_context_wrapped", False):
+        return
+    original_forward = transformer.forward
+
+    @functools.wraps(original_forward)
+    def forward(*args: Any, **kwargs: Any) -> Any:
+        if _fbc_context_is_active(transformer):
+            return original_forward(*args, **kwargs)
+        with transformer.cache_context("default"):
+            return original_forward(*args, **kwargs)
+
+    transformer.forward = forward
+    transformer._pruna_fbc_context_wrapped = True

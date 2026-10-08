@@ -11,13 +11,15 @@ _TINY_INFERENCE_ARGS = {
     "height": 64,
     "width": 64,
     "max_sequence_length": 16,
+    # The tiny Flux.2 text encoder only has layer 1. Other pipelines do not take this argument.
+    "text_encoder_out_layers": (1,),
 }
 
 
 class TestFirstBlockCache(AlgorithmTesterBase):
     """Test first-block cache on tiny diffusers checkpoints that emit images."""
 
-    models = ["flux_tiny_random", "qwen_image_tiny_random"]
+    models = ["flux_tiny_random", "qwen_image_tiny_random", "flux2_tiny_random"]
     reject_models = ["opt_tiny_random"]
     allow_pickle_files = False
     algorithm_class = FirstBlockCache
