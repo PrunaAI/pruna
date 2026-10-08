@@ -44,7 +44,7 @@ jobs:
             tests/**
       - name: Run ruff on changed Pruna code
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6 # v3.6.1
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
         with:
           version: "latest"
           src: ${{ steps.changed-files.outputs.all_changed_files }}
