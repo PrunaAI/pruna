@@ -28,6 +28,7 @@ import torch
 import torch.nn as nn
 from accelerate import dispatch_model
 from accelerate.hooks import remove_hook_from_module
+from diffusers import DiffusionPipeline
 from diffusers.models.modeling_utils import ModelMixin
 from transformers import Pipeline
 
@@ -197,7 +198,9 @@ def move_to_device(
         raise ValueError("Device must be a string starting with [cpu, cuda, mps, accelerate].")
 
     # do not cast if the model is already on the correct device
-    if get_device(model) == device:
+    # diffusers>=0.40 reports a pipeline's accelerator device as soon as one component lives there,
+    # so a partially moved pipeline would be skipped; let the pipeline move each component instead
+    if get_device(model) == device and not safe_is_instance(model, DiffusionPipeline):
         return
 
     if device == "accelerate":
