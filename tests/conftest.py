@@ -24,6 +24,7 @@ EXTRA_MARKS = {
     "requires_kvpress": "mark test that needs pruna[kvpress]",
     "requires_llamacpp": "mark test that needs pruna[llamacpp]",
     "requires_transformers_legacy": "mark test that needs pruna[transformers-legacy]",
+    "requires_mcp": "mark test that needs pruna[mcp]",
 }
 
 

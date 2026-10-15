@@ -66,7 +66,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        name: ["base", 'lmharness', 'rapidata', 'llamacpp']
+        name: ["base", 'lmharness', 'rapidata', 'llamacpp', 'mcp']
         include:
         - name: base
           extras: "dev"
@@ -80,6 +80,9 @@ jobs:
         - name: llamacpp
           extras: "dev,llamacpp"
           mark_filter: "requires_llamacpp"
+        - name: mcp
+          extras: "dev,mcp"
+          mark_filter: "requires_mcp"
 
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
