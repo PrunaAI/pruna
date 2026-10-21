@@ -156,7 +156,11 @@ dependencies = [
     "termcolor==2.3.0",
 ]
 
+[project.scripts]
+pruna-mcp = "pruna.mcp_server.server:main"
+
 [project.optional-dependencies]
+mcp = ["mcp>=2.0,<3.0"]
 transformers-legacy = [
     "transformers<5.0.0",
 ]
