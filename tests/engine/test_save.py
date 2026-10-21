@@ -33,7 +33,7 @@ def test_save_llm_to_hub() -> None:
 @pytest.mark.cpu
 def test_save_diffusers_to_hub() -> None:
     """Test saving a diffusers model to the Hugging Face Hub."""
-    download_repo_id = "hf-internal-testing/tiny-stable-diffusion-pipe"
+    download_repo_id = "dg845/tiny-random-stable-diffusion"
     upload_repo_id = "pruna-test/test-save-tiny-stable-diffusion-pipe-smashed"
     model = DiffusionPipeline.from_pretrained(download_repo_id)
     smash_config = SmashConfig(device="cpu")

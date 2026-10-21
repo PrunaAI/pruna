@@ -4,12 +4,34 @@
 import logging
 import time
 from io import StringIO
-from unittest.mock import patch
 
 import pytest
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
 from pruna.telemetry import increment_counter, set_telemetry_metrics, track_usage
-from pruna.telemetry.metrics import exporter, reader, set_opentelemetry_log_level
+from pruna.telemetry.metrics import reader, set_opentelemetry_log_level
+
+UNREACHABLE_ENDPOINT = "http://nonexistent-domain-for-testing.invalid/v1/metrics"
+
+
+def export_metric_to_unreachable_endpoint() -> None:
+    """
+    Export a single metric to an unreachable endpoint to force an OTLP export error.
+
+    A dedicated exporter is used instead of patching the private internals of pruna's exporter,
+    which change between opentelemetry releases. The short timeout makes the exporter give up
+    (and log its ERROR) within ``force_flush`` instead of after several retries.
+    """
+    test_exporter = OTLPMetricExporter(endpoint=UNREACHABLE_ENDPOINT, timeout=1)
+    test_reader = PeriodicExportingMetricReader(test_exporter, export_interval_millis=60000)
+    test_provider = MeterProvider(metric_readers=[test_reader])
+    try:
+        test_provider.get_meter("pruna-test").create_counter("test_operation").add(1)
+        test_reader.force_flush()
+    finally:
+        test_provider.shutdown()
 
 
 @pytest.mark.integration
@@ -149,32 +171,22 @@ def test_otlp_export_errors_not_shown_at_critical_level():
         logger.propagate = False
 
     try:
-        # Configure a non-existent endpoint to force export errors. The exporter's
-        # HTTP client snapshots the endpoint into its own `_endpoint` attribute at
-        # construction time rather than reading `exporter._endpoint` per call, so
-        # that attribute (not the exporter's) is the one that must be patched.
-        with patch.object(exporter._client, "_endpoint", "http://nonexistent-domain-for-testing.invalid/v1/metrics"):
-            # Set log level to CRITICAL
-            set_opentelemetry_log_level("CRITICAL")
-            set_telemetry_metrics(True)
+        # Set log level to CRITICAL
+        set_opentelemetry_log_level("CRITICAL")
 
-            # Generate metrics that will fail to export
-            increment_counter("test_operation")
+        # Generate a metric that will fail to export
+        export_metric_to_unreachable_endpoint()
 
-            # Force flush to trigger export attempt
-            reader.force_flush()
-            time.sleep(1)  # Wait for background thread
+        # Get the log output
+        log_output = log_capture.getvalue()
 
-            # Get the log output
-            log_output = log_capture.getvalue()
+        # Debug output to console (will show in pytest output with -v flag)
+        print("\n----- CRITICAL LEVEL LOGS -----")
+        print(log_output)
+        print("-------------------------------")
 
-            # Debug output to console (will show in pytest output with -v flag)
-            print("\n----- CRITICAL LEVEL LOGS -----")
-            print(log_output)
-            print("-------------------------------")
-
-            # At CRITICAL level, there should be no ERROR or WARNING messages
-            assert "ERROR:" not in log_output, "ERROR logs should not be visible at CRITICAL level"
+        # At CRITICAL level, there should be no ERROR or WARNING messages
+        assert "ERROR:" not in log_output, "ERROR logs should not be visible at CRITICAL level"
 
     finally:
         # Restore original logger states
@@ -206,32 +218,22 @@ def test_otlp_export_errors_shown_at_info_level():
         logger.propagate = False
 
     try:
-        # Configure a non-existent endpoint to force export errors. The exporter's
-        # HTTP client snapshots the endpoint into its own `_endpoint` attribute at
-        # construction time rather than reading `exporter._endpoint` per call, so
-        # that attribute (not the exporter's) is the one that must be patched.
-        with patch.object(exporter._client, "_endpoint", "http://nonexistent-domain-for-testing.invalid/v1/metrics"):
-            # Set log level to INFO
-            set_opentelemetry_log_level("INFO")
-            set_telemetry_metrics(True)
+        # Set log level to INFO
+        set_opentelemetry_log_level("INFO")
 
-            # Generate metrics that will fail to export
-            increment_counter("test_operation")
+        # Generate a metric that will fail to export
+        export_metric_to_unreachable_endpoint()
 
-            # Force flush to trigger export attempt
-            reader.force_flush()
-            time.sleep(1)  # Wait for background thread
+        # Get the log output
+        log_output = log_capture.getvalue()
 
-            # Get the log output
-            log_output = log_capture.getvalue()
+        # Debug output to console (will show in pytest output with -v flag)
+        print("\n----- INFO LEVEL LOGS -----")
+        print(log_output)
+        print("---------------------------")
 
-            # Debug output to console (will show in pytest output with -v flag)
-            print("\n----- INFO LEVEL LOGS -----")
-            print(log_output)
-            print("---------------------------")
-
-            # At INFO level, error messages should be visible
-            assert "ERROR:" in log_output, "ERROR logs should be visible at INFO level"
+        # At INFO level, error messages should be visible
+        assert "ERROR:" in log_output, "ERROR logs should be visible at INFO level"
 
     finally:
         # Restore original logger states
