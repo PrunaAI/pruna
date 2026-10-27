@@ -376,6 +376,8 @@ def load_pickled(path: str | Path, smash_config: SmashConfig, **kwargs) -> Any:
     """
     # torch load has a target device but no interface to reproduce an accelerate-distributed model, we first map to cpu
     target_device = "cpu" if smash_config.device == "accelerate" else smash_config.device
+    # weights_only=False required to load a full pickled pruna model object, not just tensors
+    # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
     model = torch.load(
         Path(path) / PICKLED_FILE_NAME,
         weights_only=False,
@@ -458,6 +460,7 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
 
         # Janus language model must be patched to match HQQ's causal LM assumption
         quantized_path = str(hqq_model_dir / "qmodel.pt")
+        # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch -- weights_only=True, loads tensors only
         weights = torch.load(quantized_path, map_location="cpu", weights_only=True)
         is_already_patched = all(k == "lm_head" or k.startswith("model.") for k in weights)
         if not is_already_patched:
@@ -465,6 +468,8 @@ def load_hqq(model_path: str | Path, smash_config: SmashConfig, **kwargs) -> Any
             weights = {f"model.{k}": v for k, v in weights.items()}
             # artifically add a random lm_head to the weights.
             weights["lm_head"] = torch.nn.Linear(1024, 1024).state_dict()
+            # torch.save of a checkpoint pruna writes
+            # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
             torch.save(weights, quantized_path)  # patch weights
 
         quantized_causal_lm = load_quantized_model(hqq_model_dir)

@@ -77,6 +77,7 @@ name = "pruna_internal"
 url = "https://prunaai.pythonanywhere.com/simple/"
 explicit = true
 
+# nosemgrep: package_managers.uv.uv-missing-dependency-cooldown.uv-missing-dependency-cooldown -- the cooldown is set per index: exclude-newer = "1 week" on the pypi index above; trusted internal indexes are exempt on purpose
 [tool.uv]
 index-strategy = "unsafe-best-match"
 
