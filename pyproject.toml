@@ -210,6 +210,8 @@ upscale = [
 
 vbench = [
     "vbench-pruna; sys_platform != 'darwin'",
+    # vbench-pruna pins numpy<2; pyarrow>=26 needs numpy>=2 at import but does not declare it
+    "pyarrow<26; sys_platform != 'darwin'",
 ]
 rapidata = [
     "rapidata>=3.0.0"
