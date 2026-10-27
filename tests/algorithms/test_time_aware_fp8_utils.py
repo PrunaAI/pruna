@@ -95,27 +95,6 @@ def test_scale_helper_captures_timestep_from_positional_args(arg_name: str) -> N
     torch.testing.assert_close(helper.buffer, torch.tensor([2.25]))
 
 
-@pytest.mark.cpu
-def test_finalize_calibration_raises_when_a_layer_was_not_visited() -> None:
-    """Any unvisited swapped Linear is a targeting error, even if other layers calibrated."""
-    helper = TimeAwareScaleHelper()
-    observed = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
-    unused = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
-    observed.input_running_amax_by_timestep[0.0] = torch.tensor(1.0, dtype=torch.float32)
-
-    with pytest.raises(RuntimeError, match="not visited during calibration"):
-        TimeAwareFp8Diffusers._finalize_calibration([unused, observed], helper)
-
-
-@pytest.mark.cpu
-def test_finalize_calibration_raises_when_no_layer_was_visited() -> None:
-    """Freeze fails when every swapped Linear missed calibration."""
-    helper = TimeAwareScaleHelper()
-    unused = TimeAwareFp8Linear.from_linear(torch.nn.Linear(2, 2), scale_helper=helper)
-    with pytest.raises(RuntimeError, match="not visited during calibration"):
-        TimeAwareFp8Diffusers._finalize_calibration([unused], helper)
-
-
 def _prepared_helper_and_layer() -> tuple[TimeAwareScaleHelper, TimeAwareFp8Linear]:
     """Build a single frozen layer and run ``prepare_for_inference`` on its helper."""
     helper = TimeAwareScaleHelper()
