@@ -68,6 +68,7 @@ class HQQDiffusers(PrunaAlgorithmBase):
     compatible_after: Iterable[str] = [
         "deepcache",
         "fastercache",
+        "first_block_cache",
         "fora",
         "pab",
         "torch_compile",
