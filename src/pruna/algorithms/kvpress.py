@@ -32,11 +32,9 @@ PRESS_TYPES = [
     "CURPress",
     "ExpectedAttentionPress",
     "ExpectedAttentionStatsPress",
-    "FastKVzipPress",
     "FinchPress",
     "KnormPress",
     "KVzapPress",
-    "KVzipPress",
     "KeyDiffPress",
     "LagKVPress",
     "LeverageScorePress",
@@ -62,7 +60,8 @@ class KVPress(PrunaAlgorithmBase):
     This integration covers all scorer and standalone presses. Wrapper presses (e.g., ChunkPress,
     AdaKVPress, PerLayerCompressionPress) that require a nested scorer press as input are not
     included, as well as ThinKPress which compresses along the channel dimension with a different
-    parameter interface.
+    parameter interface, and exit-time presses (KVzipPress, FastKVzipPress) which compress only
+    after the context manager exits and therefore do not compress during model.generate().
     """
 
     algorithm_name: str = "kvpress"
@@ -151,6 +150,14 @@ class KVPress(PrunaAlgorithmBase):
         imported_modules = self.import_algorithm_packages()
 
         press_type = smash_config["press_type"]
+        if press_type in ("KVzipPress", "FastKVzipPress"):
+            raise ValueError(
+                f"{press_type} is not supported because it compresses only on context manager exit, "
+                "which does not compress the KV cache during model.generate()."
+            )
+        if press_type not in imported_modules:
+            raise ValueError(f"Unknown or unsupported press type: {press_type}. Choose from {PRESS_TYPES}.")
+
         compression_ratio = smash_config["compression_ratio"]
         press_kwargs = smash_config["press_kwargs"] or {}
 
