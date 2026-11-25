@@ -399,8 +399,10 @@ def _update_metric_devices(task: Task, inference_device: str, stateful_device: s
     ----------
     task : Task
         The task to update.
-    device : str
-        The device to update the metrics to.
+    inference_device : str
+        The device to move stateless metrics to.
+    stateful_device : str
+        The device to move stateful metrics to.
     """
     for metric in task.metrics:
         if isinstance(metric, BaseMetric):
