@@ -303,9 +303,9 @@ class TqdmPositionContext:
         ----------
         exc_type : BaseException or None
             The type of the exception that occurred, if any.
-        exc_val : BaseException or None
+        exc_value : BaseException or None
             The instance of the exception that occurred, if any.
-        exc_tb : Any or None
+        traceback : Any or None
             The traceback of the exception that occurred, if any.
 
         Returns
